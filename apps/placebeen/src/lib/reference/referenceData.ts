@@ -73,6 +73,9 @@ class ReferenceDataImpl implements ReferenceData {
   citiesOf(countryIso2: string): City[] {
     return cities.filter((c) => c.countryIso2 === countryIso2);
   }
+  allCities(): City[] {
+    return cities;
+  }
   cityById(id: string): City | undefined {
     return this.cityIndex.get(id);
   }

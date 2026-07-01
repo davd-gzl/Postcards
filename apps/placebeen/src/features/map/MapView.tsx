@@ -7,6 +7,7 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import { useVisits } from "../../lib/store/useVisits";
 import { visitedCityPoints, visitedCountryNumerics } from "./visitedLayers";
+import type { Bounds } from "./viewport";
 
 // Build country polygons once from bundled Natural Earth geometry (offline).
 function buildCountries(): FeatureCollection<Polygon | MultiPolygon> {
@@ -20,7 +21,19 @@ function buildCountries(): FeatureCollection<Polygon | MultiPolygon> {
   return fc;
 }
 
-export function MapView() {
+export interface MapFocus {
+  lon: number;
+  lat: number;
+  key: number;
+}
+
+export function MapView({
+  onBounds,
+  focus,
+}: {
+  onBounds?: (b: Bounds) => void;
+  focus?: MapFocus | null;
+}) {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,7 +41,19 @@ export function MapView() {
   const loadedRef = useRef(false);
   const visitsRef = useRef(visits);
   visitsRef.current = visits;
+  const onBoundsRef = useRef(onBounds);
+  onBoundsRef.current = onBounds;
   const [failed, setFailed] = useState(false);
+
+  function emitBounds(map: MlMap) {
+    const b = map.getBounds();
+    onBoundsRef.current?.({
+      west: b.getWest(),
+      south: b.getSouth(),
+      east: b.getEast(),
+      north: b.getNorth(),
+    });
+  }
 
   function applyVisited(map: MlMap) {
     const numerics = visitedCountryNumerics(visitsRef.current, ref);
@@ -47,12 +72,11 @@ export function MapView() {
       map = new maplibregl.Map({
         container: containerRef.current,
         attributionControl: { compact: true },
-        center: [8, 30],
-        zoom: 1.4,
+        center: [6, 32],
+        zoom: 1.1,
         style: { version: 8, sources: {}, layers: [] },
       });
     } catch {
-      // No WebGL (e.g. some headless/older environments) — degrade gracefully.
       setFailed(true);
       return;
     }
@@ -61,7 +85,7 @@ export function MapView() {
 
     map.on("load", async () => {
       if (cancelled) return;
-      const { style, attribution } = await bundledMapSource.resolveStyle("world-overview");
+      const { style } = await bundledMapSource.resolveStyle("world-overview");
       map.setStyle(style);
       map.once("styledata", () => {
         if (cancelled) return;
@@ -70,14 +94,14 @@ export function MapView() {
           id: "countries-base",
           type: "fill",
           source: "countries",
-          paint: { "fill-color": "#1b2942", "fill-outline-color": "#2b3d5e" },
+          paint: { "fill-color": "#f4f6f9", "fill-outline-color": "#d6dce4" },
         });
         map.addLayer({
           id: "countries-visited",
           type: "fill",
           source: "countries",
           filter: ["in", ["get", "numeric"], ["literal", []]],
-          paint: { "fill-color": "#38bdf8", "fill-opacity": 0.55 },
+          paint: { "fill-color": "#22c55e", "fill-opacity": 0.32 },
         });
         map.addSource("cities", {
           type: "geojson",
@@ -88,16 +112,20 @@ export function MapView() {
           type: "circle",
           source: "cities",
           paint: {
-            "circle-radius": 4,
-            "circle-color": "#fbbf24",
-            "circle-stroke-color": "#0b1220",
-            "circle-stroke-width": 1,
+            "circle-radius": 4.5,
+            "circle-color": "#16a34a",
+            "circle-stroke-color": "#ffffff",
+            "circle-stroke-width": 1.5,
           },
         });
         loadedRef.current = true;
         applyVisited(map);
+        emitBounds(map);
       });
-      map.getContainer().setAttribute("data-attribution", attribution);
+    });
+
+    map.on("moveend", () => {
+      if (loadedRef.current) emitBounds(map);
     });
 
     return () => {
@@ -115,20 +143,23 @@ export function MapView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visits]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focus) return;
+    map.flyTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), 4.5), speed: 1.4 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.key]);
+
   if (failed) {
     return (
-      <div className="panel" style={{ padding: 16 }}>
-        <p className="notice">
-          The map couldn’t start (WebGL may be unavailable here). Your visits and statistics still
-          work — see the Visits and Stats tabs.
+      <div className="map-fallback">
+        <p className="muted">
+          The map couldn’t start (WebGL may be unavailable here). Your visits, the cities list, and
+          statistics still work.
         </p>
       </div>
     );
   }
 
-  return (
-    <div className="map-holder">
-      <div ref={containerRef} className="map-wrap" role="application" aria-label="Map of visited places" />
-    </div>
-  );
+  return <div ref={containerRef} className="map-canvas" role="application" aria-label="Map of visited places" />;
 }

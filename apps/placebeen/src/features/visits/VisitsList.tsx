@@ -14,28 +14,33 @@ export function VisitsList() {
   );
 
   return (
-    <div className="panel">
-      <h2>Your visits ({visits.length})</h2>
+    <section aria-label="Your places">
+      <div className="section-head">
+        <h2>Your places</h2>
+        <span className="muted">{visits.length}</span>
+      </div>
+
       {visits.length === 0 && (
-        <p className="muted">No visits yet. Add one from the “Add” tab (shortcut: A).</p>
+        <p className="muted empty">
+          Nothing yet. Add places from the map — search, or tap a city in the list.
+        </p>
       )}
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+
+      <ul className="city-list">
         {sorted.map((v) => {
           const country = ref.countryByIso2(v.place.countryId)?.name ?? v.place.countryId;
           return (
-            <li key={v.visitId} className="visit-row">
-              <div className="grow">
-                <div>
-                  <strong>{v.place.name}</strong>{" "}
-                  <span className="muted">
-                    · {v.place.kind === "city" ? country : "country"}
-                    {v.date ? ` · ${formatDate(v.date)}` : ""}
-                  </span>
-                </div>
-                {v.note && <div className="muted">{v.note}</div>}
+            <li key={v.visitId} className="city-row">
+              <div className="city-focus" style={{ cursor: "default" }}>
+                <span className="city-name">{v.place.name}</span>
+                <span className="city-sub">
+                  {v.place.kind === "city" ? country : "Country"}
+                  {v.date ? ` · ${formatDate(v.date)}` : ""}
+                  {v.note ? ` · ${v.note}` : ""}
+                </span>
               </div>
               <button
-                className="btn danger"
+                className="link-danger"
                 type="button"
                 onClick={() => removeVisit(v.visitId)}
                 aria-label={`Remove ${v.place.name}`}
@@ -46,6 +51,6 @@ export function VisitsList() {
           );
         })}
       </ul>
-    </div>
+    </section>
   );
 }

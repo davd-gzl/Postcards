@@ -1,8 +1,24 @@
 # Review notes — autonomous MVP build (2026-07-01)
 
-Built the runnable Place'Been MVP so you can open it, click around, and correct it. Design is
-intentionally plain — refining the look/UX is your job. Everything below is committed and pushed
-to `claude/repo-setup-speckit-3magw3`.
+Built the runnable Place'Been MVP so you can open it, click around, and correct it. Everything is
+committed and pushed to `claude/repo-setup-speckit-3magw3`.
+
+## Update — light redesign + "cities in view" (same session, later)
+
+Reworked the whole UI per your direction: **white/light theme, mobile-first, bottom-nav, simple &
+efficient (no-BS, no AI-look)**. New primary screen: **Map on top + a live "Cities in view — most
+people first" list below** that updates as you pan/zoom the map; one tap on the round **+ / ✓**
+marks a city visited (and it appears green on the map). Search adds any city/country and flies the
+map there. Three tabs: **Map · Stats · Places** (Places = your list + backup/import).
+
+Green after the redesign: **typecheck ✓ · 28 unit tests ✓ (added viewport tests) · production build
+✓ · Playwright e2e ✓**. Note: the "cities in view" list is only as rich as the loaded gazetteer —
+with the ~28-city starter set it's sparse; it becomes powerful once the full GeoNames gazetteer is
+vendored (task T018). The design is now intentional, but still yours to tweak tomorrow.
+
+---
+
+### Original build notes (still accurate for the architecture/caveats)
 
 ## What works right now
 

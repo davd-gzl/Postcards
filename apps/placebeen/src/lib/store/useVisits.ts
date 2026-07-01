@@ -37,6 +37,7 @@ interface VisitsState {
   load: () => Promise<void>;
   addVisit: (input: { place: PlaceRef; date?: string | null; note?: string | null }) => Promise<Visit>;
   removeVisit: (visitId: string) => Promise<void>;
+  toggleVisit: (place: PlaceRef) => Promise<void>;
   setAll: (visits: Visit[]) => Promise<void>;
 }
 
@@ -63,6 +64,11 @@ export const useVisits = create<VisitsState>((set, get) => ({
   async removeVisit(visitId) {
     set({ visits: get().visits.filter((v) => v.visitId !== visitId) });
     await db.deleteVisit(visitId);
+  },
+  async toggleVisit(place) {
+    const existing = findByPlace(get().visits, place);
+    if (existing) await get().removeVisit(existing.visitId);
+    else await get().addVisit({ place });
   },
   async setAll(visits) {
     set({ visits });
