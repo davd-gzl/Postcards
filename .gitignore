@@ -1,0 +1,18 @@
+# Claude Code local / credential files (keep .claude/skills committed for Spec Kit)
+.claude/settings.local.json
+.claude/*.local.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*~
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
