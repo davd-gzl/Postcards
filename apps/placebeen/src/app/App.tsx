@@ -1,41 +1,37 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useVisits } from "../lib/store/useVisits";
-import { AddVisit } from "../features/visits/AddVisit";
-import { VisitsList } from "../features/visits/VisitsList";
 import { StatsView } from "../features/stats/StatsView";
+import { VisitsList } from "../features/visits/VisitsList";
 import { Backup } from "../features/backup/Backup";
 import { Attribution } from "../ui/Attribution";
+import { MapIcon, ChartIcon, ListIcon } from "../ui/icons";
 
-// Code-split MapLibre (the largest dependency) so it loads only when the map is shown.
-const MapView = lazy(() =>
-  import("../features/map/MapView").then((m) => ({ default: m.MapView })),
+// Code-split MapLibre so it loads only when the map is shown.
+const MapScreen = lazy(() =>
+  import("../features/map/MapScreen").then((m) => ({ default: m.MapScreen })),
 );
 
-type Tab = "map" | "add" | "visits" | "stats" | "backup";
+type Tab = "map" | "stats" | "places";
 
-const TABS: { id: Tab; label: string; key: string }[] = [
-  { id: "map", label: "Map", key: "m" },
-  { id: "add", label: "Add", key: "a" },
-  { id: "visits", label: "Visits", key: "v" },
-  { id: "stats", label: "Stats", key: "s" },
-  { id: "backup", label: "Backup", key: "b" },
+const TABS: { id: Tab; label: string; keys: string[]; Icon: () => JSX.Element }[] = [
+  { id: "map", label: "Map", keys: ["1", "m"], Icon: MapIcon },
+  { id: "stats", label: "Stats", keys: ["2", "s"], Icon: ChartIcon },
+  { id: "places", label: "Places", keys: ["3", "p"], Icon: ListIcon },
 ];
 
 export function App() {
   const [tab, setTab] = useState<Tab>("map");
-  const loaded = useVisits((s) => s.loaded);
 
   useEffect(() => {
     void useVisits.getState().load();
   }, []);
 
-  // Keyboard shortcuts for power users (Constitution VII).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)) return;
-      const match = TABS.find((x) => x.key === e.key.toLowerCase());
+      const match = TABS.find((x) => x.keys.includes(e.key.toLowerCase()));
       if (match) {
         setTab(match.id);
         e.preventDefault();
@@ -50,40 +46,45 @@ export function App() {
       <a className="skip-link" href="#main">
         Skip to content
       </a>
+
       <header className="topbar">
-        <h1>Place'Been</h1>
-        <nav className="tabs" aria-label="Sections">
-          {TABS.map((x) => (
-            <button
-              key={x.id}
-              type="button"
-              aria-current={tab === x.id}
-              onClick={() => setTab(x.id)}
-              title={`${x.label} (${x.key.toUpperCase()})`}
-            >
-              {x.label}
-            </button>
-          ))}
-        </nav>
+        <span className="brand">Place'Been</span>
       </header>
 
-      <main id="main" className={"content" + (tab === "map" ? " map-mode" : "")}>
-        {!loaded && tab !== "map" && <p className="muted">Loading…</p>}
+      <main id="main" className={"content" + (tab === "map" ? " flush" : "")}>
         {tab === "map" && (
-          <Suspense fallback={<p className="muted" style={{ padding: 16 }}>Loading map…</p>}>
-            <MapView />
+          <Suspense fallback={<p className="muted empty">Loading map…</p>}>
+            <MapScreen />
           </Suspense>
         )}
-        {tab === "add" && <AddVisit onAdded={() => undefined} />}
-        {tab === "visits" && <VisitsList />}
-        {tab === "stats" && <StatsView />}
-        {tab === "backup" && (
-          <div className="panel">
+        {tab === "stats" && (
+          <div className="screen">
+            <StatsView />
+          </div>
+        )}
+        {tab === "places" && (
+          <div className="screen">
+            <VisitsList />
             <Backup />
             <Attribution />
           </div>
         )}
       </main>
+
+      <nav className="bottom-nav" aria-label="Sections">
+        {TABS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            className={"nav-item" + (tab === id ? " active" : "")}
+            aria-current={tab === id}
+            onClick={() => setTab(id)}
+          >
+            <Icon />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

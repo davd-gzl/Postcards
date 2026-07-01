@@ -31,7 +31,7 @@ export function Backup() {
 
   async function onImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file
+    e.target.value = "";
     if (!file) return;
     const text = await file.text();
     const result = importFile(text);
@@ -40,26 +40,28 @@ export function Backup() {
       return;
     }
     await setAll(result.visits);
-    setMessage({ kind: "ok", text: `Imported ${result.visits.length} visits.` });
+    setMessage({ kind: "ok", text: `Imported ${result.visits.length} places.` });
   }
 
   return (
-    <div className="panel">
-      <h2>Backup &amp; restore</h2>
+    <section aria-label="Backup and restore">
+      <div className="section-head">
+        <h2>Your data</h2>
+      </div>
       <p className="muted">
-        Everything lives in one portable file on your device. Export it to a drive or git; import
-        it anywhere. Nothing leaves your device unless you export it.
+        Everything lives in one portable file on your device. Export it to a drive or git; import it
+        anywhere. Nothing leaves your device unless you export it.
       </p>
 
-      <div className="row-actions" style={{ marginTop: 12 }}>
+      <div className="btn-row">
         <button className="btn" type="button" onClick={exportJson}>
-          Export data (JSON)
+          Export data
         </button>
-        <button className="btn secondary" type="button" onClick={exportMd}>
-          Export map (Markdown)
+        <button className="btn-ghost" type="button" onClick={exportMd}>
+          Export map (.md)
         </button>
-        <button className="btn secondary" type="button" onClick={() => fileInput.current?.click()}>
-          Import file…
+        <button className="btn-ghost" type="button" onClick={() => fileInput.current?.click()}>
+          Import…
         </button>
         <input
           ref={fileInput}
@@ -72,15 +74,14 @@ export function Backup() {
       </div>
 
       {message && (
-        <p className="notice" role="status" style={message.kind === "err" ? { color: "var(--danger)" } : undefined}>
+        <p className={"notice" + (message.kind === "err" ? " notice-err" : "")} role="status">
           {message.text}
         </p>
       )}
-
-      <p className="notice">
-        Importing replaces your current data with the file’s contents. Files are validated and
-        sanitized on import — never executed.
+      <p className="muted small">
+        Importing replaces your current data. Files are validated and sanitized on import — never
+        executed.
       </p>
-    </div>
+    </section>
   );
 }

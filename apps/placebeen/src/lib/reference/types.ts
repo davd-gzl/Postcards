@@ -40,6 +40,7 @@ export interface ReferenceData {
   countryByNumeric(numeric: string): Country | undefined;
   subdivisionsOf(countryIso2: string): Subdivision[];
   citiesOf(countryIso2: string): City[];
+  allCities(): City[];
   cityById(id: string): City | undefined;
   searchCountries(query: string, limit?: number): Country[];
   searchCities(query: string, limit?: number): City[];

@@ -31,7 +31,7 @@ export class BundledMapSource implements MapSource {
           {
             id: "background",
             type: "background",
-            paint: { "background-color": "#0b1220" },
+            paint: { "background-color": "#eaf0f6" },
           },
         ],
       },

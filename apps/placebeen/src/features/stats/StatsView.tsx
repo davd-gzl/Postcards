@@ -26,58 +26,71 @@ export function StatsView() {
   const countries = useMemo(() => visitedCountriesList(visits, ref), [visits, ref]);
 
   return (
-    <div className="panel">
-      <h2>Statistics</h2>
+    <section aria-label="Statistics">
+      <div className="section-head">
+        <h2>Statistics</h2>
+      </div>
 
       <div className="stat-grid">
         <div className="stat-tile">
           <div className="num">{formatInt(coverage.countriesVisited)}</div>
-          <div className="label">countries visited</div>
+          <div className="label">countries</div>
         </div>
         <div className="stat-tile">
           <div className="num">{formatPercent(coverage.worldPct)}</div>
-          <div className="label">of the world ({formatInt(coverage.worldCountryCount)})</div>
+          <div className="label">of the world</div>
         </div>
         <div className="stat-tile">
           <div className="num">{formatInt(coverage.citiesVisited)}</div>
-          <div className="label">cities visited</div>
+          <div className="label">cities</div>
         </div>
       </div>
 
-      <h3 style={{ fontSize: 15 }}>By country</h3>
-      {countries.length === 0 && <p className="muted">No countries yet — add a visit.</p>}
+      <div className="section-head">
+        <h3>By country</h3>
+      </div>
+
+      {countries.length === 0 && <p className="muted empty">No countries yet — add a place.</p>}
+
       {countries.map((c) => (
-        <div key={c.iso2} className="country-row" style={{ display: "block" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+        <div key={c.iso2} className="country-card">
+          <div className="country-head">
             <strong>{c.name}</strong>
             <span className="muted">
               {formatInt(c.citiesVisited)} cities · {formatInt(c.regionsVisited)} regions
             </span>
           </div>
-          <div style={{ marginTop: 8 }}>
-            <div className="muted" style={{ fontSize: 13 }}>
-              Cities: {formatPercent(c.cityPct)}{" "}
-              {c.citiesTotal > 0 ? `(${c.citiesVisited}/${c.citiesTotal})` : "(dataset not loaded)"}
+
+          <div className="metric">
+            <div className="metric-label">
+              <span>Cities</span>
+              <span className="muted">
+                {formatPercent(c.cityPct)}
+                {c.citiesTotal > 0 ? ` (${c.citiesVisited}/${c.citiesTotal})` : " — n/a"}
+              </span>
             </div>
             <Bar value={c.cityPct} />
           </div>
-          <div style={{ marginTop: 8 }}>
-            <div className="muted" style={{ fontSize: 13 }}>
-              Regions: {formatPercent(c.regionPct)}{" "}
-              {c.regionsTotal > 0
-                ? `(${c.regionsVisited}/${c.regionsTotal})`
-                : "(dataset not loaded)"}
+
+          <div className="metric">
+            <div className="metric-label">
+              <span>Regions</span>
+              <span className="muted">
+                {c.regionsTotal > 0
+                  ? `${formatPercent(c.regionPct)} (${c.regionsVisited}/${c.regionsTotal})`
+                  : "dataset not loaded"}
+              </span>
             </div>
             <Bar value={c.regionPct} />
           </div>
         </div>
       ))}
 
-      <p className="attribution">
+      <p className="muted small">
         Percentages are computed against the loaded reference datasets. The starter datasets are
         small (full country list; France regions; a sample city gazetteer), so per-country
-        denominators reflect what is loaded — see the follow-up task to vendor the full datasets.
+        denominators reflect what is loaded.
       </p>
-    </div>
+    </section>
   );
 }
