@@ -2,6 +2,23 @@
 .claude/settings.local.json
 .claude/*.local.json
 
+# Node / build
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
+.pnpm-store/
+
+# Capacitor native build output (platforms are generated locally)
+apps/*/ios/App/Pods/
+apps/*/ios/App/build/
+apps/*/android/.gradle/
+apps/*/android/build/
+apps/*/android/app/build/
+
 # OS files
 .DS_Store
 Thumbs.db

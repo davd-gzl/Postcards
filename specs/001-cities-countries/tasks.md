@@ -10,6 +10,14 @@ each relevant story.
 
 **Organization**: Tasks are grouped by user story so each can be built and tested independently.
 
+> **Implementation status (autonomous pass, 2026-07-01)** — see [`REVIEW-NOTES.md`](../../REVIEW-NOTES.md).
+> A runnable MVP exists: Setup + Foundational + US1 (log), US2 (offline map), US3 (backup), US4
+> (stats with both per-country metrics), and US5 basics are built; 23 unit tests + a browser smoke
+> test pass; production PWA build succeeds. **Key follow-ups still open**: T018 (vendor full
+> Natural Earth Admin 1 + GeoNames — currently a small starter subset), T033 (real PMTiles
+> basemap — currently country polygons), Capacitor native wiring, and the a11y/privacy/CI e2e
+> tasks (T047–T048, T052, T057).
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies on incomplete tasks)
