@@ -1,10 +1,13 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: (none) → 1.0.0
-Bump rationale: Initial ratification of the project constitution.
+Version change: 1.0.0 → 1.1.0
+Bump rationale (1.1.0): Record the multi-app ecosystem architecture and the
+device-global, cross-app shared offline map store under Technology Constraints
+(MINOR — new architectural guidance; no principle removed or redefined).
+Prior (1.0.0): Initial ratification of the project constitution.
 
-Modified principles: N/A (initial adoption)
+Modified principles: none (guidance added to Technology Constraints)
 Added sections:
   - Core Principles I–VIII
   - Technology Constraints
@@ -165,6 +168,16 @@ Constitution-Check section.
   export/import format; Markdown for human-shareable exports.
 - **Backend**: none required for core features. Any optional sync is a user-chosen transport
   (file, drive, git), not a project-run server.
+- **Ecosystem & shared offline maps**: This app is one member of a wider ecosystem of the
+  user's Capacitor apps that share common resources. Offline map data (PMTiles) MUST be
+  storable in a device-global, cross-app shared location — never locked to app-private
+  storage — so any app in the ecosystem can reuse the same downloaded maps. Maps MUST be
+  consumed through an abstract "map source" interface with platform-specific backing:
+  a shared App Group container (iOS); a user-designated shared folder via the Storage
+  Access Framework, or a content provider (Android); a shared filesystem directory
+  (desktop); served/OPFS tiles (web). This shared "Offline Map Store" SHOULD be delivered
+  as a reusable Capacitor plugin + SDK so the whole ecosystem depends on one component.
+  No app may assume map data is confined to its own sandbox.
 
 ## Data & Dataset Standards
 
@@ -205,4 +218,4 @@ Constitution-Check section.
 - **Compliance review**: Every plan's Constitution Check and every review MUST verify
   adherence. Unjustified complexity or principle violations block merge.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-01 | **Last Amended**: 2026-07-01
+**Version**: 1.1.0 | **Ratified**: 2026-07-01 | **Last Amended**: 2026-07-01
