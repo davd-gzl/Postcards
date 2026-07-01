@@ -95,8 +95,9 @@ confirm the restored state matches the original exactly.
 ### User Story 4 - See coverage statistics (Priority: P2)
 
 The user opens a statistics view and instantly sees how many countries they have visited, what
-percentage of the world's countries that is, how many cities they have visited, and what
-percentage of a selected country they have covered.
+percentage of the world's countries that is, how many cities they have visited, and — for a
+selected country — both what percentage of its cities and what percentage of its regions
+(first-level subdivisions) they have covered.
 
 **Why this priority**: The "how much of the world have I seen" numbers are a major draw, but
 they depend on Stories 1 and 3 existing first, so they come after the capture/persist core.
@@ -111,7 +112,8 @@ and percentages match the expected values for that set and reference data.
 2. **Given** visited cities, **When** the user opens statistics, **Then** the count of cities
    visited is shown.
 3. **Given** a selected country with recorded visits, **When** the user views that country,
-   **Then** the percentage of that country's subdivisions with at least one visit is shown.
+   **Then** both the percentage of that country's cities visited and the percentage of its
+   first-level subdivisions with at least one visit are shown.
 4. **Given** the user adds or removes a visit, **When** they return to statistics, **Then** the
    figures reflect the change.
 
@@ -173,8 +175,10 @@ using only the keyboard, and pass an automated accessibility audit.
   NOT assume map data is confined to app-private storage, so its backing can later be a
   device-global, cross-app shared map store without changing app behavior.
 - **FR-007**: The system MUST compute and display coverage statistics: number of countries
-  visited, percentage of the world's countries visited, number of cities visited, and the
-  percentage of a selected country's subdivisions with at least one visit.
+  visited, percentage of the world's countries visited, and number of cities visited. For a
+  selected country, the system MUST display BOTH (a) the percentage of that country's cities
+  the user has visited AND (b) the percentage of that country's first-level subdivisions
+  (regions) with at least one recorded visit.
 - **FR-008**: All reference data (country list, subdivisions, city gazetteer, boundaries) MUST
   originate from named, openly-licensed external datasets with recorded provenance (source,
   license, version). The system MUST NOT author or invent reference facts.
@@ -208,9 +212,11 @@ using only the keyboard, and pass an automated accessibility audit.
   stable identifier(s), coordinates, parent country/subdivision, provenance. Read-only aggregate
   data — never authored by the app.
 - **Country**: A reference entity representing a country or self-governed/dependent territory as
-  defined by the dataset; the full set provides the denominator for "percentage of the world".
-- **Subdivision**: A first-level administrative division of a country; provides the denominator
-  for "percentage of a country".
+  defined by the dataset; the full set provides the denominator for "percentage of the world",
+  and each country's associated cities and subdivisions provide the denominators for its two
+  per-country metrics.
+- **Subdivision**: A first-level administrative division of a country (region); the set of a
+  country's subdivisions provides the denominator for that country's "% of subdivisions" metric.
 - **Reference Dataset**: A named external dataset (source, license, version) supplying Places,
   Countries, Subdivisions, and boundaries.
 - **Data File**: The single portable, human-readable document holding all of the user's Visits
@@ -242,10 +248,11 @@ using only the keyboard, and pass an automated accessibility audit.
 
 - The canonical data file format is JSON (per the constitution), with a separate Markdown export
   for human sharing; "human-readable file" refers to this JSON document.
-- "Percentage of a country" is computed as the share of that country's first-level
-  administrative subdivisions in which the user has at least one recorded visit, using an
-  openly-licensed subdivisions dataset. Exact subdivision granularity follows the dataset.
-  (Top candidate for `/speckit-clarify` if a different denominator is preferred.)
+- "Percentage of a country" is reported as TWO complementary metrics, both shown: (a) the share
+  of that country's cities (from the gazetteer) the user has visited, and (b) the share of that
+  country's first-level administrative subdivisions (regions) in which the user has at least one
+  recorded visit. Both use openly-licensed datasets; exact granularity follows each dataset.
+  (Resolved decision — keep both, not one.)
 - MVP reference datasets are: world countries and territories, first-level subdivisions, a city
   gazetteer, and country boundaries — all openly licensed (e.g. Natural Earth / GeoNames-class),
   bundled read-only with recorded provenance.

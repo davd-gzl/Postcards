@@ -35,8 +35,8 @@
   (React/Capacitor/MapLibre/PMTiles/JSON) in requirements; those live in the constitution's
   Technology Constraints and will be applied during `/speckit-plan`. Where the spec references
   concrete choices, they are confined to the Assumptions/Dependencies sections.
-- One item is flagged as the top `/speckit-clarify` candidate (recorded as an Assumption rather
-  than a blocking marker, since a reasonable default exists): the exact denominator for
-  "percentage of a country" (first-level subdivisions vs. a cities list).
+- The earlier "% of a country" question is resolved: the spec shows BOTH the percentage of a
+  country's cities and the percentage of its first-level subdivisions (per the decision to keep
+  both metrics).
 - Items marked incomplete would require spec updates before `/speckit-clarify` or
   `/speckit-plan`; none remain.
