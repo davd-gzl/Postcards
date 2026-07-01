@@ -12,7 +12,9 @@ function download(filename: string, text: string, type: string) {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // Revoke after the click has a chance to start the download (revoking
+  // synchronously can cancel it in some browsers).
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 export function Backup() {

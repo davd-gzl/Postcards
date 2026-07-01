@@ -12,8 +12,8 @@
     "url": "https://github.com/topojson/world-atlas"
   },
   {
-    "dataset": "placebeen-starter-subdivisions (FR regions)",
-    "license": "Public Domain (ISO 3166-2 codes + Natural Earth)",
+    "dataset": "placebeen-starter-subdivisions (FR regions, starter approximation)",
+    "license": "Public Domain (region names + ISO 3166-2:FR codes)",
     "version": "starter-0",
     "url": "https://en.wikipedia.org/wiki/ISO_3166-2:FR"
   },

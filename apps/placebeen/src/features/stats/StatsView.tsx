@@ -4,11 +4,12 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { computeCoverage, visitedCountriesList } from "./computeStats";
 import { formatInt, formatPercent } from "../../lib/format/format";
 
-function Bar({ value }: { value: number }) {
+function Bar({ value, label }: { value: number; label: string }) {
   return (
     <div
       className="bar"
       role="progressbar"
+      aria-label={label}
       aria-valuenow={Math.round(value * 100)}
       aria-valuemin={0}
       aria-valuemax={100}
@@ -69,7 +70,7 @@ export function StatsView() {
                 {c.citiesTotal > 0 ? ` (${c.citiesVisited}/${c.citiesTotal})` : " — n/a"}
               </span>
             </div>
-            <Bar value={c.cityPct} />
+            <Bar value={c.cityPct} label={`${c.name}: cities visited`} />
           </div>
 
           <div className="metric">
@@ -81,7 +82,7 @@ export function StatsView() {
                   : "dataset not loaded"}
               </span>
             </div>
-            <Bar value={c.regionPct} />
+            <Bar value={c.regionPct} label={`${c.name}: regions visited`} />
           </div>
         </div>
       ))}

@@ -22,4 +22,12 @@ describe("sanitizeText (inert data)", () => {
   it("leaves ordinary text unchanged", () => {
     expect(sanitizeText("Paris, France")).toBe("Paris, France");
   });
+
+  it("strips zero-width and bidi-override characters (Trojan Source)", () => {
+    // zero-width space + right-to-left override embedded in text
+    const evil = "ad‮min​ istrator";
+    const out = sanitizeText(evil);
+    expect(out).not.toContain("‮");
+    expect(out).not.toContain("​");
+  });
 });

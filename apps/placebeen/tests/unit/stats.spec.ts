@@ -39,4 +39,14 @@ describe("coverage statistics", () => {
     expect(fr.cityPct).toBeCloseTo(2 / 14, 6);
     expect(fr.regionPct).toBeCloseTo(2 / 13, 6);
   });
+
+  it("never exceeds 100%: cities outside the gazetteer don't count", () => {
+    const withUnknown = [
+      cityVisit("paris-fr", "Paris", "FR"),
+      cityVisit("not-in-dataset", "Somewhere", "FR"),
+    ];
+    const fr = computeCountryCoverage(withUnknown, ref, "FR");
+    expect(fr.citiesVisited).toBe(1); // only Paris counts
+    expect(fr.cityPct).toBeLessThanOrEqual(1);
+  });
 });

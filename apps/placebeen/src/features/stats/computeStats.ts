@@ -52,10 +52,13 @@ export function computeCountryCoverage(
   const visitedCityIds = new Set<string>();
   const visitedRegionIds = new Set<string>();
   for (const v of visits) {
-    if (v.place.kind !== "city" || v.place.countryId !== iso2) continue;
-    visitedCityIds.add(v.place.id);
+    if (v.place.kind !== "city") continue;
+    // Only count cities that exist in this country's gazetteer, so the numerator
+    // can never exceed the denominator (imported cities outside the dataset don't inflate %).
     const city = ref.cityById(v.place.id);
-    if (city?.subdivisionId) visitedRegionIds.add(city.subdivisionId);
+    if (!city || city.countryIso2 !== iso2) continue;
+    visitedCityIds.add(v.place.id);
+    if (city.subdivisionId) visitedRegionIds.add(city.subdivisionId);
   }
   const citiesTotal = country?.cityCount ?? 0;
   const regionsTotal = country?.subdivisionCount ?? 0;
@@ -71,7 +74,7 @@ export function computeCountryCoverage(
   };
 }
 
-/** Countries with recorded visits, most-visited-data first, for the stats list. */
+/** Countries with recorded visits, sorted alphabetically by name, for the stats list. */
 export function visitedCountriesList(visits: Visit[], ref: ReferenceData): CountryCoverage[] {
   return [...visitedCountryIds(visits)]
     .map((iso2) => computeCountryCoverage(visits, ref, iso2))

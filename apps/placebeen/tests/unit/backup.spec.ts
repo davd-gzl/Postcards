@@ -53,6 +53,46 @@ describe("import security (SC-008, Constitution VI)", () => {
     expect(importFile(text)).toMatchObject({ ok: false });
   });
 
+  it("rejects unknown keys inside a nested place object (strict)", () => {
+    const text = JSON.stringify({
+      format: "placebeen",
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      visits: [
+        {
+          visitId: crypto.randomUUID(),
+          place: { kind: "city", id: "paris-fr", name: "Paris", countryId: "FR", evil: 1 },
+          date: null,
+          note: null,
+          addedAt: new Date().toISOString(),
+        },
+      ],
+    });
+    expect(importFile(text)).toMatchObject({ ok: false });
+  });
+
+  it("merges duplicate places on import (FR-015)", () => {
+    const mk = (note: string) => ({
+      visitId: crypto.randomUUID(),
+      place: { kind: "city", id: "paris-fr", name: "Paris", countryId: "FR" },
+      date: null,
+      note,
+      addedAt: new Date().toISOString(),
+    });
+    const text = JSON.stringify({
+      format: "placebeen",
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      visits: [mk("first"), mk("second")],
+    });
+    const result = importFile(text);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.visits).toHaveLength(1);
+      expect(result.warnings.length).toBeGreaterThan(0);
+    }
+  });
+
   it("sanitizes formula-like content in notes instead of executing it", () => {
     const text = JSON.stringify({
       format: "placebeen",

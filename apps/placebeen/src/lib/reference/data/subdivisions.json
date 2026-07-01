@@ -3,7 +3,7 @@
   { "id": "FR-BFC", "countryIso2": "FR", "name": "Bourgogne-Franche-Comté" },
   { "id": "FR-BRE", "countryIso2": "FR", "name": "Bretagne" },
   { "id": "FR-CVL", "countryIso2": "FR", "name": "Centre-Val de Loire" },
-  { "id": "FR-COR", "countryIso2": "FR", "name": "Corse" },
+  { "id": "FR-20R", "countryIso2": "FR", "name": "Corse" },
   { "id": "FR-GES", "countryIso2": "FR", "name": "Grand Est" },
   { "id": "FR-HDF", "countryIso2": "FR", "name": "Hauts-de-France" },
   { "id": "FR-IDF", "countryIso2": "FR", "name": "Île-de-France" },

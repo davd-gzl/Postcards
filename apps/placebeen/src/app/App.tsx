@@ -51,7 +51,7 @@ export function App() {
         <span className="brand">Place'Been</span>
       </header>
 
-      <main id="main" className={"content" + (tab === "map" ? " flush" : "")}>
+      <main id="main" tabIndex={-1} className={"content" + (tab === "map" ? " flush" : "")}>
         {tab === "map" && (
           <Suspense fallback={<p className="muted empty">Loading map…</p>}>
             <MapScreen />

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import maplibregl, { type GeoJSONSource, type Map as MlMap } from "maplibre-gl";
 import { feature } from "topojson-client";
-import worldTopo from "world-atlas/countries-110m.json";
 import type { FeatureCollection, Polygon, MultiPolygon } from "geojson";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
@@ -9,16 +8,26 @@ import { useVisits } from "../../lib/store/useVisits";
 import { visitedCityPoints, visitedCountryNumerics } from "./visitedLayers";
 import type { Bounds } from "./viewport";
 
-// Build country polygons once from bundled Natural Earth geometry (offline).
-function buildCountries(): FeatureCollection<Polygon | MultiPolygon> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fc = feature(worldTopo as any, (worldTopo as any).objects.countries) as unknown as FeatureCollection<
-    Polygon | MultiPolygon
-  >;
-  for (const f of fc.features) {
-    f.properties = { ...(f.properties ?? {}), numeric: String(f.id ?? "") };
+// Natural Earth 50m country geometry, served as a static asset (SW-cached for
+// offline) rather than bundled into JS, so the map chunk stays lean.
+const GEOMETRY_URL = `${import.meta.env.BASE_URL}basemap/countries-50m.json`;
+
+async function loadCountries(): Promise<FeatureCollection<Polygon | MultiPolygon> | null> {
+  try {
+    const res = await fetch(GEOMETRY_URL);
+    if (!res.ok) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const topo: any = await res.json();
+    const fc = feature(topo, topo.objects.countries) as unknown as FeatureCollection<
+      Polygon | MultiPolygon
+    >;
+    for (const f of fc.features) {
+      f.properties = { ...(f.properties ?? {}), numeric: String(f.id ?? "") };
+    }
+    return fc;
+  } catch {
+    return null;
   }
-  return fc;
 }
 
 export interface MapFocus {
@@ -85,24 +94,29 @@ export function MapView({
 
     map.on("load", async () => {
       if (cancelled) return;
-      const { style } = await bundledMapSource.resolveStyle("world-overview");
+      const { style, attribution } = await bundledMapSource.resolveStyle("world-overview");
+      if (cancelled) return;
       map.setStyle(style);
-      map.once("styledata", () => {
+      map.once("styledata", async () => {
         if (cancelled) return;
-        map.addSource("countries", { type: "geojson", data: buildCountries() });
-        map.addLayer({
-          id: "countries-base",
-          type: "fill",
-          source: "countries",
-          paint: { "fill-color": "#f4f6f9", "fill-outline-color": "#d6dce4" },
-        });
-        map.addLayer({
-          id: "countries-visited",
-          type: "fill",
-          source: "countries",
-          filter: ["in", ["get", "numeric"], ["literal", []]],
-          paint: { "fill-color": "#22c55e", "fill-opacity": 0.32 },
-        });
+        const countries = await loadCountries();
+        if (cancelled || !map.getStyle()) return;
+        if (countries) {
+          map.addSource("countries", { type: "geojson", data: countries, attribution });
+          map.addLayer({
+            id: "countries-base",
+            type: "fill",
+            source: "countries",
+            paint: { "fill-color": "#f4f6f9", "fill-outline-color": "#d6dce4" },
+          });
+          map.addLayer({
+            id: "countries-visited",
+            type: "fill",
+            source: "countries",
+            filter: ["in", ["get", "numeric"], ["literal", []]],
+            paint: { "fill-color": "#22c55e", "fill-opacity": 0.32 },
+          });
+        }
         map.addSource("cities", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },

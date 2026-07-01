@@ -12,7 +12,7 @@
   { "id": "dijon-fr", "name": "Dijon", "countryIso2": "FR", "subdivisionId": "FR-BFC", "lat": 47.322, "lon": 5.0415, "population": 156920 },
   { "id": "tours-fr", "name": "Tours", "countryIso2": "FR", "subdivisionId": "FR-CVL", "lat": 47.3941, "lon": 0.6848, "population": 136463 },
   { "id": "caen-fr", "name": "Caen", "countryIso2": "FR", "subdivisionId": "FR-NOR", "lat": 49.1829, "lon": -0.3707, "population": 105512 },
-  { "id": "ajaccio-fr", "name": "Ajaccio", "countryIso2": "FR", "subdivisionId": "FR-COR", "lat": 41.9192, "lon": 8.7386, "population": 71361 },
+  { "id": "ajaccio-fr", "name": "Ajaccio", "countryIso2": "FR", "subdivisionId": "FR-20R", "lat": 41.9192, "lon": 8.7386, "population": 71361 },
   { "id": "london-gb", "name": "London", "countryIso2": "GB", "subdivisionId": null, "lat": 51.5074, "lon": -0.1278, "population": 8961989 },
   { "id": "berlin-de", "name": "Berlin", "countryIso2": "DE", "subdivisionId": null, "lat": 52.52, "lon": 13.405, "population": 3644826 },
   { "id": "madrid-es", "name": "Madrid", "countryIso2": "ES", "subdivisionId": null, "lat": 40.4168, "lon": -3.7038, "population": 3223334 },
