@@ -1,8 +1,12 @@
 import { PlaceBeenFileSchema, SCHEMA_VERSION, type Visit } from "../../lib/schema/models";
+import { dedupeUpsert } from "../../lib/store/useVisits";
 
 export type ImportResult =
   | { ok: true; visits: Visit[]; warnings: string[] }
   | { ok: false; error: string };
+
+/** Reject absurdly large inputs before parsing (main-thread DoS guard). */
+const MAX_IMPORT_CHARS = 20_000_000;
 
 /**
  * Parse + validate + sanitize an imported file (Constitution VI: data is inert).
@@ -11,6 +15,9 @@ export type ImportResult =
  * schema transforms sanitize free-text fields (see models.ts / sanitize.ts).
  */
 export function importFile(text: string): ImportResult {
+  if (text.length > MAX_IMPORT_CHARS) {
+    return { ok: false, error: "This file is too large to import safely." };
+  }
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -38,5 +45,9 @@ export function importFile(text: string): ImportResult {
   }
 
   // Future: migrate parsed.data.schemaVersion < SCHEMA_VERSION here.
-  return { ok: true, visits: parsed.data.visits, warnings: [] };
+  // Enforce one-visit-per-place on import too (FR-015), not only on add.
+  const visits = parsed.data.visits.reduce<Visit[]>((acc, v) => dedupeUpsert(acc, v), []);
+  const warnings =
+    visits.length !== parsed.data.visits.length ? ["Merged duplicate places in the file."] : [];
+  return { ok: true, visits, warnings };
 }

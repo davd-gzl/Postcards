@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { searchPlaces } from "./search";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
@@ -13,6 +13,7 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
   const visits = useVisits((s) => s.visits);
   const toggleVisit = useVisits((s) => s.toggleVisit);
   const [q, setQ] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const results = useMemo(() => searchPlaces(ref, q), [ref, q]);
   const notFound = q.trim().length >= 2 && results.length === 0;
@@ -24,24 +25,33 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
       if (c) onFocusCity?.({ lon: c.lon, lat: c.lat });
     }
     setQ("");
+    inputRef.current?.focus();
   }
 
   return (
     <div className="search">
       <input
+        ref={inputRef}
         type="search"
         className="search-input"
         placeholder="Search a city or country…"
         aria-label="Search a city or country"
+        role="combobox"
+        aria-expanded={results.length > 0}
+        aria-controls="search-results"
+        aria-autocomplete="list"
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
+      <p className="sr-only" role="status" aria-live="polite">
+        {results.length > 0 ? `${results.length} result${results.length === 1 ? "" : "s"}` : ""}
+      </p>
       {results.length > 0 && (
-        <ul className="results" aria-label="Search results">
+        <ul className="results" id="search-results" role="listbox" aria-label="Search results">
           {results.map((r) => {
             const visited = !!findByPlace(visits, r.place);
             return (
-              <li key={`${r.place.kind}:${r.place.id}`}>
+              <li key={`${r.place.kind}:${r.place.id}`} role="option" aria-selected={visited}>
                 <button
                   type="button"
                   onClick={() => pick(r.place.kind, r.place.id, r.place.name, r.place.countryId)}

@@ -5,13 +5,21 @@
 /** Characters that trigger formula evaluation in spreadsheet software. */
 const FORMULA_PREFIXES = new Set(["=", "+", "-", "@"]);
 
-/** Remove C0/C1 control characters except newline (\n = 10) and tab (9). */
+/**
+ * Remove characters that are invisible or can spoof text direction:
+ * - C0/C1 control characters (except newline 10 and tab 9),
+ * - zero-width characters (U+200B–200D, U+FEFF),
+ * - Unicode bidirectional overrides/isolates (U+202A–202E, U+2066–2069)
+ *   — the "Trojan Source" class of visual-spoofing attacks.
+ */
 function stripControlChars(input: string): string {
   let out = "";
   for (const ch of input) {
     const code = ch.codePointAt(0)!;
-    const isControl = (code >= 0 && code <= 31 && code !== 9 && code !== 10) || code === 127;
-    if (!isControl) out += ch;
+    const isC0C1 = (code >= 0 && code <= 31 && code !== 9 && code !== 10) || code === 127;
+    const isZeroWidth = code === 0x200b || code === 0x200c || code === 0x200d || code === 0xfeff;
+    const isBidi = (code >= 0x202a && code <= 0x202e) || (code >= 0x2066 && code <= 0x2069);
+    if (!isC0C1 && !isZeroWidth && !isBidi) out += ch;
   }
   return out;
 }

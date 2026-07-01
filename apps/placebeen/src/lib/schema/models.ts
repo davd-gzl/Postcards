@@ -11,16 +11,18 @@ const isoCountryId = z
   .string()
   .regex(/^[A-Z]{2}$/, "country id must be an ISO 3166-1 alpha-2 code");
 
-export const PlaceRefSchema = z.object({
-  kind: z.enum(["country", "city"]),
-  id: z.string().min(1).max(64),
-  name: z
-    .string()
-    .min(1)
-    .max(200)
-    .transform((s) => sanitizeText(s, 200)),
-  countryId: isoCountryId,
-});
+export const PlaceRefSchema = z
+  .object({
+    kind: z.enum(["country", "city"]),
+    id: z.string().min(1).max(64),
+    name: z
+      .string()
+      .min(1)
+      .max(200)
+      .transform((s) => sanitizeText(s, 200)),
+    countryId: isoCountryId,
+  })
+  .strict();
 
 export const VisitSchema = z.object({
   visitId: z.string().uuid(),
@@ -38,14 +40,16 @@ export const VisitSchema = z.object({
     .optional()
     .transform((v) => (v == null ? null : sanitizeText(v, 2000))),
   addedAt: z.string().datetime({ offset: true }),
-});
+}).strict();
 
-export const ReferenceSourceSchema = z.object({
-  dataset: z.string().max(100),
-  license: z.string().max(100),
-  version: z.string().max(50),
-  url: z.string().max(300).optional(),
-});
+export const ReferenceSourceSchema = z
+  .object({
+    dataset: z.string().max(100),
+    license: z.string().max(100),
+    version: z.string().max(50),
+    url: z.string().max(300).optional(),
+  })
+  .strict();
 
 export const PlaceBeenFileSchema = z
   .object({
