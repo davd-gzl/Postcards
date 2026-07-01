@@ -283,3 +283,7 @@ using only the keyboard, and pass an automated accessibility audit.
 - Comparisons/leaderboards ("who visited the most"), flag walls, and cross-user data comparison.
 - Background location tracking and AI destination suggestions (openclaw / MAX-Finder).
 - Peer-to-peer synchronization between devices.
+- A dedicated shareable-map viewer: rendered image export for chats, plus a static read-only web
+  viewer that renders a map from data passed privately in the URL fragment or from a user-hosted
+  file. (The MVP includes single-file JSON and Markdown export; the image/viewer share experience
+  is a planned follow-up.)

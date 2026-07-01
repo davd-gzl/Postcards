@@ -1,10 +1,12 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.0 → 1.1.0
-Bump rationale (1.1.0): Record the multi-app ecosystem architecture and the
-device-global, cross-app shared offline map store under Technology Constraints
-(MINOR — new architectural guidance; no principle removed or redefined).
+Version change: 1.1.0 → 1.2.0
+Bump rationale (1.2.0): Record the "format at rest vs. encoding in transit"
+guardrail and the data-scaling strategy under Data & Dataset Standards
+(MINOR — new guidance; no principle removed or redefined).
+Prior (1.1.0): Recorded the multi-app ecosystem architecture and the
+device-global, cross-app shared offline map store under Technology Constraints.
 Prior (1.0.0): Initial ratification of the project constitution.
 
 Modified principles: none (guidance added to Technology Constraints)
@@ -189,6 +191,14 @@ Constitution-Check section.
   be documented and preserve user data.
 - Personal data and reference data MUST be cleanly separable so a user can back up their own
   records independently of bundled datasets.
+- **Format at rest vs. encoding in transit**: The human-readable JSON is the canonical format at
+  rest and for interchange and MUST remain readable and portable. Compact or binary encodings
+  (e.g. CBOR/MessagePack) and CRDT deltas are transport concerns layered on top and MUST round-trip
+  losslessly to/from the canonical JSON. Scaling to larger data MUST NOT abandon the readable
+  interchange format: use an efficient internal working store, shard to newline-delimited JSON
+  (NDJSON) for append/stream/diff, compress for transport, and sync via compact deltas over
+  constrained or decentralized transports (e.g. LoRa, mesh). Bandwidth-limited links carry deltas,
+  never whole files.
 
 ## Development Workflow & Quality Gates
 
@@ -218,4 +228,4 @@ Constitution-Check section.
 - **Compliance review**: Every plan's Constitution Check and every review MUST verify
   adherence. Unjustified complexity or principle violations block merge.
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-01 | **Last Amended**: 2026-07-01
+**Version**: 1.2.0 | **Ratified**: 2026-07-01 | **Last Amended**: 2026-07-01
