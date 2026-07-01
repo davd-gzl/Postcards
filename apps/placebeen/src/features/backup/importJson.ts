@@ -1,0 +1,42 @@
+import { PlaceBeenFileSchema, SCHEMA_VERSION, type Visit } from "../../lib/schema/models";
+
+export type ImportResult =
+  | { ok: true; visits: Visit[]; warnings: string[] }
+  | { ok: false; error: string };
+
+/**
+ * Parse + validate + sanitize an imported file (Constitution VI: data is inert).
+ * The content is treated as pure data — parsed, never executed. Malformed,
+ * unknown, or newer-versioned files are rejected with a clear reason. The Zod
+ * schema transforms sanitize free-text fields (see models.ts / sanitize.ts).
+ */
+export function importFile(text: string): ImportResult {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return { ok: false, error: "This file is not valid JSON." };
+  }
+
+  if (typeof raw !== "object" || raw === null || (raw as { format?: unknown }).format !== "placebeen") {
+    return { ok: false, error: "This does not look like a Place'Been file (missing format marker)." };
+  }
+
+  const version = (raw as { schemaVersion?: unknown }).schemaVersion;
+  if (typeof version === "number" && version > SCHEMA_VERSION) {
+    return {
+      ok: false,
+      error: `This file was made by a newer version (schema v${version}). Please update the app.`,
+    };
+  }
+
+  const parsed = PlaceBeenFileSchema.safeParse(raw);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    const where = first?.path.join(".") || "file";
+    return { ok: false, error: `Invalid data at "${where}": ${first?.message ?? "unknown error"}.` };
+  }
+
+  // Future: migrate parsed.data.schemaVersion < SCHEMA_VERSION here.
+  return { ok: true, visits: parsed.data.visits, warnings: [] };
+}

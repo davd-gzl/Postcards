@@ -1,0 +1,26 @@
+[
+  {
+    "dataset": "iso-3166-1 (via i18n-iso-countries)",
+    "license": "MIT (library) / ISO 3166-1 (codes are public facts)",
+    "version": "7.x",
+    "url": "https://github.com/michaelwittig/node-i18n-iso-countries"
+  },
+  {
+    "dataset": "world-atlas (Natural Earth 110m)",
+    "license": "Public Domain",
+    "version": "2.0.2",
+    "url": "https://github.com/topojson/world-atlas"
+  },
+  {
+    "dataset": "placebeen-starter-subdivisions (FR regions)",
+    "license": "Public Domain (ISO 3166-2 codes + Natural Earth)",
+    "version": "starter-0",
+    "url": "https://en.wikipedia.org/wiki/ISO_3166-2:FR"
+  },
+  {
+    "dataset": "placebeen-starter-cities",
+    "license": "CC-BY-4.0 (to be sourced from GeoNames)",
+    "version": "starter-0",
+    "url": "https://www.geonames.org"
+  }
+]

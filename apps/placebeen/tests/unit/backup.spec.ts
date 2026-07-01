@@ -1,0 +1,75 @@
+import { describe, it, expect } from "vitest";
+import { serializeFile } from "../../src/features/backup/exportJson";
+import { importFile } from "../../src/features/backup/importJson";
+import type { Visit } from "../../src/lib/schema/models";
+
+function visit(): Visit {
+  return {
+    visitId: crypto.randomUUID(),
+    place: { kind: "city", id: "paris-fr", name: "Paris", countryId: "FR" },
+    date: "2019-08-12",
+    note: "first trip",
+    addedAt: new Date().toISOString(),
+  };
+}
+
+describe("backup round-trip (SC-003)", () => {
+  it("export -> import restores identical visits", () => {
+    const original = [visit()];
+    const text = serializeFile(original);
+    const result = importFile(text);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.visits).toEqual(original);
+  });
+});
+
+describe("import security (SC-008, Constitution VI)", () => {
+  it("rejects malformed JSON", () => {
+    expect(importFile("{not json")).toMatchObject({ ok: false });
+  });
+
+  it("rejects a file without the format marker", () => {
+    expect(importFile(JSON.stringify({ visits: [] }))).toMatchObject({ ok: false });
+  });
+
+  it("rejects a newer schema version", () => {
+    const text = JSON.stringify({
+      format: "placebeen",
+      schemaVersion: 99,
+      exportedAt: new Date().toISOString(),
+      visits: [],
+    });
+    expect(importFile(text)).toMatchObject({ ok: false });
+  });
+
+  it("rejects unknown keys (strict)", () => {
+    const text = JSON.stringify({
+      format: "placebeen",
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      visits: [],
+      malicious: { __proto__: { polluted: true } },
+    });
+    expect(importFile(text)).toMatchObject({ ok: false });
+  });
+
+  it("sanitizes formula-like content in notes instead of executing it", () => {
+    const text = JSON.stringify({
+      format: "placebeen",
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      visits: [
+        {
+          visitId: crypto.randomUUID(),
+          place: { kind: "city", id: "paris-fr", name: "Paris", countryId: "FR" },
+          date: null,
+          note: "=IMPORTXML(evil)",
+          addedAt: new Date().toISOString(),
+        },
+      ],
+    });
+    const result = importFile(text);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.visits[0]!.note).toBe("IMPORTXML(evil)");
+  });
+});
