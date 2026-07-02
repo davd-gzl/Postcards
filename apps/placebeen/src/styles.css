@@ -501,6 +501,117 @@ button {
   }
 }
 
+/* Toast with Undo */
+.toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--text);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: var(--shadow);
+  max-width: min(92vw, 420px);
+}
+.toast-msg {
+  font-size: 14px;
+}
+.toast-undo {
+  background: none;
+  border: none;
+  color: #7dd3fc;
+  font-weight: 700;
+  padding: 2px 4px;
+}
+.toast-close {
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+/* Segmented control (Places views) */
+.segmented {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.segmented button {
+  background: var(--surface);
+  border: none;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.segmented button.seg-on {
+  background: var(--primary);
+  color: var(--primary-ink);
+}
+
+/* Fit-to-my-places button over the map */
+.fit-btn {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 5;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+/* Active (keyboard) search option */
+.results li button.opt-active,
+.results li[aria-selected="true"] button {
+  background: var(--bg-sub);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Continent coverage grid */
+.continent-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+@media (min-width: 560px) {
+  .continent-grid {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 20px;
+  }
+}
+
+/* Country drill-down */
+.country-detail {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.country-detail summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.country-detail p {
+  margin: 8px 0 0;
+}
+
 /* Shortcuts overlay */
 .modal-backdrop {
   position: fixed;

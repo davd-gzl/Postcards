@@ -1,26 +1,40 @@
 import { describe, it, expect } from "vitest";
 import { getReferenceData } from "../../src/lib/reference/referenceData";
-import { computeCoverage, computeCountryCoverage } from "../../src/features/stats/computeStats";
+import {
+  computeCoverage,
+  computeCountryCoverage,
+  computeContinentCoverage,
+  countryDetail,
+  visitedCountriesList,
+} from "../../src/features/stats/computeStats";
 import type { Visit } from "../../src/lib/schema/models";
+import type { City } from "../../src/lib/reference/types";
 
 const ref = getReferenceData();
 
-function cityVisit(id: string, name: string, countryId: string): Visit {
+function visitOf(city: City): Visit {
   return {
     visitId: crypto.randomUUID(),
-    place: { kind: "city", id, name, countryId },
+    place: { kind: "city", id: city.id, name: city.name, countryId: city.countryIso2 },
     date: null,
     note: null,
     addedAt: new Date().toISOString(),
   };
 }
 
-describe("coverage statistics", () => {
-  const visits = [
-    cityVisit("paris-fr", "Paris", "FR"),
-    cityVisit("lyon-fr", "Lyon", "FR"),
-    cityVisit("tokyo-jp", "Tokyo", "JP"),
-  ];
+const paris = ref.searchCities("Paris")[0]!; // most populous Paris = Paris, FR
+const lyon = ref.searchCities("Lyon")[0]!;
+const tokyo = ref.searchCities("Tokyo")[0]!;
+
+describe("coverage statistics (real gazetteer)", () => {
+  const visits = [visitOf(paris), visitOf(lyon), visitOf(tokyo)];
+
+  it("resolves the expected reference cities", () => {
+    expect(paris.countryIso2).toBe("FR");
+    expect(paris.id).toBe("2988507"); // GeoNames id from the contract example
+    expect(lyon.countryIso2).toBe("FR");
+    expect(tokyo.countryIso2).toBe("JP");
+  });
 
   it("counts countries, cities and % of world", () => {
     const cov = computeCoverage(visits, ref);
@@ -30,23 +44,51 @@ describe("coverage statistics", () => {
     expect(cov.worldPct).toBeCloseTo(2 / cov.worldCountryCount, 6);
   });
 
-  it("computes BOTH per-country metrics: % of cities and % of regions", () => {
+  it("computes BOTH per-country metrics against real denominators", () => {
+    const country = ref.countryByIso2("FR")!;
+    expect(country.cityCount).toBeGreaterThan(500); // full FR gazetteer loaded
+    expect(country.subdivisionCount).toBe(13);
     const fr = computeCountryCoverage(visits, ref, "FR");
     expect(fr.citiesVisited).toBe(2);
-    expect(fr.citiesTotal).toBe(14); // starter FR gazetteer
+    expect(fr.citiesTotal).toBe(country.cityCount);
     expect(fr.regionsVisited).toBe(2); // Île-de-France + Auvergne-Rhône-Alpes
-    expect(fr.regionsTotal).toBe(13); // starter FR regions
-    expect(fr.cityPct).toBeCloseTo(2 / 14, 6);
+    expect(fr.cityPct).toBeCloseTo(2 / country.cityCount, 6);
     expect(fr.regionPct).toBeCloseTo(2 / 13, 6);
   });
 
   it("never exceeds 100%: cities outside the gazetteer don't count", () => {
-    const withUnknown = [
-      cityVisit("paris-fr", "Paris", "FR"),
-      cityVisit("not-in-dataset", "Somewhere", "FR"),
-    ];
-    const fr = computeCountryCoverage(withUnknown, ref, "FR");
-    expect(fr.citiesVisited).toBe(1); // only Paris counts
+    const unknown: Visit = {
+      visitId: crypto.randomUUID(),
+      place: { kind: "city", id: "not-in-dataset", name: "Somewhere", countryId: "FR" },
+      date: null,
+      note: null,
+      addedAt: new Date().toISOString(),
+    };
+    const fr = computeCountryCoverage([visitOf(paris), unknown], ref, "FR");
+    expect(fr.citiesVisited).toBe(1);
     expect(fr.cityPct).toBeLessThanOrEqual(1);
+  });
+
+  it("computes continent coverage from visited countries", () => {
+    const cov = computeContinentCoverage(visits, ref);
+    const europe = cov.find((c) => c.continent === "Europe");
+    const asia = cov.find((c) => c.continent === "Asia");
+    expect(europe?.visited).toBe(1);
+    expect(asia?.visited).toBe(1);
+    expect(europe!.total).toBeGreaterThan(30);
+    expect(europe!.pct).toBeCloseTo(1 / europe!.total, 6);
+  });
+
+  it("drill-down lists visited city and region names", () => {
+    const d = countryDetail(visits, ref, "FR");
+    expect(d.cities).toContain("Paris");
+    expect(d.cities).toContain("Lyon");
+    expect(d.regionsVisited).toContain("Île-de-France");
+    expect(d.regionsRemaining).toBe(11);
+  });
+
+  it("sorts the by-country list by coverage", () => {
+    const list = visitedCountriesList(visits, ref, "cities");
+    expect(list[0]!.iso2).toBe("FR"); // 2 cities beats 1
   });
 });

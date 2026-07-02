@@ -1,19 +1,19 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { useVisits } from "../lib/store/useVisits";
-import { useUi } from "../lib/store/useUi";
+import { useUi, type Tab } from "../lib/store/useUi";
 import { StatsView } from "../features/stats/StatsView";
-import { VisitsList } from "../features/visits/VisitsList";
+import { PlacesScreen } from "../features/visits/PlacesScreen";
 import { Backup } from "../features/backup/Backup";
 import { Attribution } from "../ui/Attribution";
 import { ShortcutsHelp } from "../ui/ShortcutsHelp";
+import { Toast } from "../ui/Toast";
 import { MapIcon, ChartIcon, ListIcon } from "../ui/icons";
+import { useState } from "react";
 
 // Code-split MapLibre so it loads only when the map is shown.
 const MapScreen = lazy(() =>
   import("../features/map/MapScreen").then((m) => ({ default: m.MapScreen })),
 );
-
-type Tab = "map" | "stats" | "places";
 
 const TABS: { id: Tab; label: string; keys: string[]; Icon: () => JSX.Element }[] = [
   { id: "map", label: "Map", keys: ["1", "m"], Icon: MapIcon },
@@ -22,7 +22,8 @@ const TABS: { id: Tab; label: string; keys: string[]; Icon: () => JSX.Element }[
 ];
 
 export function App() {
-  const [tab, setTab] = useState<Tab>("map");
+  const tab = useUi((s) => s.tab);
+  const setTab = useUi((s) => s.setTab);
   const [showHelp, setShowHelp] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
   const firstRender = useRef(true);
@@ -51,7 +52,7 @@ export function App() {
       if (t && ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)) return;
 
       if (e.key === "/") {
-        setTab("map");
+        useUi.getState().setTab("map");
         useUi.getState().focusSearch();
         e.preventDefault();
         return;
@@ -63,7 +64,7 @@ export function App() {
       }
       const match = TABS.find((x) => x.keys.includes(e.key.toLowerCase()));
       if (match) {
-        setTab(match.id);
+        useUi.getState().setTab(match.id);
         e.preventDefault();
       }
     }
@@ -100,12 +101,14 @@ export function App() {
         )}
         {tab === "places" && (
           <div className="screen">
-            <VisitsList />
+            <PlacesScreen />
             <Backup />
             <Attribution />
           </div>
         )}
       </main>
+
+      <Toast />
 
       <nav className="bottom-nav" aria-label="Sections">
         {TABS.map(({ id, label, Icon }) => (

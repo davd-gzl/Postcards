@@ -41,6 +41,7 @@ export interface ReferenceData {
   countryByNumeric(numeric: string): Country | undefined;
   continentOf(iso2: string): string;
   subdivisionsOf(countryIso2: string): Subdivision[];
+  subdivisionById(id: string): Subdivision | undefined;
   citiesOf(countryIso2: string): City[];
   allCities(): City[];
   cityById(id: string): City | undefined;

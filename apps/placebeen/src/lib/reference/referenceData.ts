@@ -2,18 +2,20 @@ import countries from "i18n-iso-countries";
 import enLocale from "i18n-iso-countries/langs/en.json";
 import type { City, Country, ReferenceData, ReferenceProvenance, Subdivision } from "./types";
 import subdivisionsData from "./data/subdivisions.json";
-import citiesData from "./data/cities.json";
 import provenanceData from "./data/provenance.json";
 import continentsData from "./data/continents.json";
 
 countries.registerLocale(enLocale as Parameters<typeof countries.registerLocale>[0]);
 
 const subdivisions = subdivisionsData as Subdivision[];
-const cities = citiesData as unknown as City[];
 const provenance = provenanceData as ReferenceProvenance[];
 const continents = continentsData as Record<string, string>;
 
-function buildCountries(): Country[] {
+// The city gazetteer (GeoNames-derived, ~24k cities) is served as a static,
+// SW-cached asset and loaded once at startup — see initReferenceData().
+const CITIES_URL = `${import.meta.env.BASE_URL}reference/cities.json`;
+
+function buildCountries(cities: City[]): Country[] {
   const names = countries.getNames("en");
   const cityCounts = new Map<string, number>();
   for (const c of cities) cityCounts.set(c.countryIso2, (cityCounts.get(c.countryIso2) ?? 0) + 1);
@@ -48,20 +50,31 @@ function normalize(s: string): string {
     .trim();
 }
 
+interface IndexedCity extends City {
+  /** Precomputed normalized name so per-keystroke search stays fast at 24k cities. */
+  search: string;
+}
+
 class ReferenceDataImpl implements ReferenceData {
   readonly countries: Country[];
   readonly provenance: ReferenceProvenance[] = provenance;
+  private cities: IndexedCity[];
   private byIso2 = new Map<string, Country>();
   private byNumeric = new Map<string, Country>();
   private cityIndex = new Map<string, City>();
+  private countrySearch: { c: Country; search: string }[];
 
-  constructor() {
-    this.countries = buildCountries();
+  constructor(cities: City[]) {
+    // Gazetteer arrives population-sorted from the build script; keep that order
+    // so search/viewport ranking is "most people first" by construction.
+    this.cities = cities.map((c) => ({ ...c, search: normalize(c.name) }));
+    this.countries = buildCountries(cities);
+    this.countrySearch = this.countries.map((c) => ({ c, search: normalize(c.name) }));
     for (const c of this.countries) {
       this.byIso2.set(c.iso2, c);
       this.byNumeric.set(c.numeric, c);
     }
-    for (const c of cities) this.cityIndex.set(c.id, c);
+    for (const c of this.cities) this.cityIndex.set(c.id, c);
   }
 
   countryByIso2(iso2: string): Country | undefined {
@@ -76,11 +89,14 @@ class ReferenceDataImpl implements ReferenceData {
   subdivisionsOf(countryIso2: string): Subdivision[] {
     return subdivisions.filter((s) => s.countryIso2 === countryIso2);
   }
+  subdivisionById(id: string): Subdivision | undefined {
+    return subdivisions.find((s) => s.id === id);
+  }
   citiesOf(countryIso2: string): City[] {
-    return cities.filter((c) => c.countryIso2 === countryIso2);
+    return this.cities.filter((c) => c.countryIso2 === countryIso2);
   }
   allCities(): City[] {
-    return cities;
+    return this.cities;
   }
   cityById(id: string): City | undefined {
     return this.cityIndex.get(id);
@@ -88,12 +104,29 @@ class ReferenceDataImpl implements ReferenceData {
   searchCountries(query: string, limit = 8): Country[] {
     const q = normalize(query);
     if (!q) return [];
-    return this.countries.filter((c) => normalize(c.name).includes(q)).slice(0, limit);
+    const starts: Country[] = [];
+    const contains: Country[] = [];
+    for (const { c, search } of this.countrySearch) {
+      if (search.startsWith(q)) starts.push(c);
+      else if (search.includes(q)) contains.push(c);
+    }
+    return [...starts, ...contains].slice(0, limit);
   }
   searchCities(query: string, limit = 8): City[] {
     const q = normalize(query);
     if (!q) return [];
-    return cities.filter((c) => normalize(c.name).includes(q)).slice(0, limit);
+    // Cities are population-sorted, so first-hits are the most relevant;
+    // prefix matches outrank substring matches.
+    const starts: City[] = [];
+    const contains: City[] = [];
+    for (const c of this.cities) {
+      if (c.search.startsWith(q)) {
+        if (starts.push(c) >= limit && contains.length >= limit) break;
+      } else if (c.search.includes(q)) {
+        contains.push(c);
+      }
+    }
+    return [...starts, ...contains].slice(0, limit);
   }
   worldCountryCount(): number {
     return this.countries.length;
@@ -102,8 +135,29 @@ class ReferenceDataImpl implements ReferenceData {
 
 let instance: ReferenceData | null = null;
 
-/** Singleton accessor for the bundled reference data. */
+/** Build the reference data from an in-memory gazetteer (tests, fallbacks). */
+export function initReferenceDataSync(cities: City[]): ReferenceData {
+  instance = new ReferenceDataImpl(cities);
+  return instance;
+}
+
+/** Load the bundled gazetteer asset and build the reference data (app startup). */
+export async function initReferenceData(): Promise<ReferenceData> {
+  if (instance) return instance;
+  try {
+    const res = await fetch(CITIES_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const cities = (await res.json()) as City[];
+    return initReferenceDataSync(cities);
+  } catch {
+    // Degraded but functional: countries still work without the gazetteer.
+    console.warn("Place'Been: city gazetteer failed to load; continuing without cities.");
+    return initReferenceDataSync([]);
+  }
+}
+
+/** Singleton accessor. Requires initReferenceData()/initReferenceDataSync() first. */
 export function getReferenceData(): ReferenceData {
-  if (!instance) instance = new ReferenceDataImpl();
+  if (!instance) throw new Error("Reference data not initialized");
   return instance;
 }
