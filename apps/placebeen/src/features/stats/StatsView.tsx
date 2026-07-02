@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useVisits } from "../../lib/store/useVisits";
 import { getReferenceData } from "../../lib/reference/referenceData";
-import { computeCoverage, visitedCountriesList } from "./computeStats";
+import { computeCoverage, visitedCountriesList, type CountrySort } from "./computeStats";
 import { formatInt, formatPercent } from "../../lib/format/format";
 
 function Bar({ value, label }: { value: number; label: string }) {
@@ -23,8 +23,12 @@ export function StatsView() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
 
+  const [sortBy, setSortBy] = useState<CountrySort>("cities");
   const coverage = useMemo(() => computeCoverage(visits, ref), [visits, ref]);
-  const countries = useMemo(() => visitedCountriesList(visits, ref), [visits, ref]);
+  const countries = useMemo(
+    () => visitedCountriesList(visits, ref, sortBy),
+    [visits, ref, sortBy],
+  );
 
   return (
     <section aria-label="Statistics">
@@ -39,7 +43,9 @@ export function StatsView() {
         </div>
         <div className="stat-tile">
           <div className="num">{formatPercent(coverage.worldPct)}</div>
-          <div className="label">of the world</div>
+          <div className="label">
+            of {formatInt(coverage.worldCountryCount)} countries &amp; territories
+          </div>
         </div>
         <div className="stat-tile">
           <div className="num">{formatInt(coverage.citiesVisited)}</div>
@@ -49,6 +55,18 @@ export function StatsView() {
 
       <div className="section-head">
         <h3>By country</h3>
+        <label className="sort-label">
+          <span className="sr-only">Sort countries</span>
+          <select
+            className="sort-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as CountrySort)}
+          >
+            <option value="cities">Most cities</option>
+            <option value="regions">Most regions</option>
+            <option value="name">Name</option>
+          </select>
+        </label>
       </div>
 
       {countries.length === 0 && <p className="muted empty">No countries yet — add a place.</p>}
@@ -66,11 +84,12 @@ export function StatsView() {
             <div className="metric-label">
               <span>Cities</span>
               <span className="muted">
-                {formatPercent(c.cityPct)}
-                {c.citiesTotal > 0 ? ` (${c.citiesVisited}/${c.citiesTotal})` : " — n/a"}
+                {c.citiesTotal > 0
+                  ? `${formatPercent(c.cityPct)} · ${c.citiesVisited}/${c.citiesTotal} known cities`
+                  : "no city data"}
               </span>
             </div>
-            <Bar value={c.cityPct} label={`${c.name}: cities visited`} />
+            {c.citiesTotal > 0 && <Bar value={c.cityPct} label={`${c.name}: cities visited`} />}
           </div>
 
           <div className="metric">
@@ -78,11 +97,11 @@ export function StatsView() {
               <span>Regions</span>
               <span className="muted">
                 {c.regionsTotal > 0
-                  ? `${formatPercent(c.regionPct)} (${c.regionsVisited}/${c.regionsTotal})`
+                  ? `${formatPercent(c.regionPct)} · ${c.regionsVisited}/${c.regionsTotal}`
                   : "dataset not loaded"}
               </span>
             </div>
-            <Bar value={c.regionPct} label={`${c.name}: regions visited`} />
+            {c.regionsTotal > 0 && <Bar value={c.regionPct} label={`${c.name}: regions visited`} />}
           </div>
         </div>
       ))}

@@ -41,6 +41,13 @@ export function Backup() {
       setMessage({ kind: "err", text: result.error });
       return;
     }
+    if (visits.length > 0) {
+      const ok = window.confirm(
+        `Replace your ${visits.length} place${visits.length === 1 ? "" : "s"} with the ` +
+          `${result.visits.length} in this file? This can't be undone.`,
+      );
+      if (!ok) return;
+    }
     await setAll(result.visits);
     setMessage({ kind: "ok", text: `Imported ${result.visits.length} places.` });
   }
@@ -60,7 +67,7 @@ export function Backup() {
           Export data
         </button>
         <button className="btn-ghost" type="button" onClick={exportMd}>
-          Export map (.md)
+          Export summary (.md)
         </button>
         <button className="btn-ghost" type="button" onClick={() => fileInput.current?.click()}>
           Import…
@@ -76,7 +83,12 @@ export function Backup() {
       </div>
 
       {message && (
-        <p className={"notice" + (message.kind === "err" ? " notice-err" : "")} role="status">
+        <p
+          className={
+            "notice" + (message.kind === "err" ? " notice-err" : " notice-ok")
+          }
+          role="status"
+        >
           {message.text}
         </p>
       )}

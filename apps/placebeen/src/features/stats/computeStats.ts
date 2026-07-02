@@ -74,9 +74,22 @@ export function computeCountryCoverage(
   };
 }
 
-/** Countries with recorded visits, sorted alphabetically by name, for the stats list. */
-export function visitedCountriesList(visits: Visit[], ref: ReferenceData): CountryCoverage[] {
-  return [...visitedCountryIds(visits)]
-    .map((iso2) => computeCountryCoverage(visits, ref, iso2))
-    .sort((a, b) => a.name.localeCompare(b.name));
+export type CountrySort = "cities" | "regions" | "name";
+
+/** Countries with recorded visits, sorted by the chosen key, for the stats list. */
+export function visitedCountriesList(
+  visits: Visit[],
+  ref: ReferenceData,
+  sortBy: CountrySort = "cities",
+): CountryCoverage[] {
+  const list = [...visitedCountryIds(visits)].map((iso2) =>
+    computeCountryCoverage(visits, ref, iso2),
+  );
+  const byName = (a: CountryCoverage, b: CountryCoverage) => a.name.localeCompare(b.name);
+  const cmp: Record<CountrySort, (a: CountryCoverage, b: CountryCoverage) => number> = {
+    cities: (a, b) => b.citiesVisited - a.citiesVisited || byName(a, b),
+    regions: (a, b) => b.regionsVisited - a.regionsVisited || byName(a, b),
+    name: byName,
+  };
+  return list.sort(cmp[sortBy]);
 }
