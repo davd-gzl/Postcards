@@ -138,7 +138,7 @@ button {
   flex-direction: column;
   width: 100%;
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
 }
 .map-top {
   padding: 8px 12px;
@@ -271,7 +271,27 @@ button {
 
 /* Cities-in-view + places lists */
 .view-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 10px 14px 18px;
+}
+.list-head-meta {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.cap-note {
+  padding: 6px 2px 0;
+  font-size: 12px;
+}
+.pop {
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: right;
 }
 .city-list {
   list-style: none;
@@ -388,6 +408,15 @@ button {
   height: 100%;
   background: var(--visited);
 }
+.sort-select {
+  background: var(--bg-sub);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+}
 
 /* Buttons */
 .btn-row {
@@ -423,6 +452,11 @@ button {
   color: var(--danger);
   border-color: #f3c6c6;
   background: #fdeded;
+}
+.notice-ok {
+  color: #0f7a34;
+  border-color: #bfe6cd;
+  background: var(--visited-soft);
 }
 .attribution {
   margin-top: 22px;
@@ -465,6 +499,40 @@ button {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* Shortcuts overlay */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 41, 0.4);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 100;
+}
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 18px 18px 16px;
+  max-width: 340px;
+  width: 100%;
+}
+.modal h2 {
+  margin: 0 0 12px;
+  font-size: 17px;
+}
+.shortcuts {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 14px;
+  color: var(--text);
 }
 
 /* Desktop refinements */

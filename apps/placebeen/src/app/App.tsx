@@ -1,9 +1,11 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useVisits } from "../lib/store/useVisits";
+import { useUi } from "../lib/store/useUi";
 import { StatsView } from "../features/stats/StatsView";
 import { VisitsList } from "../features/visits/VisitsList";
 import { Backup } from "../features/backup/Backup";
 import { Attribution } from "../ui/Attribution";
+import { ShortcutsHelp } from "../ui/ShortcutsHelp";
 import { MapIcon, ChartIcon, ListIcon } from "../ui/icons";
 
 // Code-split MapLibre so it loads only when the map is shown.
@@ -21,16 +23,44 @@ const TABS: { id: Tab; label: string; keys: string[]; Icon: () => JSX.Element }[
 
 export function App() {
   const [tab, setTab] = useState<Tab>("map");
+  const [showHelp, setShowHelp] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const firstRender = useRef(true);
 
   useEffect(() => {
     void useVisits.getState().load();
   }, []);
 
+  // Move focus to the content region on tab change (skip initial mount).
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    mainRef.current?.focus();
+  }, [tab]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setShowHelp(false);
+        return;
+      }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)) return;
+
+      if (e.key === "/") {
+        setTab("map");
+        useUi.getState().focusSearch();
+        e.preventDefault();
+        return;
+      }
+      if (e.key === "?") {
+        setShowHelp(true);
+        e.preventDefault();
+        return;
+      }
       const match = TABS.find((x) => x.keys.includes(e.key.toLowerCase()));
       if (match) {
         setTab(match.id);
@@ -40,6 +70,8 @@ export function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  const currentLabel = TABS.find((x) => x.id === tab)?.label ?? "";
 
   return (
     <div className="app">
@@ -51,7 +83,11 @@ export function App() {
         <span className="brand">Place'Been</span>
       </header>
 
-      <main id="main" tabIndex={-1} className={"content" + (tab === "map" ? " flush" : "")}>
+      <p className="sr-only" role="status" aria-live="polite">
+        {currentLabel} section
+      </p>
+
+      <main ref={mainRef} id="main" tabIndex={-1} className={"content" + (tab === "map" ? " flush" : "")}>
         {tab === "map" && (
           <Suspense fallback={<p className="muted empty">Loading map…</p>}>
             <MapScreen />
@@ -77,7 +113,7 @@ export function App() {
             key={id}
             type="button"
             className={"nav-item" + (tab === id ? " active" : "")}
-            aria-current={tab === id}
+            aria-current={tab === id ? "page" : undefined}
             onClick={() => setTab(id)}
           >
             <Icon />
@@ -85,6 +121,8 @@ export function App() {
           </button>
         ))}
       </nav>
+
+      {showHelp && <ShortcutsHelp onClose={() => setShowHelp(false)} />}
     </div>
   );
 }
