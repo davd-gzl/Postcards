@@ -19,7 +19,7 @@ test("add a visit and browse with the keyboard only", async ({ page }) => {
   await page.getByText("Place'Been").click();
   await page.keyboard.press("2");
   await expect(page.getByText("Statistics")).toBeVisible();
-  await expect(page.getByText("Japan", { exact: true })).toBeVisible();
+  await expect(page.locator(".country-head", { hasText: "Japan" })).toBeVisible();
 
   await page.keyboard.press("3");
   await expect(page.getByRole("tab", { name: "Countries" })).toBeVisible();

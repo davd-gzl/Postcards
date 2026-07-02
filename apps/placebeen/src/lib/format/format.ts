@@ -5,6 +5,17 @@ export function formatInt(n: number, locale?: string): string {
   return new Intl.NumberFormat(locale).format(Math.round(n));
 }
 
+/**
+ * Flag emoji for an ISO 3166-1 alpha-2 country/territory code ("FR" -> 🇫🇷).
+ * Pure Unicode regional indicators — offline, no assets; platforms without a
+ * flag font show the letter pair, which stays informative.
+ */
+export function countryFlag(iso2: string): string {
+  return iso2
+    .toUpperCase()
+    .replace(/[A-Z]/g, (ch) => String.fromCodePoint(0x1f1e6 + ch.charCodeAt(0) - 65));
+}
+
 /** Compact figure, e.g. 2200000 -> "2.2M". Surfaces the sort key in tight rows. */
 export function formatCompact(n: number, locale?: string): string {
   return new Intl.NumberFormat(locale, {

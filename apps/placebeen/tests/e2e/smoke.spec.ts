@@ -14,7 +14,7 @@ test("add a place via search and see it in stats + places", async ({ page }) => 
   // Stats reflects it, including the continent section.
   await page.getByRole("button", { name: "Stats", exact: true }).click();
   await expect(page.getByText("countries", { exact: true })).toBeVisible();
-  await expect(page.getByText("France", { exact: true })).toBeVisible();
+  await expect(page.locator(".country-head", { hasText: "France" })).toBeVisible();
   await expect(page.getByText("By continent")).toBeVisible();
 
   // Places lists it.
@@ -40,5 +40,5 @@ test("country checklist toggles a country", async ({ page }) => {
   await page.getByRole("button", { name: "Mark Japan visited" }).click();
 
   await page.getByRole("button", { name: "Stats", exact: true }).click();
-  await expect(page.getByText("Japan", { exact: true })).toBeVisible();
+  await expect(page.locator(".country-head", { hasText: "Japan" })).toBeVisible();
 });

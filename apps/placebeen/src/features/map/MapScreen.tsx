@@ -3,7 +3,7 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
-import { formatCompact } from "../../lib/format/format";
+import { countryFlag, formatInt } from "../../lib/format/format";
 import type { Country } from "../../lib/reference/types";
 import { PlaceSearch } from "../visits/PlaceSearch";
 import { MapView, type MapFocus, type MapFit } from "./MapView";
@@ -24,6 +24,7 @@ export function MapScreen() {
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [focus, setFocus] = useState<MapFocus | null>(null);
   const [fit, setFit] = useState<MapFit | null>(null);
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
 
   const inView = useMemo(() => citiesInView(allCities, bounds, Infinity), [allCities, bounds]);
   const visible = useMemo(() => inView.slice(0, CAP), [inView]);
@@ -117,15 +118,33 @@ export function MapScreen() {
         ) : (
           <ul className="city-list">
             {visible.map((c) => {
-              const visited = !!findByPlace(visits, { kind: "city", id: c.id });
+              const visited = visitedCityIds.has(c.id);
               const country = ref.countryByIso2(c.countryIso2)?.name ?? c.countryIso2;
+              const selected = selectedCityId === c.id;
               return (
-                <li key={c.id} className="city-row">
-                  <button className="city-focus" type="button" onClick={() => focusCity(c)}>
-                    <span className="city-name">{c.name}</span>
-                    <span className="city-sub">{country}</span>
+                <li key={c.id} className={"city-row compact" + (selected ? " selected" : "")}>
+                  <button
+                    className="city-focus"
+                    type="button"
+                    aria-expanded={selected}
+                    onClick={() => {
+                      setSelectedCityId(selected ? null : c.id);
+                      focusCity(c);
+                    }}
+                  >
+                    <span className="city-line">
+                      <span className="flag" aria-hidden>
+                        {countryFlag(c.countryIso2)}
+                      </span>
+                      <span className="city-name">{c.name}</span>
+                      <span className="city-sub">· {country}</span>
+                    </span>
+                    {selected && c.population != null && (
+                      <span className="city-detail">
+                        {formatInt(c.population)} people
+                      </span>
+                    )}
                   </button>
-                  <span className="pop">{c.population ? formatCompact(c.population) : ""}</span>
                   <button
                     className={"toggle" + (visited ? " toggle-on" : "")}
                     type="button"

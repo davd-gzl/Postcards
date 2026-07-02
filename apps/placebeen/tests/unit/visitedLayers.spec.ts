@@ -32,4 +32,9 @@ describe("map layers", () => {
     expect(lon).toBeCloseTo(paris.lon, 3);
     expect(lat).toBeCloseTo(paris.lat, 3);
   });
+
+  it("tags each point with its country code for the flag marker", () => {
+    const fc = visitedCityPoints(visits, ref);
+    expect(fc.features[0]!.properties?.cc).toBe("FR");
+  });
 });

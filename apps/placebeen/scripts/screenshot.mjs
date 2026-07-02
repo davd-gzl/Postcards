@@ -32,9 +32,19 @@ await page.waitForTimeout(1800);
 
 await page.screenshot({ path: `${OUT}/placebeen-mobile-map.png`, fullPage: true });
 
+// Tap the first city row to reveal its population (selected state).
+await page.locator(".city-row .city-focus").first().click();
+await page.waitForTimeout(800);
+await page.screenshot({ path: `${OUT}/placebeen-mobile-map-selected.png`, fullPage: true });
+
 await page.getByRole("button", { name: "Stats", exact: true }).click();
 await page.waitForTimeout(400);
 await page.screenshot({ path: `${OUT}/placebeen-mobile-stats.png`, fullPage: true });
+
+await page.getByRole("button", { name: "Places", exact: true }).click();
+await page.getByRole("tab", { name: "Countries" }).click();
+await page.waitForTimeout(300);
+await page.screenshot({ path: `${OUT}/placebeen-mobile-countries.png`, fullPage: false });
 
 // Desktop look.
 await page.setViewportSize({ width: 1180, height: 820 });

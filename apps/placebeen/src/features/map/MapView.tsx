@@ -9,6 +9,7 @@ import { visitedCityPoints, visitedCountryNumerics } from "./visitedLayers";
 import type { Bounds } from "./viewport";
 import type { City, Country } from "../../lib/reference/types";
 import { CONTINENT_COLORS, CONTINENT_FALLBACK } from "../../lib/reference/continents";
+import { countryFlag } from "../../lib/format/format";
 
 // Natural Earth 50m country geometry, served as a static asset (SW-cached for
 // offline) rather than bundled into JS, so the map chunk stays lean.
@@ -40,6 +41,30 @@ async function loadCountries(): Promise<FeatureCollection<Polygon | MultiPolygon
 function continentColorExpr(): any {
   const pairs = Object.entries(CONTINENT_COLORS).flatMap(([k, v]) => [k, v]);
   return ["match", ["get", "continent"], ...pairs, CONTINENT_FALLBACK];
+}
+
+/**
+ * Draw a country flag as a small round marker image (white disc + flag emoji).
+ * Rendered with the platform's emoji font on a canvas — offline, no assets.
+ */
+function makeFlagImage(iso2: string, size = 52): ImageData {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(15, 23, 41, 0.28)";
+  ctx.stroke();
+  ctx.font = `${Math.round(size * 0.58)}px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#334155"; // ink for letter-pair fallback platforms
+  ctx.fillText(countryFlag(iso2), size / 2, size / 2 + size * 0.03);
+  return ctx.getImageData(0, 0, size, size);
 }
 
 function inViewPoints(cities: City[]): FeatureCollection<Point> {
@@ -139,6 +164,12 @@ export function MapView({
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
+    // Generate flag marker images lazily, the first time a country needs one.
+    map.on("styleimagemissing", (e) => {
+      if (!e.id.startsWith("flag-") || map.hasImage(e.id)) return;
+      map.addImage(e.id, makeFlagImage(e.id.slice(5)), { pixelRatio: 2 });
+    });
+
     map.on("load", async () => {
       if (cancelled) return;
       const { style, attribution } = await bundledMapSource.resolveStyle("world-overview");
@@ -187,20 +218,19 @@ export function MapView({
             "circle-stroke-width": 1.2,
           },
         });
-        // Visited cities: same green as the ✓ toggle, on top.
+        // Visited cities: the flag of their country/territory, on top.
         map.addSource("cities", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
         });
         map.addLayer({
           id: "cities-visited",
-          type: "circle",
+          type: "symbol",
           source: "cities",
-          paint: {
-            "circle-radius": 4.5,
-            "circle-color": "#16a34a",
-            "circle-stroke-color": "#ffffff",
-            "circle-stroke-width": 1.5,
+          layout: {
+            "icon-image": ["concat", "flag-", ["get", "cc"]],
+            "icon-size": 1,
+            "icon-allow-overlap": true,
           },
         });
         loadedRef.current = true;

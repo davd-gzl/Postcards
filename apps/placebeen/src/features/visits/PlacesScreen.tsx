@@ -3,8 +3,7 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
-import { formatDate } from "../../lib/format/format";
-import { CONTINENT_COLORS } from "../../lib/reference/continents";
+import { countryFlag, formatDate } from "../../lib/format/format";
 
 type View = "visited" | "countries";
 
@@ -90,18 +89,23 @@ export function PlacesScreen() {
               const country = ref.countryByIso2(v.place.countryId)?.name ?? v.place.countryId;
               const city = v.place.kind === "city" ? ref.cityById(v.place.id) : undefined;
               return (
-                <li key={v.visitId} className="city-row">
+                <li key={v.visitId} className="city-row compact">
                   <button
                     className="city-focus"
                     type="button"
                     onClick={() => (city ? flyTo(city.lon, city.lat) : undefined)}
                     aria-label={city ? `Show ${v.place.name} on the map` : v.place.name}
                   >
-                    <span className="city-name">{v.place.name}</span>
-                    <span className="city-sub">
-                      {v.place.kind === "city" ? country : "Country"}
-                      {v.date ? ` · ${formatDate(v.date)}` : ""}
-                      {v.note ? ` · ${v.note}` : ""}
+                    <span className="city-line">
+                      <span className="flag" aria-hidden>
+                        {countryFlag(v.place.countryId)}
+                      </span>
+                      <span className="city-name">{v.place.name}</span>
+                      <span className="city-sub">
+                        · {v.place.kind === "city" ? country : "Country"}
+                        {v.date ? ` · ${formatDate(v.date)}` : ""}
+                        {v.note ? ` · ${v.note}` : ""}
+                      </span>
                     </span>
                   </button>
                   <button
@@ -133,24 +137,17 @@ export function PlacesScreen() {
             {countryRows.map((c) => {
               const visited = visitedCountryIds.has(c.iso2);
               return (
-                <li key={c.iso2} className="city-row">
-                  <div className="city-focus" style={{ cursor: "default" }}>
-                    <span className="city-name">
-                      <span
-                        className="legend-dot"
-                        style={{
-                          background: CONTINENT_COLORS[c.continent] ?? "#9aa4b2",
-                          display: "inline-block",
-                          marginRight: 8,
-                        }}
-                        aria-hidden
-                      />
-                      {c.name}
+                <li key={c.iso2} className="city-row compact dense">
+                  <div className="city-focus" style={{ cursor: "default" }} title={c.continent}>
+                    <span className="city-line">
+                      <span className="flag" aria-hidden>
+                        {countryFlag(c.iso2)}
+                      </span>
+                      <span className="city-name">{c.name}</span>
                     </span>
-                    <span className="city-sub">{c.continent || "—"}</span>
                   </div>
                   <button
-                    className={"toggle" + (visited ? " toggle-on" : "")}
+                    className={"toggle sm" + (visited ? " toggle-on" : "")}
                     type="button"
                     aria-pressed={visited}
                     aria-label={visited ? `Remove ${c.name}` : `Mark ${c.name} visited`}
