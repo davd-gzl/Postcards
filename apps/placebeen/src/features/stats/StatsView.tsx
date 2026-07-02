@@ -8,7 +8,7 @@ import {
   visitedCountriesList,
   type CountrySort,
 } from "./computeStats";
-import { formatInt, formatPercent } from "../../lib/format/format";
+import { countryFlag, formatInt, formatPercent } from "../../lib/format/format";
 import { CONTINENT_COLORS } from "../../lib/reference/continents";
 
 function Bar({ value, label, color }: { value: number; label: string; color?: string }) {
@@ -120,7 +120,12 @@ export function StatsView() {
         return (
           <div key={c.iso2} className="country-card">
             <div className="country-head">
-              <strong>{c.name}</strong>
+              <strong>
+                <span className="flag" aria-hidden>
+                  {countryFlag(c.iso2)}
+                </span>{" "}
+                {c.name}
+              </strong>
               <span className="muted">
                 {formatInt(c.citiesVisited)} cities · {formatInt(c.regionsVisited)} regions
               </span>

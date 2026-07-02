@@ -22,7 +22,7 @@ export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureC
     features.push({
       type: "Feature",
       geometry: { type: "Point", coordinates: [city.lon, city.lat] },
-      properties: { name: city.name },
+      properties: { name: city.name, cc: city.countryIso2 },
     });
   }
   return { type: "FeatureCollection", features };
