@@ -86,6 +86,9 @@ importers:
       vitest:
         specifier: ^2.1.5
         version: 2.1.9(jsdom@25.0.1)(terser@5.48.0)
+      world-countries:
+        specifier: ^5.1.0
+        version: 5.1.0
       zod-to-json-schema:
         specifier: ^3.23.5
         version: 3.25.2(zod@3.25.76)
@@ -2520,6 +2523,9 @@ packages:
 
   world-atlas@2.0.2:
     resolution: {integrity: sha512-IXfV0qwlKXpckz1FhwXVwKRjiIhOnWttOskm5CtxMsjgE/MXAYRHWJqgXOpM8IkcPBoXnyTU5lFHcYa5ChG0LQ==}
+
+  world-countries@5.1.0:
+    resolution: {integrity: sha512-CXR6EBvTbArDlDDIWU3gfKb7Qk0ck2WNZ234b/A0vuecPzIfzzxH+O6Ejnvg1sT8XuiZjVlzOH0h08ZtaO7g0w==}
 
   ws@8.21.0:
     resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
@@ -5276,6 +5282,8 @@ snapshots:
       workbox-core: 7.4.1
 
   world-atlas@2.0.2: {}
+
+  world-countries@5.1.0: {}
 
   ws@8.21.0: {}
 

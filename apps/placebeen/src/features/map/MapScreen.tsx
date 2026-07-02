@@ -4,6 +4,7 @@ import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { formatInt } from "../../lib/format/format";
 import { PlaceSearch } from "../visits/PlaceSearch";
 import { MapView, type MapFocus } from "./MapView";
+import { MapLegend } from "./MapLegend";
 import { citiesInView, type Bounds } from "./viewport";
 
 export function MapScreen() {
@@ -30,6 +31,8 @@ export function MapScreen() {
       <div className="map-box">
         <MapView onBounds={setBounds} focus={focus} />
       </div>
+
+      <MapLegend />
 
       <section className="view-list" aria-label="Cities in view">
         <div className="section-head">

@@ -32,7 +32,7 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -52,8 +52,8 @@ button {
 .topbar {
   display: flex;
   align-items: center;
-  height: 48px;
-  padding: 0 16px;
+  height: 42px;
+  padding: 0 14px;
   border-bottom: 1px solid var(--border);
   flex: none;
 }
@@ -75,7 +75,7 @@ button {
 .screen {
   max-width: 720px;
   margin: 0 auto;
-  padding: 16px 16px 28px;
+  padding: 12px 14px 24px;
 }
 
 /* Bottom navigation (mobile-first, thumb reach) */
@@ -92,11 +92,11 @@ button {
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 9px 0 8px;
+  padding: 7px 0 6px;
   background: none;
   border: none;
   color: var(--muted);
-  min-height: 56px;
+  min-height: 50px;
 }
 .nav-item span {
   font-size: 11px;
@@ -111,10 +111,10 @@ button {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin: 4px 0 12px;
+  margin: 2px 0 8px;
 }
 .section-head h2 {
-  font-size: 20px;
+  font-size: 18px;
   margin: 0;
   letter-spacing: -0.01em;
 }
@@ -141,7 +141,7 @@ button {
   overflow-y: auto;
 }
 .map-top {
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -150,9 +150,32 @@ button {
 }
 .map-box {
   position: relative;
-  height: 42vh;
-  min-height: 260px;
+  height: 40vh;
+  min-height: 240px;
   flex: none;
+}
+
+/* Continent legend (colors match the map fills) */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  list-style: none;
+  margin: 0;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
 }
 .map-canvas {
   position: absolute;
@@ -248,7 +271,7 @@ button {
 
 /* Cities-in-view + places lists */
 .view-list {
-  padding: 14px 16px 24px;
+  padding: 10px 14px 18px;
 }
 .city-list {
   list-style: none;
@@ -259,7 +282,7 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 0;
+  padding: 7px 0;
   border-bottom: 1px solid var(--border);
 }
 .city-focus {
@@ -320,10 +343,10 @@ button {
   background: var(--bg-sub);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 12px;
+  padding: 11px 10px;
 }
 .stat-tile .num {
-  font-size: 26px;
+  font-size: 23px;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -335,15 +358,15 @@ button {
 .country-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px;
-  margin-bottom: 10px;
+  padding: 11px 12px;
+  margin-bottom: 8px;
 }
 .country-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .metric {
   margin-top: 8px;
