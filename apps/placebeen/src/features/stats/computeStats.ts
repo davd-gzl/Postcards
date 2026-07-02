@@ -74,6 +74,60 @@ export function computeCountryCoverage(
   };
 }
 
+export interface ContinentCoverage {
+  continent: string;
+  visited: number;
+  total: number;
+  pct: number; // 0..1
+}
+
+/** Countries visited per continent, against each continent's full country count. */
+export function computeContinentCoverage(visits: Visit[], ref: ReferenceData): ContinentCoverage[] {
+  const totals = new Map<string, number>();
+  for (const c of ref.countries) {
+    if (!c.continent) continue;
+    totals.set(c.continent, (totals.get(c.continent) ?? 0) + 1);
+  }
+  const visitedByContinent = new Map<string, Set<string>>();
+  for (const iso2 of visitedCountryIds(visits)) {
+    const continent = ref.countryByIso2(iso2)?.continent;
+    if (!continent) continue;
+    if (!visitedByContinent.has(continent)) visitedByContinent.set(continent, new Set());
+    visitedByContinent.get(continent)!.add(iso2);
+  }
+  return [...visitedByContinent.entries()]
+    .map(([continent, set]) => {
+      const total = totals.get(continent) ?? 0;
+      return { continent, visited: set.size, total, pct: pct(set.size, total) };
+    })
+    .sort((a, b) => b.visited - a.visited || a.continent.localeCompare(b.continent));
+}
+
+export interface CountryDetail {
+  cities: string[];
+  regionsVisited: string[];
+  regionsRemaining: number;
+}
+
+/** Names behind a country's numbers: visited cities + covered regions. */
+export function countryDetail(visits: Visit[], ref: ReferenceData, iso2: string): CountryDetail {
+  const cities: string[] = [];
+  const regionIds = new Set<string>();
+  for (const v of visits) {
+    if (v.place.kind !== "city") continue;
+    const city = ref.cityById(v.place.id);
+    if (!city || city.countryIso2 !== iso2) continue;
+    cities.push(city.name);
+    if (city.subdivisionId) regionIds.add(city.subdivisionId);
+  }
+  cities.sort((a, b) => a.localeCompare(b));
+  const regionsVisited = [...regionIds]
+    .map((id) => ref.subdivisionById(id)?.name ?? id)
+    .sort((a, b) => a.localeCompare(b));
+  const totalRegions = ref.countryByIso2(iso2)?.subdivisionCount ?? 0;
+  return { cities, regionsVisited, regionsRemaining: Math.max(0, totalRegions - regionIds.size) };
+}
+
 export type CountrySort = "cities" | "regions" | "name";
 
 /** Countries with recorded visits, sorted by the chosen key, for the stats list. */

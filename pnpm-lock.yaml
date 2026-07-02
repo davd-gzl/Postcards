@@ -56,6 +56,9 @@ importers:
       '@types/geojson':
         specifier: ^7946.0.16
         version: 7946.0.16
+      '@types/node':
+        specifier: ^22.20.0
+        version: 22.20.0
       '@types/react':
         specifier: ^18.3.12
         version: 18.3.31
@@ -67,7 +70,10 @@ importers:
         version: 3.1.5
       '@vitejs/plugin-react':
         specifier: ^4.3.3
-        version: 4.7.0(vite@5.4.21(terser@5.48.0))
+        version: 4.7.0(vite@5.4.21(@types/node@22.20.0)(terser@5.48.0))
+      all-the-cities:
+        specifier: ^3.1.0
+        version: 3.1.0
       jsdom:
         specifier: ^25.0.1
         version: 25.0.1
@@ -79,13 +85,13 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^5.4.10
-        version: 5.4.21(terser@5.48.0)
+        version: 5.4.21(@types/node@22.20.0)(terser@5.48.0)
       vite-plugin-pwa:
         specifier: ^0.21.1
-        version: 0.21.2(vite@5.4.21(terser@5.48.0))(workbox-build@7.4.1(@types/babel__core@7.20.5))(workbox-window@7.4.1)
+        version: 0.21.2(vite@5.4.21(@types/node@22.20.0)(terser@5.48.0))(workbox-build@7.4.1(@types/babel__core@7.20.5))(workbox-window@7.4.1)
       vitest:
         specifier: ^2.1.5
-        version: 2.1.9(jsdom@25.0.1)(terser@5.48.0)
+        version: 2.1.9(@types/node@22.20.0)(jsdom@25.0.1)(terser@5.48.0)
       world-countries:
         specifier: ^5.1.0
         version: 5.1.0
@@ -1100,6 +1106,9 @@ packages:
   '@types/mapbox__vector-tile@1.3.4':
     resolution: {integrity: sha512-bpd8dRn9pr6xKvuEBQup8pwQfD4VUyqO/2deGjfpe6AwC8YRlyEipvefyRJUSiCJTZuCb8Pl1ciVV5ekqJ96Bg==}
 
+  '@types/node@22.20.0':
+    resolution: {integrity: sha512-QWlFW2wf3nTjC13/DqRnBpR4ZO36VJH/JVBkA/vcnmbTBNQIlnObqyqZE1tUR7+Ni23Lda8R1BxMfbXRpCUx5g==}
+
   '@types/pbf@3.0.5':
     resolution: {integrity: sha512-j3pOPiEcWZ34R6a6mN07mUkM4o4Lwf6hPNt8eilOeZhTFbxFXmKhvXl9Y28jotFPaI1bpPDJsbCprUoNke6OrA==}
 
@@ -1175,6 +1184,9 @@ packages:
 
   ajv@8.20.0:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
+
+  all-the-cities@3.1.0:
+    resolution: {integrity: sha512-Jx+mZR7lUVSX+qk785T3MRkAJYMvUpOmeNQSCbUl1WcCNpBUKJsQJ6uZzOl3/bWXVIUx1UhDFs8ASDHSI3rvzg==}
 
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
@@ -2303,6 +2315,9 @@ packages:
   unbox-primitive@1.1.0:
     resolution: {integrity: sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw==}
     engines: {node: '>= 0.4'}
+
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
     resolution: {integrity: sha512-dA8WbNeb2a6oQzAQ55YlT5vQAWGV9WXOsi3SskE3bcCdM0P4SDd+24zS/OCacdRq5BkdsRj9q3Pg6YyQoxIGqg==}
@@ -3620,6 +3635,10 @@ snapshots:
       '@types/mapbox__point-geometry': 0.1.4
       '@types/pbf': 3.0.5
 
+  '@types/node@22.20.0':
+    dependencies:
+      undici-types: 6.21.0
+
   '@types/pbf@3.0.5': {}
 
   '@types/prop-types@15.7.15': {}
@@ -3650,7 +3669,7 @@ snapshots:
 
   '@types/trusted-types@2.0.7': {}
 
-  '@vitejs/plugin-react@4.7.0(vite@5.4.21(terser@5.48.0))':
+  '@vitejs/plugin-react@4.7.0(vite@5.4.21(@types/node@22.20.0)(terser@5.48.0))':
     dependencies:
       '@babel/core': 7.29.7
       '@babel/plugin-transform-react-jsx-self': 7.29.7(@babel/core@7.29.7)
@@ -3658,7 +3677,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 5.4.21(terser@5.48.0)
+      vite: 5.4.21(@types/node@22.20.0)(terser@5.48.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -3669,13 +3688,13 @@ snapshots:
       chai: 5.3.3
       tinyrainbow: 1.2.0
 
-  '@vitest/mocker@2.1.9(vite@5.4.21(terser@5.48.0))':
+  '@vitest/mocker@2.1.9(vite@5.4.21(@types/node@22.20.0)(terser@5.48.0))':
     dependencies:
       '@vitest/spy': 2.1.9
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 5.4.21(terser@5.48.0)
+      vite: 5.4.21(@types/node@22.20.0)(terser@5.48.0)
 
   '@vitest/pretty-format@2.1.9':
     dependencies:
@@ -3712,6 +3731,10 @@ snapshots:
       fast-uri: 3.1.3
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
+
+  all-the-cities@3.1.0:
+    dependencies:
+      pbf: 3.3.0
 
   ansi-regex@5.0.1: {}
 
@@ -4985,6 +5008,8 @@ snapshots:
       has-symbols: 1.1.0
       which-boxed-primitive: 1.1.1
 
+  undici-types@6.21.0: {}
+
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
   unicode-match-property-ecmascript@2.0.0:
@@ -5010,13 +5035,13 @@ snapshots:
       escalade: 3.2.0
       picocolors: 1.1.1
 
-  vite-node@2.1.9(terser@5.48.0):
+  vite-node@2.1.9(@types/node@22.20.0)(terser@5.48.0):
     dependencies:
       cac: 6.7.14
       debug: 4.4.3
       es-module-lexer: 1.7.0
       pathe: 1.1.2
-      vite: 5.4.21(terser@5.48.0)
+      vite: 5.4.21(@types/node@22.20.0)(terser@5.48.0)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -5028,30 +5053,31 @@ snapshots:
       - supports-color
       - terser
 
-  vite-plugin-pwa@0.21.2(vite@5.4.21(terser@5.48.0))(workbox-build@7.4.1(@types/babel__core@7.20.5))(workbox-window@7.4.1):
+  vite-plugin-pwa@0.21.2(vite@5.4.21(@types/node@22.20.0)(terser@5.48.0))(workbox-build@7.4.1(@types/babel__core@7.20.5))(workbox-window@7.4.1):
     dependencies:
       debug: 4.4.3
       pretty-bytes: 6.1.1
       tinyglobby: 0.2.17
-      vite: 5.4.21(terser@5.48.0)
+      vite: 5.4.21(@types/node@22.20.0)(terser@5.48.0)
       workbox-build: 7.4.1(@types/babel__core@7.20.5)
       workbox-window: 7.4.1
     transitivePeerDependencies:
       - supports-color
 
-  vite@5.4.21(terser@5.48.0):
+  vite@5.4.21(@types/node@22.20.0)(terser@5.48.0):
     dependencies:
       esbuild: 0.21.5
       postcss: 8.5.16
       rollup: 4.62.2
     optionalDependencies:
+      '@types/node': 22.20.0
       fsevents: 2.3.3
       terser: 5.48.0
 
-  vitest@2.1.9(jsdom@25.0.1)(terser@5.48.0):
+  vitest@2.1.9(@types/node@22.20.0)(jsdom@25.0.1)(terser@5.48.0):
     dependencies:
       '@vitest/expect': 2.1.9
-      '@vitest/mocker': 2.1.9(vite@5.4.21(terser@5.48.0))
+      '@vitest/mocker': 2.1.9(vite@5.4.21(@types/node@22.20.0)(terser@5.48.0))
       '@vitest/pretty-format': 2.1.9
       '@vitest/runner': 2.1.9
       '@vitest/snapshot': 2.1.9
@@ -5067,10 +5093,11 @@ snapshots:
       tinyexec: 0.3.2
       tinypool: 1.1.1
       tinyrainbow: 1.2.0
-      vite: 5.4.21(terser@5.48.0)
-      vite-node: 2.1.9(terser@5.48.0)
+      vite: 5.4.21(@types/node@22.20.0)(terser@5.48.0)
+      vite-node: 2.1.9(@types/node@22.20.0)(terser@5.48.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
+      '@types/node': 22.20.0
       jsdom: 25.0.1
     transitivePeerDependencies:
       - less

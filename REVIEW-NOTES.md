@@ -3,6 +3,30 @@
 Built the runnable Place'Been MVP so you can open it, click around, and correct it. Everything is
 committed and pushed to `claude/repo-setup-speckit-3magw3`.
 
+## Update — the big upgrade pass (2026-07-02)
+
+**The gazetteer is real now (T018).** The app bundles 24,323 GeoNames cities (population ≥ 15k,
+CC BY 4.0, via `all-the-cities`) with **real GeoNames ids** (Paris = 2988507, exactly the contract
+example), served as a ~700KB-gzip cached asset. All 640 French cities are mapped to their ISO
+3166-2 regions, so France's %-of-cities/%-of-regions are now against true denominators. Search is
+population-ranked (typing "paris" finds Paris, France — not Paris, Texas) and accent-insensitive.
+
+**New UX (the backlog's bigger bets):** tap any country on the map to toggle it visited · toast
+with one-tap **Undo** on every add/remove/import · Places tab = **Visited list + browsable
+country checklist** with filter (rows jump to the map) · fully keyboard-operable search combobox
+(arrows/Enter/Escape, proper ARIA) · **By continent** coverage bars + per-country **Details**
+drill-down in Stats · "Fit to my places" button · hollow map dots for the listed in-view cities.
+
+**Test suite:** 50 unit tests (incl. full gazetteer integrity) + 6 e2e: smoke, undo, checklist,
+**axe WCAG 2.1 AA gate (T047)**, **keyboard-only flow (T048)**, **zero-external-request privacy
+(T052)** — all green. Breaking note: city ids switched from starter slugs to GeoNames ids
+(pre-release, no migration needed).
+
+**Still open:** Admin-1 regions beyond France (no offline source vendored yet), PMTiles street
+basemap (T033), Capacitor native wiring, CI (T057), license choice.
+
+---
+
 ## Update — light redesign + "cities in view" (same session, later)
 
 Reworked the whole UI per your direction: **white/light theme, mobile-first, bottom-nav, simple &

@@ -10,13 +10,14 @@ each relevant story.
 
 **Organization**: Tasks are grouped by user story so each can be built and tested independently.
 
-> **Implementation status (autonomous pass, 2026-07-01)** — see [`REVIEW-NOTES.md`](../../REVIEW-NOTES.md).
-> A runnable MVP exists: Setup + Foundational + US1 (log), US2 (offline map), US3 (backup), US4
-> (stats with both per-country metrics), and US5 basics are built; 23 unit tests + a browser smoke
-> test pass; production PWA build succeeds. **Key follow-ups still open**: T018 (vendor full
-> Natural Earth Admin 1 + GeoNames — currently a small starter subset), T033 (real PMTiles
-> basemap — currently country polygons), Capacitor native wiring, and the a11y/privacy/CI e2e
-> tasks (T047–T048, T052, T057).
+> **Implementation status (upgrade pass, 2026-07-02)** — see [`REVIEW-NOTES.md`](../../REVIEW-NOTES.md).
+> A runnable MVP exists with all user stories built. **T018 city gazetteer: DONE** — 24,323
+> GeoNames cities (pop ≥ 15k, CC BY 4.0) with real GeoNames ids, all French cities mapped to ISO
+> regions. **T047/T048/T052: DONE** — axe WCAG 2.1 AA, keyboard-only, and zero-external-request
+> privacy e2e tests all pass (6 e2e + 50 unit tests). Beyond the task list: continent-colored map,
+> tap-a-country to toggle, toast + undo, country checklist, keyboard combobox, continent stats +
+> drill-down. **Still open**: full Natural Earth Admin-1 (regions beyond France), T033 (PMTiles
+> street basemap — currently country polygons), Capacitor native wiring, CI (T057).
 
 ## Format: `[ID] [P?] [Story] Description`
 

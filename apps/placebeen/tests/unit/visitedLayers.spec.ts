@@ -4,6 +4,7 @@ import { visitedCountryNumerics, visitedCityPoints } from "../../src/features/ma
 import type { Visit } from "../../src/lib/schema/models";
 
 const ref = getReferenceData();
+const paris = ref.searchCities("Paris")[0]!;
 
 function cityVisit(id: string, name: string, countryId: string): Visit {
   return {
@@ -16,7 +17,7 @@ function cityVisit(id: string, name: string, countryId: string): Visit {
 }
 
 describe("map layers", () => {
-  const visits = [cityVisit("paris-fr", "Paris", "FR")];
+  const visits = [cityVisit(paris.id, paris.name, paris.countryIso2)];
 
   it("maps visited countries to their numeric geometry id", () => {
     const numerics = visitedCountryNumerics(visits, ref);
@@ -28,7 +29,7 @@ describe("map layers", () => {
     const fc = visitedCityPoints(visits, ref);
     expect(fc.features).toHaveLength(1);
     const [lon, lat] = fc.features[0]!.geometry.coordinates;
-    expect(lon).toBeCloseTo(2.3522, 3);
-    expect(lat).toBeCloseTo(48.8566, 3);
+    expect(lon).toBeCloseTo(paris.lon, 3);
+    expect(lat).toBeCloseTo(paris.lat, 3);
   });
 });

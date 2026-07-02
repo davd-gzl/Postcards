@@ -1,0 +1,35 @@
+import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+
+// WCAG 2.1 AA gate (SC-005): no serious/critical axe violations on any screen.
+async function assertNoSeriousViolations(page: import("@playwright/test").Page, screen: string) {
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  const serious = results.violations.filter((v) =>
+    ["serious", "critical"].includes(v.impact ?? ""),
+  );
+  expect(
+    serious,
+    `${screen}: ${serious.map((v) => `${v.id} (${v.nodes.length} nodes)`).join(", ")}`,
+  ).toEqual([]);
+}
+
+test("map, stats and places screens pass the axe WCAG 2.1 AA gate", async ({ page }) => {
+  await page.goto("/");
+
+  // Seed one visit so lists/bars render.
+  await page.getByLabel("Search a city or country").fill("Lisbon");
+  await page.getByRole("button", { name: /Lisbon/ }).first().click();
+
+  await expect(page.getByText("Cities in view")).toBeVisible();
+  await assertNoSeriousViolations(page, "map");
+
+  await page.getByRole("button", { name: "Stats", exact: true }).click();
+  await expect(page.getByText("Statistics")).toBeVisible();
+  await assertNoSeriousViolations(page, "stats");
+
+  await page.getByRole("button", { name: "Places", exact: true }).click();
+  await expect(page.getByText("Your data")).toBeVisible();
+  await assertNoSeriousViolations(page, "places");
+});

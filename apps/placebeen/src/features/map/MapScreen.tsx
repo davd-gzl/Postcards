@@ -1,31 +1,80 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
+import { useToast } from "../../lib/store/useToast";
+import { useUi } from "../../lib/store/useUi";
 import { formatCompact } from "../../lib/format/format";
+import type { Country } from "../../lib/reference/types";
 import { PlaceSearch } from "../visits/PlaceSearch";
-import { MapView, type MapFocus } from "./MapView";
+import { MapView, type MapFocus, type MapFit } from "./MapView";
 import { MapLegend } from "./MapLegend";
 import { citiesInView, type Bounds } from "./viewport";
+
+const CAP = 30;
 
 export function MapScreen() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const toggleVisit = useVisits((s) => s.toggleVisit);
+  const setAll = useVisits((s) => s.setAll);
+  const showToast = useToast((s) => s.show);
+  const mapFocus = useUi((s) => s.mapFocus);
 
   const allCities = useMemo(() => ref.allCities(), [ref]);
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [focus, setFocus] = useState<MapFocus | null>(null);
+  const [fit, setFit] = useState<MapFit | null>(null);
 
-  const CAP = 30;
-  const inView = useMemo(() => citiesInView(allCities, bounds, 100000), [allCities, bounds]);
-  const visible = inView.slice(0, CAP);
-  const visitedInView = useMemo(
-    () => inView.filter((c) => findByPlace(visits, { kind: "city", id: c.id })).length,
-    [inView, visits],
+  const inView = useMemo(() => citiesInView(allCities, bounds, Infinity), [allCities, bounds]);
+  const visible = useMemo(() => inView.slice(0, CAP), [inView]);
+  const visitedCityIds = useMemo(
+    () => new Set(visits.filter((v) => v.place.kind === "city").map((v) => v.place.id)),
+    [visits],
   );
+  const visitedInView = useMemo(
+    () => inView.reduce((n, c) => n + (visitedCityIds.has(c.id) ? 1 : 0), 0),
+    [inView, visitedCityIds],
+  );
+
+  // Another tab asked the map to fly somewhere (Places row → map).
+  useEffect(() => {
+    if (mapFocus) setFocus({ lon: mapFocus.lon, lat: mapFocus.lat, key: mapFocus.nonce });
+  }, [mapFocus?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function focusCity(c: { lon: number; lat: number }) {
     setFocus((f) => ({ lon: c.lon, lat: c.lat, key: (f?.key ?? 0) + 1 }));
+  }
+
+  function toggleWithUndo(place: { kind: "country" | "city"; id: string; name: string; countryId: string }) {
+    const prev = useVisits.getState().visits;
+    const was = findByPlace(prev, place);
+    void toggleVisit(place);
+    showToast(was ? `Removed ${place.name}` : `Added ${place.name}`, () => setAll(prev));
+  }
+
+  function onCountryTap(country: Country) {
+    toggleWithUndo({ kind: "country", id: country.iso2, name: country.name, countryId: country.iso2 });
+  }
+
+  const visitedCityCoords = useMemo(
+    () =>
+      visits
+        .filter((v) => v.place.kind === "city")
+        .map((v) => ref.cityById(v.place.id))
+        .filter((c): c is NonNullable<typeof c> => !!c),
+    [visits, ref],
+  );
+
+  function fitToMyPlaces() {
+    if (!visitedCityCoords.length) return;
+    let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
+    for (const c of visitedCityCoords) {
+      west = Math.min(west, c.lon);
+      east = Math.max(east, c.lon);
+      south = Math.min(south, c.lat);
+      north = Math.max(north, c.lat);
+    }
+    setFit((f) => ({ bounds: [[west, south], [east, north]], key: (f?.key ?? 0) + 1 }));
   }
 
   return (
@@ -35,7 +84,18 @@ export function MapScreen() {
       </div>
 
       <div className="map-box">
-        <MapView onBounds={setBounds} focus={focus} />
+        <MapView
+          onBounds={setBounds}
+          focus={focus}
+          fit={fit}
+          onCountryTap={onCountryTap}
+          viewCities={visible}
+        />
+        {visitedCityCoords.length > 0 && (
+          <button className="fit-btn" type="button" onClick={fitToMyPlaces}>
+            Fit to my places
+          </button>
+        )}
       </div>
 
       <MapLegend />
@@ -51,8 +111,8 @@ export function MapScreen() {
 
         {inView.length === 0 ? (
           <p className="muted empty">
-            Pan or zoom the map to list its cities here — the most populous first. Tap a row to fly
-            there; tap <span className="chip">+</span> to mark it visited.
+            No cities of 15,000+ people in this view. Pan or zoom the map — or tap a country to mark
+            the whole country visited.
           </p>
         ) : (
           <ul className="city-list">
@@ -72,12 +132,7 @@ export function MapScreen() {
                     aria-pressed={visited}
                     aria-label={visited ? `Remove ${c.name}` : `Mark ${c.name} visited`}
                     onClick={() =>
-                      void toggleVisit({
-                        kind: "city",
-                        id: c.id,
-                        name: c.name,
-                        countryId: c.countryIso2,
-                      })
+                      toggleWithUndo({ kind: "city", id: c.id, name: c.name, countryId: c.countryIso2 })
                     }
                   >
                     {visited ? "✓" : "+"}
