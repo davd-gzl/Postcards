@@ -7,6 +7,7 @@ import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import { useVisits } from "../../lib/store/useVisits";
 import { visitedCityPoints, visitedCountryNumerics } from "./visitedLayers";
 import type { Bounds } from "./viewport";
+import { CONTINENT_COLORS, CONTINENT_FALLBACK } from "../../lib/reference/continents";
 
 // Natural Earth 50m country geometry, served as a static asset (SW-cached for
 // offline) rather than bundled into JS, so the map chunk stays lean.
@@ -21,13 +22,23 @@ async function loadCountries(): Promise<FeatureCollection<Polygon | MultiPolygon
     const fc = feature(topo, topo.objects.countries) as unknown as FeatureCollection<
       Polygon | MultiPolygon
     >;
+    const ref = getReferenceData();
     for (const f of fc.features) {
-      f.properties = { ...(f.properties ?? {}), numeric: String(f.id ?? "") };
+      const numeric = String(f.id ?? "");
+      const country = ref.countryByNumeric(numeric);
+      f.properties = { ...(f.properties ?? {}), numeric, continent: country?.continent ?? "" };
     }
     return fc;
   } catch {
     return null;
   }
+}
+
+// Data-driven color: visited countries take their continent's hue.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function continentColorExpr(): any {
+  const pairs = Object.entries(CONTINENT_COLORS).flatMap(([k, v]) => [k, v]);
+  return ["match", ["get", "continent"], ...pairs, CONTINENT_FALLBACK];
 }
 
 export interface MapFocus {
@@ -66,9 +77,13 @@ export function MapView({
 
   function applyVisited(map: MlMap) {
     const numerics = visitedCountryNumerics(visitsRef.current, ref);
-    if (map.getLayer("countries-visited")) {
-      map.setFilter("countries-visited", ["in", ["get", "numeric"], ["literal", numerics]]);
-    }
+    const filter: maplibregl.FilterSpecification = [
+      "in",
+      ["get", "numeric"],
+      ["literal", numerics],
+    ];
+    if (map.getLayer("countries-visited")) map.setFilter("countries-visited", filter);
+    if (map.getLayer("countries-visited-line")) map.setFilter("countries-visited-line", filter);
     const src = map.getSource("cities") as GeoJSONSource | undefined;
     src?.setData(visitedCityPoints(visitsRef.current, ref));
   }
@@ -114,7 +129,14 @@ export function MapView({
             type: "fill",
             source: "countries",
             filter: ["in", ["get", "numeric"], ["literal", []]],
-            paint: { "fill-color": "#22c55e", "fill-opacity": 0.32 },
+            paint: { "fill-color": continentColorExpr(), "fill-opacity": 0.42 },
+          });
+          map.addLayer({
+            id: "countries-visited-line",
+            type: "line",
+            source: "countries",
+            filter: ["in", ["get", "numeric"], ["literal", []]],
+            paint: { "line-color": continentColorExpr(), "line-width": 1.2, "line-opacity": 0.9 },
           });
         }
         map.addSource("cities", {
@@ -127,7 +149,7 @@ export function MapView({
           source: "cities",
           paint: {
             "circle-radius": 4.5,
-            "circle-color": "#16a34a",
+            "circle-color": "#0b1220",
             "circle-stroke-color": "#ffffff",
             "circle-stroke-width": 1.5,
           },

@@ -22,5 +22,11 @@
     "license": "CC-BY-4.0 (to be sourced from GeoNames)",
     "version": "starter-0",
     "url": "https://www.geonames.org"
+  },
+  {
+    "dataset": "world-countries (country → continent/region)",
+    "license": "ODbL-1.0",
+    "version": "5.1.0",
+    "url": "https://github.com/mledoze/countries"
   }
 ]

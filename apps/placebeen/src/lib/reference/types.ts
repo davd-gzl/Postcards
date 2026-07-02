@@ -7,6 +7,7 @@ export interface Country {
   iso3: string;
   numeric: string; // ISO 3166-1 numeric, used to join map geometry
   name: string;
+  continent: string; // Europe|Asia|Africa|Americas|Oceania|Antarctic (from world-countries)
   cityCount: number; // # of gazetteer cities in this country (denominator for % of cities)
   subdivisionCount: number; // # of first-level subdivisions (denominator for % of regions)
 }
@@ -38,6 +39,7 @@ export interface ReferenceData {
   countries: Country[];
   countryByIso2(iso2: string): Country | undefined;
   countryByNumeric(numeric: string): Country | undefined;
+  continentOf(iso2: string): string;
   subdivisionsOf(countryIso2: string): Subdivision[];
   citiesOf(countryIso2: string): City[];
   allCities(): City[];

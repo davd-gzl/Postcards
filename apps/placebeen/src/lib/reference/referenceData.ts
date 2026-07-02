@@ -4,12 +4,14 @@ import type { City, Country, ReferenceData, ReferenceProvenance, Subdivision } f
 import subdivisionsData from "./data/subdivisions.json";
 import citiesData from "./data/cities.json";
 import provenanceData from "./data/provenance.json";
+import continentsData from "./data/continents.json";
 
 countries.registerLocale(enLocale as Parameters<typeof countries.registerLocale>[0]);
 
 const subdivisions = subdivisionsData as Subdivision[];
 const cities = citiesData as unknown as City[];
 const provenance = provenanceData as ReferenceProvenance[];
+const continents = continentsData as Record<string, string>;
 
 function buildCountries(): Country[] {
   const names = countries.getNames("en");
@@ -29,6 +31,7 @@ function buildCountries(): Country[] {
       iso3,
       numeric,
       name,
+      continent: continents[iso2] ?? "",
       cityCount: cityCounts.get(iso2) ?? 0,
       subdivisionCount: subCounts.get(iso2) ?? 0,
     });
@@ -66,6 +69,9 @@ class ReferenceDataImpl implements ReferenceData {
   }
   countryByNumeric(numeric: string): Country | undefined {
     return this.byNumeric.get(numeric) ?? this.byNumeric.get(numeric.padStart(3, "0"));
+  }
+  continentOf(iso2: string): string {
+    return continents[iso2.toUpperCase()] ?? "";
   }
   subdivisionsOf(countryIso2: string): Subdivision[] {
     return subdivisions.filter((s) => s.countryIso2 === countryIso2);
