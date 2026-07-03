@@ -18,6 +18,8 @@ function visitOf(city: City): Visit {
     place: { kind: "city", id: city.id, name: city.name, countryId: city.countryIso2 },
     date: null,
     note: null,
+    status: "visited" as const,
+    favorite: false,
     addedAt: new Date().toISOString(),
   };
 }
@@ -62,6 +64,8 @@ describe("coverage statistics (real gazetteer)", () => {
       place: { kind: "city", id: "not-in-dataset", name: "Somewhere", countryId: "FR" },
       date: null,
       note: null,
+      status: "visited" as const,
+      favorite: false,
       addedAt: new Date().toISOString(),
     };
     const fr = computeCountryCoverage([visitOf(paris), unknown], ref, "FR");
@@ -90,5 +94,14 @@ describe("coverage statistics (real gazetteer)", () => {
   it("sorts the by-country list by coverage", () => {
     const list = visitedCountriesList(visits, ref, "cities");
     expect(list[0]!.iso2).toBe("FR"); // 2 cities beats 1
+  });
+
+  it("wishlist records never count as visited", () => {
+    const wish: Visit = { ...visitOf(tokyo), status: "wishlist" };
+    const cov = computeCoverage([visitOf(paris), wish], ref);
+    expect(cov.countriesVisited).toBe(1); // FR only — wished Tokyo doesn't count
+    expect(cov.citiesVisited).toBe(1);
+    const jp = computeCountryCoverage([wish], ref, "JP");
+    expect(jp.citiesVisited).toBe(0);
   });
 });

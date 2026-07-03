@@ -5,14 +5,15 @@ import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
 import { countryFlag, formatDate } from "../../lib/format/format";
 
-type View = "visited" | "countries";
+type View = "visited" | "wishlist" | "countries";
 
-/** Your visited places + a browsable checklist of every country. */
+/** Your visited places, your wish-to-go list, + a checklist of every country. */
 export function PlacesScreen() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const removeVisit = useVisits((s) => s.removeVisit);
   const toggleVisit = useVisits((s) => s.toggleVisit);
+  const toggleFavorite = useVisits((s) => s.toggleFavorite);
   const setAll = useVisits((s) => s.setAll);
   const showToast = useToast((s) => s.show);
   const flyTo = useUi((s) => s.flyTo);
@@ -20,13 +21,32 @@ export function PlacesScreen() {
   const [view, setView] = useState<View>("visited");
   const [filter, setFilter] = useState("");
 
-  const sortedVisits = useMemo(
-    () => [...visits].sort((a, b) => a.place.name.localeCompare(b.place.name)),
+  const visited = useMemo(
+    () =>
+      visits
+        .filter((v) => v.status === "visited")
+        // Favorites first, then A→Z.
+        .sort(
+          (a, b) =>
+            Number(b.favorite) - Number(a.favorite) || a.place.name.localeCompare(b.place.name),
+        ),
+    [visits],
+  );
+  const wishlist = useMemo(
+    () =>
+      visits
+        .filter((v) => v.status === "wishlist")
+        .sort((a, b) => a.place.name.localeCompare(b.place.name)),
     [visits],
   );
 
   const visitedCountryIds = useMemo(
-    () => new Set(visits.filter((v) => v.place.kind === "country").map((v) => v.place.id)),
+    () =>
+      new Set(
+        visits
+          .filter((v) => v.place.kind === "country" && v.status === "visited")
+          .map((v) => v.place.id),
+      ),
     [visits],
   );
 
@@ -39,9 +59,9 @@ export function PlacesScreen() {
 
   function toggleCountry(iso2: string, name: string) {
     const prev = useVisits.getState().visits;
-    const was = findByPlace(prev, { kind: "country", id: iso2 });
+    const wasVisited = findByPlace(prev, { kind: "country", id: iso2 })?.status === "visited";
     void toggleVisit({ kind: "country", id: iso2, name, countryId: iso2 });
-    showToast(was ? `Removed ${name}` : `Added ${name}`, () => setAll(prev));
+    showToast(wasVisited ? `Removed ${name}` : `Added ${name}`, () => setAll(prev));
   }
 
   function removeWithUndo(visitId: string, name: string) {
@@ -62,7 +82,16 @@ export function PlacesScreen() {
             className={view === "visited" ? "seg-on" : ""}
             onClick={() => setView("visited")}
           >
-            Visited ({visits.length})
+            Visited ({visited.length})
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === "wishlist"}
+            className={view === "wishlist" ? "seg-on" : ""}
+            onClick={() => setView("wishlist")}
+          >
+            Wishlist ({wishlist.length})
           </button>
           <button
             type="button"
@@ -78,14 +107,14 @@ export function PlacesScreen() {
 
       {view === "visited" && (
         <>
-          {visits.length === 0 && (
+          {visited.length === 0 && (
             <p className="muted empty">
               Nothing yet. Add places from the map, or switch to “Countries” to check off the
               countries you've been to.
             </p>
           )}
           <ul className="city-list">
-            {sortedVisits.map((v) => {
+            {visited.map((v) => {
               const country = ref.countryByIso2(v.place.countryId)?.name ?? v.place.countryId;
               const city = v.place.kind === "city" ? ref.cityById(v.place.id) : undefined;
               return (
@@ -107,6 +136,73 @@ export function PlacesScreen() {
                         {v.note ? ` · ${v.note}` : ""}
                       </span>
                     </span>
+                  </button>
+                  <button
+                    className={"star-btn" + (v.favorite ? " star-on" : "")}
+                    type="button"
+                    aria-pressed={!!v.favorite}
+                    aria-label={
+                      v.favorite ? `Unfavorite ${v.place.name}` : `Favorite ${v.place.name}`
+                    }
+                    onClick={() => void toggleFavorite(v.place)}
+                  >
+                    {v.favorite ? "★" : "☆"}
+                  </button>
+                  <button
+                    className="link-danger"
+                    type="button"
+                    onClick={() => removeWithUndo(v.visitId, v.place.name)}
+                    aria-label={`Remove ${v.place.name}`}
+                  >
+                    Remove
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+
+      {view === "wishlist" && (
+        <>
+          {wishlist.length === 0 && (
+            <p className="muted empty">
+              No wishes yet. Tap a city on the map list, then “⚑ Wish to go”.
+            </p>
+          )}
+          <ul className="city-list">
+            {wishlist.map((v) => {
+              const country = ref.countryByIso2(v.place.countryId)?.name ?? v.place.countryId;
+              const city = v.place.kind === "city" ? ref.cityById(v.place.id) : undefined;
+              return (
+                <li key={v.visitId} className="city-row compact">
+                  <button
+                    className="city-focus"
+                    type="button"
+                    onClick={() => (city ? flyTo(city.lon, city.lat) : undefined)}
+                    aria-label={city ? `Show ${v.place.name} on the map` : v.place.name}
+                  >
+                    <span className="city-line">
+                      <span className="flag" aria-hidden>
+                        {countryFlag(v.place.countryId)}
+                      </span>
+                      <span className="city-name">{v.place.name}</span>
+                      <span className="city-sub">
+                        · {v.place.kind === "city" ? country : "Country"}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    className="mini-btn"
+                    type="button"
+                    aria-label={`Mark ${v.place.name} visited`}
+                    onClick={() => {
+                      const prev = useVisits.getState().visits;
+                      void toggleVisit(v.place);
+                      showToast(`Added ${v.place.name}`, () => setAll(prev));
+                    }}
+                  >
+                    ✓ Been there
                   </button>
                   <button
                     className="link-danger"

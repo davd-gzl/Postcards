@@ -41,9 +41,9 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
 
   function pick(place: PlaceRef) {
     const prev = useVisits.getState().visits;
-    const was = findByPlace(prev, place);
+    const wasVisited = findByPlace(prev, place)?.status === "visited";
     void toggleVisit(place);
-    showToast(was ? `Removed ${place.name}` : `Added ${place.name}`, () => setAll(prev));
+    showToast(wasVisited ? `Removed ${place.name}` : `Added ${place.name}`, () => setAll(prev));
     if (place.kind === "city") {
       const c = ref.cityById(place.id);
       if (c) onFocusCity?.({ lon: c.lon, lat: c.lat });
@@ -109,7 +109,7 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
           aria-label="Search results"
         >
           {results.map((r, i) => {
-            const visited = !!findByPlace(visits, r.place);
+            const visited = findByPlace(visits, r.place)?.status === "visited";
             return (
               <li
                 key={`${r.place.kind}:${r.place.id}`}

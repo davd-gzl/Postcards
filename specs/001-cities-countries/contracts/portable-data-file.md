@@ -49,6 +49,8 @@ strictly inert (parsed, never executed), and validated against this schema on ev
       "properties": {
         "visitId": { "type": "string", "format": "uuid" },
         "place": { "$ref": "#/$defs/placeRef" },
+        "status": { "enum": ["visited", "wishlist"], "default": "visited" },
+        "favorite": { "type": "boolean", "default": false },
         "date": { "type": ["string", "null"], "format": "date" },
         "note": { "type": ["string", "null"], "maxLength": 2000 },
         "addedAt": { "type": "string", "format": "date-time" }

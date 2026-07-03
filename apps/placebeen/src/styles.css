@@ -32,8 +32,10 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font: 15px/1.45 "Inter Variable", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv02", "cv11"; /* Inter: open digits & disambiguated l/I */
 }
 
 button {
@@ -364,6 +366,53 @@ button {
 .city-row.compact .toggle.sm {
   width: 30px;
   height: 30px;
+}
+.toggle-wish {
+  color: #b45309;
+  border-color: #f59e0b;
+  background: #fef7e8;
+}
+.fav-star {
+  flex: none;
+  color: #f59e0b;
+  font-size: 13px;
+}
+.row-quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: none;
+}
+.mini-btn {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+.mini-btn.mini-on {
+  border-color: #f59e0b;
+  background: #fef7e8;
+  color: #b45309;
+}
+.star-btn {
+  flex: none;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--muted);
+  padding: 2px 4px;
+}
+.star-btn.star-on {
+  color: #f59e0b;
+}
+.fit-btn.basemap-btn {
+  left: auto;
+  right: 10px;
+  bottom: 44px;
 }
 .city-focus {
   flex: 1;

@@ -9,6 +9,8 @@ function visit(): Visit {
     place: { kind: "city", id: "paris-fr", name: "Paris", countryId: "FR" },
     date: "2019-08-12",
     note: "first trip",
+    status: "visited" as const,
+    favorite: false,
     addedAt: new Date().toISOString(),
   };
 }
@@ -64,6 +66,8 @@ describe("import security (SC-008, Constitution VI)", () => {
           place: { kind: "city", id: "paris-fr", name: "Paris", countryId: "FR", evil: 1 },
           date: null,
           note: null,
+          status: "visited" as const,
+          favorite: false,
           addedAt: new Date().toISOString(),
         },
       ],
@@ -77,6 +81,8 @@ describe("import security (SC-008, Constitution VI)", () => {
       place: { kind: "city", id: "paris-fr", name: "Paris", countryId: "FR" },
       date: null,
       note,
+      status: "visited" as const,
+      favorite: false,
       addedAt: new Date().toISOString(),
     });
     const text = JSON.stringify({
@@ -104,6 +110,8 @@ describe("import security (SC-008, Constitution VI)", () => {
           place: { kind: "city", id: "paris-fr", name: "Paris", countryId: "FR" },
           date: null,
           note: "=IMPORTXML(evil)",
+          status: "visited" as const,
+          favorite: false,
           addedAt: new Date().toISOString(),
         },
       ],

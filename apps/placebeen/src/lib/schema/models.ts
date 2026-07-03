@@ -27,6 +27,10 @@ export const PlaceRefSchema = z
 export const VisitSchema = z.object({
   visitId: z.string().uuid(),
   place: PlaceRefSchema,
+  /** "visited" = been there; "wishlist" = want to go. Old files default to visited. */
+  status: z.enum(["visited", "wishlist"]).optional().default("visited"),
+  /** Starred by the user. */
+  favorite: z.boolean().optional().default(false),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
