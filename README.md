@@ -1,49 +1,124 @@
-# place-been
+<div align="center">
 
-This repository is set up for **Spec-Driven Development (SDD)** using
-[GitHub Spec Kit](https://github.com/github/spec-kit), integrated with Claude Code.
+# Place'Been
 
-## What is Spec-Driven Development?
+**Remember every place you've been — privately, offline, in a file you own.**
 
-Instead of jumping straight to code, you first write an executable specification,
-turn it into a technical plan, break the plan into tasks, and then implement
-those tasks. Spec Kit provides the templates, scripts, and slash-command
-workflow that drive this process.
+Search a city or country you've visited, tap to mark it, and watch your map fill
+in. No account, no server, no tracking.
+
+_Place'Been remembers where you've been — it is **not** a trip planner._
+
+<img src="docs/screenshots/map-desktop.png" alt="Place'Been world map with visited countries highlighted and a live list of cities in view" width="880">
+
+</div>
+
+## Why Place'Been
+
+- 🔒 **Private by default** — no telemetry, no analytics, no beacons. Nothing leaves your device unless you export it.
+- ✈️ **Works offline by default** — the map and all reference data are bundled; open it in airplane mode and everything works. An online detail map is available, opt-in.
+- 📄 **One portable file you own** — your whole history is a single human-readable file: back it up, diff it, or move it anywhere.
+- 🌍 **Aggregator, never an author** — every place, boundary, and coordinate comes from named, openly-licensed datasets with recorded provenance. The app invents nothing.
+- ⌨️ **Fast & accessible** — keyboard-first, WCAG 2.1 AA, no clutter.
+- 🧩 **Zero lock-in** — no Google, no proprietary services. Open, replaceable, self-hostable components only.
+
+## What it looks like
+
+| Map | Stats | Places |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/map-mobile.png" alt="Mobile map with visited cities shown as flag and population pills, plus a live list of cities in view" width="250"> | <img src="docs/screenshots/stats-mobile.png" alt="Coverage statistics: countries, percent of world, cities, per-continent and per-country breakdowns" width="250"> | <img src="docs/screenshots/places-mobile.png" alt="Places screen with Visited, Wishlist, and Countries segments" width="250"> |
+| Visited cities show as flag + population pills; the cities-in-view list updates live. | Your coverage at a glance. | What you've visited, a wishlist, or the full country checklist. |
+
+## Features
+
+- **Log visits — or wishlist them** — search any city or country (population-ranked, accent-insensitive) or tap it straight on the map. Save places you *want* to go to a **wishlist**, and **star** your favorites. Optional date and note per visit; duplicates are prevented; every add or remove has one-tap **Undo**.
+- **Offline map** — visited countries are shaded and visited cities show as flag + population pills; pan and zoom the whole world with no network. Prefer streets? One tap switches to an **opt-in online OpenStreetMap** detail map — offline stays the default.
+- **Coverage stats** — countries visited and **% of the world**, cities visited, and per-continent progress. For each country you see the **% of its cities** you've reached — plus the **% of its regions**, where region data is available (France today, more coming). Wishlisted places never inflate your coverage.
+- **Backup & restore** — export everything to one JSON file and re-import it losslessly on any device, or export **Markdown** to share a readable summary. Imports are schema-validated and sanitized: data is parsed, never executed.
 
 ## Getting started
 
-Open this project in Claude Code and use the Spec Kit skills (slash commands),
-in roughly this order:
+Requires [Node.js](https://nodejs.org) 20+ and [pnpm](https://pnpm.io).
 
-| Command | Purpose |
+```bash
+git clone https://github.com/davd-gzl/place-been.git
+cd place-been
+pnpm install
+pnpm --filter placebeen dev         # run the app at http://localhost:5173
+```
+
+Other useful scripts:
+
+```bash
+pnpm --filter placebeen test        # unit tests (Vitest)
+pnpm --filter placebeen test:e2e    # browser e2e (Playwright): smoke, a11y, keyboard, privacy
+pnpm --filter placebeen build       # production PWA build
+```
+
+## Tech stack
+
+| Area | Choice |
 | --- | --- |
-| `/speckit-constitution` | Establish the project's guiding principles |
-| `/speckit-specify` | Create a baseline specification from a feature description |
-| `/speckit-clarify` *(optional)* | Ask structured questions to de-risk ambiguity (before planning) |
-| `/speckit-plan` | Create the technical implementation plan |
-| `/speckit-tasks` | Generate an actionable, ordered task list |
-| `/speckit-analyze` *(optional)* | Cross-artifact consistency & alignment check |
-| `/speckit-checklist` *(optional)* | Generate quality checklists for the requirements |
-| `/speckit-implement` | Execute the tasks |
-| `/speckit-converge` | Assess the codebase and append remaining work as tasks |
+| App | TypeScript + React (Vite), shipped as a self-hostable **PWA** |
+| Mobile | **Capacitor** wrapper for native iOS/Android — scaffolding in place, native builds on the roadmap |
+| Map | **MapLibre GL** behind a pluggable `MapSource` seam: bundled Natural Earth overview (offline default) + opt-in OpenStreetMap detail |
+| Storage | **IndexedDB** working store; canonical portable file is **JSON** (+ Markdown export) |
+| Validation | **Zod** schema; inert-data import rules |
+| State | **Zustand** · **Tests**: Vitest + Playwright + axe-core |
 
-## Repository layout
+## Reference data
+
+All world facts come from named, openly-licensed datasets — the app authors none of them.
+
+| Dataset | Used for | License |
+| --- | --- | --- |
+| ISO 3166-1 (via `i18n-iso-countries`) | Country list (~250) | MIT / public codes |
+| Natural Earth (via `world-atlas`) | Country boundaries on the map | Public Domain |
+| GeoNames (via `all-the-cities`) | City gazetteer — **24,323** cities, population ≥ 15k, real GeoNames IDs | CC BY 4.0 |
+| `world-countries` | Country → continent grouping (baked into `continents.json`) | ODbL 1.0 |
+
+Provenance is recorded in [`apps/placebeen/src/lib/reference/data/provenance.json`](apps/placebeen/src/lib/reference/data/provenance.json) and shown in-app.
+
+## Project layout
 
 ```
-.specify/
-├── memory/constitution.md      # Project principles (fill in via /speckit-constitution)
-├── scripts/bash/               # Helper scripts used by the workflow
-├── templates/                  # Spec, plan, tasks, checklist, constitution templates
-├── integrations/               # Integration manifests (Claude Code)
-└── workflows/                  # Spec Kit workflow definition
-.claude/
-└── skills/                     # Spec Kit slash-command skills for Claude Code
+apps/placebeen/          the app (React + TS + Vite → PWA + Capacitor)
+  src/features/          visits · map · stats · backup
+  src/lib/               schema (Zod) · db (IndexedDB) · store (Zustand)
+                         reference (datasets) · map-source · format
+  public/                bundled basemap + reference data
+specs/001-cities-countries/   the MVP spec, plan, tasks, and contracts
+.specify/                Spec Kit workflow, templates, and the constitution
+docs/                    screenshots, UX backlog
 ```
 
-## Requirements
+This repo is a pnpm workspace; shared ecosystem packages will live in `packages/` later.
 
-- [Claude Code](https://claude.com/claude-code)
-- The Spec Kit CLI (`specify`) if you want to re-run or update the scaffolding:
-  `uv tool install specify-cli`
+## Status & roadmap
 
-Spec Kit version: **0.12.2**
+The **cities-and-countries MVP is runnable today** — logging, the offline map, coverage stats, and
+single-file backup/restore all work, covered by a unit-test suite plus Playwright e2e (smoke,
+accessibility, keyboard-only, and a zero-network privacy check).
+
+Planned next:
+
+- **Full region data** beyond France (Natural Earth Admin 1) so per-country region coverage is exact everywhere.
+- **Street-level _offline_ basemap** (PMTiles) — the opt-in online OpenStreetMap detail map already ships; a bundled offline pack is next, behind the same `MapSource` seam.
+- **Native iOS/Android** builds via Capacitor and a device-global, cross-app **Offline Map Store**.
+
+## How it's built & contributing
+
+Place'Been is developed with **Spec-Driven Development** using
+[GitHub Spec Kit](https://github.com/github/spec-kit): every feature flows through
+`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`. The MVP spec and
+its plan live in [`specs/001-cities-countries/`](specs/001-cities-countries/), and the project's
+non-negotiable principles are in
+[`.specify/memory/constitution.md`](.specify/memory/constitution.md).
+
+Issues and pull requests are welcome — please start from a spec (and keep changes aligned with the
+constitution) rather than opening code-first PRs.
+
+## License
+
+Intended to be free for personal, non-commercial use. The formal `LICENSE` file has not been chosen
+yet — until it lands, treat the code as all rights reserved.
