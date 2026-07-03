@@ -17,7 +17,7 @@ _Place'Been remembers where you've been — it is **not** a trip planner._
 
 - 🔒 **Private by default** — no telemetry, no analytics, no beacons. Nothing leaves your device unless you export it.
 - ✈️ **Works fully offline** — the map and all reference data are bundled. Open it in airplane mode and everything works.
-- 📄 **One portable file** — your whole history is a single human-readable JSON file you can back up, diff, or move anywhere. Markdown export for sharing.
+- 📄 **One portable file you own** — your whole history is a single human-readable file: back it up, diff it, or move it anywhere.
 - 🌍 **Aggregator, never an author** — every place, boundary, and coordinate comes from named, openly-licensed datasets with recorded provenance. The app invents nothing.
 - ⌨️ **Fast & accessible** — keyboard-first, WCAG 2.1 AA, no clutter.
 - 🧩 **Zero lock-in** — no Google, no proprietary services. Open, replaceable, self-hostable components only.
@@ -31,7 +31,7 @@ _Place'Been remembers where you've been — it is **not** a trip planner._
 
 ## Features
 
-- **Log visits fast** — search any city or country (population-ranked, accent-insensitive) or tap it straight on the map. Optional date and note per visit. Duplicates are prevented, and every add, remove, or import has one-tap **Undo**.
+- **Log visits fast** — search any city or country (population-ranked, accent-insensitive) or tap it straight on the map. Optional date and note per visit. Duplicates are prevented, and every add or remove has one-tap **Undo**.
 - **Offline map** — visited countries are shaded and visited cities are dots; pan and zoom the whole world with no network.
 - **Coverage stats** — countries visited and **% of the world**, cities visited, and per-continent progress. For each country you see the **% of its cities** you've reached — plus the **% of its regions**, where region data is available (France today, more coming).
 - **Backup & restore** — export everything to one JSON file and re-import it losslessly on any device, or export **Markdown** to share a readable summary. Imports are schema-validated and sanitized: data is parsed, never executed.
