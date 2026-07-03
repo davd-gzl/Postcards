@@ -16,7 +16,7 @@ _Place'Been remembers where you've been — it is **not** a trip planner._
 ## Why Place'Been
 
 - 🔒 **Private by default** — no telemetry, no analytics, no beacons. Nothing leaves your device unless you export it.
-- ✈️ **Works fully offline** — the map and all reference data are bundled. Open it in airplane mode and everything works.
+- ✈️ **Works offline by default** — the map and all reference data are bundled; open it in airplane mode and everything works. An online detail map is available, opt-in.
 - 📄 **One portable file you own** — your whole history is a single human-readable file: back it up, diff it, or move it anywhere.
 - 🌍 **Aggregator, never an author** — every place, boundary, and coordinate comes from named, openly-licensed datasets with recorded provenance. The app invents nothing.
 - ⌨️ **Fast & accessible** — keyboard-first, WCAG 2.1 AA, no clutter.
@@ -26,14 +26,14 @@ _Place'Been remembers where you've been — it is **not** a trip planner._
 
 | Map | Stats | Places |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/map-mobile.png" alt="Mobile map with visited places and a live list of cities in view" width="250"> | <img src="docs/screenshots/stats-mobile.png" alt="Coverage statistics: countries, percent of world, cities, per-continent and per-country breakdowns" width="250"> | <img src="docs/screenshots/places-mobile.png" alt="Browsable country checklist with a filter box" width="250"> |
-| Pan the world; the cities-in-view list updates live. | Your coverage at a glance. | Your visited list, or tick off the full country checklist. |
+| <img src="docs/screenshots/map-mobile.png" alt="Mobile map with visited cities shown as flag and population pills, plus a live list of cities in view" width="250"> | <img src="docs/screenshots/stats-mobile.png" alt="Coverage statistics: countries, percent of world, cities, per-continent and per-country breakdowns" width="250"> | <img src="docs/screenshots/places-mobile.png" alt="Places screen with Visited, Wishlist, and Countries segments" width="250"> |
+| Visited cities show as flag + population pills; the cities-in-view list updates live. | Your coverage at a glance. | What you've visited, a wishlist, or the full country checklist. |
 
 ## Features
 
-- **Log visits fast** — search any city or country (population-ranked, accent-insensitive) or tap it straight on the map. Optional date and note per visit. Duplicates are prevented, and every add or remove has one-tap **Undo**.
-- **Offline map** — visited countries are shaded and visited cities are dots; pan and zoom the whole world with no network.
-- **Coverage stats** — countries visited and **% of the world**, cities visited, and per-continent progress. For each country you see the **% of its cities** you've reached — plus the **% of its regions**, where region data is available (France today, more coming).
+- **Log visits — or wishlist them** — search any city or country (population-ranked, accent-insensitive) or tap it straight on the map. Save places you *want* to go to a **wishlist**, and **star** your favorites. Optional date and note per visit; duplicates are prevented; every add or remove has one-tap **Undo**.
+- **Offline map** — visited countries are shaded and visited cities show as flag + population pills; pan and zoom the whole world with no network. Prefer streets? One tap switches to an **opt-in online OpenStreetMap** detail map — offline stays the default.
+- **Coverage stats** — countries visited and **% of the world**, cities visited, and per-continent progress. For each country you see the **% of its cities** you've reached — plus the **% of its regions**, where region data is available (France today, more coming). Wishlisted places never inflate your coverage.
 - **Backup & restore** — export everything to one JSON file and re-import it losslessly on any device, or export **Markdown** to share a readable summary. Imports are schema-validated and sanitized: data is parsed, never executed.
 
 ## Getting started
@@ -61,7 +61,7 @@ pnpm --filter placebeen build       # production PWA build
 | --- | --- |
 | App | TypeScript + React (Vite), shipped as a self-hostable **PWA** |
 | Mobile | **Capacitor** wrapper for native iOS/Android — scaffolding in place, native builds on the roadmap |
-| Map | **MapLibre GL** + bundled Natural Earth geometry, behind a pluggable `MapSource` seam |
+| Map | **MapLibre GL** behind a pluggable `MapSource` seam: bundled Natural Earth overview (offline default) + opt-in OpenStreetMap detail |
 | Storage | **IndexedDB** working store; canonical portable file is **JSON** (+ Markdown export) |
 | Validation | **Zod** schema; inert-data import rules |
 | State | **Zustand** · **Tests**: Vitest + Playwright + axe-core |
@@ -103,7 +103,7 @@ accessibility, keyboard-only, and a zero-network privacy check).
 Planned next:
 
 - **Full region data** beyond France (Natural Earth Admin 1) so per-country region coverage is exact everywhere.
-- **Street-level offline basemap** (PMTiles / OpenStreetMap) behind the existing `MapSource` seam.
+- **Street-level _offline_ basemap** (PMTiles) — the opt-in online OpenStreetMap detail map already ships; a bundled offline pack is next, behind the same `MapSource` seam.
 - **Native iOS/Android** builds via Capacitor and a device-global, cross-app **Offline Map Store**.
 
 ## How it's built & contributing
