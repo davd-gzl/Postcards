@@ -6,16 +6,27 @@ import { useUi } from "../../lib/store/useUi";
 import { countryFlag, formatInt } from "../../lib/format/format";
 import type { Country } from "../../lib/reference/types";
 import { PlaceSearch } from "../visits/PlaceSearch";
-import { MapView, type MapFocus, type MapFit } from "./MapView";
+import { MapView, type Basemap, type MapFocus, type MapFit } from "./MapView";
 import { MapLegend } from "./MapLegend";
 import { citiesInView, type Bounds } from "./viewport";
 
 const CAP = 30;
+const BASEMAP_KEY = "placebeen-basemap";
+
+function loadBasemap(): Basemap {
+  try {
+    return localStorage.getItem(BASEMAP_KEY) === "osm" ? "osm" : "simple";
+  } catch {
+    return "simple";
+  }
+}
 
 export function MapScreen() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const toggleVisit = useVisits((s) => s.toggleVisit);
+  const toggleWish = useVisits((s) => s.toggleWish);
+  const toggleFavorite = useVisits((s) => s.toggleFavorite);
   const setAll = useVisits((s) => s.setAll);
   const showToast = useToast((s) => s.show);
   const mapFocus = useUi((s) => s.mapFocus);
@@ -25,6 +36,17 @@ export function MapScreen() {
   const [focus, setFocus] = useState<MapFocus | null>(null);
   const [fit, setFit] = useState<MapFit | null>(null);
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
+  const [basemap, setBasemap] = useState<Basemap>(loadBasemap);
+
+  function switchBasemap() {
+    const next: Basemap = basemap === "simple" ? "osm" : "simple";
+    setBasemap(next);
+    try {
+      localStorage.setItem(BASEMAP_KEY, next);
+    } catch {
+      /* private mode: not persisted */
+    }
+  }
 
   const inView = useMemo(() => citiesInView(allCities, bounds, Infinity), [allCities, bounds]);
   const visible = useMemo(() => inView.slice(0, CAP), [inView]);
@@ -48,9 +70,9 @@ export function MapScreen() {
 
   function toggleWithUndo(place: { kind: "country" | "city"; id: string; name: string; countryId: string }) {
     const prev = useVisits.getState().visits;
-    const was = findByPlace(prev, place);
+    const wasVisited = findByPlace(prev, place)?.status === "visited";
     void toggleVisit(place);
-    showToast(was ? `Removed ${place.name}` : `Added ${place.name}`, () => setAll(prev));
+    showToast(wasVisited ? `Removed ${place.name}` : `Added ${place.name}`, () => setAll(prev));
   }
 
   function onCountryTap(country: Country) {
@@ -86,6 +108,8 @@ export function MapScreen() {
 
       <div className="map-box">
         <MapView
+          key={basemap}
+          basemap={basemap}
           onBounds={setBounds}
           focus={focus}
           fit={fit}
@@ -97,6 +121,18 @@ export function MapScreen() {
             Fit to my places
           </button>
         )}
+        <button
+          className="fit-btn basemap-btn"
+          type="button"
+          onClick={switchBasemap}
+          title={
+            basemap === "simple"
+              ? "Switch to the detailed OpenStreetMap basemap (loads tiles online)"
+              : "Switch back to the simple offline basemap"
+          }
+        >
+          {basemap === "simple" ? "Detail map (online)" : "Simple map (offline)"}
+        </button>
       </div>
 
       <MapLegend />
@@ -118,9 +154,12 @@ export function MapScreen() {
         ) : (
           <ul className="city-list">
             {visible.map((c) => {
-              const visited = visitedCityIds.has(c.id);
+              const record = findByPlace(visits, { kind: "city", id: c.id });
+              const visited = record?.status === "visited";
+              const wished = record?.status === "wishlist";
               const country = ref.countryByIso2(c.countryIso2)?.name ?? c.countryIso2;
               const selected = selectedCityId === c.id;
+              const place = { kind: "city" as const, id: c.id, name: c.name, countryId: c.countryIso2 };
               return (
                 <li key={c.id} className={"city-row compact" + (selected ? " selected" : "")}>
                   <button
@@ -138,23 +177,48 @@ export function MapScreen() {
                       </span>
                       <span className="city-name">{c.name}</span>
                       <span className="city-sub">· {country}</span>
+                      {record?.favorite && (
+                        <span className="fav-star" aria-label="Favorite">★</span>
+                      )}
                     </span>
-                    {selected && c.population != null && (
+                    {selected && (
                       <span className="city-detail">
-                        {formatInt(c.population)} people
+                        {c.population != null ? `${formatInt(c.population)} people` : "—"}
                       </span>
                     )}
                   </button>
+                  {selected && (
+                    <span className="row-quick-actions">
+                      {!visited && (
+                        <button
+                          className={"mini-btn" + (wished ? " mini-on" : "")}
+                          type="button"
+                          aria-pressed={wished}
+                          onClick={() => void toggleWish(place)}
+                        >
+                          ⚑ {wished ? "Wished" : "Wish to go"}
+                        </button>
+                      )}
+                      {record && (
+                        <button
+                          className={"mini-btn" + (record.favorite ? " mini-on" : "")}
+                          type="button"
+                          aria-pressed={!!record.favorite}
+                          onClick={() => void toggleFavorite(place)}
+                        >
+                          {record.favorite ? "★ Favorite" : "☆ Favorite"}
+                        </button>
+                      )}
+                    </span>
+                  )}
                   <button
-                    className={"toggle" + (visited ? " toggle-on" : "")}
+                    className={"toggle" + (visited ? " toggle-on" : "") + (wished ? " toggle-wish" : "")}
                     type="button"
                     aria-pressed={visited}
                     aria-label={visited ? `Remove ${c.name}` : `Mark ${c.name} visited`}
-                    onClick={() =>
-                      toggleWithUndo({ kind: "city", id: c.id, name: c.name, countryId: c.countryIso2 })
-                    }
+                    onClick={() => toggleWithUndo(place)}
                   >
-                    {visited ? "✓" : "+"}
+                    {visited ? "✓" : wished ? "⚑" : "+"}
                   </button>
                 </li>
               );

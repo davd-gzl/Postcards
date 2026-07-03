@@ -35,9 +35,20 @@ interface VisitsState {
   visits: Visit[];
   loaded: boolean;
   load: () => Promise<void>;
-  addVisit: (input: { place: PlaceRef; date?: string | null; note?: string | null }) => Promise<Visit>;
+  addVisit: (input: {
+    place: PlaceRef;
+    date?: string | null;
+    note?: string | null;
+    status?: Visit["status"];
+    favorite?: boolean;
+  }) => Promise<Visit>;
   removeVisit: (visitId: string) => Promise<void>;
+  /** "+" semantics: none -> visited; wishlist -> becomes visited; visited -> removed. */
   toggleVisit: (place: PlaceRef) => Promise<void>;
+  /** "⚑" semantics: none -> wishlist; wishlist -> removed; visited -> untouched. */
+  toggleWish: (place: PlaceRef) => Promise<void>;
+  /** "★" on an existing record (visited or wishlist). */
+  toggleFavorite: (place: PlaceRef) => Promise<void>;
   setAll: (visits: Visit[]) => Promise<void>;
 }
 
@@ -48,13 +59,15 @@ export const useVisits = create<VisitsState>((set, get) => ({
     const visits = await db.getAllVisits();
     set({ visits, loaded: true });
   },
-  async addVisit({ place, date = null, note = null }) {
+  async addVisit({ place, date = null, note = null, status = "visited", favorite = false }) {
     const existing = findByPlace(get().visits, place);
     const visit: Visit = {
       visitId: existing?.visitId ?? uuid(),
       place,
-      date: date ?? null,
-      note: note ?? null,
+      status,
+      favorite: existing?.favorite ?? favorite,
+      date: date ?? existing?.date ?? null,
+      note: note ?? existing?.note ?? null,
       addedAt: existing?.addedAt ?? new Date().toISOString(),
     };
     set({ visits: dedupeUpsert(get().visits, visit) });
@@ -67,8 +80,24 @@ export const useVisits = create<VisitsState>((set, get) => ({
   },
   async toggleVisit(place) {
     const existing = findByPlace(get().visits, place);
-    if (existing) await get().removeVisit(existing.visitId);
-    else await get().addVisit({ place });
+    if (existing && existing.status === "visited") await get().removeVisit(existing.visitId);
+    else await get().addVisit({ place, status: "visited" });
+  },
+  async toggleWish(place) {
+    const existing = findByPlace(get().visits, place);
+    if (!existing) {
+      await get().addVisit({ place, status: "wishlist" });
+    } else if (existing.status === "wishlist") {
+      await get().removeVisit(existing.visitId);
+    }
+    // Already visited: wishing is a no-op — you've been there.
+  },
+  async toggleFavorite(place) {
+    const existing = findByPlace(get().visits, place);
+    if (!existing) return;
+    const updated: Visit = { ...existing, favorite: !existing.favorite };
+    set({ visits: get().visits.map((v) => (v.visitId === updated.visitId ? updated : v)) });
+    await db.putVisit(updated);
   },
   async setAll(visits) {
     set({ visits });

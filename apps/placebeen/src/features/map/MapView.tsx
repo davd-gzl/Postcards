@@ -5,7 +5,7 @@ import type { FeatureCollection, Polygon, MultiPolygon, Point, Feature } from "g
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import { useVisits } from "../../lib/store/useVisits";
-import { visitedCityPoints, visitedCountryNumerics } from "./visitedLayers";
+import { visitedCityPoints, visitedCountryNumerics, wishlistCityPoints } from "./visitedLayers";
 import type { Bounds } from "./viewport";
 import type { City, Country } from "../../lib/reference/types";
 import { CONTINENT_COLORS, CONTINENT_FALLBACK } from "../../lib/reference/continents";
@@ -43,28 +43,55 @@ function continentColorExpr(): any {
   return ["match", ["get", "continent"], ...pairs, CONTINENT_FALLBACK];
 }
 
+const EMOJI_FONT = '"Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+const PILL_FONT = '600 21px "Inter Variable", system-ui, sans-serif';
+
 /**
- * Draw a country flag as a small round marker image (white disc + flag emoji).
- * Rendered with the platform's emoji font on a canvas — offline, no assets.
+ * Draw a small city marker pill: [flag] population — one canvas image, so we
+ * get labels without a glyph server. Drawn at 2x for crisp rendering
+ * (display size ≈ half). Favorites get a gold ring.
  */
-function makeFlagImage(iso2: string, size = 52): ImageData {
+function makeCityPill(iso2: string, popLabel: string, favorite: boolean): ImageData {
+  const h = 30; // 15px on screen
+  const pad = 9;
+  const flagFont = `19px ${EMOJI_FONT}`;
   const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
   const ctx = canvas.getContext("2d")!;
+  ctx.font = PILL_FONT;
+  const textW = popLabel ? ctx.measureText(popLabel).width : 0;
+  ctx.font = flagFont;
+  const flagW = ctx.measureText(countryFlag(iso2)).width;
+  const w = Math.ceil(pad + flagW + (popLabel ? 6 + textW : 0) + pad);
+  canvas.width = w;
+  canvas.height = h;
+
+  // Pill background.
+  const r = h / 2;
   ctx.beginPath();
-  ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+  ctx.moveTo(r, 1);
+  ctx.arcTo(w - 1, 1, w - 1, h - 1, r - 1);
+  ctx.arcTo(w - 1, h - 1, 1, h - 1, r - 1);
+  ctx.arcTo(1, h - 1, 1, 1, r - 1);
+  ctx.arcTo(1, 1, w - 1, 1, r - 1);
+  ctx.closePath();
   ctx.fillStyle = "#ffffff";
   ctx.fill();
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = "rgba(15, 23, 41, 0.28)";
+  ctx.lineWidth = favorite ? 3 : 1.5;
+  ctx.strokeStyle = favorite ? "#f59e0b" : "rgba(15, 23, 41, 0.25)";
   ctx.stroke();
-  ctx.font = `${Math.round(size * 0.58)}px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
-  ctx.textAlign = "center";
+
+  // Flag + population.
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "#334155"; // ink for letter-pair fallback platforms
-  ctx.fillText(countryFlag(iso2), size / 2, size / 2 + size * 0.03);
-  return ctx.getImageData(0, 0, size, size);
+  ctx.textAlign = "left";
+  ctx.font = flagFont;
+  ctx.fillStyle = "#334155";
+  ctx.fillText(countryFlag(iso2), pad, h / 2 + 1);
+  if (popLabel) {
+    ctx.font = PILL_FONT;
+    ctx.fillStyle = "#1e293b";
+    ctx.fillText(popLabel, pad + flagW + 6, h / 2 + 1);
+  }
+  return ctx.getImageData(0, 0, w, h);
 }
 
 function inViewPoints(cities: City[]): FeatureCollection<Point> {
@@ -87,12 +114,15 @@ export interface MapFit {
   key: number;
 }
 
+export type Basemap = "simple" | "osm";
+
 export function MapView({
   onBounds,
   focus,
   fit,
   onCountryTap,
   viewCities,
+  basemap = "simple",
 }: {
   onBounds?: (b: Bounds) => void;
   focus?: MapFocus | null;
@@ -101,6 +131,8 @@ export function MapView({
   onCountryTap?: (country: Country) => void;
   /** The cities currently shown in the list — drawn as hollow dots for map↔list sync. */
   viewCities?: City[];
+  /** "simple" = bundled offline base (default); "osm" = opt-in online OSM raster. */
+  basemap?: Basemap;
 }) {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
@@ -138,6 +170,8 @@ export function MapView({
     if (map.getLayer("countries-visited-line")) map.setFilter("countries-visited-line", filter);
     const src = map.getSource("cities") as GeoJSONSource | undefined;
     src?.setData(visitedCityPoints(visitsRef.current, ref));
+    const wishSrc = map.getSource("wishlist") as GeoJSONSource | undefined;
+    wishSrc?.setData(wishlistCityPoints(visitsRef.current, ref));
   }
 
   function applyViewCities(map: MlMap) {
@@ -164,15 +198,20 @@ export function MapView({
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
-    // Generate flag marker images lazily, the first time a country needs one.
+    // Generate marker pill images lazily: "pill-<CC>-<0|1>-<popLabel>".
     map.on("styleimagemissing", (e) => {
-      if (!e.id.startsWith("flag-") || map.hasImage(e.id)) return;
-      map.addImage(e.id, makeFlagImage(e.id.slice(5)), { pixelRatio: 2 });
+      if (!e.id.startsWith("pill-") || map.hasImage(e.id)) return;
+      const rest = e.id.slice(5);
+      const cc = rest.slice(0, 2);
+      const fav = rest.slice(3, 4) === "1";
+      const popLabel = rest.slice(5);
+      map.addImage(e.id, makeCityPill(cc, popLabel, fav), { pixelRatio: 2 });
     });
 
     map.on("load", async () => {
       if (cancelled) return;
-      const { style, attribution } = await bundledMapSource.resolveStyle("world-overview");
+      const pack = basemap === "osm" ? "osm-raster" : "world-overview";
+      const { style, attribution } = await bundledMapSource.resolveStyle(pack);
       if (cancelled) return;
       map.setStyle(style);
       map.once("styledata", async () => {
@@ -181,18 +220,25 @@ export function MapView({
         if (cancelled || !map.getStyle()) return;
         if (countriesFc) {
           map.addSource("countries", { type: "geojson", data: countriesFc, attribution });
+          // On OSM the base fill is invisible but kept for country hit-testing.
           map.addLayer({
             id: "countries-base",
             type: "fill",
             source: "countries",
-            paint: { "fill-color": "#f4f6f9", "fill-outline-color": "#d6dce4" },
+            paint:
+              basemap === "osm"
+                ? { "fill-color": "#000000", "fill-opacity": 0 }
+                : { "fill-color": "#f4f6f9", "fill-outline-color": "#d6dce4" },
           });
           map.addLayer({
             id: "countries-visited",
             type: "fill",
             source: "countries",
             filter: ["in", ["get", "numeric"], ["literal", []]],
-            paint: { "fill-color": continentColorExpr(), "fill-opacity": 0.42 },
+            paint: {
+              "fill-color": continentColorExpr(),
+              "fill-opacity": basemap === "osm" ? 0.28 : 0.42,
+            },
           });
           map.addLayer({
             id: "countries-visited-line",
@@ -218,7 +264,25 @@ export function MapView({
             "circle-stroke-width": 1.2,
           },
         });
-        // Visited cities: the flag of their country/territory, on top.
+        // Wish-to-go cities: hollow amber dots under the visited pills.
+        map.addSource("wishlist", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        map.addLayer({
+          id: "cities-wishlist",
+          type: "circle",
+          source: "wishlist",
+          paint: {
+            "circle-radius": 4,
+            "circle-color": "#ffffff",
+            "circle-stroke-color": "#f59e0b",
+            "circle-stroke-width": 2,
+          },
+        });
+        // Visited cities: small flag+population pills. Collision detection is ON
+        // (no allow-overlap): when pills would stack, the most populous city
+        // wins and the rest appear as you zoom in.
         map.addSource("cities", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
@@ -228,9 +292,18 @@ export function MapView({
           type: "symbol",
           source: "cities",
           layout: {
-            "icon-image": ["concat", "flag-", ["get", "cc"]],
+            "icon-image": [
+              "concat",
+              "pill-",
+              ["get", "cc"],
+              "-",
+              ["to-string", ["get", "fav"]],
+              "-",
+              ["get", "popLabel"],
+            ],
             "icon-size": 1,
-            "icon-allow-overlap": true,
+            "icon-padding": 1,
+            "symbol-sort-key": ["get", "sortKey"],
           },
         });
         loadedRef.current = true;

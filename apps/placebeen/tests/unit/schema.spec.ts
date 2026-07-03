@@ -8,6 +8,8 @@ function baseVisit() {
     place: { kind: "country", id: "FR", name: "France", countryId: "FR" },
     date: null,
     note: null,
+    status: "visited" as const,
+    favorite: false,
     addedAt: new Date().toISOString(),
   };
 }
@@ -39,6 +41,21 @@ describe("PlaceBeenFileSchema", () => {
     bad.place.countryId = "France";
     const r = VisitSchema.safeParse(bad);
     expect(r.success).toBe(false);
+  });
+
+  it("defaults status/favorite for records from older files", () => {
+    const legacy = { ...baseVisit() } as Record<string, unknown>;
+    delete legacy.status;
+    delete legacy.favorite;
+    const r = VisitSchema.parse(legacy);
+    expect(r.status).toBe("visited");
+    expect(r.favorite).toBe(false);
+  });
+
+  it("accepts wishlist + favorite records", () => {
+    const r = VisitSchema.parse({ ...baseVisit(), status: "wishlist", favorite: true });
+    expect(r.status).toBe("wishlist");
+    expect(r.favorite).toBe(true);
   });
 
   it("sanitizes note on parse (leading formula char removed)", () => {

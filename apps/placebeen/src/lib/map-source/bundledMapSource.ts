@@ -1,27 +1,53 @@
 import type { MapPackRef, MapSource, ResolvedMapStyle } from "./types";
 
-// MVP MapSource: a bundled, fully-offline base style (no external tiles, no
-// Google). Country polygons are drawn by the map layer from bundled Natural
-// Earth geometry; this source just provides the base canvas + attribution.
-// Later, a `SharedOfflineMapStore` will implement the same interface backed by
-// a device-global PMTiles store and expose download/manage operations.
+// MVP MapSource with two packs:
+// - "world-overview": bundled, fully-offline base (default; no network, ever).
+// - "osm-raster": OPT-IN online OpenStreetMap raster tiles for a detailed,
+//   colored basemap. Explicitly labeled online; never the default; the app
+//   stays fully usable without it (Constitution II/III/V).
+// Later, a `SharedOfflineMapStore` implements the same interface backed by a
+// device-global PMTiles store.
 const WORLD_PACK: MapPackRef = {
   id: "world-overview",
-  label: "World (overview)",
+  label: "Simple (offline)",
+  scope: "world",
+};
+
+const OSM_PACK: MapPackRef = {
+  id: "osm-raster",
+  label: "Detailed — OpenStreetMap (online)",
   scope: "world",
 };
 
 export class BundledMapSource implements MapSource {
   async listPacks(): Promise<MapPackRef[]> {
-    return [WORLD_PACK];
+    return [WORLD_PACK, OSM_PACK];
   }
 
   async isAvailableOffline(packId: string): Promise<boolean> {
-    // The world-overview base is bundled in the app, so always available offline.
     return packId === WORLD_PACK.id;
   }
 
-  async resolveStyle(_packId: string): Promise<ResolvedMapStyle> {
+  async resolveStyle(packId: string): Promise<ResolvedMapStyle> {
+    if (packId === OSM_PACK.id) {
+      return {
+        style: {
+          version: 8,
+          name: "OpenStreetMap raster",
+          sources: {
+            osm: {
+              type: "raster",
+              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tileSize: 256,
+              maxzoom: 19,
+              attribution: "© OpenStreetMap contributors",
+            },
+          },
+          layers: [{ id: "osm", type: "raster", source: "osm" }],
+        },
+        attribution: "© OpenStreetMap contributors (ODbL)",
+      };
+    }
     return {
       style: {
         version: 8,

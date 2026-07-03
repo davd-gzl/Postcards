@@ -11,6 +11,8 @@ function visit(name: string, note: string | null): Visit {
     place: { kind: "city", id: "x", name, countryId: "FR" },
     date: null,
     note,
+    status: "visited" as const,
+    favorite: false,
     addedAt: new Date().toISOString(),
   };
 }

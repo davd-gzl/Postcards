@@ -23,15 +23,22 @@ function pct(part: number, total: number): number {
   return total > 0 ? part / total : 0;
 }
 
-/** Distinct country ids across all visits (a city visit implies its country). */
+/** Coverage counts only places actually visited — never the wishlist. */
+export function onlyVisited(visits: Visit[]): Visit[] {
+  return visits.filter((v) => v.status !== "wishlist");
+}
+
+/** Distinct country ids across visited records (a city visit implies its country). */
 export function visitedCountryIds(visits: Visit[]): Set<string> {
-  return new Set(visits.map((v) => v.place.countryId));
+  return new Set(onlyVisited(visits).map((v) => v.place.countryId));
 }
 
 export function computeCoverage(visits: Visit[], ref: ReferenceData): Coverage {
   const countriesVisited = visitedCountryIds(visits).size;
   const cityIds = new Set(
-    visits.filter((v) => v.place.kind === "city").map((v) => v.place.id),
+    onlyVisited(visits)
+      .filter((v) => v.place.kind === "city")
+      .map((v) => v.place.id),
   );
   const worldCountryCount = ref.worldCountryCount();
   return {
@@ -51,7 +58,7 @@ export function computeCountryCoverage(
   const country = ref.countryByIso2(iso2);
   const visitedCityIds = new Set<string>();
   const visitedRegionIds = new Set<string>();
-  for (const v of visits) {
+  for (const v of onlyVisited(visits)) {
     if (v.place.kind !== "city") continue;
     // Only count cities that exist in this country's gazetteer, so the numerator
     // can never exceed the denominator (imported cities outside the dataset don't inflate %).
@@ -113,7 +120,7 @@ export interface CountryDetail {
 export function countryDetail(visits: Visit[], ref: ReferenceData, iso2: string): CountryDetail {
   const cities: string[] = [];
   const regionIds = new Set<string>();
-  for (const v of visits) {
+  for (const v of onlyVisited(visits)) {
     if (v.place.kind !== "city") continue;
     const city = ref.cityById(v.place.id);
     if (!city || city.countryIso2 !== iso2) continue;

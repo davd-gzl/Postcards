@@ -32,8 +32,16 @@ await page.waitForTimeout(1800);
 
 await page.screenshot({ path: `${OUT}/placebeen-mobile-map.png`, fullPage: true });
 
-// Tap the first city row to reveal its population (selected state).
+// Tap the first city row to reveal its population; wish it if not visited.
 await page.locator(".city-row .city-focus").first().click();
+await page.waitForTimeout(600);
+const wishBtn = page.getByRole("button", { name: /Wish to go/ });
+if (await wishBtn.count()) await wishBtn.first().click();
+await page.waitForTimeout(300);
+// Favorite a visited city: search Tokyo, select its row via search-add already visited?
+// Simpler: mark the currently selected city's Favorite if present.
+const favBtn = page.getByRole("button", { name: /Favorite/ }).first();
+if (await favBtn.count()) await favBtn.click();
 await page.waitForTimeout(800);
 await page.screenshot({ path: `${OUT}/placebeen-mobile-map-selected.png`, fullPage: true });
 

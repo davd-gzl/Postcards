@@ -8,6 +8,8 @@ function cityVisit(id: string, name: string, countryId: string, note: string | n
     place: { kind: "city", id, name, countryId },
     date: null,
     note,
+    status: "visited" as const,
+    favorite: false,
     addedAt: new Date().toISOString(),
   };
 }
