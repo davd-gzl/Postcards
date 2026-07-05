@@ -33,7 +33,7 @@ _Place'Been remembers where you've been — it is **not** a trip planner._
 
 - **Log visits — or wishlist them** — search any city or country (population-ranked, accent-insensitive) or tap it straight on the map. Save places you *want* to go to a **wishlist**, and **star** your favorites. Optional date and note per visit; duplicates are prevented; every add or remove has one-tap **Undo**.
 - **Offline map** — visited countries are shaded and visited cities show as flag + population pills; pan and zoom the whole world with no network. Prefer streets? One tap switches to an **opt-in online OpenStreetMap** detail map — offline stays the default.
-- **Coverage stats** — countries visited and **% of the world**, cities visited, and per-continent progress. For each country you see the **% of its cities** you've reached — plus the **% of its regions**, where region data is available (France today, more coming). Wishlisted places never inflate your coverage.
+- **Coverage stats** — countries visited and **% of the world**, cities visited, and per-continent progress. For each country you see the **% of its cities** you've reached — plus the **% of its first-level regions** (states/provinces), now covering countries **worldwide**. Wishlisted places never inflate your coverage.
 - **Backup & restore** — export everything to one JSON file and re-import it losslessly on any device, or export **Markdown** to share a readable summary. Imports are schema-validated and sanitized: data is parsed, never executed.
 
 ## Getting started
@@ -75,6 +75,7 @@ All world facts come from named, openly-licensed datasets — the app authors no
 | ISO 3166-1 (via `i18n-iso-countries`) | Country list (~250) | MIT / public codes |
 | Natural Earth (via `world-atlas`) | Country boundaries on the map | Public Domain |
 | GeoNames (via `all-the-cities`) | City gazetteer — **24,323** cities, population ≥ 15k, real GeoNames IDs | CC BY 4.0 |
+| GeoNames admin-1, named via `countries-states-cities` | First-level regions (states/provinces) worldwide — **2,661** regions for per-country region coverage | CC BY 4.0 / ODbL 1.0 |
 | `world-countries` | Country → continent grouping (baked into `continents.json`) | ODbL 1.0 |
 
 Provenance is recorded in [`apps/placebeen/src/lib/reference/data/provenance.json`](apps/placebeen/src/lib/reference/data/provenance.json) and shown in-app.
@@ -100,11 +101,15 @@ The **cities-and-countries MVP is runnable today** — logging, the offline map,
 single-file backup/restore all work, covered by a unit-test suite plus Playwright e2e (smoke,
 accessibility, keyboard-only, and a zero-network privacy check).
 
+Recently shipped:
+
+- **Worldwide region coverage** — per-country **% of first-level regions** now works everywhere (GeoNames admin-1, named via a nearest-centroid crosswalk), not just one country.
+
 Planned next:
 
-- **Full region data** beyond France (Natural Earth Admin 1) so per-country region coverage is exact everywhere.
 - **Street-level _offline_ basemap** (PMTiles) — the opt-in online OpenStreetMap detail map already ships; a bundled offline pack is next, behind the same `MapSource` seam.
 - **Native iOS/Android** builds via Capacitor and a device-global, cross-app **Offline Map Store**.
+- **More place types** (e.g. UNESCO sites, parks) and a **travel-ticket log**, kept aggregator-first.
 
 ## How it's built & contributing
 
