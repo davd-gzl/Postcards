@@ -6,6 +6,7 @@ export interface Coverage {
   worldCountryCount: number;
   worldPct: number; // 0..1
   citiesVisited: number;
+  airportsVisited: number;
 }
 
 export interface CountryCoverage {
@@ -40,12 +41,18 @@ export function computeCoverage(visits: Visit[], ref: ReferenceData): Coverage {
       .filter((v) => v.place.kind === "city")
       .map((v) => v.place.id),
   );
+  const airportIds = new Set(
+    onlyVisited(visits)
+      .filter((v) => v.place.kind === "airport")
+      .map((v) => v.place.id),
+  );
   const worldCountryCount = ref.worldCountryCount();
   return {
     countriesVisited,
     worldCountryCount,
     worldPct: pct(countriesVisited, worldCountryCount),
     citiesVisited: cityIds.size,
+    airportsVisited: airportIds.size,
   };
 }
 

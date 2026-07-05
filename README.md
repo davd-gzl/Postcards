@@ -31,8 +31,8 @@ _Place'Been remembers where you've been — it is **not** a trip planner._
 
 ## Features
 
-- **Log visits — or wishlist them** — search any city or country (population-ranked, accent-insensitive) or tap it straight on the map. Save places you *want* to go to a **wishlist**, and **star** your favorites. Optional date and note per visit; duplicates are prevented; every add or remove has one-tap **Undo**.
-- **Offline map** — visited countries are shaded and visited cities show as flag + population pills; pan and zoom the whole world with no network. Prefer streets? One tap switches to an **opt-in online OpenStreetMap** detail map — offline stays the default.
+- **Log visits — or wishlist them** — search any city, country, or **airport** (by name or IATA code, e.g. `CDG`) — population-ranked, accent-insensitive — or tap it straight on the map. Save places you *want* to go to a **wishlist**, and **star** your favorites. Optional date and note per visit; duplicates are prevented; every add or remove has one-tap **Undo**.
+- **Offline map** — visited countries are shaded, visited cities show as flag + population pills, and airports you've been through show as ✈ pills; pan and zoom the whole world with no network. Prefer streets? One tap switches to an **opt-in online OpenStreetMap** detail map — offline stays the default.
 - **Coverage stats** — countries visited and **% of the world**, cities visited, and per-continent progress. For each country you see the **% of its cities** you've reached — plus the **% of its first-level regions** (states/provinces), now covering countries **worldwide**. Wishlisted places never inflate your coverage.
 - **Backup & restore** — export everything to one JSON file and re-import it losslessly on any device, or export **Markdown** to share a readable summary. Imports are schema-validated and sanitized: data is parsed, never executed.
 
@@ -76,6 +76,7 @@ All world facts come from named, openly-licensed datasets — the app authors no
 | Natural Earth (via `world-atlas`) | Country boundaries on the map | Public Domain |
 | GeoNames (via `all-the-cities`) | City gazetteer — **24,323** cities, population ≥ 15k, real GeoNames IDs | CC BY 4.0 |
 | GeoNames admin-1, named via `countries-states-cities` | First-level regions (states/provinces) worldwide — **2,661** regions for per-country region coverage | CC BY 4.0 / ODbL 1.0 |
+| OpenFlights (via `airport-data`, aggregated from OurAirports) | Airports — **5,609** IATA-coded airports worldwide, real coordinates | ODbL 1.0 / OurAirports public domain |
 | `world-countries` | Country → continent grouping (baked into `continents.json`) | ODbL 1.0 |
 
 Provenance is recorded in [`apps/placebeen/src/lib/reference/data/provenance.json`](apps/placebeen/src/lib/reference/data/provenance.json) and shown in-app.
@@ -104,12 +105,14 @@ accessibility, keyboard-only, and a zero-network privacy check).
 Recently shipped:
 
 - **Worldwide region coverage** — per-country **% of first-level regions** now works everywhere (GeoNames admin-1, named via a nearest-centroid crosswalk), not just one country.
+- **Airports as a place type** — log airports you've flown through by name or IATA code; they show as distinct ✈ pills on the map and in your totals, and count toward country coverage (see [`specs/002-place-types/`](specs/002-place-types/)). The place model is now generalized, so further types are drop-in datasets.
 
 Planned next:
 
+- **More place types** — UNESCO World Heritage sites and national parks, once their openly-licensed datasets are vendored (their upstream feeds are network-restricted in CI, so they wait for the dataset, not the code).
 - **Street-level _offline_ basemap** (PMTiles) — the opt-in online OpenStreetMap detail map already ships; a bundled offline pack is next, behind the same `MapSource` seam.
 - **Native iOS/Android** builds via Capacitor and a device-global, cross-app **Offline Map Store**.
-- **More place types** (e.g. UNESCO sites, parks) and a **travel-ticket log**, kept aggregator-first.
+- A **travel-ticket log** with per-trip stats, kept aggregator-first.
 
 ## How it's built & contributing
 

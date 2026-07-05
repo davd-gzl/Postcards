@@ -47,6 +47,9 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
     if (place.kind === "city") {
       const c = ref.cityById(place.id);
       if (c) onFocusCity?.({ lon: c.lon, lat: c.lat });
+    } else if (place.kind === "airport") {
+      const a = ref.airportById(place.id);
+      if (a) onFocusCity?.({ lon: a.lon, lat: a.lat });
     }
     setQ("");
     setActive(-1);

@@ -13,7 +13,9 @@ const isoCountryId = z
 
 export const PlaceRefSchema = z
   .object({
-    kind: z.enum(["country", "city"]),
+    // Additive: older files only ever used "country"/"city", so they still validate.
+    // A file with "airport" opened in an older app build fails closed (unknown kind), by design.
+    kind: z.enum(["country", "city", "airport"]),
     id: z.string().min(1).max(64),
     name: z
       .string()

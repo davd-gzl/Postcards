@@ -59,3 +59,28 @@ export function wishlistCityPoints(visits: Visit[], ref: ReferenceData): Feature
   }
   return { type: "FeatureCollection", features };
 }
+
+/**
+ * Point features for logged airports, carrying the IATA code label, a favorite
+ * flag, and whether it's a wish (want to fly through) vs visited — the marker
+ * canvas colors itself accordingly. Kept separate from city pills so a plane
+ * marker never looks like a city.
+ */
+export function airportPoints(visits: Visit[], ref: ReferenceData): FeatureCollection<Point> {
+  const features: Feature<Point>[] = [];
+  for (const v of visits) {
+    if (v.place.kind !== "airport") continue;
+    const airport = ref.airportById(v.place.id);
+    if (!airport) continue;
+    features.push({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [airport.lon, airport.lat] },
+      properties: {
+        iata: airport.id,
+        wish: v.status === "wishlist" ? 1 : 0,
+        fav: v.favorite ? 1 : 0,
+      },
+    });
+  }
+  return { type: "FeatureCollection", features };
+}

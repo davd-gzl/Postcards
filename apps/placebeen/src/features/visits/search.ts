@@ -29,6 +29,15 @@ export function searchPlaces(ref: ReferenceData, query: string, limit = 8): Sear
     };
   });
 
-  // Interleave, countries first for exact-name matches, then cities.
-  return [...countryResults, ...cityResults].slice(0, limit * 2);
+  const airportResults: SearchResult[] = ref.searchAirports(q, limit).map((a) => {
+    const country = ref.countryByIso2(a.countryIso2);
+    const where = [a.city, country?.name].filter(Boolean).join(", ");
+    return {
+      place: { kind: "airport", id: a.id, name: `${a.name} (${a.id})`, countryId: a.countryIso2 },
+      detail: where ? `Airport · ${where}` : "Airport",
+    };
+  });
+
+  // Countries first for exact-name matches, then cities, then airports.
+  return [...countryResults, ...cityResults, ...airportResults].slice(0, limit * 2);
 }

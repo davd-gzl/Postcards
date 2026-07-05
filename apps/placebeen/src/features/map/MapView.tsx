@@ -5,7 +5,12 @@ import type { FeatureCollection, Polygon, MultiPolygon, Point, Feature } from "g
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import { useVisits } from "../../lib/store/useVisits";
-import { visitedCityPoints, visitedCountryNumerics, wishlistCityPoints } from "./visitedLayers";
+import {
+  airportPoints,
+  visitedCityPoints,
+  visitedCountryNumerics,
+  wishlistCityPoints,
+} from "./visitedLayers";
 import type { Bounds } from "./viewport";
 import type { City, Country } from "../../lib/reference/types";
 import { CONTINENT_COLORS, CONTINENT_FALLBACK } from "../../lib/reference/continents";
@@ -94,6 +99,53 @@ function makeCityPill(iso2: string, popLabel: string, favorite: boolean): ImageD
   return ctx.getImageData(0, 0, w, h);
 }
 
+/**
+ * Draw an airport marker: [✈ CODE] pill, tinted so it never reads as a city
+ * flag-pill. Sky blue = been there, amber = wish to fly through; favorites get a
+ * gold ring. One canvas image per (code, wish, fav), drawn at 2x.
+ */
+function makeAirportPin(iata: string, wish: boolean, favorite: boolean): ImageData {
+  const h = 30; // 15px on screen
+  const pad = 8;
+  const gap = 5;
+  const planeFont = `16px ${EMOJI_FONT}`;
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d")!;
+  const plane = "✈️";
+  ctx.font = planeFont;
+  const planeW = ctx.measureText(plane).width;
+  ctx.font = PILL_FONT;
+  const codeW = ctx.measureText(iata).width;
+  const w = Math.ceil(pad + planeW + gap + codeW + pad);
+  canvas.width = w;
+  canvas.height = h;
+
+  const accent = wish ? "#d97706" : "#0284c7";
+  const bg = wish ? "#fff7ed" : "#eff6ff";
+  const r = h / 2;
+  ctx.beginPath();
+  ctx.moveTo(r, 1);
+  ctx.arcTo(w - 1, 1, w - 1, h - 1, r - 1);
+  ctx.arcTo(w - 1, h - 1, 1, h - 1, r - 1);
+  ctx.arcTo(1, h - 1, 1, 1, r - 1);
+  ctx.arcTo(1, 1, w - 1, 1, r - 1);
+  ctx.closePath();
+  ctx.fillStyle = bg;
+  ctx.fill();
+  ctx.lineWidth = favorite ? 3 : 1.5;
+  ctx.strokeStyle = favorite ? "#f59e0b" : accent;
+  ctx.stroke();
+
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.font = planeFont;
+  ctx.fillText(plane, pad, h / 2 + 1);
+  ctx.font = PILL_FONT;
+  ctx.fillStyle = accent;
+  ctx.fillText(iata, pad + planeW + gap, h / 2 + 1);
+  return ctx.getImageData(0, 0, w, h);
+}
+
 function inViewPoints(cities: City[]): FeatureCollection<Point> {
   const features: Feature<Point>[] = cities.map((c) => ({
     type: "Feature",
@@ -172,6 +224,8 @@ export function MapView({
     src?.setData(visitedCityPoints(visitsRef.current, ref));
     const wishSrc = map.getSource("wishlist") as GeoJSONSource | undefined;
     wishSrc?.setData(wishlistCityPoints(visitsRef.current, ref));
+    const airSrc = map.getSource("airports") as GeoJSONSource | undefined;
+    airSrc?.setData(airportPoints(visitsRef.current, ref));
   }
 
   function applyViewCities(map: MlMap) {
@@ -198,14 +252,23 @@ export function MapView({
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
-    // Generate marker pill images lazily: "pill-<CC>-<0|1>-<popLabel>".
+    // Generate marker images lazily.
+    //  city:    "pill-<CC>-<0|1 fav>-<popLabel>"
+    //  airport: "air-<IATA>-<0|1 wish>-<0|1 fav>"
     map.on("styleimagemissing", (e) => {
-      if (!e.id.startsWith("pill-") || map.hasImage(e.id)) return;
-      const rest = e.id.slice(5);
-      const cc = rest.slice(0, 2);
-      const fav = rest.slice(3, 4) === "1";
-      const popLabel = rest.slice(5);
-      map.addImage(e.id, makeCityPill(cc, popLabel, fav), { pixelRatio: 2 });
+      if (map.hasImage(e.id)) return;
+      if (e.id.startsWith("pill-")) {
+        const rest = e.id.slice(5);
+        const cc = rest.slice(0, 2);
+        const fav = rest.slice(3, 4) === "1";
+        const popLabel = rest.slice(5);
+        map.addImage(e.id, makeCityPill(cc, popLabel, fav), { pixelRatio: 2 });
+      } else if (e.id.startsWith("air-")) {
+        const [, iata, wish, fav] = e.id.split("-");
+        map.addImage(e.id, makeAirportPin(iata ?? "", wish === "1", fav === "1"), {
+          pixelRatio: 2,
+        });
+      }
     });
 
     map.on("load", async () => {
@@ -306,6 +369,30 @@ export function MapView({
             "symbol-sort-key": ["get", "sortKey"],
           },
         });
+        // Logged airports: plane pills (sky = been, amber = wish), on top of cities.
+        map.addSource("airports", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        map.addLayer({
+          id: "airports",
+          type: "symbol",
+          source: "airports",
+          layout: {
+            "icon-image": [
+              "concat",
+              "air-",
+              ["get", "iata"],
+              "-",
+              ["to-string", ["get", "wish"]],
+              "-",
+              ["to-string", ["get", "fav"]],
+            ],
+            "icon-size": 1,
+            "icon-padding": 1,
+            "icon-allow-overlap": true,
+          },
+        });
         loadedRef.current = true;
         applyVisited(map);
         applyViewCities(map);
@@ -322,9 +409,10 @@ export function MapView({
       if (!loadedRef.current || !onCountryTapRef.current) return;
       const layers = ["countries-visited", "countries-base"].filter((l) => map.getLayer(l));
       if (!layers.length) return;
-      const hitCity = map
-        .queryRenderedFeatures(e.point, { layers: ["cities-visited", "cities-inview"].filter((l) => map.getLayer(l)) });
-      if (hitCity.length) return;
+      const hitMarker = map.queryRenderedFeatures(e.point, {
+        layers: ["cities-visited", "cities-inview", "airports"].filter((l) => map.getLayer(l)),
+      });
+      if (hitMarker.length) return;
       const feats = map.queryRenderedFeatures(e.point, { layers });
       const numeric = feats[0]?.properties?.numeric;
       if (numeric == null) return;

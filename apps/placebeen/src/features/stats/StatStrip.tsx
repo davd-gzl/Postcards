@@ -34,6 +34,12 @@ export function StatStrip() {
         <span className="ss-num ss-been">{formatInt(stats.cov.citiesVisited)}</span>
         <span className="ss-label">been</span>
       </span>
+      {stats.cov.airportsVisited > 0 && (
+        <span className="ss-item">
+          <span className="ss-num ss-air">{formatInt(stats.cov.airportsVisited)}</span>
+          <span className="ss-label">airports</span>
+        </span>
+      )}
       <span className="ss-item">
         <span className="ss-num ss-want">{formatInt(stats.want)}</span>
         <span className="ss-label">want</span>

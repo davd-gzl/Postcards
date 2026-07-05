@@ -4,9 +4,25 @@ import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
 import { countryFlag, formatDate } from "../../lib/format/format";
+import type { Visit } from "../../lib/schema/models";
+import type { ReferenceData } from "../../lib/reference/types";
 import { StateToggles } from "./StateToggles";
 
 type View = "visited" | "wishlist" | "countries";
+
+/** Map coordinate to fly to (if known) and the secondary "· type · place" label for a visit. */
+function placeMeta(ref: ReferenceData, v: Visit): { coord: { lon: number; lat: number } | null; sub: string } {
+  const country = ref.countryByIso2(v.place.countryId)?.name ?? v.place.countryId;
+  if (v.place.kind === "city") {
+    const c = ref.cityById(v.place.id);
+    return { coord: c ? { lon: c.lon, lat: c.lat } : null, sub: country };
+  }
+  if (v.place.kind === "airport") {
+    const a = ref.airportById(v.place.id);
+    return { coord: a ? { lon: a.lon, lat: a.lat } : null, sub: `Airport · ${country}` };
+  }
+  return { coord: null, sub: "Country" };
+}
 
 /** Your visited places, your wish-to-go list, + a checklist of every country. */
 export function PlacesScreen() {
@@ -99,15 +115,14 @@ export function PlacesScreen() {
           )}
           <ul className="city-list">
             {visited.map((v) => {
-              const country = ref.countryByIso2(v.place.countryId)?.name ?? v.place.countryId;
-              const city = v.place.kind === "city" ? ref.cityById(v.place.id) : undefined;
+              const { coord, sub } = placeMeta(ref, v);
               return (
                 <li key={v.visitId} className="city-row compact">
                   <button
                     className="city-focus"
                     type="button"
-                    onClick={() => (city ? flyTo(city.lon, city.lat) : undefined)}
-                    aria-label={city ? `Show ${v.place.name} on the map` : v.place.name}
+                    onClick={() => (coord ? flyTo(coord.lon, coord.lat) : undefined)}
+                    aria-label={coord ? `Show ${v.place.name} on the map` : v.place.name}
                   >
                     <span className="city-line">
                       <span className="flag" aria-hidden>
@@ -115,7 +130,7 @@ export function PlacesScreen() {
                       </span>
                       <span className="city-name">{v.place.name}</span>
                       <span className="city-sub">
-                        · {v.place.kind === "city" ? country : "Country"}
+                        · {sub}
                         {v.date ? ` · ${formatDate(v.date)}` : ""}
                         {v.note ? ` · ${v.note}` : ""}
                       </span>
@@ -156,24 +171,21 @@ export function PlacesScreen() {
           )}
           <ul className="city-list">
             {wishlist.map((v) => {
-              const country = ref.countryByIso2(v.place.countryId)?.name ?? v.place.countryId;
-              const city = v.place.kind === "city" ? ref.cityById(v.place.id) : undefined;
+              const { coord, sub } = placeMeta(ref, v);
               return (
                 <li key={v.visitId} className="city-row compact">
                   <button
                     className="city-focus"
                     type="button"
-                    onClick={() => (city ? flyTo(city.lon, city.lat) : undefined)}
-                    aria-label={city ? `Show ${v.place.name} on the map` : v.place.name}
+                    onClick={() => (coord ? flyTo(coord.lon, coord.lat) : undefined)}
+                    aria-label={coord ? `Show ${v.place.name} on the map` : v.place.name}
                   >
                     <span className="city-line">
                       <span className="flag" aria-hidden>
                         {countryFlag(v.place.countryId)}
                       </span>
                       <span className="city-name">{v.place.name}</span>
-                      <span className="city-sub">
-                        · {v.place.kind === "city" ? country : "Country"}
-                      </span>
+                      <span className="city-sub">· {sub}</span>
                     </span>
                   </button>
                   <button

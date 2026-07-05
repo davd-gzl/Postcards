@@ -24,6 +24,12 @@
     "url": "https://www.geonames.org"
   },
   {
+    "dataset": "Airports — OpenFlights (IATA-coded, aggregated from OurAirports)",
+    "license": "ODbL-1.0 / OurAirports public domain",
+    "version": "airport-data 1.0.1",
+    "url": "https://openflights.org/data.html"
+  },
+  {
     "dataset": "world-countries (country → continent/region)",
     "license": "ODbL-1.0",
     "version": "5.1.0",

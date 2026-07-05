@@ -28,6 +28,15 @@ export interface City {
   population: number | null;
 }
 
+export interface Airport {
+  id: string; // IATA code (globally unique), e.g. "CDG"
+  name: string;
+  city: string; // home city, may be empty
+  countryIso2: string;
+  lat: number;
+  lon: number;
+}
+
 export interface ReferenceProvenance {
   dataset: string;
   license: string;
@@ -45,8 +54,11 @@ export interface ReferenceData {
   citiesOf(countryIso2: string): City[];
   allCities(): City[];
   cityById(id: string): City | undefined;
+  allAirports(): Airport[];
+  airportById(id: string): Airport | undefined;
   searchCountries(query: string, limit?: number): Country[];
   searchCities(query: string, limit?: number): City[];
+  searchAirports(query: string, limit?: number): Airport[];
   worldCountryCount(): number;
   provenance: ReferenceProvenance[];
 }

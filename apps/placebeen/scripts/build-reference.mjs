@@ -3,6 +3,8 @@
 //  - public/reference/subdivisions.json  first-level regions (GeoNames admin-1 taxonomy),
 //                                         named by nearest region centroid from the dr5hn
 //                                         countries-states-cities dataset (ODbL/OpenDB).
+//  - public/reference/airports.json      IATA-coded airports (OpenFlights, aggregated from the
+//                                         public-domain OurAirports), via `airport-data`.
 // Region names are matched GEOGRAPHICALLY (nearest centroid), not by code, because GeoNames
 // admin codes rarely equal ISO/other code schemes. Aggregator-only: reshapes existing data.
 //
@@ -15,6 +17,9 @@ import { dirname, join } from "node:path";
 const require = createRequire(import.meta.url);
 const allCities = require("all-the-cities");
 const { State } = require("country-state-city");
+const airportData = require("airport-data");
+const countries = require("i18n-iso-countries");
+countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
 
 const MIN_POPULATION = 15000;
 
@@ -92,3 +97,43 @@ console.log(`cities: ${cities.length} | subdivisions: ${subdivisions.length}`);
 console.log(`named: ${named}/${subdivisions.length} (${Math.round((named / subdivisions.length) * 100)}%)`);
 console.log(`countries with regions: ${new Set(subdivisions.map((s) => s.countryIso2)).size}`);
 console.log(`Paris subId: ${cities.find((c) => c.id === "2988507")?.subdivisionId}`);
+
+// --- Airports (IATA-coded, OpenFlights via airport-data) ---
+// A few OpenFlights country names differ from ISO 3166 English names; map them to
+// alpha-2 explicitly. "Netherlands Antilles" is deliberately absent — the country
+// dissolved in 2010 into CW/SX/BQ and the source can't tell us which, so those few
+// airports are dropped rather than guessed (Constitution I: never invent).
+const AIRPORT_CC_OVERRIDES = {
+  "Congo (Kinshasa)": "CD", "Congo (Brazzaville)": "CG", Burma: "MM", Laos: "LA",
+  Syria: "SY", Micronesia: "FM", "Virgin Islands": "VI", "British Virgin Islands": "VG",
+  "Falkland Islands": "FK", Moldova: "MD", Macedonia: "MK", Swaziland: "SZ", Macau: "MO",
+  Brunei: "BN", "East Timor": "TL", "Midway Islands": "UM", "Johnston Atoll": "UM",
+  "Wake Island": "UM",
+};
+
+const airports = [];
+const seenIata = new Set();
+let airportsDropped = 0;
+for (const a of airportData) {
+  const iata = a.iata;
+  if (!iata || !/^[A-Z]{3}$/.test(iata) || seenIata.has(iata)) continue;
+  if (!Number.isFinite(a.latitude) || !Number.isFinite(a.longitude)) continue;
+  const cc = AIRPORT_CC_OVERRIDES[a.country] ?? countries.getAlpha2Code(a.country, "en");
+  if (!cc) {
+    airportsDropped++;
+    continue;
+  }
+  seenIata.add(iata);
+  airports.push({
+    id: iata,
+    name: a.name,
+    city: a.city && a.city !== a.name ? a.city : "",
+    countryIso2: cc,
+    lat: Math.round(a.latitude * 1e4) / 1e4,
+    lon: Math.round(a.longitude * 1e4) / 1e4,
+  });
+}
+airports.sort((a, b) => a.id.localeCompare(b.id));
+writeFileSync(join(refDir, "airports.json"), JSON.stringify(airports) + "\n");
+console.log(`airports: ${airports.length} (dropped ${airportsDropped} with unresolved country)`);
+console.log(`countries with airports: ${new Set(airports.map((a) => a.countryIso2)).size}`);

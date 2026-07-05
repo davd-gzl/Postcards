@@ -74,6 +74,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.3
         version: 4.7.0(vite@5.4.21(@types/node@22.20.0)(terser@5.48.0))
+      airport-data:
+        specifier: ^1.0.1
+        version: 1.0.1
       all-the-cities:
         specifier: ^3.1.0
         version: 3.1.0
@@ -1190,6 +1193,9 @@ packages:
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
+
+  airport-data@1.0.1:
+    resolution: {integrity: sha512-Y3k2q5I/CwLKW1mul7ECRQQSEQpBm5jebmgutjO/DLbnBp6CG7jaKD58uu8O8HS0oip23TurO6czXBh5Cet9zg==}
 
   ajv@8.20.0:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
@@ -3738,6 +3744,8 @@ snapshots:
   acorn@8.17.0: {}
 
   agent-base@7.1.4: {}
+
+  airport-data@1.0.1: {}
 
   ajv@8.20.0:
     dependencies:
