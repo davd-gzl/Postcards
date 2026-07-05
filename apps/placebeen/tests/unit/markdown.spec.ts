@@ -19,14 +19,14 @@ function visit(name: string, note: string | null): Visit {
 
 describe("toMarkdown", () => {
   it("renders a title and a table", () => {
-    const md = toMarkdown([visit("Paris", null)], ref);
+    const md = toMarkdown([visit("Paris", null)], [], ref);
     expect(md).toContain("# Places I've been");
     expect(md).toContain("| Place | Type | Country | Date |");
     expect(md).toContain("Paris");
   });
 
   it("escapes pipes so free text cannot break the table", () => {
-    const md = toMarkdown([visit("A|B", "note|with|pipes")], ref);
+    const md = toMarkdown([visit("A|B", "note|with|pipes")], [], ref);
     expect(md).toContain("A\\|B");
     expect(md).not.toMatch(/\| A\|B \|/); // raw unescaped pipe must not appear
   });

@@ -1,0 +1,130 @@
+import { useId, useMemo, useRef, useState } from "react";
+import { getReferenceData } from "../../lib/reference/referenceData";
+import { searchPlaces } from "../visits/search";
+import { countryFlag } from "../../lib/format/format";
+import type { PlaceRef } from "../../lib/schema/models";
+
+/**
+ * Keyboard-operable autocomplete that resolves to a single PlaceRef (a city,
+ * airport, or country). Reused for both endpoints of a trip. Aggregator-only:
+ * only reference places can be chosen — nothing is invented.
+ */
+export function PlacePicker({
+  label,
+  value,
+  onPick,
+}: {
+  label: string;
+  value: PlaceRef | null;
+  onPick: (place: PlaceRef | null) => void;
+}) {
+  const ref = useMemo(() => getReferenceData(), []);
+  const [q, setQ] = useState("");
+  const [active, setActive] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listId = useId();
+
+  const results = useMemo(() => searchPlaces(ref, q), [ref, q]);
+  const open = q.trim().length >= 1 && !value && results.length > 0;
+
+  function choose(place: PlaceRef) {
+    onPick(place);
+    setQ("");
+    setActive(-1);
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open) return;
+    if (e.key === "ArrowDown") {
+      setActive((a) => (a + 1) % results.length);
+      e.preventDefault();
+    } else if (e.key === "ArrowUp") {
+      setActive((a) => (a <= 0 ? results.length - 1 : a - 1));
+      e.preventDefault();
+    } else if (e.key === "Enter") {
+      const r = results[active >= 0 ? active : 0];
+      if (r) choose(r.place);
+      e.preventDefault();
+    } else if (e.key === "Escape") {
+      setQ("");
+      setActive(-1);
+    }
+  }
+
+  if (value) {
+    return (
+      <div className="picker">
+        <span className="picker-label">{label}</span>
+        <div className="picker-chip">
+          <span className="flag" aria-hidden>
+            {countryFlag(value.countryId)}
+          </span>
+          <span className="picker-chip-name">{value.name}</span>
+          <button
+            type="button"
+            className="picker-clear"
+            aria-label={`Clear ${label}`}
+            onClick={() => {
+              onPick(null);
+              setTimeout(() => inputRef.current?.focus(), 0);
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="picker">
+      <label className="picker-label" htmlFor={`${listId}-input`}>
+        {label}
+      </label>
+      <div className="picker-field">
+        <input
+          id={`${listId}-input`}
+          ref={inputRef}
+          type="search"
+          className="search-input"
+          placeholder="City, airport, or country…"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={active >= 0 ? `${listId}-opt-${active}` : undefined}
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setActive(-1);
+          }}
+          onKeyDown={onKeyDown}
+        />
+        {open && (
+          <ul className="results" id={listId} role="listbox" aria-label={label}>
+            {results.map((r, i) => (
+              <li
+                key={`${r.place.kind}:${r.place.id}`}
+                id={`${listId}-opt-${i}`}
+                role="option"
+                aria-selected={i === active}
+              >
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className={i === active ? "opt-active" : undefined}
+                  onClick={() => choose(r.place)}
+                >
+                  <span className="result-main">
+                    <span className="result-name">{r.place.name}</span>
+                    <span className="result-detail">{r.detail}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}

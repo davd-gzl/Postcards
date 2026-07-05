@@ -1,0 +1,162 @@
+import { useMemo, useState } from "react";
+import { getReferenceData } from "../../lib/reference/referenceData";
+import { useTrips } from "../../lib/store/useTrips";
+import { useToast } from "../../lib/store/useToast";
+import { formatDate, formatKm } from "../../lib/format/format";
+import type { PlaceRef, TravelMode } from "../../lib/schema/models";
+import { PlacePicker } from "./PlacePicker";
+import { travelTotals, tripDistanceKm } from "./distance";
+
+const MODES: { value: TravelMode; label: string; glyph: string }[] = [
+  { value: "flight", label: "Flight", glyph: "✈️" },
+  { value: "train", label: "Train", glyph: "🚆" },
+  { value: "bus", label: "Bus", glyph: "🚌" },
+  { value: "ferry", label: "Ferry", glyph: "⛴️" },
+  { value: "car", label: "Car", glyph: "🚗" },
+  { value: "other", label: "Other", glyph: "•" },
+];
+const GLYPH: Record<TravelMode, string> = Object.fromEntries(
+  MODES.map((m) => [m.value, m.glyph]),
+) as Record<TravelMode, string>;
+
+/** Compact endpoint label: the IATA code for airports (names are long), else the place name. */
+function endpointLabel(p: PlaceRef): string {
+  return p.kind === "airport" ? p.id : p.name;
+}
+
+/** Log of journeys you've taken: add a trip, see per-trip distance and totals. */
+export function TravelScreen() {
+  const ref = useMemo(() => getReferenceData(), []);
+  const trips = useTrips((s) => s.trips);
+  const addTrip = useTrips((s) => s.addTrip);
+  const removeTrip = useTrips((s) => s.removeTrip);
+  const setAll = useTrips((s) => s.setAll);
+  const showToast = useToast((s) => s.show);
+
+  const [from, setFrom] = useState<PlaceRef | null>(null);
+  const [to, setTo] = useState<PlaceRef | null>(null);
+  const [mode, setMode] = useState<TravelMode>("flight");
+  const [date, setDate] = useState("");
+
+  const totals = useMemo(() => travelTotals(trips, ref), [trips, ref]);
+  const sorted = useMemo(
+    () => [...trips].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")),
+    [trips],
+  );
+
+  async function onAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!from || !to) return;
+    const prev = useTrips.getState().trips;
+    await addTrip({ from, to, mode, date: date || null });
+    showToast(`Added ${endpointLabel(from)} → ${endpointLabel(to)}`, () => setAll(prev));
+    setFrom(null);
+    setTo(null);
+    setDate("");
+  }
+
+  function removeWithUndo(tripId: string, label: string) {
+    const prev = useTrips.getState().trips;
+    void removeTrip(tripId);
+    showToast(`Removed ${label}`, () => setAll(prev));
+  }
+
+  return (
+    <section aria-label="Travel log">
+      <div className="section-head">
+        <h2>Travel log</h2>
+      </div>
+
+      <div className="travel-totals" aria-label="Travel totals">
+        <span className="tt-main">
+          <strong>{totals.trips}</strong> {totals.trips === 1 ? "trip" : "trips"}
+        </span>
+        <span className="tt-sep" aria-hidden />
+        <span className="tt-main">
+          <strong>{formatKm(totals.totalKm)}</strong> travelled
+        </span>
+        {totals.byMode.length > 0 && (
+          <span className="tt-modes">
+            {totals.byMode.map((m) => (
+              <span className="tt-mode" key={m.mode} title={`${m.trips} by ${m.mode}`}>
+                {GLYPH[m.mode]} {m.trips}
+              </span>
+            ))}
+          </span>
+        )}
+      </div>
+
+      <form className="trip-form" onSubmit={onAdd}>
+        <PlacePicker label="From" value={from} onPick={setFrom} />
+        <PlacePicker label="To" value={to} onPick={setTo} />
+        <div className="trip-form-row">
+          <label className="picker-label" htmlFor="trip-mode">
+            Mode
+            <select
+              id="trip-mode"
+              className="select"
+              value={mode}
+              onChange={(e) => setMode(e.target.value as TravelMode)}
+            >
+              {MODES.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.glyph} {m.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="picker-label" htmlFor="trip-date">
+            Date (optional)
+            <input
+              id="trip-date"
+              className="select"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </label>
+        </div>
+        <button className="btn" type="submit" disabled={!from || !to}>
+          Add trip
+        </button>
+      </form>
+
+      {trips.length === 0 ? (
+        <p className="muted empty">
+          No trips yet. Add a journey you've taken — pick where you went from and to, and how.
+        </p>
+      ) : (
+        <ul className="city-list" style={{ marginTop: 12 }}>
+          {sorted.map((t) => {
+            const km = tripDistanceKm(t, ref);
+            const label = `${endpointLabel(t.from)} → ${endpointLabel(t.to)}`;
+            return (
+              <li key={t.tripId} className="city-row compact">
+                <div className="city-focus" style={{ cursor: "default" }}>
+                  <span className="city-line">
+                    <span className="flag" aria-hidden>
+                      {GLYPH[t.mode]}
+                    </span>
+                    <span className="city-name">{label}</span>
+                    <span className="city-sub">
+                      {km == null ? "" : `· ${formatKm(km)}`}
+                      {t.date ? ` · ${formatDate(t.date)}` : ""}
+                    </span>
+                  </span>
+                </div>
+                <button
+                  className="link-danger"
+                  type="button"
+                  onClick={() => removeWithUndo(t.tripId, label)}
+                  aria-label={`Remove trip ${label}`}
+                >
+                  Remove
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}

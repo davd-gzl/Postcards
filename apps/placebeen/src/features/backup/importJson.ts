@@ -1,8 +1,8 @@
-import { PlaceBeenFileSchema, SCHEMA_VERSION, type Visit } from "../../lib/schema/models";
+import { PlaceBeenFileSchema, SCHEMA_VERSION, type Trip, type Visit } from "../../lib/schema/models";
 import { dedupeUpsert } from "../../lib/store/useVisits";
 
 export type ImportResult =
-  | { ok: true; visits: Visit[]; warnings: string[] }
+  | { ok: true; visits: Visit[]; trips: Trip[]; warnings: string[] }
   | { ok: false; error: string };
 
 /** Reject absurdly large inputs before parsing (main-thread DoS guard). */
@@ -47,7 +47,8 @@ export function importFile(text: string): ImportResult {
   // Future: migrate parsed.data.schemaVersion < SCHEMA_VERSION here.
   // Enforce one-visit-per-place on import too (FR-015), not only on add.
   const visits = parsed.data.visits.reduce<Visit[]>((acc, v) => dedupeUpsert(acc, v), []);
+  const trips = parsed.data.trips; // schema defaults missing trips to []
   const warnings =
     visits.length !== parsed.data.visits.length ? ["Merged duplicate places in the file."] : [];
-  return { ok: true, visits, warnings };
+  return { ok: true, visits, trips, warnings };
 }

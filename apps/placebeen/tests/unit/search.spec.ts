@@ -30,4 +30,15 @@ describe("searchPlaces (aggregator-only, real gazetteer)", () => {
   it("returns nothing for an unknown place (never invents)", () => {
     expect(searchPlaces(ref, "zzznotarealplace")).toHaveLength(0);
   });
+
+  it("ranks an exact IATA code first, ahead of a like-named city (LAX before Laxou)", () => {
+    const results = searchPlaces(ref, "LAX");
+    expect(results[0]!.place.kind).toBe("airport");
+    expect(results[0]!.place.id).toBe("LAX");
+  });
+
+  it("still puts places first for ordinary name queries (Paris → country/city, not airport)", () => {
+    const results = searchPlaces(ref, "Paris");
+    expect(results[0]!.place.kind).not.toBe("airport");
+  });
 });

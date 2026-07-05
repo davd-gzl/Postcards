@@ -44,3 +44,13 @@ export function ListIcon() {
     </svg>
   );
 }
+
+export function RouteIcon() {
+  return (
+    <svg {...common}>
+      <circle cx="6" cy="19" r="2" />
+      <circle cx="18" cy="5" r="2" />
+      <path d="M8 19h6a4 4 0 0 0 0-8H10a4 4 0 0 1 0-8h6" />
+    </svg>
+  );
+}

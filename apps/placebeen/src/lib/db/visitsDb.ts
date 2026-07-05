@@ -3,27 +3,35 @@ import type { Visit } from "../schema/models";
 
 // On-device working store (Constitution II: local-first, no backend).
 const DB_NAME = "placebeen";
-const DB_VERSION = 1;
+// v2 adds the "trips" store (Travel Log). Upgrades are additive & idempotent, so
+// existing v1 databases keep their visits.
+const DB_VERSION = 2;
 const STORE = "visits";
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
-function hasIndexedDB(): boolean {
+export function hasIndexedDB(): boolean {
   return typeof indexedDB !== "undefined";
 }
 
-function db(): Promise<IDBPDatabase> {
+/** Shared handle for every on-device store (visits, trips). */
+export function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
       upgrade(database) {
         if (!database.objectStoreNames.contains(STORE)) {
           database.createObjectStore(STORE, { keyPath: "visitId" });
         }
+        if (!database.objectStoreNames.contains("trips")) {
+          database.createObjectStore("trips", { keyPath: "tripId" });
+        }
       },
     });
   }
   return dbPromise;
 }
+
+const db = getDb;
 
 export async function getAllVisits(): Promise<Visit[]> {
   if (!hasIndexedDB()) return [];

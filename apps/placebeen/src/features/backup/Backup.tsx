@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useVisits } from "../../lib/store/useVisits";
+import { useTrips } from "../../lib/store/useTrips";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { serializeFile, EXPORT_FILENAME } from "./exportJson";
 import { toMarkdown } from "./exportMarkdown";
@@ -21,14 +22,16 @@ export function Backup() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const setAll = useVisits((s) => s.setAll);
+  const trips = useTrips((s) => s.trips);
+  const setAllTrips = useTrips((s) => s.setAll);
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   function exportJson() {
-    download(EXPORT_FILENAME, serializeFile(visits), "application/json");
+    download(EXPORT_FILENAME, serializeFile(visits, trips), "application/json");
   }
   function exportMd() {
-    download("places.md", toMarkdown(visits, ref), "text/markdown");
+    download("places.md", toMarkdown(visits, trips, ref), "text/markdown");
   }
 
   async function onImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -41,15 +44,22 @@ export function Backup() {
       setMessage({ kind: "err", text: result.error });
       return;
     }
-    if (visits.length > 0) {
+    if (visits.length > 0 || trips.length > 0) {
       const ok = window.confirm(
-        `Replace your ${visits.length} place${visits.length === 1 ? "" : "s"} with the ` +
-          `${result.visits.length} in this file? This can't be undone.`,
+        `Replace your ${visits.length} place${visits.length === 1 ? "" : "s"} and ` +
+          `${trips.length} trip${trips.length === 1 ? "" : "s"} with the ` +
+          `${result.visits.length} place${result.visits.length === 1 ? "" : "s"} and ` +
+          `${result.trips.length} trip${result.trips.length === 1 ? "" : "s"} in this file? ` +
+          `This can't be undone.`,
       );
       if (!ok) return;
     }
     await setAll(result.visits);
-    setMessage({ kind: "ok", text: `Imported ${result.visits.length} places.` });
+    await setAllTrips(result.trips);
+    setMessage({
+      kind: "ok",
+      text: `Imported ${result.visits.length} places and ${result.trips.length} trips.`,
+    });
   }
 
   return (

@@ -834,6 +834,122 @@ button {
   color: var(--text);
 }
 
+/* ---- Travel log ---- */
+.travel-totals {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  background: var(--bg-sub);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+}
+.tt-main {
+  font-size: 15px;
+  color: var(--muted);
+}
+.tt-main strong {
+  color: var(--text);
+  font-size: 18px;
+}
+.tt-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+}
+.tt-modes {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.tt-mode {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.trip-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.trip-form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.trip-form-row .picker-label {
+  flex: 1;
+  min-width: 130px;
+}
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.picker-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.picker-field {
+  position: relative;
+}
+.select {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sub);
+  color: var(--text);
+  font-size: 16px;
+}
+.picker-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+}
+.picker-chip-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.picker-clear {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: var(--bg-sub);
+  color: var(--muted);
+  font-size: 13px;
+}
+.picker-clear:hover,
+.picker-clear:focus-visible {
+  background: var(--border);
+  color: var(--text);
+}
+
 /* Desktop refinements */
 @media (min-width: 760px) {
   .map-screen {

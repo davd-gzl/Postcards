@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type Tab = "map" | "stats" | "places";
+export type Tab = "map" | "stats" | "places" | "trips";
 
 // Small cross-cutting UI store:
 // - tab lives here so any screen can navigate (e.g. a Places row jumping to the map)

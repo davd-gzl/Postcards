@@ -1,13 +1,15 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { useVisits } from "../lib/store/useVisits";
+import { useTrips } from "../lib/store/useTrips";
 import { useUi, type Tab } from "../lib/store/useUi";
 import { StatsView } from "../features/stats/StatsView";
 import { PlacesScreen } from "../features/visits/PlacesScreen";
+import { TravelScreen } from "../features/travel/TravelScreen";
 import { Backup } from "../features/backup/Backup";
 import { Attribution } from "../ui/Attribution";
 import { ShortcutsHelp } from "../ui/ShortcutsHelp";
 import { Toast } from "../ui/Toast";
-import { MapIcon, ChartIcon, ListIcon } from "../ui/icons";
+import { MapIcon, ChartIcon, ListIcon, RouteIcon } from "../ui/icons";
 import { useState } from "react";
 
 // Code-split MapLibre so it loads only when the map is shown.
@@ -19,6 +21,7 @@ const TABS: { id: Tab; label: string; keys: string[]; Icon: () => JSX.Element }[
   { id: "map", label: "Map", keys: ["1", "m"], Icon: MapIcon },
   { id: "stats", label: "Stats", keys: ["2", "s"], Icon: ChartIcon },
   { id: "places", label: "Places", keys: ["3", "p"], Icon: ListIcon },
+  { id: "trips", label: "Trips", keys: ["4", "t"], Icon: RouteIcon },
 ];
 
 export function App() {
@@ -30,6 +33,7 @@ export function App() {
 
   useEffect(() => {
     void useVisits.getState().load();
+    void useTrips.getState().load();
   }, []);
 
   // Move focus to the content region on tab change (skip initial mount).
@@ -104,6 +108,11 @@ export function App() {
             <PlacesScreen />
             <Backup />
             <Attribution />
+          </div>
+        )}
+        {tab === "trips" && (
+          <div className="screen">
+            <TravelScreen />
           </div>
         )}
       </main>

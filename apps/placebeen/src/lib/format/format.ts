@@ -24,6 +24,11 @@ export function formatCompact(n: number, locale?: string): string {
   }).format(n);
 }
 
+/** Great-circle distance in km -> localized "1,234 km" (rounded to the km). */
+export function formatKm(km: number, locale?: string): string {
+  return `${formatInt(km, locale)} km`;
+}
+
 /** value in [0,1] -> localized percentage, e.g. 0.1234 -> "12%". */
 export function formatPercent(value: number, locale?: string, digits = 0): string {
   return new Intl.NumberFormat(locale, {

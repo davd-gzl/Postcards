@@ -48,6 +48,42 @@ export const VisitSchema = z.object({
   addedAt: z.string().datetime({ offset: true }),
 }).strict();
 
+/** How a journey was made. Additive: unknown modes never occur (closed enum). */
+export const TravelModeSchema = z.enum(["flight", "train", "bus", "ferry", "car", "other"]);
+
+/**
+ * A journey already taken (Travel Log). from/to reuse PlaceRef so a leg can join
+ * cities, airports, or countries. Distance is DERIVED from endpoint coordinates
+ * at read time (see features/travel/distance.ts) — never stored, never invented.
+ */
+export const TripSchema = z
+  .object({
+    tripId: z.string().uuid(),
+    from: PlaceRefSchema,
+    to: PlaceRefSchema,
+    mode: TravelModeSchema.optional().default("flight"),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional()
+      .transform((v) => v ?? null),
+    carrier: z
+      .string()
+      .max(120)
+      .nullable()
+      .optional()
+      .transform((v) => (v == null ? null : sanitizeText(v, 120))),
+    note: z
+      .string()
+      .max(2000)
+      .nullable()
+      .optional()
+      .transform((v) => (v == null ? null : sanitizeText(v, 2000))),
+    addedAt: z.string().datetime({ offset: true }),
+  })
+  .strict();
+
 export const ReferenceSourceSchema = z
   .object({
     dataset: z.string().max(100),
@@ -63,6 +99,8 @@ export const PlaceBeenFileSchema = z
     schemaVersion: z.number().int().min(1),
     exportedAt: z.string().datetime({ offset: true }),
     visits: z.array(VisitSchema),
+    // Additive & optional: files predating the travel log import unchanged.
+    trips: z.array(TripSchema).optional().default([]),
     referenceSources: z.array(ReferenceSourceSchema).optional().default([]),
   })
   .strict();
@@ -70,6 +108,8 @@ export const PlaceBeenFileSchema = z
 export type PlaceKind = z.infer<typeof PlaceRefSchema>["kind"];
 export type PlaceRef = z.infer<typeof PlaceRefSchema>;
 export type Visit = z.infer<typeof VisitSchema>;
+export type TravelMode = z.infer<typeof TravelModeSchema>;
+export type Trip = z.infer<typeof TripSchema>;
 export type ReferenceSource = z.infer<typeof ReferenceSourceSchema>;
 export type PlaceBeenFile = z.infer<typeof PlaceBeenFileSchema>;
 

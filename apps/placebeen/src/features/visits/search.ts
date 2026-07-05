@@ -38,6 +38,12 @@ export function searchPlaces(ref: ReferenceData, query: string, limit = 8): Sear
     };
   });
 
-  // Countries first for exact-name matches, then cities, then airports.
-  return [...countryResults, ...cityResults, ...airportResults].slice(0, limit * 2);
+  // An exact 3-letter IATA code (e.g. "LAX", "CDG") should surface that airport
+  // first — otherwise a city like "Laxou" would bury it. Otherwise keep the
+  // place-first order: countries, then cities, then airports.
+  const isIataCode = /^[a-z]{3}$/i.test(q) && !!ref.airportById(q);
+  const ordered = isIataCode
+    ? [...airportResults, ...countryResults, ...cityResults]
+    : [...countryResults, ...cityResults, ...airportResults];
+  return ordered.slice(0, limit * 2);
 }
