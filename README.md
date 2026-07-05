@@ -125,5 +125,13 @@ constitution) rather than opening code-first PRs.
 
 ## License
 
-Intended to be free for personal, non-commercial use. The formal `LICENSE` file has not been chosen
-yet — until it lands, treat the code as all rights reserved.
+[**GNU Affero General Public License v3.0 or later**](LICENSE) (`AGPL-3.0-or-later`).
+
+You're free to use, study, share, and modify Place'Been. The AGPL's one condition is
+**reciprocity**: if you distribute a modified version — or run one as a network service others can
+use — you must offer those users the corresponding source under the same license. That keeps every
+fork and hosted copy as open, inspectable, and lock-in-free as this one, which is the whole point of
+a privacy-first app you're meant to be able to trust and self-host.
+
+The reference datasets keep their own upstream licenses (see [Reference data](#reference-data)); the
+AGPL covers Place'Been's own code.

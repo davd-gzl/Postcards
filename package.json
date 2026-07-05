@@ -10,7 +10,7 @@
     "test": "pnpm --filter placebeen test",
     "test:e2e": "pnpm --filter placebeen test:e2e"
   },
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "AGPL-3.0-or-later",
   "packageManager": "pnpm@10.33.0",
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild"]
