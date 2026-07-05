@@ -12,10 +12,10 @@
     "url": "https://github.com/topojson/world-atlas"
   },
   {
-    "dataset": "placebeen-starter-subdivisions (FR regions, starter approximation)",
-    "license": "Public Domain (region names + ISO 3166-2:FR codes)",
-    "version": "starter-0",
-    "url": "https://en.wikipedia.org/wiki/ISO_3166-2:FR"
+    "dataset": "First-level regions (GeoNames admin-1, named via dr5hn countries-states-cities)",
+    "license": "CC-BY-4.0 (GeoNames) / ODbL (dr5hn)",
+    "version": "all-the-cities 3.1.0 + country-state-city",
+    "url": "https://github.com/dr5hn/countries-states-cities-database"
   },
   {
     "dataset": "GeoNames city gazetteer (population ≥ 15,000, via all-the-cities)",

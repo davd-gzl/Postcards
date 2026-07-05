@@ -31,8 +31,9 @@ describe("bundled gazetteer integrity (GeoNames cities15000)", () => {
     }
   });
 
-  it("maps every French city to a real ISO 3166-2 region", () => {
+  it("maps every French city to a real (named) region", () => {
     const frRegions = new Set(ref.subdivisionsOf("FR").map((s) => s.id));
+    expect(frRegions.size).toBe(13); // 13 metropolitan regions
     const fr = cities.filter((c) => c.countryIso2 === "FR");
     expect(fr.length).toBeGreaterThan(500);
     for (const c of fr) {
@@ -41,10 +42,15 @@ describe("bundled gazetteer integrity (GeoNames cities15000)", () => {
     }
   });
 
-  it("resolves the contract's canonical example (Paris = GeoNames 2988507)", () => {
+  it("names first-level regions worldwide (Paris in Île-de-France, Tokyo prefecture)", () => {
     const paris = ref.cityById("2988507");
     expect(paris?.name).toBe("Paris");
-    expect(paris?.countryIso2).toBe("FR");
-    expect(paris?.subdivisionId).toBe("FR-IDF");
+    expect(paris?.subdivisionId).toBe("FR-11");
+    expect(ref.subdivisionById(paris!.subdivisionId!)?.name).toBe("Île-de-France");
+    // A non-FR country resolves a real region name (not a code placeholder).
+    const tokyo = ref.searchCities("Tokyo")[0]!;
+    const tokyoRegion = ref.subdivisionById(tokyo.subdivisionId!);
+    expect(tokyoRegion?.name).toBeTruthy();
+    expect(tokyoRegion?.name.includes(" region ")).toBe(false);
   });
 });

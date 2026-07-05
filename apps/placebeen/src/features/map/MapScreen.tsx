@@ -6,6 +6,8 @@ import { useUi } from "../../lib/store/useUi";
 import { countryFlag, formatInt } from "../../lib/format/format";
 import type { Country } from "../../lib/reference/types";
 import { PlaceSearch } from "../visits/PlaceSearch";
+import { StateToggles } from "../visits/StateToggles";
+import { StatStrip } from "../stats/StatStrip";
 import { MapView, type Basemap, type MapFocus, type MapFit } from "./MapView";
 import { MapLegend } from "./MapLegend";
 import { citiesInView, type Bounds } from "./viewport";
@@ -25,8 +27,6 @@ export function MapScreen() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const toggleVisit = useVisits((s) => s.toggleVisit);
-  const toggleWish = useVisits((s) => s.toggleWish);
-  const toggleFavorite = useVisits((s) => s.toggleFavorite);
   const setAll = useVisits((s) => s.setAll);
   const showToast = useToast((s) => s.show);
   const mapFocus = useUi((s) => s.mapFocus);
@@ -104,6 +104,7 @@ export function MapScreen() {
     <div className="map-screen">
       <div className="map-top">
         <PlaceSearch onFocusCity={focusCity} />
+        <StatStrip />
       </div>
 
       <div className="map-box">
@@ -154,10 +155,8 @@ export function MapScreen() {
         ) : (
           <ul className="city-list">
             {visible.map((c) => {
-              const record = findByPlace(visits, { kind: "city", id: c.id });
-              const visited = record?.status === "visited";
-              const wished = record?.status === "wishlist";
               const country = ref.countryByIso2(c.countryIso2)?.name ?? c.countryIso2;
+              const region = c.subdivisionId ? ref.subdivisionById(c.subdivisionId)?.name : null;
               const selected = selectedCityId === c.id;
               const place = { kind: "city" as const, id: c.id, name: c.name, countryId: c.countryIso2 };
               return (
@@ -177,49 +176,15 @@ export function MapScreen() {
                       </span>
                       <span className="city-name">{c.name}</span>
                       <span className="city-sub">· {country}</span>
-                      {record?.favorite && (
-                        <span className="fav-star" aria-label="Favorite">★</span>
-                      )}
                     </span>
                     {selected && (
                       <span className="city-detail">
                         {c.population != null ? `${formatInt(c.population)} people` : "—"}
+                        {region ? ` · ${region}` : ""}
                       </span>
                     )}
                   </button>
-                  {selected && (
-                    <span className="row-quick-actions">
-                      {!visited && (
-                        <button
-                          className={"mini-btn" + (wished ? " mini-on" : "")}
-                          type="button"
-                          aria-pressed={wished}
-                          onClick={() => void toggleWish(place)}
-                        >
-                          ⚑ {wished ? "Wished" : "Wish to go"}
-                        </button>
-                      )}
-                      {record && (
-                        <button
-                          className={"mini-btn" + (record.favorite ? " mini-on" : "")}
-                          type="button"
-                          aria-pressed={!!record.favorite}
-                          onClick={() => void toggleFavorite(place)}
-                        >
-                          {record.favorite ? "★ Favorite" : "☆ Favorite"}
-                        </button>
-                      )}
-                    </span>
-                  )}
-                  <button
-                    className={"toggle" + (visited ? " toggle-on" : "") + (wished ? " toggle-wish" : "")}
-                    type="button"
-                    aria-pressed={visited}
-                    aria-label={visited ? `Remove ${c.name}` : `Mark ${c.name} visited`}
-                    onClick={() => toggleWithUndo(place)}
-                  >
-                    {visited ? "✓" : wished ? "⚑" : "+"}
-                  </button>
+                  <StateToggles place={place} />
                 </li>
               );
             })}

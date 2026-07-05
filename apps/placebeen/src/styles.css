@@ -377,6 +377,82 @@ button {
   color: #f59e0b;
   font-size: 13px;
 }
+
+/* Inline Been / Want / Favorite toggles (Places-Been style) */
+.states {
+  display: flex;
+  gap: 5px;
+  flex: none;
+}
+.state {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  color: #b6bdc8;
+  font-size: 14px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+.state.been.on {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+.state.want.on {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #fff;
+}
+.state.fav.on {
+  background: #ec4899;
+  border-color: #ec4899;
+  color: #fff;
+}
+
+/* Counter strip under the search */
+.stat-strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 2px 2px;
+  overflow-x: auto;
+}
+.ss-item {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+}
+.ss-num {
+  font-weight: 700;
+  font-size: 15px;
+}
+.ss-den {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 13px;
+}
+.ss-been {
+  color: #16a34a;
+}
+.ss-want {
+  color: #d97706;
+}
+.ss-fav {
+  color: #db2777;
+}
+.ss-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ss-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+}
 .row-quick-actions {
   display: flex;
   flex-direction: column;

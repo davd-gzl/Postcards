@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
-import { useVisits, findByPlace } from "../../lib/store/useVisits";
+import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
 import { countryFlag, formatDate } from "../../lib/format/format";
+import { StateToggles } from "./StateToggles";
 
 type View = "visited" | "wishlist" | "countries";
 
@@ -40,29 +41,12 @@ export function PlacesScreen() {
     [visits],
   );
 
-  const visitedCountryIds = useMemo(
-    () =>
-      new Set(
-        visits
-          .filter((v) => v.place.kind === "country" && v.status === "visited")
-          .map((v) => v.place.id),
-      ),
-    [visits],
-  );
-
   const countryRows = useMemo(() => {
     const f = filter.trim().toLowerCase();
     const all = ref.countries;
     if (!f) return all;
     return all.filter((c) => c.name.toLowerCase().includes(f));
   }, [ref, filter]);
-
-  function toggleCountry(iso2: string, name: string) {
-    const prev = useVisits.getState().visits;
-    const wasVisited = findByPlace(prev, { kind: "country", id: iso2 })?.status === "visited";
-    void toggleVisit({ kind: "country", id: iso2, name, countryId: iso2 });
-    showToast(wasVisited ? `Removed ${name}` : `Added ${name}`, () => setAll(prev));
-  }
 
   function removeWithUndo(visitId: string, name: string) {
     const prev = useVisits.getState().visits;
@@ -231,7 +215,6 @@ export function PlacesScreen() {
           />
           <ul className="city-list" style={{ marginTop: 8 }}>
             {countryRows.map((c) => {
-              const visited = visitedCountryIds.has(c.iso2);
               return (
                 <li key={c.iso2} className="city-row compact dense">
                   <div className="city-focus" style={{ cursor: "default" }} title={c.continent}>
@@ -242,15 +225,9 @@ export function PlacesScreen() {
                       <span className="city-name">{c.name}</span>
                     </span>
                   </div>
-                  <button
-                    className={"toggle sm" + (visited ? " toggle-on" : "")}
-                    type="button"
-                    aria-pressed={visited}
-                    aria-label={visited ? `Remove ${c.name}` : `Mark ${c.name} visited`}
-                    onClick={() => toggleCountry(c.iso2, c.name)}
-                  >
-                    {visited ? "✓" : "+"}
-                  </button>
+                  <StateToggles
+                    place={{ kind: "country", id: c.iso2, name: c.name, countryId: c.iso2 }}
+                  />
                 </li>
               );
             })}
