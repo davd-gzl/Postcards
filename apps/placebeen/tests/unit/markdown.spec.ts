@@ -30,4 +30,10 @@ describe("toMarkdown", () => {
     expect(md).toContain("A\\|B");
     expect(md).not.toMatch(/\| A\|B \|/); // raw unescaped pipe must not appear
   });
+
+  it("neutralizes inline HTML in names so a shared summary stays inert", () => {
+    const md = toMarkdown([visit("<img src=x onerror=alert(1)>", null)], [], ref);
+    expect(md).not.toContain("<img"); // raw HTML must not survive to the shared file
+    expect(md).toContain("&lt;img");
+  });
 });

@@ -13,9 +13,20 @@ const MODE_LABEL: Record<Trip["mode"], string> = {
   other: "Other",
 };
 
-/** Escape pipe/newline so free text can't break the Markdown table (inert output). */
+/**
+ * Escape a value for a Markdown table cell so it stays inert when shared:
+ * pipe/newline can't break the table, and angle brackets / backticks are
+ * neutralized so imported names can't smuggle raw HTML or code spans into a
+ * downstream renderer that permits inline HTML.
+ */
 function cell(s: string): string {
-  return s.replace(/\|/g, "\\|").replace(/\n/g, " ").trim();
+  return s
+    .replace(/\|/g, "\\|")
+    .replace(/\n/g, " ")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/`/g, "\\`")
+    .trim();
 }
 
 /**

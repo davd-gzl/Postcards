@@ -31,10 +31,16 @@ describe("searchPlaces (aggregator-only, real gazetteer)", () => {
     expect(searchPlaces(ref, "zzznotarealplace")).toHaveLength(0);
   });
 
-  it("ranks an exact IATA code first, ahead of a like-named city (LAX before Laxou)", () => {
+  it("ranks an explicit UPPERCASE IATA code first, ahead of a like-named city (LAX before Laxou)", () => {
     const results = searchPlaces(ref, "LAX");
     expect(results[0]!.place.kind).toBe("airport");
     expect(results[0]!.place.id).toBe("LAX");
+  });
+
+  it("treats a lowercase 3-letter prefix as a place name, keeping cities first (por → Porto, not Pori airport)", () => {
+    // "por" is also a valid IATA code (POR = Pori) — lowercase must NOT front-load airports.
+    const results = searchPlaces(ref, "por");
+    expect(results[0]!.place.kind).not.toBe("airport");
   });
 
   it("still puts places first for ordinary name queries (Paris → country/city, not airport)", () => {

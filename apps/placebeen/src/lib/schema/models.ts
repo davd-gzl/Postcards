@@ -5,7 +5,11 @@ import { sanitizeText } from "./sanitize";
 // Single source of truth: these Zod models generate TS types AND the published
 // JSON Schema (see tests/unit/schema.spec.ts). Contract: contracts/portable-data-file.md
 export const FORMAT = "placebeen" as const;
-export const SCHEMA_VERSION = 1;
+// v2 adds the optional top-level `trips` array (travel log). Files stay
+// structurally back-compatible (v1 files import unchanged), but the bump means an
+// older build opening a v2 file shows the graceful "update the app" prompt rather
+// than a cryptic strict-parse error on the unknown `trips` key.
+export const SCHEMA_VERSION = 2;
 
 const isoCountryId = z
   .string()

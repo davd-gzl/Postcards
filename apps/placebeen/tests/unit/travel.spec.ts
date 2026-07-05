@@ -100,6 +100,34 @@ describe("trips are portable (round-trip + backward compatible)", () => {
     if (result.ok) expect(result.trips).toEqual([]);
   });
 
+  it("de-duplicates trips sharing a tripId on import (matches the keyed store) and warns", () => {
+    const dup = crypto.randomUUID();
+    const mk = (note: string) => ({
+      tripId: dup,
+      from: { kind: "airport", id: "CDG", name: "CDG", countryId: "FR" },
+      to: { kind: "airport", id: "JFK", name: "JFK", countryId: "US" },
+      mode: "flight",
+      date: null,
+      carrier: null,
+      note,
+      addedAt: new Date().toISOString(),
+    });
+    const text = JSON.stringify({
+      format: "placebeen",
+      schemaVersion: 2,
+      exportedAt: new Date().toISOString(),
+      visits: [],
+      trips: [mk("first"), mk("second")],
+    });
+    const result = importFile(text);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.trips).toHaveLength(1); // in-memory count now matches the persisted count
+      expect(result.trips[0]!.note).toBe("second"); // last-wins, like the store's put order
+      expect(result.warnings.some((w) => /trip/i.test(w))).toBe(true);
+    }
+  });
+
   it("sanitizes trip free-text on import (inert data)", () => {
     const evil = {
       format: "placebeen",

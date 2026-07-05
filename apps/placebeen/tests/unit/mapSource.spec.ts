@@ -13,17 +13,44 @@ const installedStore: OfflineMapStore = {
   detailPack: async () => ({ id: "world-detail", pmtilesUrl: "pmtiles://https://x/world.pmtiles" }),
 };
 
+// Fake fetch responses for the Range-GET pack probe.
+function res(opts: { ok: boolean; contentType?: string; body?: string }): Response {
+  return {
+    ok: opts.ok,
+    headers: { get: (k: string) => (k === "content-type" ? opts.contentType ?? "" : null) },
+    arrayBuffer: async () => new TextEncoder().encode(opts.body ?? "").buffer,
+  } as unknown as Response;
+}
+const pmtilesHeader = "PMTiles"; // 7-byte magic + version byte
+
 describe("BundledOfflineMapStore (device-global pack probe)", () => {
-  it("returns a pmtiles:// pack when the archive is present (HEAD ok)", async () => {
-    const store = new BundledOfflineMapStore("/", (async () => ({ ok: true })) as unknown as typeof fetch);
+  it("returns a pmtiles:// pack when a real archive is present (magic header)", async () => {
+    const store = new BundledOfflineMapStore(
+      "/",
+      (async () => res({ ok: true, contentType: "application/octet-stream", body: pmtilesHeader })) as unknown as typeof fetch,
+    );
     const pack = await store.detailPack();
     expect(pack).not.toBeNull();
     expect(pack!.pmtilesUrl.startsWith("pmtiles://")).toBe(true);
     expect(pack!.pmtilesUrl).toContain("basemap/world-detail.pmtiles");
   });
 
-  it("is gracefully absent when no pack exists (HEAD 404) or offline (throws)", async () => {
-    const missing = new BundledOfflineMapStore("/", (async () => ({ ok: false })) as unknown as typeof fetch);
+  it("rejects an SPA history-fallback that returns 200 index.html (not a real pack)", async () => {
+    const htmlType = new BundledOfflineMapStore(
+      "/",
+      (async () => res({ ok: true, contentType: "text/html", body: "<!doctype html>" })) as unknown as typeof fetch,
+    );
+    expect(await htmlType.detailPack()).toBeNull();
+    // Even if the server mislabels the type, the wrong magic bytes reject it.
+    const wrongMagic = new BundledOfflineMapStore(
+      "/",
+      (async () => res({ ok: true, contentType: "application/octet-stream", body: "<html>" })) as unknown as typeof fetch,
+    );
+    expect(await wrongMagic.detailPack()).toBeNull();
+  });
+
+  it("is gracefully absent when no pack exists (404) or offline (throws)", async () => {
+    const missing = new BundledOfflineMapStore("/", (async () => res({ ok: false })) as unknown as typeof fetch);
     expect(await missing.detailPack()).toBeNull();
     const offline = new BundledOfflineMapStore("/", (async () => {
       throw new Error("network down");

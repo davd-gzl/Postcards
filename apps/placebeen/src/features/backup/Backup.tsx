@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useVisits } from "../../lib/store/useVisits";
 import { useTrips } from "../../lib/store/useTrips";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import { replaceAllPortable } from "../../lib/db/visitsDb";
 import { serializeFile, EXPORT_FILENAME } from "./exportJson";
 import { toMarkdown } from "./exportMarkdown";
 import { importFile } from "./importJson";
@@ -21,9 +22,7 @@ function download(filename: string, text: string, type: string) {
 export function Backup() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
-  const setAll = useVisits((s) => s.setAll);
   const trips = useTrips((s) => s.trips);
-  const setAllTrips = useTrips((s) => s.setAll);
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -54,8 +53,16 @@ export function Backup() {
       );
       if (!ok) return;
     }
-    await setAll(result.visits);
-    await setAllTrips(result.trips);
+    try {
+      // Persist both stores in one transaction, then reflect in memory — so the
+      // device is never left with places from the new file and trips from the old.
+      await replaceAllPortable(result.visits, result.trips);
+    } catch {
+      setMessage({ kind: "err", text: "Import failed while saving; your data is unchanged." });
+      return;
+    }
+    useVisits.setState({ visits: result.visits });
+    useTrips.setState({ trips: result.trips });
     setMessage({
       kind: "ok",
       text: `Imported ${result.visits.length} places and ${result.trips.length} trips.`,

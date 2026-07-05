@@ -36,12 +36,19 @@ export class BundledOfflineMapStore implements OfflineMapStore {
   async detailPack(): Promise<OfflineMapPack | null> {
     const url = `${this.baseUrl}basemap/world-detail.pmtiles`;
     try {
-      // HEAD avoids downloading the (potentially large) archive just to probe it.
-      const res = await this.fetchFn(url, { method: "HEAD" });
+      // Range-GET only the first bytes so we can PROVE it's a PMTiles archive, not
+      // just a 200. A common self-host history-fallback (try_files … /index.html)
+      // returns 200 with index.html for the missing pack; a bare-200 check would
+      // then advertise a "Streets (offline)" basemap that renders broken. Verify
+      // the content-type isn't HTML and the 7-byte PMTiles magic header is present.
+      const res = await this.fetchFn(url, { headers: { Range: "bytes=0-6" } });
       if (!res.ok) return null;
+      if ((res.headers.get("content-type") ?? "").includes("text/html")) return null;
+      const magic = new Uint8Array(await res.arrayBuffer()).subarray(0, 7);
+      if (String.fromCharCode(...magic) !== "PMTiles") return null;
       return { id: "world-detail", pmtilesUrl: `pmtiles://${url}` };
     } catch {
-      return null; // offline / not installed → gracefully absent
+      return null; // offline / not installed / not a real pack → gracefully absent
     }
   }
 }

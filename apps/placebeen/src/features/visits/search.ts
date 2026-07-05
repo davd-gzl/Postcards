@@ -38,10 +38,13 @@ export function searchPlaces(ref: ReferenceData, query: string, limit = 8): Sear
     };
   });
 
-  // An exact 3-letter IATA code (e.g. "LAX", "CDG") should surface that airport
-  // first — otherwise a city like "Laxou" would bury it. Otherwise keep the
-  // place-first order: countries, then cities, then airports.
-  const isIataCode = /^[a-z]{3}$/i.test(q) && !!ref.airportById(q);
+  // A query typed as an explicit UPPERCASE 3-letter IATA code (e.g. "LAX", "CDG")
+  // means the airport — surface it first, ahead of a like-named city ("Laxou").
+  // Lowercase/mixed prefix typing ("por", "san") is treated as a place name, so
+  // prominent cities keep priority; the airport still appears in the list, just
+  // after the places. Case is the disambiguator IATA codes are conventionally
+  // written in.
+  const isIataCode = /^[A-Z]{3}$/.test(q) && !!ref.airportById(q);
   const ordered = isIataCode
     ? [...airportResults, ...countryResults, ...cityResults]
     : [...countryResults, ...cityResults, ...airportResults];

@@ -90,7 +90,7 @@ export function PlacePicker({
           placeholder="City, airport, or country…"
           role="combobox"
           aria-expanded={open}
-          aria-controls={listId}
+          aria-controls={open ? listId : undefined}
           aria-autocomplete="list"
           aria-activedescendant={active >= 0 ? `${listId}-opt-${active}` : undefined}
           value={q}
@@ -99,6 +99,12 @@ export function PlacePicker({
             setActive(-1);
           }}
           onKeyDown={onKeyDown}
+          // Dismiss the listbox when focus leaves the combobox (option clicks use
+          // onMouseDown/preventDefault below, so they don't trigger this).
+          onBlur={() => {
+            setQ("");
+            setActive(-1);
+          }}
         />
         {open && (
           <ul className="results" id={listId} role="listbox" aria-label={label}>
@@ -113,6 +119,8 @@ export function PlacePicker({
                   type="button"
                   tabIndex={-1}
                   className={i === active ? "opt-active" : undefined}
+                  // Keep focus on the input so onBlur doesn't close the list before this fires.
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => choose(r.place)}
                 >
                   <span className="result-main">

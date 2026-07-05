@@ -47,8 +47,14 @@ export function importFile(text: string): ImportResult {
   // Future: migrate parsed.data.schemaVersion < SCHEMA_VERSION here.
   // Enforce one-visit-per-place on import too (FR-015), not only on add.
   const visits = parsed.data.visits.reduce<Visit[]>((acc, v) => dedupeUpsert(acc, v), []);
-  const trips = parsed.data.trips; // schema defaults missing trips to []
-  const warnings =
-    visits.length !== parsed.data.visits.length ? ["Merged duplicate places in the file."] : [];
+  // Enforce one-record-per-tripId too — the "trips" store is keyed on tripId, so a
+  // hand-edited file with a duplicate id would silently drop rows on persist and
+  // diverge from the in-memory count. Keep last-wins to match the IndexedDB put order.
+  const tripById = new Map<string, Trip>();
+  for (const t of parsed.data.trips) tripById.set(t.tripId, t);
+  const trips = [...tripById.values()];
+  const warnings: string[] = [];
+  if (visits.length !== parsed.data.visits.length) warnings.push("Merged duplicate places in the file.");
+  if (trips.length !== parsed.data.trips.length) warnings.push("Merged duplicate trips in the file.");
   return { ok: true, visits, trips, warnings };
 }
