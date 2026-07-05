@@ -11,15 +11,31 @@ import { StatStrip } from "../stats/StatStrip";
 import { MapView, type Basemap, type MapFocus, type MapFit } from "./MapView";
 import { MapLegend } from "./MapLegend";
 import { citiesInView, type Bounds } from "./viewport";
+import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 
 const CAP = 30;
 const BASEMAP_KEY = "placebeen-basemap";
 
+const BASEMAP_LABEL: Record<Basemap, string> = {
+  simple: "Simple map (offline)",
+  osm: "Detail map (online)",
+  detail: "Streets (offline)",
+};
+
 function loadBasemap(): Basemap {
   try {
-    return localStorage.getItem(BASEMAP_KEY) === "osm" ? "osm" : "simple";
+    const v = localStorage.getItem(BASEMAP_KEY);
+    return v === "osm" || v === "detail" ? v : "simple";
   } catch {
     return "simple";
+  }
+}
+
+function persistBasemap(b: Basemap): void {
+  try {
+    localStorage.setItem(BASEMAP_KEY, b);
+  } catch {
+    /* private mode: not persisted */
   }
 }
 
@@ -37,15 +53,31 @@ export function MapScreen() {
   const [fit, setFit] = useState<MapFit | null>(null);
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [basemap, setBasemap] = useState<Basemap>(loadBasemap);
+  const [hasDetail, setHasDetail] = useState(false);
+
+  // Offer the offline street basemap only when a PMTiles pack is actually
+  // installed (via the device-global Offline Map Store). None is bundled.
+  useEffect(() => {
+    let alive = true;
+    void bundledMapSource.isAvailableOffline("world-detail").then((ok) => {
+      if (!alive) return;
+      setHasDetail(ok);
+      if (!ok && loadBasemap() === "detail") {
+        setBasemap("simple");
+        persistBasemap("simple");
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const basemapCycle: Basemap[] = hasDetail ? ["simple", "osm", "detail"] : ["simple", "osm"];
+  const nextBasemap = basemapCycle[(basemapCycle.indexOf(basemap) + 1) % basemapCycle.length]!;
 
   function switchBasemap() {
-    const next: Basemap = basemap === "simple" ? "osm" : "simple";
-    setBasemap(next);
-    try {
-      localStorage.setItem(BASEMAP_KEY, next);
-    } catch {
-      /* private mode: not persisted */
-    }
+    setBasemap(nextBasemap);
+    persistBasemap(nextBasemap);
   }
 
   const inView = useMemo(() => citiesInView(allCities, bounds, Infinity), [allCities, bounds]);
@@ -126,13 +158,9 @@ export function MapScreen() {
           className="fit-btn basemap-btn"
           type="button"
           onClick={switchBasemap}
-          title={
-            basemap === "simple"
-              ? "Switch to the detailed OpenStreetMap basemap (loads tiles online)"
-              : "Switch back to the simple offline basemap"
-          }
+          title={`Switch basemap — next: ${BASEMAP_LABEL[nextBasemap]}`}
         >
-          {basemap === "simple" ? "Detail map (online)" : "Simple map (offline)"}
+          {BASEMAP_LABEL[nextBasemap]}
         </button>
       </div>
 

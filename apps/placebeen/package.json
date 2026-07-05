@@ -20,6 +20,7 @@
     "i18n-iso-countries": "^7.13.0",
     "idb": "^8.0.0",
     "maplibre-gl": "^4.7.1",
+    "pmtiles": "^3.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "topojson-client": "^3.1.0",

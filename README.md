@@ -108,12 +108,13 @@ Recently shipped:
 - **Worldwide region coverage** — per-country **% of first-level regions** now works everywhere (GeoNames admin-1, named via a nearest-centroid crosswalk), not just one country.
 - **Airports as a place type** — log airports you've flown through by name or IATA code; they show as distinct ✈ pills on the map and in your totals, and count toward country coverage (see [`specs/002-place-types/`](specs/002-place-types/)). The place model is now generalized, so further types are drop-in datasets.
 - **Travel log** — a **Trips** tab records past journeys with a derived great-circle distance and totals (see [`specs/003-travel-log/`](specs/003-travel-log/)); trips live in the same portable file and export to Markdown.
+- **Offline street-map seam** (PMTiles + Offline Map Store) — the app can render a street-level **offline** vector basemap via the `pmtiles://` protocol, obtained through a device-global **`OfflineMapStore`** (never bundled app-private, per the constitution). Ships the seam + docs ([`docs/OFFLINE-MAPS.md`](docs/OFFLINE-MAPS.md), [`specs/004-offline-map-seam/`](specs/004-offline-map-seam/)); drop in a `world-detail.pmtiles` pack and the offline "Streets" basemap lights up with no code change.
 
 Planned next:
 
 - **More place types** — UNESCO World Heritage sites and national parks, once their openly-licensed datasets are vendored (their upstream feeds are network-restricted in CI, so they wait for the dataset, not the code).
-- **Street-level _offline_ basemap** (PMTiles) — the opt-in online OpenStreetMap detail map already ships; a bundled offline pack is next, behind the same `MapSource` seam.
-- **Native iOS/Android** builds via Capacitor and a device-global, cross-app **Offline Map Store**.
+- **Shared Offline Map Store plugin** — the native `SharedOfflineMapStore` (iOS App Group / Android SAF) behind the seam above, so one map pack serves every app in the ecosystem.
+- **Native iOS/Android** builds via Capacitor (scaffolding + docs in place; signed builds need a Mac / Android SDK).
 - **Trip routes on the map** — draw great-circle arcs for logged journeys.
 
 ## How it's built & contributing

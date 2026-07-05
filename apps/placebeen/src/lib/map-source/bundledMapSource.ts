@@ -1,12 +1,19 @@
 import type { MapPackRef, MapSource, ResolvedMapStyle } from "./types";
+import type { StyleSpecification } from "maplibre-gl";
+import {
+  bundledOfflineMapStore,
+  type OfflineMapStore,
+} from "./offlineMapStore";
 
-// MVP MapSource with two packs:
+// MapSource with three packs:
 // - "world-overview": bundled, fully-offline base (default; no network, ever).
 // - "osm-raster": OPT-IN online OpenStreetMap raster tiles for a detailed,
-//   colored basemap. Explicitly labeled online; never the default; the app
-//   stays fully usable without it (Constitution II/III/V).
-// Later, a `SharedOfflineMapStore` implements the same interface backed by a
-// device-global PMTiles store.
+//   colored basemap. Explicitly labeled online; never the default.
+// - "world-detail": OPT-IN, fully-offline street-level vector basemap read via
+//   the pmtiles:// protocol from the device-global OfflineMapStore. Only offered
+//   when a pack is actually installed (none is bundled — a world street pack is
+//   device-global and far too large to ship in-app). (Constitution II/III/V +
+//   Ecosystem.)
 const WORLD_PACK: MapPackRef = {
   id: "world-overview",
   label: "Simple (offline)",
@@ -19,13 +26,90 @@ const OSM_PACK: MapPackRef = {
   scope: "world",
 };
 
+const DETAIL_PACK: MapPackRef = {
+  id: "world-detail",
+  label: "Detailed — streets (offline)",
+  scope: "world",
+};
+
+/**
+ * A MapLibre vector style over a PMTiles archive. Layer `source-layer`s follow
+ * the Protomaps "basemap" flavor (build.protomaps.com), the recommended free,
+ * openly-licensed (OpenStreetMap / ODbL) world PMTiles pack. A pack using a
+ * different schema only needs its own style here.
+ */
+export function detailVectorStyle(pmtilesUrl: string): StyleSpecification {
+  return {
+    version: 8,
+    name: "Place'Been offline detail (PMTiles)",
+    sources: {
+      basemap: { type: "vector", url: pmtilesUrl, attribution: "© OpenStreetMap contributors" },
+    },
+    layers: [
+      { id: "background", type: "background", paint: { "background-color": "#eef1f5" } },
+      {
+        id: "earth",
+        type: "fill",
+        source: "basemap",
+        "source-layer": "earth",
+        paint: { "fill-color": "#f7f8fa" },
+      },
+      {
+        id: "landuse",
+        type: "fill",
+        source: "basemap",
+        "source-layer": "landuse",
+        paint: { "fill-color": "#eef2ea", "fill-opacity": 0.7 },
+      },
+      {
+        id: "water",
+        type: "fill",
+        source: "basemap",
+        "source-layer": "water",
+        paint: { "fill-color": "#a9cbe8" },
+      },
+      {
+        id: "roads",
+        type: "line",
+        source: "basemap",
+        "source-layer": "roads",
+        paint: { "line-color": "#d8dce2", "line-width": 1 },
+      },
+      {
+        id: "boundaries",
+        type: "line",
+        source: "basemap",
+        "source-layer": "boundaries",
+        paint: { "line-color": "#c4b8d6", "line-width": 0.8, "line-dasharray": [2, 1] },
+      },
+    ],
+  };
+}
+
+const OVERVIEW_STYLE: ResolvedMapStyle = {
+  style: {
+    version: 8,
+    name: "Place'Been world overview",
+    sources: {},
+    layers: [{ id: "background", type: "background", paint: { "background-color": "#eaf0f6" } }],
+  },
+  attribution: "Boundaries © Natural Earth (public domain)",
+};
+
 export class BundledMapSource implements MapSource {
+  constructor(private readonly offlineStore: OfflineMapStore = bundledOfflineMapStore) {}
+
   async listPacks(): Promise<MapPackRef[]> {
-    return [WORLD_PACK, OSM_PACK];
+    const packs = [WORLD_PACK, OSM_PACK];
+    // Only advertise the offline-detail pack when one is actually installed.
+    if (await this.offlineStore.detailPack()) packs.push(DETAIL_PACK);
+    return packs;
   }
 
   async isAvailableOffline(packId: string): Promise<boolean> {
-    return packId === WORLD_PACK.id;
+    if (packId === WORLD_PACK.id) return true;
+    if (packId === DETAIL_PACK.id) return !!(await this.offlineStore.detailPack());
+    return false;
   }
 
   async resolveStyle(packId: string): Promise<ResolvedMapStyle> {
@@ -48,21 +132,17 @@ export class BundledMapSource implements MapSource {
         attribution: "© OpenStreetMap contributors (ODbL)",
       };
     }
-    return {
-      style: {
-        version: 8,
-        name: "Place'Been world overview",
-        sources: {},
-        layers: [
-          {
-            id: "background",
-            type: "background",
-            paint: { "background-color": "#eaf0f6" },
-          },
-        ],
-      },
-      attribution: "Boundaries © Natural Earth (public domain)",
-    };
+    if (packId === DETAIL_PACK.id) {
+      const pack = await this.offlineStore.detailPack();
+      // Fall back to the always-available overview if the pack vanished.
+      if (pack) {
+        return {
+          style: detailVectorStyle(pack.pmtilesUrl),
+          attribution: "© OpenStreetMap contributors (ODbL) · offline pack",
+        };
+      }
+    }
+    return OVERVIEW_STYLE;
   }
 }
 

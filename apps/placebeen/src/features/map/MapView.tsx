@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import maplibregl, { type GeoJSONSource, type Map as MlMap } from "maplibre-gl";
+import { Protocol } from "pmtiles";
 import { feature } from "topojson-client";
 import type { FeatureCollection, Polygon, MultiPolygon, Point, Feature } from "geojson";
 import { getReferenceData } from "../../lib/reference/referenceData";
@@ -19,6 +20,16 @@ import { countryFlag } from "../../lib/format/format";
 // Natural Earth 50m country geometry, served as a static asset (SW-cached for
 // offline) rather than bundled into JS, so the map chunk stays lean.
 const GEOMETRY_URL = `${import.meta.env.BASE_URL}basemap/countries-50m.json`;
+
+// Register the pmtiles:// protocol once so the offline-detail vector basemap
+// (a device-global PMTiles pack, when installed) resolves. Harmless no-op when
+// no pack is present.
+let pmtilesRegistered = false;
+function ensurePmtilesProtocol(): void {
+  if (pmtilesRegistered) return;
+  maplibregl.addProtocol("pmtiles", new Protocol().tile);
+  pmtilesRegistered = true;
+}
 
 async function loadCountries(): Promise<FeatureCollection<Polygon | MultiPolygon> | null> {
   try {
@@ -166,7 +177,7 @@ export interface MapFit {
   key: number;
 }
 
-export type Basemap = "simple" | "osm";
+export type Basemap = "simple" | "osm" | "detail";
 
 export function MapView({
   onBounds,
@@ -183,7 +194,10 @@ export function MapView({
   onCountryTap?: (country: Country) => void;
   /** The cities currently shown in the list — drawn as hollow dots for map↔list sync. */
   viewCities?: City[];
-  /** "simple" = bundled offline base (default); "osm" = opt-in online OSM raster. */
+  /**
+   * "simple" = bundled offline overview (default); "osm" = opt-in online OSM
+   * raster; "detail" = opt-in offline street vector from an installed PMTiles pack.
+   */
   basemap?: Basemap;
 }) {
   const ref = useMemo(() => getReferenceData(), []);
@@ -236,6 +250,7 @@ export function MapView({
   useEffect(() => {
     if (!containerRef.current) return;
     let cancelled = false;
+    ensurePmtilesProtocol();
     let map: MlMap;
     try {
       map = new maplibregl.Map({
@@ -273,7 +288,11 @@ export function MapView({
 
     map.on("load", async () => {
       if (cancelled) return;
-      const pack = basemap === "osm" ? "osm-raster" : "world-overview";
+      // A rich base (online OSM raster or offline street vector) shows through
+      // the country overlay; the simple overview is opaque.
+      const richBase = basemap !== "simple";
+      const pack =
+        basemap === "osm" ? "osm-raster" : basemap === "detail" ? "world-detail" : "world-overview";
       const { style, attribution } = await bundledMapSource.resolveStyle(pack);
       if (cancelled) return;
       map.setStyle(style);
@@ -283,15 +302,14 @@ export function MapView({
         if (cancelled || !map.getStyle()) return;
         if (countriesFc) {
           map.addSource("countries", { type: "geojson", data: countriesFc, attribution });
-          // On OSM the base fill is invisible but kept for country hit-testing.
+          // Over a rich base the fill is invisible but kept for country hit-testing.
           map.addLayer({
             id: "countries-base",
             type: "fill",
             source: "countries",
-            paint:
-              basemap === "osm"
-                ? { "fill-color": "#000000", "fill-opacity": 0 }
-                : { "fill-color": "#f4f6f9", "fill-outline-color": "#d6dce4" },
+            paint: richBase
+              ? { "fill-color": "#000000", "fill-opacity": 0 }
+              : { "fill-color": "#f4f6f9", "fill-outline-color": "#d6dce4" },
           });
           map.addLayer({
             id: "countries-visited",
@@ -300,7 +318,7 @@ export function MapView({
             filter: ["in", ["get", "numeric"], ["literal", []]],
             paint: {
               "fill-color": continentColorExpr(),
-              "fill-opacity": basemap === "osm" ? 0.28 : 0.42,
+              "fill-opacity": richBase ? 0.28 : 0.42,
             },
           });
           map.addLayer({
