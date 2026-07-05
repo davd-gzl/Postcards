@@ -13,9 +13,20 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
-    "reference": "node scripts/build-reference.mjs"
+    "reference": "node scripts/build-reference.mjs",
+    "cap:sync": "cap sync",
+    "cap:copy": "cap copy",
+    "cap:add:android": "cap add android",
+    "cap:add:ios": "cap add ios",
+    "cap:open:android": "cap open android",
+    "cap:open:ios": "cap open ios",
+    "native:android": "pnpm build && cap sync android && cap open android",
+    "native:ios": "pnpm build && cap sync ios && cap open ios"
   },
   "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/ios": "^6.2.1",
     "@fontsource-variable/inter": "^5.2.8",
     "i18n-iso-countries": "^7.13.0",
     "idb": "^8.0.0",
@@ -30,6 +41,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.1",
+    "@capacitor/cli": "^6.2.1",
     "@playwright/test": "^1.48.2",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",

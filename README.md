@@ -61,7 +61,7 @@ pnpm --filter placebeen build       # production PWA build
 | Area | Choice |
 | --- | --- |
 | App | TypeScript + React (Vite), shipped as a self-hostable **PWA** |
-| Mobile | **Capacitor** wrapper for native iOS/Android — scaffolding in place, native builds on the roadmap |
+| Mobile | **Capacitor** wraps the same web build as native iOS/Android — config + Android project + scripts committed ([`docs/NATIVE-BUILDS.md`](docs/NATIVE-BUILDS.md)); signed builds need a Mac / Android SDK |
 | Map | **MapLibre GL** behind a pluggable `MapSource` seam: bundled Natural Earth overview (offline default) + opt-in OpenStreetMap detail |
 | Storage | **IndexedDB** working store; canonical portable file is **JSON** (+ Markdown export) |
 | Validation | **Zod** schema; inert-data import rules |
