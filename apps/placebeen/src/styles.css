@@ -583,6 +583,9 @@ button {
   right: 10px;
   bottom: 44px;
 }
+.fit-btn.save-btn {
+  bottom: 44px;
+}
 .fit-btn.trips-btn {
   left: auto;
   right: 10px;

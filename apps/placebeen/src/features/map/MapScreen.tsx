@@ -13,6 +13,7 @@ import { MapView, type Basemap, type MapFocus, type MapFit } from "./MapView";
 import { MapLegend } from "./MapLegend";
 import { tripArcs } from "./visitedLayers";
 import { citiesInView, type Bounds } from "./viewport";
+import { saveAreaOffline } from "./offlineTiles";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 
 const CAP = 30;
@@ -107,13 +108,32 @@ export function MapScreen() {
 
   const basemapCycle: Basemap[] = hasDetail ? ["simple", "osm", "detail"] : ["simple", "osm"];
   const nextBasemap = basemapCycle[(basemapCycle.indexOf(basemap) + 1) % basemapCycle.length]!;
-  // OSM needs a connection; when it's the chosen map but we're offline, render the
-  // always-available offline overview and restore OSM automatically when back online.
-  const effectiveBasemap: Basemap = basemap === "osm" && !online ? "simple" : basemap;
+  // OSM stays selected when offline so tiles you've SAVED render without network;
+  // the always-offline "Simple" overview is one tap away. (0..1 = download in progress.)
+  const [saving, setSaving] = useState<number | null>(null);
 
   function switchBasemap() {
     setBasemap(nextBasemap);
     persistBasemap(nextBasemap);
+  }
+
+  async function saveArea() {
+    if (!bounds || saving != null) return;
+    setSaving(0);
+    try {
+      const res = await saveAreaOffline(bounds, bounds.zoom ?? 3, {
+        onProgress: (p) => setSaving(p.total ? p.done / p.total : 1),
+      });
+      showToast(
+        res.total === 0
+          ? "Nothing to save at this zoom — zoom in first."
+          : `Saved ${res.saved} map tiles for offline${res.capped ? " (zoom in to save finer detail)" : ""}.`,
+      );
+    } catch {
+      showToast("Couldn't save this area — check your connection.");
+    } finally {
+      setSaving(null);
+    }
   }
 
   const inView = useMemo(() => citiesInView(allCities, bounds, Infinity), [allCities, bounds]);
@@ -185,8 +205,8 @@ export function MapScreen() {
 
       <div className="map-box">
         <MapView
-          key={`${effectiveBasemap}-${dark ? "d" : "l"}`}
-          basemap={effectiveBasemap}
+          key={`${basemap}-${dark ? "d" : "l"}`}
+          basemap={basemap}
           dark={dark}
           onBounds={setBounds}
           focus={focus}
@@ -198,6 +218,18 @@ export function MapScreen() {
         {visitedCityCoords.length > 0 && (
           <button className="fit-btn" type="button" onClick={fitToMyPlaces}>
             Fit to my places
+          </button>
+        )}
+        {basemap === "osm" && online && (
+          <button
+            className="fit-btn save-btn"
+            type="button"
+            onClick={saveArea}
+            disabled={saving != null}
+            aria-label="Save this map area for offline use"
+            title="Download the current area so this map works offline"
+          >
+            {saving == null ? "⬇ Save area" : `Saving ${Math.round(saving * 100)}%`}
           </button>
         )}
         {hasArcs && (

@@ -1,0 +1,65 @@
+import { describe, it, expect } from "vitest";
+import { tilesForBounds, saveAreaOffline } from "../../src/features/map/offlineTiles";
+import type { Bounds } from "../../src/features/map/viewport";
+
+// A small area around Paris.
+const paris: Bounds = { west: 2.2, south: 48.8, east: 2.5, north: 48.9 };
+
+describe("tilesForBounds", () => {
+  it("covers the viewport at a single zoom with the slippy-map tile grid", () => {
+    const urls = tilesForBounds(paris, 10, 1);
+    // 2 tiles wide × 1 tall around Paris at z10.
+    expect(urls).toHaveLength(2);
+    expect(urls).toContain("https://tile.openstreetmap.org/10/518/352.png");
+    for (const u of urls) expect(u).toMatch(/^https:\/\/tile\.openstreetmap\.org\/10\/\d+\/\d+\.png$/);
+  });
+
+  it("adds deeper zoom levels (more, finer tiles)", () => {
+    const one = tilesForBounds(paris, 10, 1);
+    const three = tilesForBounds(paris, 10, 3);
+    expect(three.length).toBeGreaterThan(one.length);
+    expect(three.some((u) => u.includes("/12/"))).toBe(true);
+  });
+
+  it("caps the tile count (coarse levels first)", () => {
+    const capped = tilesForBounds({ west: -20, south: 30, east: 40, north: 60 }, 6, 4, 50);
+    expect(capped).toHaveLength(50);
+  });
+
+  it("clamps zoom into range and never emits out-of-grid indices", () => {
+    const urls = tilesForBounds({ west: -180, south: -85, east: 180, north: 85 }, 0, 1);
+    expect(urls.length).toBeGreaterThan(0);
+    // z clamps to 1 → grid is 2×2, indices 0..1.
+    for (const u of urls) expect(u).toMatch(/\/1\/[01]\/[01]\.png$/);
+  });
+});
+
+describe("saveAreaOffline", () => {
+  it("fetches each unique tile (no-cors) and reports counts", async () => {
+    const seen: string[] = [];
+    const fetchFn = (async (url: string) => {
+      seen.push(String(url));
+      return { ok: true } as Response;
+    }) as unknown as typeof fetch;
+    const res = await saveAreaOffline(paris, 10, { levels: 1, fetchFn });
+    expect(res.total).toBe(2);
+    expect(res.saved).toBe(2);
+    expect(res.failed).toBe(0);
+    expect(new Set(seen).size).toBe(2);
+  });
+
+  it("counts failures without throwing, and honors the cap flag", async () => {
+    const fetchFn = (async () => {
+      throw new Error("blocked");
+    }) as unknown as typeof fetch;
+    const res = await saveAreaOffline({ west: -20, south: 30, east: 40, north: 60 }, 6, {
+      levels: 4,
+      maxTiles: 20,
+      fetchFn,
+    });
+    expect(res.total).toBe(20);
+    expect(res.failed).toBe(20);
+    expect(res.saved).toBe(0);
+    expect(res.capped).toBe(true);
+  });
+});

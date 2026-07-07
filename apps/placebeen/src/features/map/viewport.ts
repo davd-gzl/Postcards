@@ -5,6 +5,8 @@ export interface Bounds {
   south: number;
   east: number;
   north: number;
+  /** Current map zoom, when known (used to pick tile levels for offline save). */
+  zoom?: number;
 }
 
 /** Longitude membership that tolerates a viewport crossing the antimeridian. */

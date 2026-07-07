@@ -127,7 +127,12 @@ export class BundledMapSource implements MapSource {
               attribution: "© OpenStreetMap contributors",
             },
           },
-          layers: [{ id: "osm", type: "raster", source: "osm" }],
+          // A neutral background shows through where tiles aren't loaded yet /
+          // aren't cached (offline in an un-saved area), instead of black.
+          layers: [
+            { id: "osm-bg", type: "background", paint: { "background-color": "#dfe4ea" } },
+            { id: "osm", type: "raster", source: "osm" },
+          ],
         },
         attribution: "© OpenStreetMap contributors (ODbL)",
       };

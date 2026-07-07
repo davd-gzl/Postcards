@@ -9,6 +9,21 @@ Place'Been renders maps only through the **`MapSource`** seam
 | `osm-raster` | OpenStreetMap raster tiles | Online (opt-in) | — |
 | `world-detail` | Street-level **PMTiles** vector pack | **Offline** | opt-in, only when installed |
 
+## Saving OSM areas for offline
+
+The online **OpenStreetMap** basemap is usable offline for areas you've prepared:
+
+- **Automatic** — tiles you view while online are runtime-cached by the service worker
+  (`osm-tiles`, CacheFirst), so revisiting those areas works with no network.
+- **On demand** — the map's **"⬇ Save area"** button (shown on the OSM basemap when online)
+  pre-fetches the current viewport plus a couple of zoom levels into that same cache
+  (`src/features/map/offlineTiles.ts`), capped to a few hundred tiles. Zoom in first to save finer
+  detail. Because OSM stays selected when you go offline, saved areas render from cache; the
+  always-offline **Simple** overview is one tap away for everywhere else.
+
+Requests to OSM only ever happen on explicit action (choosing the OSM basemap, or pressing Save) —
+never on the offline default — so the privacy-by-default guarantee holds.
+
 ## Why no street pack is bundled
 
 The project constitution requires offline maps to be **device-global / cross-app, never locked to

@@ -230,6 +230,7 @@ export function MapView({
       south: b.getSouth(),
       east: b.getEast(),
       north: b.getNorth(),
+      zoom: map.getZoom(),
     });
   }
 
