@@ -23,6 +23,10 @@ interface TripsState {
     carrier?: string | null;
     note?: string | null;
   }) => Promise<Trip>;
+  updateTrip: (
+    tripId: string,
+    changes: Partial<Pick<Trip, "from" | "to" | "mode" | "date" | "carrier" | "note">>,
+  ) => Promise<void>;
   removeTrip: (tripId: string) => Promise<void>;
   setAll: (trips: Trip[]) => Promise<void>;
 }
@@ -48,6 +52,13 @@ export const useTrips = create<TripsState>((set, get) => ({
     set({ trips: [...get().trips, trip] });
     await db.putTrip(trip);
     return trip;
+  },
+  async updateTrip(tripId, changes) {
+    const existing = get().trips.find((t) => t.tripId === tripId);
+    if (!existing) return;
+    const updated: Trip = { ...existing, ...changes };
+    set({ trips: get().trips.map((t) => (t.tripId === tripId ? updated : t)) });
+    await db.putTrip(updated);
   },
   async removeTrip(tripId) {
     set({ trips: get().trips.filter((t) => t.tripId !== tripId) });

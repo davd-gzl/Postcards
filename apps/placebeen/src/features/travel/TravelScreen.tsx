@@ -3,7 +3,7 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { useTrips } from "../../lib/store/useTrips";
 import { useToast } from "../../lib/store/useToast";
 import { formatDate, formatKm } from "../../lib/format/format";
-import type { PlaceRef, TravelMode } from "../../lib/schema/models";
+import type { PlaceRef, TravelMode, Trip } from "../../lib/schema/models";
 import { julianToDate, type BcbpResult } from "../../lib/bcbp/parse";
 import { PlacePicker } from "./PlacePicker";
 import { BoardingPassImport } from "./BoardingPassImport";
@@ -31,6 +31,7 @@ export function TravelScreen() {
   const ref = useMemo(() => getReferenceData(), []);
   const trips = useTrips((s) => s.trips);
   const addTrip = useTrips((s) => s.addTrip);
+  const updateTrip = useTrips((s) => s.updateTrip);
   const removeTrip = useTrips((s) => s.removeTrip);
   const setAll = useTrips((s) => s.setAll);
   const showToast = useToast((s) => s.show);
@@ -39,6 +40,7 @@ export function TravelScreen() {
   const [to, setTo] = useState<PlaceRef | null>(null);
   const [mode, setMode] = useState<TravelMode>("flight");
   const [date, setDate] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const totals = useMemo(() => travelTotals(trips, ref), [trips, ref]);
   const sorted = useMemo(
@@ -46,15 +48,35 @@ export function TravelScreen() {
     [trips],
   );
 
-  async function onAdd(e: React.FormEvent) {
+  function resetForm() {
+    setFrom(null);
+    setTo(null);
+    setMode("flight");
+    setDate("");
+    setEditingId(null);
+  }
+
+  function startEdit(t: Trip) {
+    setFrom(t.from);
+    setTo(t.to);
+    setMode(t.mode);
+    setDate(t.date ?? "");
+    setEditingId(t.tripId);
+    document.querySelector(".trip-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!from || !to) return;
     const prev = useTrips.getState().trips;
-    await addTrip({ from, to, mode, date: date || null });
-    showToast(`Added ${endpointLabel(from)} → ${endpointLabel(to)}`, () => setAll(prev));
-    setFrom(null);
-    setTo(null);
-    setDate("");
+    if (editingId) {
+      await updateTrip(editingId, { from, to, mode, date: date || null });
+      showToast(`Updated ${endpointLabel(from)} → ${endpointLabel(to)}`, () => setAll(prev));
+    } else {
+      await addTrip({ from, to, mode, date: date || null });
+      showToast(`Added ${endpointLabel(from)} → ${endpointLabel(to)}`, () => setAll(prev));
+    }
+    resetForm();
   }
 
   function removeWithUndo(tripId: string, label: string) {
@@ -70,6 +92,7 @@ export function TravelScreen() {
 
   /** A parsed boarding pass: prefill the form for one leg, or log every leg of a connection. */
   async function handleScan(result: BcbpResult) {
+    setEditingId(null); // a scanned pass always creates new trips
     const now = new Date();
     const legs = result.legs.map((l) => ({
       from: airportRef(l.from),
@@ -137,9 +160,10 @@ export function TravelScreen() {
         )}
       </div>
 
-      <BoardingPassImport onResult={handleScan} />
+      {!editingId && <BoardingPassImport onResult={handleScan} />}
 
-      <form className="trip-form" onSubmit={onAdd}>
+      <form className="trip-form" onSubmit={onSubmit}>
+        {editingId && <p className="editing-note">Editing a trip</p>}
         <PlacePicker label="From" value={from} onPick={setFrom} />
         <PlacePicker label="To" value={to} onPick={setTo} />
         <div className="trip-form-row">
@@ -169,9 +193,16 @@ export function TravelScreen() {
             />
           </label>
         </div>
-        <button className="btn" type="submit" disabled={!from || !to}>
-          Add trip
-        </button>
+        <div className="trip-form-actions">
+          <button className="btn" type="submit" disabled={!from || !to}>
+            {editingId ? "Save changes" : "Add trip"}
+          </button>
+          {editingId && (
+            <button className="btn-ghost" type="button" onClick={resetForm}>
+              Cancel
+            </button>
+          )}
+        </div>
       </form>
 
       {trips.length === 0 ? (
@@ -184,7 +215,7 @@ export function TravelScreen() {
             const km = tripDistanceKm(t, ref);
             const label = `${endpointLabel(t.from)} → ${endpointLabel(t.to)}`;
             return (
-              <li key={t.tripId} className="city-row compact">
+              <li key={t.tripId} className={"city-row compact" + (editingId === t.tripId ? " selected" : "")}>
                 <div className="city-focus" style={{ cursor: "default" }}>
                   <span className="city-line">
                     <span className="flag" aria-hidden>
@@ -197,6 +228,14 @@ export function TravelScreen() {
                     </span>
                   </span>
                 </div>
+                <button
+                  className="link"
+                  type="button"
+                  onClick={() => startEdit(t)}
+                  aria-label={`Edit trip ${label}`}
+                >
+                  Edit
+                </button>
                 <button
                   className="link-danger"
                   type="button"

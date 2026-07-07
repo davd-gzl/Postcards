@@ -1073,6 +1073,19 @@ button {
   gap: 12px;
   margin-bottom: 6px;
 }
+.trip-form-actions {
+  display: flex;
+  gap: 8px;
+}
+.trip-form-actions .btn {
+  flex: 1;
+}
+.editing-note {
+  margin: 0 0 -2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
 .trip-form-row {
   display: flex;
   gap: 12px;
