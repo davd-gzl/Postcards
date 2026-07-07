@@ -1,20 +1,26 @@
 :root {
-  --bg: #ffffff;
-  --bg-sub: #f6f7f9;
+  /* Warm-tinted neutrals (a touch of paper) read as crafted, not default-gray. */
+  --bg: #f7f6f3;
+  --bg-sub: #efece7;
   --surface: #ffffff;
-  --border: #e6e8ec;
-  --border-strong: #d7dbe0;
-  --text: #0f1729;
-  --muted: #667085;
-  --primary: #111827;
+  --border: #e7e2da;
+  --border-strong: #d7d0c4;
+  --text: #1a1b1e;
+  --muted: #5d5f65;
+  --primary: #17181c;
   --primary-ink: #ffffff;
-  --accent: #2563eb;
-  --visited: #16a34a;
-  --visited-soft: #eaf7ef;
-  --danger: #dc2626;
-  --radius: 12px;
+  /* Signature accent: a confident indigo, deliberately off the default blue. */
+  --accent: #4338ca;
+  --accent-soft: #ecebfb;
+  --visited: #15803d;
+  --visited-soft: #e7f4ea;
+  --danger: #c2410c;
+  --radius: 13px;
   --radius-sm: 9px;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.06);
+  --radius-lg: 18px;
+  --shadow: 0 1px 2px rgba(30, 24, 16, 0.05), 0 6px 18px -6px rgba(30, 24, 16, 0.12);
+  --shadow-sm: 0 1px 2px rgba(30, 24, 16, 0.06);
+  --display: "Space Grotesk Variable", "Inter Variable", system-ui, sans-serif;
   color-scheme: light;
 }
 
@@ -38,6 +44,16 @@ body {
   font-feature-settings: "cv02", "cv11"; /* Inter: open digits & disambiguated l/I */
 }
 
+/* Display face for the wordmark, section headings and figures. */
+.brand,
+.section-head h2,
+.ss-num,
+.tt-main strong,
+.stat-figure {
+  font-family: var(--display);
+  font-optical-sizing: auto;
+}
+
 button {
   font: inherit;
   cursor: pointer;
@@ -54,14 +70,30 @@ button {
 .topbar {
   display: flex;
   align-items: center;
-  height: 42px;
-  padding: 0 14px;
+  height: 46px;
+  padding: 0 15px;
   border-bottom: 1px solid var(--border);
+  background: var(--surface);
   flex: none;
 }
 .brand {
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+/* A small map-pin mark before the wordmark — the signature motif. */
+.brand::before {
+  content: "";
+  width: 11px;
+  height: 11px;
+  border-radius: 50% 50% 50% 2px;
+  transform: rotate(45deg);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 2.5px var(--surface);
 }
 
 /* Main / screens */
@@ -117,8 +149,9 @@ button {
 }
 .section-head h2 {
   font-size: 18px;
+  font-weight: 600;
   margin: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 .section-head h3 {
   font-size: 15px;
@@ -412,13 +445,30 @@ button {
   color: #fff;
 }
 
-/* Counter strip under the search */
+/* Counter strip under the search — styled like a boarding-pass stub. */
 .stat-strip {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 8px 2px 2px;
+  gap: 15px;
+  margin-top: 8px;
+  padding: 9px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   overflow-x: auto;
+  /* Perforated left edge — the ticket motif. */
+  position: relative;
+  padding-left: 20px;
+}
+.stat-strip::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 8px;
+  bottom: 8px;
+  width: 0;
+  border-left: 2px dotted var(--border-strong);
 }
 .ss-item {
   display: flex;
@@ -427,8 +477,10 @@ button {
   white-space: nowrap;
 }
 .ss-num {
-  font-weight: 700;
-  font-size: 15px;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 .ss-den {
   font-weight: 600;
@@ -632,6 +684,19 @@ button {
   border-radius: var(--radius-sm);
   padding: 11px 16px;
   font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.06s ease, filter 0.15s ease;
+}
+.btn:hover {
+  filter: brightness(1.12);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.45;
+  filter: none;
+  cursor: not-allowed;
 }
 .btn-ghost {
   background: var(--surface);
@@ -640,6 +705,14 @@ button {
   border-radius: var(--radius-sm);
   padding: 11px 16px;
   font-weight: 600;
+  transition: transform 0.06s ease, border-color 0.15s ease;
+}
+.btn-ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn-ghost:active {
+  transform: translateY(1px);
 }
 .notice {
   background: var(--bg-sub);
@@ -737,25 +810,32 @@ button {
   padding: 2px 4px;
 }
 
-/* Segmented control (Places views) */
+/* Segmented control (Places views, city filter) */
 .segmented {
   display: flex;
-  gap: 0;
-  border: 1px solid var(--border-strong);
+  gap: 3px;
+  padding: 3px;
+  background: var(--bg-sub);
+  border: 1px solid var(--border);
   border-radius: 999px;
-  overflow: hidden;
 }
 .segmented button {
-  background: var(--surface);
+  background: none;
   border: none;
-  padding: 6px 12px;
+  padding: 6px 13px;
   font-size: 13px;
   font-weight: 600;
   color: var(--muted);
+  border-radius: 999px;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.segmented button:hover {
+  color: var(--text);
 }
 .segmented button.seg-on {
-  background: var(--primary);
-  color: var(--primary-ink);
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Fit-to-my-places button over the map */
@@ -851,12 +931,22 @@ button {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px 12px;
-  padding: 12px 14px;
-  background: var(--bg-sub);
+  gap: 8px 14px;
+  padding: 13px 15px 13px 21px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   margin-bottom: 14px;
+  position: relative;
+}
+.travel-totals::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 9px;
+  bottom: 9px;
+  border-left: 2px dotted var(--border-strong);
 }
 .tt-main {
   font-size: 15px;
@@ -864,7 +954,9 @@ button {
 }
 .tt-main strong {
   color: var(--text);
-  font-size: 18px;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 .tt-sep {
   width: 1px;
