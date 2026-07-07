@@ -578,20 +578,38 @@ button {
 .star-btn.star-on {
   color: #f59e0b;
 }
-.fit-btn.basemap-btn {
-  left: auto;
+/* Floating map controls, grouped into two tidy corner stacks. */
+.map-ctl {
+  position: absolute;
+  bottom: 10px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 6px;
+}
+.map-ctl-left {
+  left: 10px;
+  align-items: flex-start;
+}
+.map-ctl-right {
   right: 10px;
-  bottom: 44px;
+  align-items: flex-end;
 }
-.fit-btn.save-btn {
-  bottom: 44px;
+.map-btn {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  white-space: nowrap;
 }
-.fit-btn.trips-btn {
-  left: auto;
-  right: 10px;
-  bottom: 78px;
+.map-btn:disabled {
+  opacity: 0.7;
 }
-.fit-btn.trips-btn.on {
+.map-btn.on {
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -889,21 +907,6 @@ button {
 }
 
 /* Fit-to-my-places button over the map */
-.fit-btn {
-  position: absolute;
-  left: 10px;
-  bottom: 10px;
-  z-index: 5;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  box-shadow: var(--shadow);
-}
-
 /* Active (keyboard) search option */
 .results li button.opt-active,
 .results li[aria-selected="true"] button {

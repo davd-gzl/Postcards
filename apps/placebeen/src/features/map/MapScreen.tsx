@@ -215,42 +215,46 @@ export function MapScreen() {
           viewCities={visible}
           tripArcs={showTrips ? arcs : null}
         />
-        {visitedCityCoords.length > 0 && (
-          <button className="fit-btn" type="button" onClick={fitToMyPlaces}>
-            Fit to my places
-          </button>
-        )}
-        {basemap === "osm" && online && (
+        <div className="map-ctl map-ctl-left">
+          {visitedCityCoords.length > 0 && (
+            <button className="map-btn" type="button" onClick={fitToMyPlaces}>
+              Fit to my places
+            </button>
+          )}
+          {basemap === "osm" && online && (
+            <button
+              className="map-btn"
+              type="button"
+              onClick={saveArea}
+              disabled={saving != null}
+              aria-label="Save this map area for offline use"
+              title="Download the current area so this map works offline"
+            >
+              {saving == null ? "⬇ Save area" : `Saving ${Math.round(saving * 100)}%`}
+            </button>
+          )}
+        </div>
+        <div className="map-ctl map-ctl-right">
+          {hasArcs && (
+            <button
+              className={"map-btn" + (showTrips ? " on" : "")}
+              type="button"
+              aria-pressed={showTrips}
+              onClick={() => setShowTrips((s) => !s)}
+              title={showTrips ? "Hide trip routes" : "Show trip routes"}
+            >
+              {showTrips ? "✓ Trips" : "Trips"}
+            </button>
+          )}
           <button
-            className="fit-btn save-btn"
+            className="map-btn"
             type="button"
-            onClick={saveArea}
-            disabled={saving != null}
-            aria-label="Save this map area for offline use"
-            title="Download the current area so this map works offline"
+            onClick={switchBasemap}
+            title={`Switch basemap — next: ${BASEMAP_LABEL[nextBasemap]}`}
           >
-            {saving == null ? "⬇ Save area" : `Saving ${Math.round(saving * 100)}%`}
+            {BASEMAP_LABEL[nextBasemap]}
           </button>
-        )}
-        {hasArcs && (
-          <button
-            className={"fit-btn trips-btn" + (showTrips ? " on" : "")}
-            type="button"
-            aria-pressed={showTrips}
-            onClick={() => setShowTrips((s) => !s)}
-            title={showTrips ? "Hide trip routes" : "Show trip routes"}
-          >
-            {showTrips ? "✓ Trips" : "Trips"}
-          </button>
-        )}
-        <button
-          className="fit-btn basemap-btn"
-          type="button"
-          onClick={switchBasemap}
-          title={`Switch basemap — next: ${BASEMAP_LABEL[nextBasemap]}`}
-        >
-          {BASEMAP_LABEL[nextBasemap]}
-        </button>
+        </div>
       </div>
 
       <MapLegend />
