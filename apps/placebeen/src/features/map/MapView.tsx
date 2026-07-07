@@ -261,6 +261,20 @@ export function MapView({
     src?.setData(tripArcsRef.current ?? { type: "FeatureCollection", features: [] });
   }
 
+  // Re-colour the theme-dependent basemap layers in place, so a light/dark switch
+  // never has to remount the map (which would reset the user's pan/zoom).
+  function applyTheme(map: MlMap, isDark: boolean) {
+    const ocean = isDark ? "#0d1016" : "#eaf0f6";
+    const land = isDark ? "#1b1f29" : "#f4f6f9";
+    const landLine = isDark ? "#2b313d" : "#d6dce4";
+    if (map.getLayer("background")) map.setPaintProperty("background", "background-color", ocean);
+    if (map.getLayer("osm-bg")) map.setPaintProperty("osm-bg", "background-color", ocean);
+    if (basemap === "simple" && map.getLayer("countries-base")) {
+      map.setPaintProperty("countries-base", "fill-color", land);
+      map.setPaintProperty("countries-base", "fill-outline-color", landLine);
+    }
+  }
+
   useEffect(() => {
     if (!containerRef.current) return;
     let cancelled = false;
@@ -310,16 +324,11 @@ export function MapView({
       const { style, attribution } = await bundledMapSource.resolveStyle(pack);
       if (cancelled) return;
       map.setStyle(style);
-      // Ocean/land colours for the offline overview, theme-aware.
-      const ocean = dark ? "#0d1016" : "#eaf0f6";
       const land = dark ? "#1b1f29" : "#f4f6f9";
       const landLine = dark ? "#2b313d" : "#d6dce4";
       map.once("styledata", async () => {
         if (cancelled) return;
-        // Darken the overview's ocean (the style background layer) in dark mode.
-        if (!richBase && map.getLayer("background")) {
-          map.setPaintProperty("background", "background-color", ocean);
-        }
+        applyTheme(map, dark); // ocean (overview + osm) colours, theme-aware
         const countriesFc = await loadCountries();
         if (cancelled || !map.getStyle()) return;
         if (countriesFc) {
@@ -519,6 +528,12 @@ export function MapView({
     if (map && loadedRef.current) applyTripArcs(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tripArcs]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map && loadedRef.current) applyTheme(map, dark);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dark]);
 
   useEffect(() => {
     const map = mapRef.current;

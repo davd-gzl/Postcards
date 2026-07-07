@@ -35,14 +35,21 @@ export function tilesForBounds(
   for (let dz = 0; dz < levels && z0 + dz <= MAX_ZOOM; dz++) {
     const z = z0 + dz;
     const n = 2 ** z;
-    const xMin = clamp(lon2x(bounds.west, z), 0, n - 1);
-    const xMax = clamp(lon2x(bounds.east, z), 0, n - 1);
     const yMin = clamp(lat2y(bounds.north, z), 0, n - 1);
     const yMax = clamp(lat2y(bounds.south, z), 0, n - 1);
-    for (let x = xMin; x <= xMax; x++) {
-      for (let y = yMin; y <= yMax; y++) {
-        if (urls.length >= maxTiles) return urls;
-        urls.push(template.replace("{z}", String(z)).replace("{x}", String(x)).replace("{y}", String(y)));
+    // A viewport crossing the antimeridian has west > east; split it into two
+    // x-spans ([west..edge] and [edge..east]) so the date line saves like anywhere
+    // else (mirrors the wrap handling in viewport.ts).
+    const xw = clamp(lon2x(bounds.west, z), 0, n - 1);
+    const xe = clamp(lon2x(bounds.east, z), 0, n - 1);
+    const spans: [number, number][] =
+      bounds.west <= bounds.east ? [[xw, xe]] : [[xw, n - 1], [0, xe]];
+    for (const [x0, x1] of spans) {
+      for (let x = x0; x <= x1; x++) {
+        for (let y = yMin; y <= yMax; y++) {
+          if (urls.length >= maxTiles) return urls;
+          urls.push(template.replace("{z}", String(z)).replace("{x}", String(x)).replace("{y}", String(y)));
+        }
       }
     }
   }
@@ -92,6 +99,7 @@ export async function saveAreaOffline(
       opts.onProgress?.({ done, total });
     }
   }
-  await Promise.all(Array.from({ length: opts.concurrency ?? 6 }, worker));
+  // Keep concurrency modest to respect the OSM tile usage policy (no bulk hammering).
+  await Promise.all(Array.from({ length: opts.concurrency ?? 3 }, worker));
   return { saved: done - failed, failed, total, capped };
 }

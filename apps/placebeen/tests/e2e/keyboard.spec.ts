@@ -22,7 +22,7 @@ test("add a visit and browse with the keyboard only", async ({ page }) => {
   await expect(page.locator(".country-head", { hasText: "Japan" })).toBeVisible();
 
   await page.keyboard.press("3");
-  await expect(page.getByRole("tab", { name: "Countries" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Countries" })).toBeVisible();
 
   // "?" opens the shortcuts overlay; Escape closes it.
   await page.keyboard.press("?");

@@ -26,6 +26,16 @@ describe("tilesForBounds", () => {
     expect(capped).toHaveLength(50);
   });
 
+  it("covers a viewport that crosses the antimeridian (west > east)", () => {
+    // Straddling the date line near Fiji: west=170, east=-170.
+    const urls = tilesForBounds({ west: 170, south: -20, east: -170, north: -16 }, 6, 1);
+    expect(urls.length).toBeGreaterThan(0); // not silently empty
+    // Includes tiles from both the far-east and far-west edges of the grid (z6 → 64 wide).
+    const xs = urls.map((u) => Number(u.split("/")[4]));
+    expect(Math.max(...xs)).toBeGreaterThan(60); // near x=63 (east of 170°)
+    expect(Math.min(...xs)).toBeLessThan(3); // near x=0 (west of -170°)
+  });
+
   it("clamps zoom into range and never emits out-of-grid indices", () => {
     const urls = tilesForBounds({ west: -180, south: -85, east: 180, north: 85 }, 0, 1);
     expect(urls.length).toBeGreaterThan(0);

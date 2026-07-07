@@ -124,10 +124,12 @@ export function MapScreen() {
       const res = await saveAreaOffline(bounds, bounds.zoom ?? 3, {
         onProgress: (p) => setSaving(p.total ? p.done / p.total : 1),
       });
+      // Tiles are fetched no-cors, so their HTTP status is unreadable — report
+      // "fetched" (what we can verify) rather than claiming a guaranteed save.
       showToast(
         res.total === 0
           ? "Nothing to save at this zoom — zoom in first."
-          : `Saved ${res.saved} map tiles for offline${res.capped ? " (zoom in to save finer detail)" : ""}.`,
+          : `Fetched ${res.total} map tiles for this area${res.capped ? " (zoom in to save finer detail)" : ""}.`,
       );
     } catch {
       showToast("Couldn't save this area — check your connection.");
@@ -205,7 +207,7 @@ export function MapScreen() {
 
       <div className="map-box">
         <MapView
-          key={`${basemap}-${dark ? "d" : "l"}`}
+          key={basemap}
           basemap={basemap}
           dark={dark}
           onBounds={setBounds}
@@ -227,7 +229,11 @@ export function MapScreen() {
               type="button"
               onClick={saveArea}
               disabled={saving != null}
-              aria-label="Save this map area for offline use"
+              aria-label={
+                saving == null
+                  ? "Save area for offline use"
+                  : `Saving area, ${Math.round(saving * 100)} percent`
+              }
               title="Download the current area so this map works offline"
             >
               {saving == null ? "⬇ Save area" : `Saving ${Math.round(saving * 100)}%`}
@@ -268,13 +274,12 @@ export function MapScreen() {
           </span>
         </div>
 
-        <div className="segmented list-filter" role="tablist" aria-label="Filter cities">
+        <div className="segmented list-filter" role="group" aria-label="Filter cities">
           {(["all", "unvisited", "visited"] as CityFilter[]).map((f) => (
             <button
               key={f}
               type="button"
-              role="tab"
-              aria-selected={cityFilter === f}
+              aria-pressed={cityFilter === f}
               className={cityFilter === f ? "seg-on" : ""}
               onClick={() => setCityFilter(f)}
             >

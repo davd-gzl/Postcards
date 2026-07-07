@@ -73,10 +73,18 @@ export function parseBcbp(raw: string): BcbpResult | null {
  * scan are for trips already taken.
  */
 export function julianToDate(julianDay: number, now: Date): string {
+  // Build the day-of-year for a given year; if it overflows that year's length
+  // (day 366 in a non-leap year), clamp to Dec 31 rather than rolling into January.
+  const build = (year: number): Date => {
+    const d = new Date(Date.UTC(year, 0, julianDay));
+    return d.getUTCFullYear() === year ? d : new Date(Date.UTC(year, 11, 31));
+  };
   const year = now.getUTCFullYear();
-  let d = new Date(Date.UTC(year, 0, julianDay)); // month 0 + Nth day rolls over correctly
-  if (d.getTime() - now.getTime() > 7 * 24 * 60 * 60 * 1000) {
-    d = new Date(Date.UTC(year - 1, 0, julianDay));
+  let d = build(year);
+  // Passes are often obtained weeks ahead of departure, so only assume "last year"
+  // when the date is well beyond a plausible booking window (~3 months out).
+  if (d.getTime() - now.getTime() > 92 * 24 * 60 * 60 * 1000) {
+    d = build(year - 1);
   }
   return d.toISOString().slice(0, 10);
 }

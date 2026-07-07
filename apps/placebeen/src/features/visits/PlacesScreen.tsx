@@ -74,11 +74,10 @@ export function PlacesScreen() {
     <section aria-label="Your places">
       <div className="section-head">
         <h2>Places</h2>
-        <div className="segmented" role="tablist" aria-label="Places view">
+        <div className="segmented" role="group" aria-label="Places view">
           <button
             type="button"
-            role="tab"
-            aria-selected={view === "visited"}
+            aria-pressed={view === "visited"}
             className={view === "visited" ? "seg-on" : ""}
             onClick={() => setView("visited")}
           >
@@ -86,8 +85,7 @@ export function PlacesScreen() {
           </button>
           <button
             type="button"
-            role="tab"
-            aria-selected={view === "wishlist"}
+            aria-pressed={view === "wishlist"}
             className={view === "wishlist" ? "seg-on" : ""}
             onClick={() => setView("wishlist")}
           >
@@ -95,8 +93,7 @@ export function PlacesScreen() {
           </button>
           <button
             type="button"
-            role="tab"
-            aria-selected={view === "countries"}
+            aria-pressed={view === "countries"}
             className={view === "countries" ? "seg-on" : ""}
             onClick={() => setView("countries")}
           >

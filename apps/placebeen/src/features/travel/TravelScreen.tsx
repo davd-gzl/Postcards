@@ -109,8 +109,10 @@ export function TravelScreen() {
     if (legs.length === 1) {
       const leg = legs[0]!;
       setMode("flight");
-      if (leg.from) setFrom(leg.from);
-      if (leg.to) setTo(leg.to);
+      // Always replace both endpoints — clear an unresolved code so the field the
+      // toast asks the user to fill is actually empty (never a stale leftover).
+      setFrom(leg.from ?? null);
+      setTo(leg.to ?? null);
       setDate(leg.date);
       setNote(leg.flight ? `Flight ${leg.flight}` : "");
       const missing = [!leg.from && leg.codes[0], !leg.to && leg.codes[1]].filter(Boolean);

@@ -35,7 +35,7 @@ test("undo reverts an add", async ({ page }) => {
 test("country checklist toggles a country", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Places", exact: true }).click();
-  await page.getByRole("tab", { name: "Countries" }).click();
+  await page.getByRole("button", { name: "Countries" }).click();
   await page.getByLabel("Filter countries").fill("Japan");
   await page.getByRole("button", { name: "Mark Japan visited" }).click();
 
