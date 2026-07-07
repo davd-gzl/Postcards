@@ -40,6 +40,7 @@ export function TravelScreen() {
   const [to, setTo] = useState<PlaceRef | null>(null);
   const [mode, setMode] = useState<TravelMode>("flight");
   const [date, setDate] = useState("");
+  const [note, setNote] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const totals = useMemo(() => travelTotals(trips, ref), [trips, ref]);
@@ -53,6 +54,7 @@ export function TravelScreen() {
     setTo(null);
     setMode("flight");
     setDate("");
+    setNote("");
     setEditingId(null);
   }
 
@@ -61,6 +63,7 @@ export function TravelScreen() {
     setTo(t.to);
     setMode(t.mode);
     setDate(t.date ?? "");
+    setNote(t.note ?? "");
     setEditingId(t.tripId);
     document.querySelector(".trip-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -69,11 +72,12 @@ export function TravelScreen() {
     e.preventDefault();
     if (!from || !to) return;
     const prev = useTrips.getState().trips;
+    const fields = { from, to, mode, date: date || null, note: note.trim() || null };
     if (editingId) {
-      await updateTrip(editingId, { from, to, mode, date: date || null });
+      await updateTrip(editingId, fields);
       showToast(`Updated ${endpointLabel(from)} → ${endpointLabel(to)}`, () => setAll(prev));
     } else {
-      await addTrip({ from, to, mode, date: date || null });
+      await addTrip(fields);
       showToast(`Added ${endpointLabel(from)} → ${endpointLabel(to)}`, () => setAll(prev));
     }
     resetForm();
@@ -98,6 +102,7 @@ export function TravelScreen() {
       from: airportRef(l.from),
       to: airportRef(l.to),
       date: julianToDate(l.julianDay, now),
+      flight: `${l.carrier}${l.flightNumber}`.trim(), // e.g. "AC834" (may be empty)
       codes: [l.from, l.to] as const,
     }));
 
@@ -107,6 +112,7 @@ export function TravelScreen() {
       if (leg.from) setFrom(leg.from);
       if (leg.to) setTo(leg.to);
       setDate(leg.date);
+      setNote(leg.flight ? `Flight ${leg.flight}` : "");
       const missing = [!leg.from && leg.codes[0], !leg.to && leg.codes[1]].filter(Boolean);
       showToast(
         missing.length
@@ -122,7 +128,13 @@ export function TravelScreen() {
     const skipped: string[] = [];
     for (const leg of legs) {
       if (leg.from && leg.to) {
-        await addTrip({ from: leg.from, to: leg.to, mode: "flight", date: leg.date });
+        await addTrip({
+          from: leg.from,
+          to: leg.to,
+          mode: "flight",
+          date: leg.date,
+          note: leg.flight ? `Flight ${leg.flight}` : null,
+        });
         added++;
       } else {
         skipped.push(`${leg.codes[0]}→${leg.codes[1]}`);
@@ -193,6 +205,18 @@ export function TravelScreen() {
             />
           </label>
         </div>
+        <label className="picker-label" htmlFor="trip-note">
+          Note (optional)
+          <input
+            id="trip-note"
+            className="select"
+            type="text"
+            maxLength={120}
+            placeholder="Flight AC834, seat 12A…"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </label>
         <div className="trip-form-actions">
           <button className="btn" type="submit" disabled={!from || !to}>
             {editingId ? "Save changes" : "Add trip"}
@@ -229,6 +253,7 @@ export function TravelScreen() {
                     <span className="city-sub">
                       {km == null ? "" : `· ${formatKm(km)}`}
                       {t.date ? ` · ${formatDate(t.date)}` : ""}
+                      {t.note ? ` · ${t.note}` : ""}
                     </span>
                   </span>
                 </div>
