@@ -9,7 +9,7 @@ in. No account, no server, no tracking.
 
 _Place'Been remembers where you've been — it is **not** a trip planner._
 
-<img src="docs/screenshots/map-desktop.png" alt="Place'Been world map with visited countries highlighted and a live list of cities in view" width="880">
+<img src="docs/screenshots/map-desktop.png" alt="Place'Been world map with visited countries highlighted, cities as flag and population pills, trips drawn as great-circle arcs, and a live list of cities in view" width="880">
 
 </div>
 
@@ -24,10 +24,12 @@ _Place'Been remembers where you've been — it is **not** a trip planner._
 
 ## What it looks like
 
-| Map | Stats | Places |
-| :---: | :---: | :---: |
-| <img src="docs/screenshots/map-mobile.png" alt="Mobile map with visited cities shown as flag and population pills, plus a live list of cities in view" width="250"> | <img src="docs/screenshots/stats-mobile.png" alt="Coverage statistics: countries, percent of world, cities, per-continent and per-country breakdowns" width="250"> | <img src="docs/screenshots/places-mobile.png" alt="Places screen with Visited, Wishlist, and Countries segments" width="250"> |
-| Visited cities show as flag + population pills; the cities-in-view list updates live. | Your coverage at a glance. | What you've visited, a wishlist, or the full country checklist. |
+|  |  |
+| :---: | :---: |
+| <img src="docs/screenshots/map-mobile.png" alt="Mobile map with visited cities shown as flag and population pills and trips drawn as great-circle arcs, plus a live list of cities in view" width="260"> | <img src="docs/screenshots/trips-mobile.png" alt="Travel log in dark mode: total trips and distance, a per-mode breakdown, and a list of logged journeys with distances" width="260"> |
+| **Map** — visited cities show as flag + population pills, trips draw as **great-circle arcs**, and the cities-in-view list updates live. | **Travel log** _(dark mode)_ — journeys you've taken, with total distance, a per-mode breakdown, and boarding-pass import. |
+| <img src="docs/screenshots/stats-mobile.png" alt="Coverage statistics: countries, percent of world, cities, travel totals, per-continent and per-country breakdowns" width="260"> | <img src="docs/screenshots/places-mobile.png" alt="Places screen with Visited, Wishlist, and Countries segments" width="260"> |
+| **Stats** — countries, % of the world, cities, travel totals, and per-country city + region coverage. | **Places** — what you've visited, a wishlist, or the full country checklist. |
 
 ## Features
 
