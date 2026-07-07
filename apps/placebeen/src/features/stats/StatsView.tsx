@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useVisits } from "../../lib/store/useVisits";
+import { useTrips } from "../../lib/store/useTrips";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import {
   computeCoverage,
@@ -8,8 +9,18 @@ import {
   visitedCountriesList,
   type CountrySort,
 } from "./computeStats";
-import { countryFlag, formatInt, formatPercent } from "../../lib/format/format";
+import { travelTotals } from "../travel/distance";
+import { countryFlag, formatInt, formatKm, formatPercent } from "../../lib/format/format";
 import { CONTINENT_COLORS } from "../../lib/reference/continents";
+
+const MODE_GLYPH: Record<string, string> = {
+  flight: "✈️",
+  train: "🚆",
+  bus: "🚌",
+  ferry: "⛴️",
+  car: "🚗",
+  other: "•",
+};
 
 function Bar({ value, label, color }: { value: number; label: string; color?: string }) {
   return (
@@ -29,9 +40,11 @@ function Bar({ value, label, color }: { value: number; label: string; color?: st
 export function StatsView() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
+  const trips = useTrips((s) => s.trips);
 
   const [sortBy, setSortBy] = useState<CountrySort>("cities");
   const coverage = useMemo(() => computeCoverage(visits, ref), [visits, ref]);
+  const travel = useMemo(() => travelTotals(trips, ref), [trips, ref]);
   const continentCov = useMemo(() => computeContinentCoverage(visits, ref), [visits, ref]);
   const countries = useMemo(
     () => visitedCountriesList(visits, ref, sortBy),
@@ -59,7 +72,39 @@ export function StatsView() {
           <div className="num">{formatInt(coverage.citiesVisited)}</div>
           <div className="label">cities</div>
         </div>
+        {coverage.airportsVisited > 0 && (
+          <div className="stat-tile">
+            <div className="num">{formatInt(coverage.airportsVisited)}</div>
+            <div className="label">airports</div>
+          </div>
+        )}
       </div>
+
+      {travel.trips > 0 && (
+        <>
+          <div className="section-head">
+            <h3>Travel</h3>
+          </div>
+          <div className="travel-totals" aria-label="Travel totals">
+            <span className="tt-main">
+              <strong>{formatInt(travel.trips)}</strong> {travel.trips === 1 ? "trip" : "trips"}
+            </span>
+            <span className="tt-sep" aria-hidden />
+            <span className="tt-main">
+              <strong>{formatKm(travel.totalKm)}</strong> travelled
+            </span>
+            {travel.byMode.length > 0 && (
+              <span className="tt-modes">
+                {travel.byMode.map((m) => (
+                  <span className="tt-mode" key={m.mode} title={`${m.trips} by ${m.mode}`}>
+                    {MODE_GLYPH[m.mode]} {m.trips}
+                  </span>
+                ))}
+              </span>
+            )}
+          </div>
+        </>
+      )}
 
       {continentCov.length > 0 && (
         <>

@@ -648,7 +648,7 @@ button {
 /* Stats */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
   gap: 10px;
   margin-bottom: 20px;
 }
