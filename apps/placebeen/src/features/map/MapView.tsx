@@ -187,6 +187,7 @@ export function MapView({
   viewCities,
   tripArcs,
   basemap = "simple",
+  dark = false,
 }: {
   onBounds?: (b: Bounds) => void;
   focus?: MapFocus | null;
@@ -202,6 +203,8 @@ export function MapView({
    * raster; "detail" = opt-in offline street vector from an installed PMTiles pack.
    */
   basemap?: Basemap;
+  /** Dark theme — darkens the offline overview's ocean/land. */
+  dark?: boolean;
 }) {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
@@ -306,8 +309,16 @@ export function MapView({
       const { style, attribution } = await bundledMapSource.resolveStyle(pack);
       if (cancelled) return;
       map.setStyle(style);
+      // Ocean/land colours for the offline overview, theme-aware.
+      const ocean = dark ? "#0d1016" : "#eaf0f6";
+      const land = dark ? "#1b1f29" : "#f4f6f9";
+      const landLine = dark ? "#2b313d" : "#d6dce4";
       map.once("styledata", async () => {
         if (cancelled) return;
+        // Darken the overview's ocean (the style background layer) in dark mode.
+        if (!richBase && map.getLayer("background")) {
+          map.setPaintProperty("background", "background-color", ocean);
+        }
         const countriesFc = await loadCountries();
         if (cancelled || !map.getStyle()) return;
         if (countriesFc) {
@@ -319,7 +330,7 @@ export function MapView({
             source: "countries",
             paint: richBase
               ? { "fill-color": "#000000", "fill-opacity": 0 }
-              : { "fill-color": "#f4f6f9", "fill-outline-color": "#d6dce4" },
+              : { "fill-color": land, "fill-outline-color": landLine },
           });
           map.addLayer({
             id: "countries-visited",

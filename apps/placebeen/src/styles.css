@@ -24,6 +24,43 @@
   color-scheme: light;
 }
 
+/* Dark mode follows the device automatically (no toggle). Tuned by hand for
+   WCAG AA contrast on the dark surfaces. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131419;
+    --bg-sub: #1e2027;
+    --surface: #1a1c22;
+    --border: #2c2f38;
+    --border-strong: #3c404b;
+    --text: #eceef3;
+    --muted: #a2a6b2;
+    --primary: #eceef3;
+    --primary-ink: #17181c;
+    --accent: #a5b4fc;
+    --accent-soft: #262a45;
+    --visited: #4ade80;
+    --visited-soft: #16261c;
+    --danger: #f2915a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 22px -8px rgba(0, 0, 0, 0.55);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+  /* Semantic accent colours, brightened so they read on dark surfaces. */
+  .ss-been {
+    color: #4ade80;
+  }
+  .ss-air {
+    color: #56b6f0;
+  }
+  .ss-want {
+    color: #f0a35a;
+  }
+  .ss-fav {
+    color: #f472b6;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -49,7 +86,7 @@ body {
 .section-head h2,
 .ss-num,
 .tt-main strong,
-.stat-figure {
+.stat-tile .num {
   font-family: var(--display);
   font-optical-sizing: auto;
 }
@@ -188,6 +225,7 @@ button {
   height: 40vh;
   min-height: 240px;
   flex: none;
+  background: var(--bg-sub);
 }
 
 /* Continent legend (colors match the map fills) */
@@ -612,26 +650,32 @@ button {
   margin-bottom: 20px;
 }
 .stat-tile {
-  background: var(--bg-sub);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 11px 10px;
+  padding: 13px 12px;
+  box-shadow: var(--shadow-sm);
 }
 .stat-tile .num {
-  font-size: 23px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
 }
 .stat-tile .label {
   color: var(--muted);
-  font-size: 13px;
-  margin-top: 2px;
+  font-size: 12.5px;
+  margin-top: 3px;
+  line-height: 1.3;
 }
 .country-card {
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 9px 11px;
-  margin-bottom: 6px;
+  padding: 11px 12px;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow-sm);
 }
 .country-head {
   display: flex;
@@ -650,14 +694,16 @@ button {
   margin-bottom: 5px;
 }
 .bar {
-  height: 8px;
+  height: 7px;
   background: var(--bg-sub);
   border-radius: 999px;
   overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
 }
 .bar > span {
   display: block;
   height: 100%;
+  border-radius: 999px;
   background: var(--visited);
 }
 .sort-select {
@@ -784,8 +830,9 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--text);
+  background: #1f232c; /* fixed dark: reads on both light and dark backgrounds */
   color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   padding: 10px 12px;
   box-shadow: var(--shadow);

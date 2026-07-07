@@ -179,8 +179,8 @@ export function StatsView() {
 
       <p className="muted small">
         Computed against the loaded reference datasets: all countries &amp; territories (ISO
-        3166-1), a GeoNames gazetteer of cities with 15,000+ people, and first-level regions where
-        loaded (France).
+        3166-1), a GeoNames gazetteer of cities with 15,000+ people, and first-level regions
+        (states/provinces) worldwide.
       </p>
     </section>
   );

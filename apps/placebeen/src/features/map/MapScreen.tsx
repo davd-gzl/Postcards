@@ -63,6 +63,9 @@ export function MapScreen() {
   const [cityFilter, setCityFilter] = useState<CityFilter>("all");
   const trips = useTrips((s) => s.trips);
   const [showTrips, setShowTrips] = useState(true);
+  const [dark, setDark] = useState(() =>
+    typeof matchMedia === "undefined" ? false : matchMedia("(prefers-color-scheme: dark)").matches,
+  );
 
   // Offer the offline street basemap only when a PMTiles pack is actually
   // installed (via the device-global Offline Map Store). None is bundled.
@@ -91,6 +94,15 @@ export function MapScreen() {
       window.removeEventListener("online", on);
       window.removeEventListener("offline", off);
     };
+  }, []);
+
+  // Follow the device light/dark theme so the offline basemap matches the UI.
+  useEffect(() => {
+    if (typeof matchMedia === "undefined") return;
+    const mq = matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (e: MediaQueryListEvent) => setDark(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
   }, []);
 
   const basemapCycle: Basemap[] = hasDetail ? ["simple", "osm", "detail"] : ["simple", "osm"];
@@ -173,8 +185,9 @@ export function MapScreen() {
 
       <div className="map-box">
         <MapView
-          key={effectiveBasemap}
+          key={`${effectiveBasemap}-${dark ? "d" : "l"}`}
           basemap={effectiveBasemap}
+          dark={dark}
           onBounds={setBounds}
           focus={focus}
           fit={fit}
