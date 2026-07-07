@@ -109,6 +109,9 @@ export function PlacesScreen() {
         <>
           {visited.length === 0 && (
             <p className="muted empty">
+              <span className="empty-emoji" aria-hidden>
+                🧳
+              </span>
               Nothing yet. Add places from the map, or switch to “Countries” to check off the
               countries you've been to.
             </p>
@@ -166,7 +169,10 @@ export function PlacesScreen() {
         <>
           {wishlist.length === 0 && (
             <p className="muted empty">
-              No wishes yet. Tap a city on the map list, then “⚑ Wish to go”.
+              <span className="empty-emoji" aria-hidden>
+                ⚑
+              </span>
+              No wishes yet. Find a place and tap the ⚑ to add it to your someday list.
             </p>
           )}
           <ul className="city-list">

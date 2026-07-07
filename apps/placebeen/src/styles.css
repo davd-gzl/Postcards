@@ -201,7 +201,15 @@ button {
   font-size: 13px;
 }
 .empty {
-  padding: 16px 2px;
+  padding: 26px 18px;
+  text-align: center;
+  line-height: 1.55;
+}
+.empty-emoji {
+  display: block;
+  font-size: 30px;
+  margin-bottom: 8px;
+  filter: saturate(0.9);
 }
 
 /* ---- Map screen ---- */

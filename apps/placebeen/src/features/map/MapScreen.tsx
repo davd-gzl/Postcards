@@ -285,6 +285,9 @@ export function MapScreen() {
 
         {inView.length === 0 ? (
           <p className="muted empty">
+            <span className="empty-emoji" aria-hidden>
+              🗺️
+            </span>
             No cities of 15,000+ people in this view. Pan or zoom the map — or tap a country to mark
             the whole country visited.
           </p>

@@ -207,7 +207,11 @@ export function TravelScreen() {
 
       {trips.length === 0 ? (
         <p className="muted empty">
-          No trips yet. Add a journey you've taken — pick where you went from and to, and how.
+          <span className="empty-emoji" aria-hidden>
+            🧭
+          </span>
+          No journeys logged yet. Add one you've taken — or scan a boarding pass and it fills itself
+          in.
         </p>
       ) : (
         <ul className="city-list" style={{ marginTop: 12 }}>
