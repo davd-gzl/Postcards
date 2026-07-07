@@ -23,6 +23,20 @@ export default defineConfig({
         // Cache the app shell + bundled reference/basemap assets for offline use.
         globPatterns: ["**/*.{js,css,html,json,geojson,pmtiles,woff2}"],
         maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
+        // Runtime-cache OSM raster tiles the user actually views, so areas they've
+        // browsed on the online basemap remain available OFFLINE (opt-in: no tile
+        // is ever fetched until the user turns on the OpenStreetMap basemap).
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.hostname.endsWith("tile.openstreetmap.org"),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "osm-tiles",
+              expiration: { maxEntries: 4000, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],

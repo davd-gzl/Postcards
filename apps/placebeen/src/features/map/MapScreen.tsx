@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
+import { useTrips } from "../../lib/store/useTrips";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
 import { countryFlag, formatInt } from "../../lib/format/format";
@@ -10,10 +11,12 @@ import { StateToggles } from "../visits/StateToggles";
 import { StatStrip } from "../stats/StatStrip";
 import { MapView, type Basemap, type MapFocus, type MapFit } from "./MapView";
 import { MapLegend } from "./MapLegend";
+import { tripArcs } from "./visitedLayers";
 import { citiesInView, type Bounds } from "./viewport";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 
 const CAP = 30;
+type CityFilter = "all" | "unvisited" | "visited";
 const BASEMAP_KEY = "placebeen-basemap";
 
 const BASEMAP_LABEL: Record<Basemap, string> = {
@@ -54,6 +57,12 @@ export function MapScreen() {
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [basemap, setBasemap] = useState<Basemap>(loadBasemap);
   const [hasDetail, setHasDetail] = useState(false);
+  const [online, setOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  const [cityFilter, setCityFilter] = useState<CityFilter>("all");
+  const trips = useTrips((s) => s.trips);
+  const [showTrips, setShowTrips] = useState(true);
 
   // Offer the offline street basemap only when a PMTiles pack is actually
   // installed (via the device-global Offline Map Store). None is bundled.
@@ -72,8 +81,23 @@ export function MapScreen() {
     };
   }, []);
 
+  // Track connectivity so the online OSM basemap can auto-fall back when offline.
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
   const basemapCycle: Basemap[] = hasDetail ? ["simple", "osm", "detail"] : ["simple", "osm"];
   const nextBasemap = basemapCycle[(basemapCycle.indexOf(basemap) + 1) % basemapCycle.length]!;
+  // OSM needs a connection; when it's the chosen map but we're offline, render the
+  // always-available offline overview and restore OSM automatically when back online.
+  const effectiveBasemap: Basemap = basemap === "osm" && !online ? "simple" : basemap;
 
   function switchBasemap() {
     setBasemap(nextBasemap);
@@ -81,15 +105,23 @@ export function MapScreen() {
   }
 
   const inView = useMemo(() => citiesInView(allCities, bounds, Infinity), [allCities, bounds]);
-  const visible = useMemo(() => inView.slice(0, CAP), [inView]);
   const visitedCityIds = useMemo(
     () => new Set(visits.filter((v) => v.place.kind === "city").map((v) => v.place.id)),
     [visits],
   );
+  const filteredInView = useMemo(() => {
+    if (cityFilter === "all") return inView;
+    const want = cityFilter === "visited";
+    return inView.filter((c) => visitedCityIds.has(c.id) === want);
+  }, [inView, cityFilter, visitedCityIds]);
+  const visible = useMemo(() => filteredInView.slice(0, CAP), [filteredInView]);
   const visitedInView = useMemo(
     () => inView.reduce((n, c) => n + (visitedCityIds.has(c.id) ? 1 : 0), 0),
     [inView, visitedCityIds],
   );
+
+  const arcs = useMemo(() => tripArcs(trips, ref), [trips, ref]);
+  const hasArcs = arcs.features.length > 0;
 
   // Another tab asked the map to fly somewhere (Places row → map).
   useEffect(() => {
@@ -141,17 +173,29 @@ export function MapScreen() {
 
       <div className="map-box">
         <MapView
-          key={basemap}
-          basemap={basemap}
+          key={effectiveBasemap}
+          basemap={effectiveBasemap}
           onBounds={setBounds}
           focus={focus}
           fit={fit}
           onCountryTap={onCountryTap}
           viewCities={visible}
+          tripArcs={showTrips ? arcs : null}
         />
         {visitedCityCoords.length > 0 && (
           <button className="fit-btn" type="button" onClick={fitToMyPlaces}>
             Fit to my places
+          </button>
+        )}
+        {hasArcs && (
+          <button
+            className={"fit-btn trips-btn" + (showTrips ? " on" : "")}
+            type="button"
+            aria-pressed={showTrips}
+            onClick={() => setShowTrips((s) => !s)}
+            title={showTrips ? "Hide trip routes" : "Show trip routes"}
+          >
+            {showTrips ? "✓ Trips" : "Trips"}
           </button>
         )}
         <button
@@ -175,10 +219,31 @@ export function MapScreen() {
           </span>
         </div>
 
+        <div className="segmented list-filter" role="tablist" aria-label="Filter cities">
+          {(["all", "unvisited", "visited"] as CityFilter[]).map((f) => (
+            <button
+              key={f}
+              type="button"
+              role="tab"
+              aria-selected={cityFilter === f}
+              className={cityFilter === f ? "seg-on" : ""}
+              onClick={() => setCityFilter(f)}
+            >
+              {f === "all" ? "All" : f === "unvisited" ? "To visit" : "Visited"}
+            </button>
+          ))}
+        </div>
+
         {inView.length === 0 ? (
           <p className="muted empty">
             No cities of 15,000+ people in this view. Pan or zoom the map — or tap a country to mark
             the whole country visited.
+          </p>
+        ) : filteredInView.length === 0 ? (
+          <p className="muted empty">
+            {cityFilter === "unvisited"
+              ? "You've been to every city in view. Pan somewhere new, or switch to “All”."
+              : "No visited cities in this view yet. Switch to “All” or “To visit”."}
           </p>
         ) : (
           <ul className="city-list">
@@ -218,9 +283,9 @@ export function MapScreen() {
             })}
           </ul>
         )}
-        {inView.length > CAP && (
+        {filteredInView.length > CAP && (
           <p className="muted cap-note">
-            Showing the {CAP} most populous of {inView.length}. Zoom in for the rest.
+            Showing the {CAP} most populous of {filteredInView.length}. Zoom in for the rest.
           </p>
         )}
       </section>

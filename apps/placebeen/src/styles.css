@@ -493,6 +493,18 @@ button {
   right: 10px;
   bottom: 44px;
 }
+.fit-btn.trips-btn {
+  left: auto;
+  right: 10px;
+  bottom: 78px;
+}
+.fit-btn.trips-btn.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.list-filter {
+  margin: 2px 0 10px;
+}
 .city-focus {
   flex: 1;
   min-width: 0;

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import maplibregl, { type GeoJSONSource, type Map as MlMap } from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import { feature } from "topojson-client";
-import type { FeatureCollection, Polygon, MultiPolygon, Point, Feature } from "geojson";
+import type { FeatureCollection, Polygon, MultiPolygon, Point, Feature, LineString } from "geojson";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import { useVisits } from "../../lib/store/useVisits";
@@ -185,6 +185,7 @@ export function MapView({
   fit,
   onCountryTap,
   viewCities,
+  tripArcs,
   basemap = "simple",
 }: {
   onBounds?: (b: Bounds) => void;
@@ -194,6 +195,8 @@ export function MapView({
   onCountryTap?: (country: Country) => void;
   /** The cities currently shown in the list — drawn as hollow dots for map↔list sync. */
   viewCities?: City[];
+  /** Great-circle arcs of logged trips, coloured by mode; null/empty hides them. */
+  tripArcs?: FeatureCollection<LineString> | null;
   /**
    * "simple" = bundled offline overview (default); "osm" = opt-in online OSM
    * raster; "detail" = opt-in offline street vector from an installed PMTiles pack.
@@ -213,6 +216,8 @@ export function MapView({
   onCountryTapRef.current = onCountryTap;
   const viewCitiesRef = useRef(viewCities);
   viewCitiesRef.current = viewCities;
+  const tripArcsRef = useRef(tripArcs);
+  tripArcsRef.current = tripArcs;
   const [failed, setFailed] = useState(false);
 
   function emitBounds(map: MlMap) {
@@ -245,6 +250,11 @@ export function MapView({
   function applyViewCities(map: MlMap) {
     const src = map.getSource("cities-inview") as GeoJSONSource | undefined;
     src?.setData(inViewPoints(viewCitiesRef.current ?? []));
+  }
+
+  function applyTripArcs(map: MlMap) {
+    const src = map.getSource("trip-arcs") as GeoJSONSource | undefined;
+    src?.setData(tripArcsRef.current ?? { type: "FeatureCollection", features: [] });
   }
 
   useEffect(() => {
@@ -329,6 +339,31 @@ export function MapView({
             paint: { "line-color": continentColorExpr(), "line-width": 1.2, "line-opacity": 0.9 },
           });
         }
+        // Trip arcs (great circles), coloured by mode, under the city/airport markers.
+        map.addSource("trip-arcs", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        map.addLayer({
+          id: "trip-arcs",
+          type: "line",
+          source: "trip-arcs",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-color": [
+              "match",
+              ["get", "mode"],
+              "flight", "#2563eb",
+              "train", "#16a34a",
+              "bus", "#d97706",
+              "ferry", "#0891b2",
+              "car", "#7c3aed",
+              "#64748b",
+            ],
+            "line-width": 1.8,
+            "line-opacity": 0.75,
+          },
+        });
         // Hollow dots for the cities currently listed below the map.
         map.addSource("cities-inview", {
           type: "geojson",
@@ -414,6 +449,7 @@ export function MapView({
         loadedRef.current = true;
         applyVisited(map);
         applyViewCities(map);
+        applyTripArcs(map);
         emitBounds(map);
       });
     });
@@ -465,6 +501,12 @@ export function MapView({
     if (map && loadedRef.current) applyViewCities(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewCities]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map && loadedRef.current) applyTripArcs(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripArcs]);
 
   useEffect(() => {
     const map = mapRef.current;
