@@ -34,7 +34,7 @@ _Place'Been remembers where you've been — it is **not** a trip planner._
 - **Log visits — or wishlist them** — search any city, country, or **airport** (by name or IATA code, e.g. `CDG`) — population-ranked, accent-insensitive — or tap it straight on the map. Save places you *want* to go to a **wishlist**, and **star** your favorites. Optional date and note per visit; duplicates are prevented; every add or remove has one-tap **Undo**.
 - **Offline map** — visited countries are shaded, visited cities show as flag + population pills, and airports you've been through show as ✈ pills; pan and zoom the whole world with no network. Prefer streets? One tap switches to an **opt-in online OpenStreetMap** detail map — offline stays the default.
 - **Coverage stats** — countries visited and **% of the world**, cities visited, and per-continent progress. For each country you see the **% of its cities** you've reached — plus the **% of its first-level regions** (states/provinces), now covering countries **worldwide**. Wishlisted places never inflate your coverage.
-- **Travel log** — record journeys you've actually taken (flight, train, bus, ferry, car) between two places; each trip's **great-circle distance** is derived from the endpoints' coordinates, and totals roll up trips + kilometres + a per-mode breakdown. A log of past travel, not a planner.
+- **Travel log** — record journeys you've actually taken (flight, train, bus, ferry, car) between two places; each trip's **great-circle distance** is derived from the endpoints' coordinates, trips are drawn as **arcs on the map**, and totals roll up trips + kilometres + a per-mode breakdown. **Import a flight from a boarding pass** — scan its barcode or paste the code, and the IATA **BCBP** is decoded **on-device** into a trip. A log of past travel, not a planner.
 - **Backup & restore** — export everything to one JSON file and re-import it losslessly on any device, or export **Markdown** to share a readable summary. Imports are schema-validated and sanitized: data is parsed, never executed.
 
 ## Getting started
@@ -107,15 +107,15 @@ Recently shipped:
 
 - **Worldwide region coverage** — per-country **% of first-level regions** now works everywhere (GeoNames admin-1, named via a nearest-centroid crosswalk), not just one country.
 - **Airports as a place type** — log airports you've flown through by name or IATA code; they show as distinct ✈ pills on the map and in your totals, and count toward country coverage (see [`specs/002-place-types/`](specs/002-place-types/)). The place model is now generalized, so further types are drop-in datasets.
-- **Travel log** — a **Trips** tab records past journeys with a derived great-circle distance and totals (see [`specs/003-travel-log/`](specs/003-travel-log/)); trips live in the same portable file and export to Markdown.
-- **Offline street-map seam** (PMTiles + Offline Map Store) — the app can render a street-level **offline** vector basemap via the `pmtiles://` protocol, obtained through a device-global **`OfflineMapStore`** (never bundled app-private, per the constitution). Ships the seam + docs ([`docs/OFFLINE-MAPS.md`](docs/OFFLINE-MAPS.md), [`specs/004-offline-map-seam/`](specs/004-offline-map-seam/)); drop in a `world-detail.pmtiles` pack and the offline "Streets" basemap lights up with no code change.
+- **Travel log** — a **Trips** tab records past journeys with a derived great-circle distance and totals (see [`specs/003-travel-log/`](specs/003-travel-log/)); trips are drawn as **great-circle arcs on the map**, live in the same portable file, and export to Markdown. **Import a flight from a boarding pass** — scan the barcode or paste the code; the IATA BCBP is decoded on-device (see [`specs/006-boarding-pass/`](specs/006-boarding-pass/)).
+- **Offline street-map seam + downloadable maps** — a street-level **offline** vector basemap via the `pmtiles://` protocol behind a device-global **`OfflineMapStore`** ([`docs/OFFLINE-MAPS.md`](docs/OFFLINE-MAPS.md), [`specs/004-offline-map-seam/`](specs/004-offline-map-seam/)); the online OpenStreetMap basemap can be **saved for offline** area-by-area. Nothing is bundled app-private, per the constitution.
+- **Refined design + dark mode** — a considered palette, Space Grotesk display type, boarding-pass motifs, and automatic light/dark theme (the offline map follows it too).
 
 Planned next:
 
 - **More place types** — UNESCO World Heritage sites and national parks, once their openly-licensed datasets are vendored (their upstream feeds are network-restricted in CI, so they wait for the dataset, not the code).
 - **Shared Offline Map Store plugin** — the native `SharedOfflineMapStore` (iOS App Group / Android SAF) behind the seam above, so one map pack serves every app in the ecosystem.
 - **Native iOS/Android** builds via Capacitor (scaffolding + docs in place; signed builds need a Mac / Android SDK).
-- **Trip routes on the map** — draw great-circle arcs for logged journeys.
 
 ## How it's built & contributing
 

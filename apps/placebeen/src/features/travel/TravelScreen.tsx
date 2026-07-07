@@ -4,7 +4,9 @@ import { useTrips } from "../../lib/store/useTrips";
 import { useToast } from "../../lib/store/useToast";
 import { formatDate, formatKm } from "../../lib/format/format";
 import type { PlaceRef, TravelMode } from "../../lib/schema/models";
+import { julianToDate, type BcbpResult } from "../../lib/bcbp/parse";
 import { PlacePicker } from "./PlacePicker";
+import { BoardingPassImport } from "./BoardingPassImport";
 import { travelTotals, tripDistanceKm } from "./distance";
 
 const MODES: { value: TravelMode; label: string; glyph: string }[] = [
@@ -61,6 +63,55 @@ export function TravelScreen() {
     showToast(`Removed ${label}`, () => setAll(prev));
   }
 
+  function airportRef(iata: string): PlaceRef | null {
+    const a = ref.airportById(iata);
+    return a ? { kind: "airport", id: a.id, name: `${a.name} (${a.id})`, countryId: a.countryIso2 } : null;
+  }
+
+  /** A parsed boarding pass: prefill the form for one leg, or log every leg of a connection. */
+  async function handleScan(result: BcbpResult) {
+    const now = new Date();
+    const legs = result.legs.map((l) => ({
+      from: airportRef(l.from),
+      to: airportRef(l.to),
+      date: julianToDate(l.julianDay, now),
+      codes: [l.from, l.to] as const,
+    }));
+
+    if (legs.length === 1) {
+      const leg = legs[0]!;
+      setMode("flight");
+      if (leg.from) setFrom(leg.from);
+      if (leg.to) setTo(leg.to);
+      setDate(leg.date);
+      const missing = [!leg.from && leg.codes[0], !leg.to && leg.codes[1]].filter(Boolean);
+      showToast(
+        missing.length
+          ? `Read ${leg.codes[0]}→${leg.codes[1]} — ${missing.join(", ")} isn't in the airport data; pick it manually.`
+          : `Read ${leg.codes[0]} → ${leg.codes[1]} — review the trip and save.`,
+      );
+      return;
+    }
+
+    // Connection: log every fully-resolved leg as a flight, with a single undo.
+    const prev = useTrips.getState().trips;
+    let added = 0;
+    const skipped: string[] = [];
+    for (const leg of legs) {
+      if (leg.from && leg.to) {
+        await addTrip({ from: leg.from, to: leg.to, mode: "flight", date: leg.date });
+        added++;
+      } else {
+        skipped.push(`${leg.codes[0]}→${leg.codes[1]}`);
+      }
+    }
+    showToast(
+      `Added ${added} flight${added === 1 ? "" : "s"} from your pass` +
+        (skipped.length ? ` (skipped ${skipped.join(", ")})` : ""),
+      () => setAll(prev),
+    );
+  }
+
   return (
     <section aria-label="Travel log">
       <div className="section-head">
@@ -85,6 +136,8 @@ export function TravelScreen() {
           </span>
         )}
       </div>
+
+      <BoardingPassImport onResult={handleScan} />
 
       <form className="trip-form" onSubmit={onAdd}>
         <PlacePicker label="From" value={from} onPick={setFrom} />
