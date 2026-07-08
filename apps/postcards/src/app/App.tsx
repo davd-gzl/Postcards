@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef, type JSX } from "react";
 import { useVisits } from "../lib/store/useVisits";
 import { useTrips } from "../lib/store/useTrips";
 import { useUi, type Tab } from "../lib/store/useUi";

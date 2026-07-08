@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { z } from "zod";
 import { PostcardsFileSchema, VisitSchema } from "../../src/lib/schema/models";
 
 function baseVisit() {
@@ -65,8 +65,13 @@ describe("PostcardsFileSchema", () => {
   });
 
   it("can generate a JSON Schema for external tools (interoperability)", () => {
-    const json = zodToJsonSchema(PostcardsFileSchema, "PostcardsFile") as Record<string, unknown>;
-    expect(json).toHaveProperty("$schema");
-    expect(JSON.stringify(json)).toContain("PostcardsFile");
+    // Zod 4 ships a native JSON-Schema exporter. Our schema has sanitizing
+    // transforms, so describe the *input* shape and allow unrepresentable nodes.
+    const json = z.toJSONSchema(PostcardsFileSchema, {
+      io: "input",
+      unrepresentable: "any",
+    }) as Record<string, unknown>;
+    expect(json).toHaveProperty("type", "object");
+    expect(JSON.stringify(json)).toContain("postcards"); // the "format" marker literal
   });
 });
