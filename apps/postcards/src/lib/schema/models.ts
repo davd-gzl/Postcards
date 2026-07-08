@@ -30,8 +30,13 @@ export const PlaceRefSchema = z
   })
   .strict();
 
+// Ids are opaque, inert stable strings — the app mints UUIDs, but the portable
+// file is meant to be hand- and tool-writable (AI-friendly), so we don't demand
+// strict RFC-4122 form (Zod 4 tightened .uuid()); just a bounded non-empty id.
+const idString = z.string().min(1).max(100);
+
 export const VisitSchema = z.object({
-  visitId: z.string().uuid(),
+  visitId: idString,
   place: PlaceRefSchema,
   /** "visited" = been there; "wishlist" = want to go. Old files default to visited. */
   status: z.enum(["visited", "wishlist"]).optional().default("visited"),
@@ -62,7 +67,7 @@ export const TravelModeSchema = z.enum(["flight", "train", "bus", "ferry", "car"
  */
 export const TripSchema = z
   .object({
-    tripId: z.string().uuid(),
+    tripId: idString,
     from: PlaceRefSchema,
     to: PlaceRefSchema,
     mode: TravelModeSchema.optional().default("flight"),

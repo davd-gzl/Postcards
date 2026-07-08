@@ -36,6 +36,11 @@ describe("reference classification", () => {
     expect(ref.countryByIso2("FR")?.sovereignty).toBe("un");
     expect(ref.countryByIso2("US")?.sovereignty).toBe("un");
   });
+
+  it("counts exactly 193 UN members — the Holy See is a non-member observer", () => {
+    expect(ref.countryByIso2("VA")?.sovereignty).toBe("territory");
+    expect(ref.worldCountryCount("un")).toBe(193);
+  });
 });
 
 describe("worldCountryCount(scope)", () => {

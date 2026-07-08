@@ -15,12 +15,18 @@ const world = require("world-countries");
 const countries = require("i18n-iso-countries");
 countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
 
+// Corrections against the authoritative UN membership list (193 members). These
+// are named facts, not our own judgement: world-countries@5.1.0 marks the Holy
+// See (VA) unMember:true, but the Vatican is a permanent observer, not a member
+// (https://www.un.org/en/about-us/member-states). We aggregate the UN's own list.
+const UN_MEMBER_OVERRIDES = { VA: "territory" };
+
 const byCca2 = new Map(world.map((c) => [c.cca2, c]));
 const out = {};
 for (const iso2 of Object.keys(countries.getNames("en"))) {
   if (!countries.alpha2ToNumeric(iso2)) continue; // keep the same set as buildCountries
   const c = byCca2.get(iso2);
-  out[iso2] = c && c.unMember ? "un" : "territory";
+  out[iso2] = UN_MEMBER_OVERRIDES[iso2] ?? (c && c.unMember ? "un" : "territory");
 }
 
 const dir = dirname(fileURLToPath(import.meta.url));

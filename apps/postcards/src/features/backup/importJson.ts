@@ -25,9 +25,13 @@ export function importFile(text: string): ImportResult {
     return { ok: false, error: "This file is not valid JSON." };
   }
 
-  if (typeof raw !== "object" || raw === null || (raw as { format?: unknown }).format !== "postcards") {
+  const format = (raw as { format?: unknown }).format;
+  // "placebeen" is the pre-rename marker — accept it so files exported by the
+  // old build still restore, and normalize to the current marker for the schema.
+  if (typeof raw !== "object" || raw === null || (format !== "postcards" && format !== "placebeen")) {
     return { ok: false, error: "This does not look like a Postcards file (missing format marker)." };
   }
+  if (format === "placebeen") (raw as { format: string }).format = "postcards";
 
   const version = (raw as { schemaVersion?: unknown }).schemaVersion;
   if (typeof version === "number" && version > SCHEMA_VERSION) {

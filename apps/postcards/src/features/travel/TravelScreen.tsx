@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useTrips } from "../../lib/store/useTrips";
 import { useToast } from "../../lib/store/useToast";
@@ -73,6 +73,15 @@ export function TravelScreen() {
   function pickMonth(m: MonthFilter) {
     setTripPeriod(year, m);
   }
+
+  // The filter is shared and persisted across sessions, but trips change under it
+  // (e.g. deleting every trip in the filtered year). Reconcile so the stored
+  // period can never point at a year/month that no longer exists — otherwise the
+  // <select> shows a phantom value and the map silently hides all arcs.
+  useEffect(() => {
+    if (year !== "all" && !years.includes(year)) setTripPeriod("all", "all");
+    else if (year !== "all" && month !== "all" && !months.includes(month)) setTripPeriod(year, "all");
+  }, [years, months, year, month, setTripPeriod]);
 
   function resetForm() {
     setFrom(null);

@@ -99,6 +99,30 @@ describe("import security (SC-008, Constitution VI)", () => {
     }
   });
 
+  it("accepts a legacy Place'Been file (format: placebeen) for backward compatibility", () => {
+    const text = JSON.stringify({
+      format: "placebeen", // pre-rename marker
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      visits: [{ ...visit(), visitId: "legacy-1" }],
+    });
+    const result = importFile(text);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.visits).toHaveLength(1);
+  });
+
+  it("accepts a non-UUID, hand-written visit id (portable/AI-friendly file)", () => {
+    const text = JSON.stringify({
+      format: "postcards",
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      visits: [{ ...visit(), visitId: "00000000-0000-0000-0000-000000000001" }],
+    });
+    const result = importFile(text);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.visits[0]!.visitId).toBe("00000000-0000-0000-0000-000000000001");
+  });
+
   it("sanitizes formula-like content in notes instead of executing it", () => {
     const text = JSON.stringify({
       format: "postcards",

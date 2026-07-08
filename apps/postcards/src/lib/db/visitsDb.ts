@@ -3,6 +3,7 @@ import type { Trip, Visit } from "../schema/models";
 
 // On-device working store (Constitution II: local-first, no backend).
 const DB_NAME = "postcards";
+const LEGACY_DB_NAME = "placebeen"; // the pre-rename database — migrated once
 // v2 adds the "trips" store (Travel Log). Upgrades are additive & idempotent, so
 // existing v1 databases keep their visits.
 const DB_VERSION = 2;
@@ -12,6 +13,37 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
 
 export function hasIndexedDB(): boolean {
   return typeof indexedDB !== "undefined";
+}
+
+/**
+ * One-time carry-over from the pre-rename ("placebeen") database, so users who
+ * ran the old build keep their history (Constitution II: the device is the
+ * source of truth). Best-effort: never throws, and only runs when the new store
+ * is empty, so it can never clobber current data.
+ */
+async function migrateLegacyDb(target: IDBPDatabase): Promise<void> {
+  try {
+    if ((await target.count(STORE)) > 0 || (await target.count("trips")) > 0) return;
+    if (typeof indexedDB.databases === "function") {
+      const names = (await indexedDB.databases()).map((d) => d.name);
+      if (!names.includes(LEGACY_DB_NAME)) return; // nothing to migrate
+    }
+    const legacy = await openDB(LEGACY_DB_NAME); // open at its existing version, no upgrade
+    const legacyVisits = legacy.objectStoreNames.contains(STORE)
+      ? ((await legacy.getAll(STORE)) as Visit[])
+      : [];
+    const legacyTrips = legacy.objectStoreNames.contains("trips")
+      ? ((await legacy.getAll("trips")) as Trip[])
+      : [];
+    legacy.close();
+    if (legacyVisits.length === 0 && legacyTrips.length === 0) return;
+    const tx = target.transaction([STORE, "trips"], "readwrite");
+    for (const v of legacyVisits) await tx.objectStore(STORE).put(v);
+    for (const t of legacyTrips) await tx.objectStore("trips").put(t);
+    await tx.done;
+  } catch {
+    /* best-effort: a failed migration must never block the app */
+  }
 }
 
 /** Shared handle for every on-device store (visits, trips). */
@@ -26,6 +58,9 @@ export function getDb(): Promise<IDBPDatabase> {
           database.createObjectStore("trips", { keyPath: "tripId" });
         }
       },
+    }).then(async (database) => {
+      await migrateLegacyDb(database);
+      return database;
     });
   }
   return dbPromise;
