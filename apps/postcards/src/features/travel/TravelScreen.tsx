@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useTrips } from "../../lib/store/useTrips";
 import { useToast } from "../../lib/store/useToast";
+import { useUi } from "../../lib/store/useUi";
 import { formatDate, formatKm } from "../../lib/format/format";
 import type { PlaceRef, TravelMode, Trip } from "../../lib/schema/models";
 import { julianToDate, type BcbpResult } from "../../lib/bcbp/parse";
@@ -51,8 +52,10 @@ export function TravelScreen() {
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [year, setYear] = useState<YearFilter>("all");
-  const [month, setMonth] = useState<MonthFilter>("all");
+  // The period filter is shared (via useUi) so the map's trip arcs match it.
+  const year = useUi((s) => s.tripYear) as YearFilter;
+  const month = useUi((s) => s.tripMonth) as MonthFilter;
+  const setTripPeriod = useUi((s) => s.setTripPeriod);
 
   const years = useMemo(() => tripYears(trips), [trips]);
   const months = useMemo(() => (year === "all" ? [] : tripMonths(trips, year)), [trips, year]);
@@ -65,8 +68,10 @@ export function TravelScreen() {
   );
 
   function pickYear(y: YearFilter) {
-    setYear(y);
-    setMonth("all"); // month options depend on the year; reset to avoid a stale one
+    setTripPeriod(y, "all"); // month options depend on the year; reset to avoid a stale one
+  }
+  function pickMonth(m: MonthFilter) {
+    setTripPeriod(year, m);
   }
 
   function resetForm() {
@@ -200,7 +205,7 @@ export function TravelScreen() {
                 id="trip-filter-month"
                 className="select"
                 value={month}
-                onChange={(e) => setMonth(e.target.value as MonthFilter)}
+                onChange={(e) => pickMonth(e.target.value as MonthFilter)}
               >
                 <option value="all">All months</option>
                 {months.map((m) => (

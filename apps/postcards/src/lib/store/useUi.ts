@@ -13,6 +13,11 @@ interface UiState {
   focusSearch: () => void;
   mapFocus: { lon: number; lat: number; nonce: number } | null;
   flyTo: (lon: number, lat: number) => void;
+  // Travel-log time filter — shared so the map's trip arcs honour the same
+  // period as the Trips list. "all" | 4-digit year, and "all" | "01".."12".
+  tripYear: string;
+  tripMonth: string;
+  setTripPeriod: (year: string, month: string) => void;
 }
 
 export const useUi = create<UiState>((set, get) => ({
@@ -23,4 +28,7 @@ export const useUi = create<UiState>((set, get) => ({
   mapFocus: null,
   flyTo: (lon, lat) =>
     set({ tab: "map", mapFocus: { lon, lat, nonce: (get().mapFocus?.nonce ?? 0) + 1 } }),
+  tripYear: "all",
+  tripMonth: "all",
+  setTripPeriod: (tripYear, tripMonth) => set({ tripYear, tripMonth }),
 }));

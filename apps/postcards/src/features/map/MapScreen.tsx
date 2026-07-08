@@ -12,6 +12,7 @@ import { StatStrip } from "../stats/StatStrip";
 import { MapView, type Basemap, type MapFocus, type MapFit } from "./MapView";
 import { MapLegend } from "./MapLegend";
 import { tripArcs } from "./visitedLayers";
+import { tripsInPeriod, periodLabel } from "../travel/period";
 import { citiesInView, type Bounds } from "./viewport";
 import { saveAreaOffline } from "./offlineTiles";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
@@ -68,6 +69,8 @@ export function MapScreen() {
   const setAll = useVisits((s) => s.setAll);
   const showToast = useToast((s) => s.show);
   const mapFocus = useUi((s) => s.mapFocus);
+  const tripYear = useUi((s) => s.tripYear);
+  const tripMonth = useUi((s) => s.tripMonth);
 
   const allCities = useMemo(() => ref.allCities(), [ref]);
   const [bounds, setBounds] = useState<Bounds | null>(null);
@@ -180,8 +183,14 @@ export function MapScreen() {
     [inView, visitedCityIds],
   );
 
-  const arcs = useMemo(() => tripArcs(trips, ref), [trips, ref]);
+  // Trip arcs honour the Travel-log time filter (shared via useUi).
+  const arcTrips = useMemo(
+    () => tripsInPeriod(trips, tripYear, tripMonth),
+    [trips, tripYear, tripMonth],
+  );
+  const arcs = useMemo(() => tripArcs(arcTrips, ref), [arcTrips, ref]);
   const hasArcs = arcs.features.length > 0;
+  const periodTag = periodLabel(tripYear, tripMonth);
 
   // Another tab asked the map to fly somewhere (Places row → map).
   useEffect(() => {
@@ -283,9 +292,12 @@ export function MapScreen() {
               type="button"
               aria-pressed={showTrips}
               onClick={() => setShowTrips((s) => !s)}
-              title={showTrips ? "Hide trip routes" : "Show trip routes"}
+              title={
+                (showTrips ? "Hide trip routes" : "Show trip routes") +
+                (periodTag ? ` (showing ${periodTag} — change on the Trips tab)` : "")
+              }
             >
-              {showTrips ? "✓ Trips" : "Trips"}
+              {showTrips ? `✓ Trips${periodTag ? ` · ${periodTag}` : ""}` : "Trips"}
             </button>
           )}
           <button
