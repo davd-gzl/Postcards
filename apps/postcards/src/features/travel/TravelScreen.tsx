@@ -8,6 +8,15 @@ import { julianToDate, type BcbpResult } from "../../lib/bcbp/parse";
 import { PlacePicker } from "./PlacePicker";
 import { BoardingPassImport } from "./BoardingPassImport";
 import { travelTotals, tripDistanceKm } from "./distance";
+import {
+  MONTH_NAMES,
+  periodLabel,
+  tripMonths,
+  tripYears,
+  tripsInPeriod,
+  type MonthFilter,
+  type YearFilter,
+} from "./period";
 
 const MODES: { value: TravelMode; label: string; glyph: string }[] = [
   { value: "flight", label: "Flight", glyph: "✈️" },
@@ -42,12 +51,23 @@ export function TravelScreen() {
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [year, setYear] = useState<YearFilter>("all");
+  const [month, setMonth] = useState<MonthFilter>("all");
 
-  const totals = useMemo(() => travelTotals(trips, ref), [trips, ref]);
+  const years = useMemo(() => tripYears(trips), [trips]);
+  const months = useMemo(() => (year === "all" ? [] : tripMonths(trips, year)), [trips, year]);
+  const filtered = useMemo(() => tripsInPeriod(trips, year, month), [trips, year, month]);
+
+  const totals = useMemo(() => travelTotals(filtered, ref), [filtered, ref]);
   const sorted = useMemo(
-    () => [...trips].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")),
-    [trips],
+    () => [...filtered].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")),
+    [filtered],
   );
+
+  function pickYear(y: YearFilter) {
+    setYear(y);
+    setMonth("all"); // month options depend on the year; reset to avoid a stale one
+  }
 
   function resetForm() {
     setFrom(null);
@@ -155,7 +175,53 @@ export function TravelScreen() {
         <h2>Travel log</h2>
       </div>
 
-      <div className="travel-totals" aria-label="Travel totals">
+      {years.length > 0 && (
+        <div className="travel-filter trip-form-row" role="group" aria-label="Filter trips by time">
+          <label className="picker-label" htmlFor="trip-filter-year">
+            Year
+            <select
+              id="trip-filter-year"
+              className="select"
+              value={year}
+              onChange={(e) => pickYear(e.target.value as YearFilter)}
+            >
+              <option value="all">All years</option>
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </label>
+          {year !== "all" && months.length > 0 && (
+            <label className="picker-label" htmlFor="trip-filter-month">
+              Month
+              <select
+                id="trip-filter-month"
+                className="select"
+                value={month}
+                onChange={(e) => setMonth(e.target.value as MonthFilter)}
+              >
+                <option value="all">All months</option>
+                {months.map((m) => (
+                  <option key={m} value={m}>
+                    {MONTH_NAMES[Number(m) - 1]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
+
+      <div
+        className="travel-totals"
+        aria-label={
+          periodLabel(year, month)
+            ? `Travel totals for ${periodLabel(year, month)}`
+            : "Travel totals"
+        }
+      >
         <span className="tt-main">
           <strong>{totals.trips}</strong> {totals.trips === 1 ? "trip" : "trips"}
         </span>
@@ -238,6 +304,13 @@ export function TravelScreen() {
           </span>
           No journeys logged yet. Add one you've taken — or scan a boarding pass and it fills itself
           in.
+        </p>
+      ) : sorted.length === 0 ? (
+        <p className="muted empty">
+          No trips in {periodLabel(year, month)}.{" "}
+          <button className="link" type="button" onClick={() => pickYear("all")}>
+            Show all
+          </button>
         </p>
       ) : (
         <ul className="city-list" style={{ marginTop: 12 }}>

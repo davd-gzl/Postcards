@@ -999,6 +999,9 @@ button {
 }
 
 /* ---- Travel log ---- */
+.travel-filter {
+  margin-bottom: 12px;
+}
 .travel-totals {
   display: flex;
   align-items: center;
