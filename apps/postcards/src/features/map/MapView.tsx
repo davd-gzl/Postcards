@@ -188,6 +188,7 @@ export function MapView({
   tripArcs,
   basemap = "simple",
   dark = false,
+  globe = false,
 }: {
   onBounds?: (b: Bounds) => void;
   focus?: MapFocus | null;
@@ -205,6 +206,8 @@ export function MapView({
   basemap?: Basemap;
   /** Dark theme — darkens the offline overview's ocean/land. */
   dark?: boolean;
+  /** Render the world as a 3D globe instead of the flat (Mercator) map. */
+  globe?: boolean;
 }) {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
@@ -221,6 +224,8 @@ export function MapView({
   viewCitiesRef.current = viewCities;
   const tripArcsRef = useRef(tripArcs);
   tripArcsRef.current = tripArcs;
+  const globeRef = useRef(globe);
+  globeRef.current = globe;
   const [failed, setFailed] = useState(false);
 
   function emitBounds(map: MlMap) {
@@ -259,6 +264,12 @@ export function MapView({
   function applyTripArcs(map: MlMap) {
     const src = map.getSource("trip-arcs") as GeoJSONSource | undefined;
     src?.setData(tripArcsRef.current ?? { type: "FeatureCollection", features: [] });
+  }
+
+  // Switch between the flat (Mercator) map and the 3D globe in place — no remount,
+  // so the user's pan/zoom and all layers are preserved. (MapLibre GL JS ≥ 5.)
+  function applyProjection(map: MlMap, isGlobe: boolean) {
+    map.setProjection({ type: isGlobe ? "globe" : "mercator" });
   }
 
   // Re-colour the theme-dependent basemap layers in place, so a light/dark switch
@@ -329,6 +340,7 @@ export function MapView({
       map.once("styledata", async () => {
         if (cancelled) return;
         applyTheme(map, dark); // ocean (overview + osm) colours, theme-aware
+        applyProjection(map, globeRef.current); // flat vs 3D globe
         const countriesFc = await loadCountries();
         if (cancelled || !map.getStyle()) return;
         if (countriesFc) {
@@ -534,6 +546,12 @@ export function MapView({
     if (map && loadedRef.current) applyTheme(map, dark);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dark]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map && loadedRef.current) applyProjection(map, globe);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globe]);
 
   useEffect(() => {
     const map = mapRef.current;

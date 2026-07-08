@@ -43,6 +43,24 @@ function persistBasemap(b: Basemap): void {
   }
 }
 
+const GLOBE_KEY = "postcards-globe";
+
+function loadGlobe(): boolean {
+  try {
+    return localStorage.getItem(GLOBE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function persistGlobe(on: boolean): void {
+  try {
+    localStorage.setItem(GLOBE_KEY, on ? "1" : "0");
+  } catch {
+    /* private mode: not persisted */
+  }
+}
+
 export function MapScreen() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
@@ -64,6 +82,7 @@ export function MapScreen() {
   const [cityFilter, setCityFilter] = useState<CityFilter>("all");
   const trips = useTrips((s) => s.trips);
   const [showTrips, setShowTrips] = useState(true);
+  const [globe, setGlobe] = useState(loadGlobe);
   const [dark, setDark] = useState(() =>
     typeof matchMedia === "undefined" ? false : matchMedia("(prefers-color-scheme: dark)").matches,
   );
@@ -115,6 +134,13 @@ export function MapScreen() {
   function switchBasemap() {
     setBasemap(nextBasemap);
     persistBasemap(nextBasemap);
+  }
+
+  function toggleGlobe() {
+    setGlobe((on) => {
+      persistGlobe(!on);
+      return !on;
+    });
   }
 
   async function saveArea() {
@@ -216,6 +242,7 @@ export function MapScreen() {
           onCountryTap={onCountryTap}
           viewCities={visible}
           tripArcs={showTrips ? arcs : null}
+          globe={globe}
         />
         <div className="map-ctl map-ctl-left">
           {visitedCityCoords.length > 0 && (
@@ -241,6 +268,15 @@ export function MapScreen() {
           )}
         </div>
         <div className="map-ctl map-ctl-right">
+          <button
+            className={"map-btn" + (globe ? " on" : "")}
+            type="button"
+            aria-pressed={globe}
+            onClick={toggleGlobe}
+            title={globe ? "Switch to the flat map" : "Switch to the 3D globe"}
+          >
+            {globe ? "🌐 Globe" : "🗺 Globe"}
+          </button>
           {hasArcs && (
             <button
               className={"map-btn" + (showTrips ? " on" : "")}

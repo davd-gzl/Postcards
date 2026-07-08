@@ -66,6 +66,14 @@ await page.waitForTimeout(3200); // let the fly animation settle
 await clearToast();
 await page.screenshot({ path: `${OUT}/map-mobile.png`, fullPage: true });
 
+// Mobile — the same places on the 3D globe (toggle on, capture, toggle back off
+// so the flat desktop hero below is unaffected).
+await page.getByRole("button", { name: "Globe" }).click();
+await page.waitForTimeout(2200);
+await page.screenshot({ path: `${OUT}/globe-mobile.png`, fullPage: true });
+await page.getByRole("button", { name: "Globe" }).click();
+await page.waitForTimeout(600);
+
 // Mobile — stats (now including airports + travel totals).
 await nav("Stats").click();
 await page.waitForTimeout(500);

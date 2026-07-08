@@ -24,6 +24,12 @@ _Postcards remembers where you've been — it is **not** a trip planner._
 
 ## What it looks like
 
+<div align="center">
+<img src="docs/screenshots/globe-mobile.png" alt="The world as a 3D globe with visited countries shaded, cities as flag and population pills, and trips drawn as great-circle arcs curving over the surface" width="300">
+</div>
+
+**Flat map or a spinnable 3D globe** — the same visited countries, cities, and great-circle trip arcs, one tap apart. Everything below works on either.
+
 |  |  |
 | :---: | :---: |
 | <img src="docs/screenshots/map-mobile.png" alt="Mobile map with visited cities shown as flag and population pills and trips drawn as great-circle arcs, plus a live list of cities in view" width="260"> | <img src="docs/screenshots/trips-mobile.png" alt="Travel log in dark mode: total trips and distance, a per-mode breakdown, and a list of logged journeys with distances" width="260"> |
@@ -34,7 +40,7 @@ _Postcards remembers where you've been — it is **not** a trip planner._
 ## Features
 
 - **Log visits — or wishlist them** — search any city, country, or **airport** (by name or IATA code, e.g. `CDG`) — population-ranked, accent-insensitive — or tap it straight on the map. Save places you *want* to go to a **wishlist**, and **star** your favorites. Optional date and note per visit; duplicates are prevented; every add or remove has one-tap **Undo**.
-- **Offline map** — visited countries are shaded, visited cities show as flag + population pills, and airports you've been through show as ✈ pills; pan and zoom the whole world with no network. Prefer streets? One tap switches to an **opt-in online OpenStreetMap** detail map — offline stays the default.
+- **Offline map — flat or 3D globe** — visited countries are shaded, visited cities show as flag + population pills, and airports you've been through show as ✈ pills; pan and zoom the whole world with no network, or flip to a **3D globe** (one tap) to see your trips arc across it. Prefer streets? One tap switches to an **opt-in online OpenStreetMap** detail map — offline stays the default.
 - **Coverage stats** — countries visited and **% of the world**, cities visited, and per-continent progress. For each country you see the **% of its cities** you've reached — plus the **% of its first-level regions** (states/provinces), now covering countries **worldwide**. Wishlisted places never inflate your coverage.
 - **Travel log** — record journeys you've actually taken (flight, train, bus, ferry, car) between two places; each trip's **great-circle distance** is derived from the endpoints' coordinates, trips are drawn as **arcs on the map**, and totals roll up trips + kilometres + a per-mode breakdown. **Import a flight from a boarding pass** — scan its barcode or paste the code, and the IATA **BCBP** is decoded **on-device** into a trip. A log of past travel, not a planner.
 - **Backup & restore** — export everything to one JSON file and re-import it losslessly on any device, or export **Markdown** to share a readable summary. Imports are schema-validated and sanitized: data is parsed, never executed.
@@ -107,6 +113,7 @@ accessibility, keyboard-only, and a zero-network privacy check).
 
 Recently shipped:
 
+- **3D globe view** — one tap turns the flat map into a spinnable 3D globe (MapLibre GL v5), with visited countries, city pills, and great-circle trip arcs all rendered on the sphere. The choice is remembered; still fully offline.
 - **Worldwide region coverage** — per-country **% of first-level regions** now works everywhere (GeoNames admin-1, named via a nearest-centroid crosswalk), not just one country.
 - **Airports as a place type** — log airports you've flown through by name or IATA code; they show as distinct ✈ pills on the map and in your totals, and count toward country coverage (see [`specs/002-place-types/`](specs/002-place-types/)). The place model is now generalized, so further types are drop-in datasets.
 - **Travel log** — a **Trips** tab records past journeys with a derived great-circle distance and totals (see [`specs/003-travel-log/`](specs/003-travel-log/)); trips are drawn as **great-circle arcs on the map**, live in the same portable file, and export to Markdown. **Import a flight from a boarding pass** — scan the barcode or paste the code; the IATA BCBP is decoded on-device (see [`specs/006-boarding-pass/`](specs/006-boarding-pass/)).
