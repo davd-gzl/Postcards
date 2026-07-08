@@ -10,11 +10,14 @@ import type {
 } from "./types";
 import provenanceData from "./data/provenance.json";
 import continentsData from "./data/continents.json";
+import sovereigntyData from "./data/sovereignty.json";
+import { inScope, type CountryScope, type Sovereignty } from "./scope";
 
 countries.registerLocale(enLocale as Parameters<typeof countries.registerLocale>[0]);
 
 const provenance = provenanceData as ReferenceProvenance[];
 const continents = continentsData as Record<string, string>;
+const sovereignty = sovereigntyData as Record<string, Sovereignty>;
 
 // Gazetteer + subdivisions are served as static, SW-cached assets and loaded once
 // at startup (see initReferenceData()).
@@ -43,6 +46,7 @@ function buildCountries(cities: City[], subdivisions: Subdivision[]): Country[] 
       continent: continents[iso2] ?? "",
       cityCount: cityCounts.get(iso2) ?? 0,
       subdivisionCount: subCounts.get(iso2) ?? 0,
+      sovereignty: sovereignty[iso2] ?? "territory",
     });
   }
   list.sort((a, b) => a.name.localeCompare(b.name));
@@ -169,8 +173,9 @@ class ReferenceDataImpl implements ReferenceData {
     }
     return [...codeExact, ...codePrefix, ...nameStarts, ...nameContains].slice(0, limit);
   }
-  worldCountryCount(): number {
-    return this.countries.length;
+  worldCountryCount(scope: CountryScope = "all"): number {
+    if (scope === "all") return this.countries.length;
+    return this.countries.reduce((n, c) => n + (inScope(c.sovereignty, scope) ? 1 : 0), 0);
   }
 }
 

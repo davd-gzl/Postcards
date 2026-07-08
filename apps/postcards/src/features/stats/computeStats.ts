@@ -1,5 +1,12 @@
 import type { Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
+import { inScope, type CountryScope } from "../../lib/reference/scope";
+
+/** Whether a visited country id counts under the chosen scope (unknown ids: only under "all"). */
+function countryInScope(ref: ReferenceData, iso2: string, scope: CountryScope): boolean {
+  const c = ref.countryByIso2(iso2);
+  return c ? inScope(c.sovereignty, scope) : scope === "all";
+}
 
 export interface Coverage {
   countriesVisited: number;
@@ -34,8 +41,14 @@ export function visitedCountryIds(visits: Visit[]): Set<string> {
   return new Set(onlyVisited(visits).map((v) => v.place.countryId));
 }
 
-export function computeCoverage(visits: Visit[], ref: ReferenceData): Coverage {
-  const countriesVisited = visitedCountryIds(visits).size;
+export function computeCoverage(
+  visits: Visit[],
+  ref: ReferenceData,
+  scope: CountryScope = "all",
+): Coverage {
+  const countriesVisited = [...visitedCountryIds(visits)].filter((iso2) =>
+    countryInScope(ref, iso2, scope),
+  ).length;
   const cityIds = new Set(
     onlyVisited(visits)
       .filter((v) => v.place.kind === "city")
@@ -46,7 +59,7 @@ export function computeCoverage(visits: Visit[], ref: ReferenceData): Coverage {
       .filter((v) => v.place.kind === "airport")
       .map((v) => v.place.id),
   );
-  const worldCountryCount = ref.worldCountryCount();
+  const worldCountryCount = ref.worldCountryCount(scope);
   return {
     countriesVisited,
     worldCountryCount,
@@ -96,14 +109,19 @@ export interface ContinentCoverage {
 }
 
 /** Countries visited per continent, against each continent's full country count. */
-export function computeContinentCoverage(visits: Visit[], ref: ReferenceData): ContinentCoverage[] {
+export function computeContinentCoverage(
+  visits: Visit[],
+  ref: ReferenceData,
+  scope: CountryScope = "all",
+): ContinentCoverage[] {
   const totals = new Map<string, number>();
   for (const c of ref.countries) {
-    if (!c.continent) continue;
+    if (!c.continent || !inScope(c.sovereignty, scope)) continue;
     totals.set(c.continent, (totals.get(c.continent) ?? 0) + 1);
   }
   const visitedByContinent = new Map<string, Set<string>>();
   for (const iso2 of visitedCountryIds(visits)) {
+    if (!countryInScope(ref, iso2, scope)) continue;
     const continent = ref.countryByIso2(iso2)?.continent;
     if (!continent) continue;
     if (!visitedByContinent.has(continent)) visitedByContinent.set(continent, new Set());
@@ -149,10 +167,11 @@ export function visitedCountriesList(
   visits: Visit[],
   ref: ReferenceData,
   sortBy: CountrySort = "cities",
+  scope: CountryScope = "all",
 ): CountryCoverage[] {
-  const list = [...visitedCountryIds(visits)].map((iso2) =>
-    computeCountryCoverage(visits, ref, iso2),
-  );
+  const list = [...visitedCountryIds(visits)]
+    .filter((iso2) => countryInScope(ref, iso2, scope))
+    .map((iso2) => computeCountryCoverage(visits, ref, iso2));
   const byName = (a: CountryCoverage, b: CountryCoverage) => a.name.localeCompare(b.name);
   const cmp: Record<CountrySort, (a: CountryCoverage, b: CountryCoverage) => number> = {
     cities: (a, b) => b.citiesVisited - a.citiesVisited || byName(a, b),

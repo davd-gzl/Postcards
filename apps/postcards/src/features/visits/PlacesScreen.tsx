@@ -3,9 +3,12 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
+import { useSettings } from "../../lib/store/useSettings";
 import { countryFlag, formatDate } from "../../lib/format/format";
 import type { Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
+import { inScope } from "../../lib/reference/scope";
+import { CountryScopeSelect } from "../../ui/CountryScopeSelect";
 import { StateToggles } from "./StateToggles";
 
 type View = "visited" | "wishlist" | "countries";
@@ -35,6 +38,7 @@ export function PlacesScreen() {
   const showToast = useToast((s) => s.show);
   const flyTo = useUi((s) => s.flyTo);
 
+  const scope = useSettings((s) => s.countryScope);
   const [view, setView] = useState<View>("visited");
   const [filter, setFilter] = useState("");
 
@@ -59,10 +63,10 @@ export function PlacesScreen() {
 
   const countryRows = useMemo(() => {
     const f = filter.trim().toLowerCase();
-    const all = ref.countries;
+    const all = ref.countries.filter((c) => inScope(c.sovereignty, scope));
     if (!f) return all;
     return all.filter((c) => c.name.toLowerCase().includes(f));
-  }, [ref, filter]);
+  }, [ref, filter, scope]);
 
   function removeWithUndo(visitId: string, name: string) {
     const prev = useVisits.getState().visits;
@@ -220,6 +224,10 @@ export function PlacesScreen() {
 
       {view === "countries" && (
         <>
+          <div className="countries-head">
+            <CountryScopeSelect id="places-country-scope" />
+            <span className="muted small">{countryRows.length} shown</span>
+          </div>
           <input
             type="search"
             className="search-input"

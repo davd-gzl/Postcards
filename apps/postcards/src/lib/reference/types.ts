@@ -2,6 +2,8 @@
 // read-only (Constitution I: aggregator, never an author). User records point at
 // this data by stable id.
 
+import type { CountryScope, Sovereignty } from "./scope";
+
 export interface Country {
   iso2: string;
   iso3: string;
@@ -10,6 +12,7 @@ export interface Country {
   continent: string; // Europe|Asia|Africa|Americas|Oceania|Antarctic (from world-countries)
   cityCount: number; // # of gazetteer cities in this country (denominator for % of cities)
   subdivisionCount: number; // # of first-level subdivisions (denominator for % of regions)
+  sovereignty: Sovereignty; // "un" member vs dependent "territory" (from world-countries)
 }
 
 export interface Subdivision {
@@ -59,6 +62,7 @@ export interface ReferenceData {
   searchCountries(query: string, limit?: number): Country[];
   searchCities(query: string, limit?: number): City[];
   searchAirports(query: string, limit?: number): Airport[];
-  worldCountryCount(): number;
+  /** Number of countries counted under the given scope (default: all, incl. territories). */
+  worldCountryCount(scope?: CountryScope): number;
   provenance: ReferenceProvenance[];
 }

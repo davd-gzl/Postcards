@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useVisits } from "../../lib/store/useVisits";
+import { useSettings } from "../../lib/store/useSettings";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { computeCoverage } from "./computeStats";
 import { formatInt } from "../../lib/format/format";
@@ -8,9 +9,10 @@ import { formatInt } from "../../lib/format/format";
 export function StatStrip() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
+  const scope = useSettings((s) => s.countryScope);
 
   const stats = useMemo(() => {
-    const cov = computeCoverage(visits, ref);
+    const cov = computeCoverage(visits, ref, scope);
     let want = 0;
     let fav = 0;
     for (const v of visits) {
@@ -18,7 +20,7 @@ export function StatStrip() {
       if (v.favorite) fav++;
     }
     return { cov, want, fav };
-  }, [visits, ref]);
+  }, [visits, ref, scope]);
 
   return (
     <div className="stat-strip" aria-label="Your totals">

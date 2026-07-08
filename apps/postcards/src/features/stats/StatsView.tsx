@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useVisits } from "../../lib/store/useVisits";
 import { useTrips } from "../../lib/store/useTrips";
+import { useSettings } from "../../lib/store/useSettings";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import {
   computeCoverage,
@@ -12,6 +13,7 @@ import {
 import { travelTotals } from "../travel/distance";
 import { countryFlag, formatInt, formatKm, formatPercent } from "../../lib/format/format";
 import { CONTINENT_COLORS } from "../../lib/reference/continents";
+import { CountryScopeSelect } from "../../ui/CountryScopeSelect";
 
 const MODE_GLYPH: Record<string, string> = {
   flight: "✈️",
@@ -42,19 +44,24 @@ export function StatsView() {
   const visits = useVisits((s) => s.visits);
   const trips = useTrips((s) => s.trips);
 
+  const scope = useSettings((s) => s.countryScope);
   const [sortBy, setSortBy] = useState<CountrySort>("cities");
-  const coverage = useMemo(() => computeCoverage(visits, ref), [visits, ref]);
+  const coverage = useMemo(() => computeCoverage(visits, ref, scope), [visits, ref, scope]);
   const travel = useMemo(() => travelTotals(trips, ref), [trips, ref]);
-  const continentCov = useMemo(() => computeContinentCoverage(visits, ref), [visits, ref]);
+  const continentCov = useMemo(
+    () => computeContinentCoverage(visits, ref, scope),
+    [visits, ref, scope],
+  );
   const countries = useMemo(
-    () => visitedCountriesList(visits, ref, sortBy),
-    [visits, ref, sortBy],
+    () => visitedCountriesList(visits, ref, sortBy, scope),
+    [visits, ref, sortBy, scope],
   );
 
   return (
     <section aria-label="Statistics">
       <div className="section-head">
         <h2>Statistics</h2>
+        <CountryScopeSelect />
       </div>
 
       <div className="stat-grid">
@@ -65,7 +72,8 @@ export function StatsView() {
         <div className="stat-tile">
           <div className="num">{formatPercent(coverage.worldPct)}</div>
           <div className="label">
-            of {formatInt(coverage.worldCountryCount)} countries &amp; territories
+            of {formatInt(coverage.worldCountryCount)}{" "}
+            {scope === "un" ? "UN member states" : "countries & territories"}
           </div>
         </div>
         <div className="stat-tile">

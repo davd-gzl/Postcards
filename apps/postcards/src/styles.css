@@ -756,6 +756,28 @@ button {
   color: var(--text);
 }
 
+/* "What counts as a country" picker — compact, inline in a section head. */
+.scope-select {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.scope-select .select {
+  width: auto;
+  height: auto;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.countries-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 2px 0 8px;
+}
+
 /* Buttons */
 .btn-row {
   display: flex;

@@ -30,7 +30,7 @@
     "url": "https://openflights.org/data.html"
   },
   {
-    "dataset": "world-countries (country → continent/region)",
+    "dataset": "world-countries (country → continent/region, UN-member vs territory)",
     "license": "ODbL-1.0",
     "version": "5.1.0",
     "url": "https://github.com/mledoze/countries"
