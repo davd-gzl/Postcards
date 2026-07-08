@@ -6,7 +6,7 @@
 
 ## Summary
 
-Deliver the first vertical slice of Place'Been: let a user log visited cities and countries,
+Deliver the first vertical slice of Postcards: let a user log visited cities and countries,
 see them on a fully-offline map, get instant coverage statistics (countries, % of world, cities,
 and — per country — both % of cities and % of regions), and back up/restore everything as one
 portable file. Built web-first (React + TypeScript) as a single codebase that runs as a
@@ -97,7 +97,7 @@ For the MVP, one app; the map-source seam lives in the app but is structured to 
 `packages/offline-map-store` when that follow-up feature begins.
 
 ```text
-apps/placebeen/
+apps/postcards/
 ├── src/
 │   ├── features/
 │   │   ├── visits/          # log/search/list visits, dedupe
@@ -124,7 +124,7 @@ apps/placebeen/
 packages/                    # (reserved) future shared ecosystem packages
 ```
 
-**Structure Decision**: Workspace with a single MVP app under `apps/placebeen`. Reference data and
+**Structure Decision**: Workspace with a single MVP app under `apps/postcards`. Reference data and
 basemap are bundled under `public/` and kept strictly separate from user data. The `map-source`
 and (future) shared-store boundary is captured now via the `MapSource` interface so no app-facing
 change is needed when the device-global Offline Map Store package lands.

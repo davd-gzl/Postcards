@@ -46,11 +46,11 @@ One record that a place was visited. User-authored.
 - `note`/`name` are treated as inert text: validated, length-capped, and sanitized on import;
   never interpreted.
 
-### PlaceBeenFile (the portable file root)
+### PostcardsFile (the portable file root)
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `format` | `"placebeen"` | Fixed magic string identifying the format |
+| `format` | `"postcards"` | Fixed magic string identifying the format |
 | `schemaVersion` | integer | Starts at `1`; drives documented migrations |
 | `exportedAt` | string | ISO 8601 timestamp |
 | `visits` | Visit[] | All user visits |
@@ -110,7 +110,7 @@ migrated forward.
 ## Relationships
 
 ```text
-PlaceBeenFile 1───* Visit ─── PlaceRef ──▶ (resolves to) Country | City   [by stable id]
+PostcardsFile 1───* Visit ─── PlaceRef ──▶ (resolves to) Country | City   [by stable id]
 Country 1───* Subdivision
 Country 1───* City
 Subdivision 1───* City        (subdivisionId, when known)

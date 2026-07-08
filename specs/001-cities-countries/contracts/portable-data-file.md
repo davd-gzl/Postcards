@@ -1,10 +1,10 @@
-# Contract: Portable Data File (`.placebeen.json`)
+# Contract: Portable Data File (`.postcards.json`)
 
 The single portable file is the app's primary external contract: the unit of backup, restore, and
 cross-device/website transfer, and the surface other tools/AI read. It MUST be human-readable JSON,
 strictly inert (parsed, never executed), and validated against this schema on every import.
 
-- **Media**: UTF-8 JSON. Suggested extension `.placebeen.json`.
+- **Media**: UTF-8 JSON. Suggested extension `.postcards.json`.
 - **Versioning**: integer `schemaVersion` (starts at `1`). Newer-than-supported ⇒ refuse with a
   clear message; older ⇒ migrate forward, preserving data.
 - **Source of truth**: this JSON Schema is *generated from the app's Zod models* and published so
@@ -15,13 +15,13 @@ strictly inert (parsed, never executed), and validated against this schema on ev
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placebeen/schema/placebeen-file-v1.json",
-  "title": "PlaceBeenFile",
+  "$id": "https://postcards/schema/postcards-file-v1.json",
+  "title": "PostcardsFile",
   "type": "object",
   "additionalProperties": false,
   "required": ["format", "schemaVersion", "exportedAt", "visits"],
   "properties": {
-    "format": { "const": "placebeen" },
+    "format": { "const": "postcards" },
     "schemaVersion": { "type": "integer", "minimum": 1 },
     "exportedAt": { "type": "string", "format": "date-time" },
     "visits": { "type": "array", "items": { "$ref": "#/$defs/visit" } },
@@ -75,7 +75,7 @@ strictly inert (parsed, never executed), and validated against this schema on ev
 
 ```json
 {
-  "format": "placebeen",
+  "format": "postcards",
   "schemaVersion": 1,
   "exportedAt": "2026-07-01T12:00:00Z",
   "visits": [
@@ -105,7 +105,7 @@ strictly inert (parsed, never executed), and validated against this schema on ev
 
 ## Import rules (security-critical — Constitution VI)
 
-1. Reject if not valid JSON or missing `format: "placebeen"`.
+1. Reject if not valid JSON or missing `format: "postcards"`.
 2. Validate against the schema; reject on unknown keys or type errors.
 3. Refuse a `schemaVersion` newer than supported; migrate older versions forward.
 4. Treat every string as inert text: enforce length caps; strip control characters; neutralize

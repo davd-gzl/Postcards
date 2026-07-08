@@ -27,7 +27,7 @@ Templates requiring updates:
 Follow-up TODOs: none
 -->
 
-# Place'Been Constitution
+# Postcards Constitution
 
 A privacy-first, local-first aggregator for remembering the places you have been —
 cities, countries, and (later) any place type — with rich statistics and portable,

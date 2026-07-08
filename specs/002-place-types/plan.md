@@ -4,7 +4,7 @@
 
 ## Summary
 
-Generalize Place'Been's place model beyond `city`/`country` by adding an `airport` kind, and ship
+Generalize Postcards's place model beyond `city`/`country` by adding an `airport` kind, and ship
 airports as a bundled, openly-licensed reference gazetteer. Reuse every existing seam: the
 Zod-validated portable schema, the `ReferenceData` interface, the Been/Want/Favorite store
 actions, search, the MapLibre marker layers, and the totals strip. No new runtime network.

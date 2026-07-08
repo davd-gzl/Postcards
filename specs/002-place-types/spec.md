@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: Maintainer request: "More place types" — extend Place'Been beyond cities and
+**Input**: Maintainer request: "More place types" — extend Postcards beyond cities and
 countries so a traveler can also check off other kinds of places they've been. First increment:
 **airports** (matching the airport counter in the original Places Been app), sourced from an
 openly-licensed, bundled dataset. This increment also generalizes the data model so later place

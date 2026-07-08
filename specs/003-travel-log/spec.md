@@ -8,7 +8,7 @@
 
 **Input**: Maintainer request: "Travel-ticket log" — record the journeys you've actually taken
 (flights, trains, buses, ferries, drives) as a log of past trips, with per-trip distance and
-totals. A *log of where you've been*, consistent with Place'Been's identity — **not** a trip
+totals. A *log of where you've been*, consistent with Postcards's identity — **not** a trip
 planner or a ticket-booking tool.
 
 ## Clarifications

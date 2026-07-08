@@ -23,14 +23,14 @@ shows totals. No external data, no new runtime network.
 | **Interoperable & AI-friendly** | Documented additive schema; stable ids; derived distance is transparent (haversine of recorded coordinates). |
 | **Not a trip planner** | Explicitly a log of *past* journeys — no itineraries, prices, or bookings. |
 
-**Verdict**: PASS — additive, user-authored data on existing seams; stays within Place'Been's
+**Verdict**: PASS — additive, user-authored data on existing seams; stays within Postcards's
 "remember where you've been" identity.
 
 ## Approach
 
 1. **Schema** (`lib/schema/models.ts`): `TravelModeSchema` enum + `TripSchema` (tripId, from, to,
    mode, date?, carrier?, note?, addedAt) with sanitized free-text; add optional
-   `trips: TripSchema[]` (default `[]`) to `PlaceBeenFileSchema`. `SCHEMA_VERSION` unchanged.
+   `trips: TripSchema[]` (default `[]`) to `PostcardsFileSchema`. `SCHEMA_VERSION` unchanged.
 2. **Persistence** (`lib/db`): bump the IndexedDB version to 2, add a `trips` object store;
    `tripsDb` CRUD reusing the shared DB handle.
 3. **Store** (`lib/store/useTrips.ts`): `trips`, `load`, `addTrip`, `removeTrip`, `setAll` —

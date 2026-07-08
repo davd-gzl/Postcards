@@ -25,7 +25,7 @@ iOS/Android apps via Capacitor (Constitution: one codebase → PWA + native iOS/
 
 ### User Story 1 - Build and run on a device (Priority: P1)
 
-A developer with Android Studio (or Xcode on macOS) can build and run Place'Been on a real phone
+A developer with Android Studio (or Xcode on macOS) can build and run Postcards on a real phone
 from the committed Capacitor setup, with the same offline-first behavior as the PWA.
 
 **Independent Test**: `pnpm build && pnpm cap:sync && pnpm cap:open:android` opens the project in

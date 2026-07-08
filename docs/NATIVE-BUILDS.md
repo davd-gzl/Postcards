@@ -1,12 +1,12 @@
 # Native iOS & Android builds (Capacitor)
 
-Place'Been is one web codebase shipped as a **PWA** and wrapped natively with
+Postcards is one web codebase shipped as a **PWA** and wrapped natively with
 [Capacitor](https://capacitorjs.com). The web build in `dist/` is the app; the native projects are
 thin shells that load it.
 
 ## What's in the repo
 
-- `capacitor.config.ts` — appId `coop.samourai.placebeen`, appName `Place'Been`, `webDir: dist`.
+- `capacitor.config.ts` — appId `coop.samourai.postcards`, appName `Postcards`, `webDir: dist`.
 - `@capacitor/core` + `@capacitor/cli` + `@capacitor/android` + `@capacitor/ios` (installed).
 - `android/` — the Android project, **scaffolded and committed** (`npx cap add android`). Build
   outputs (`*.apk`, `build/`, `.gradle`, copied web assets) are git-ignored; only source is tracked.
@@ -22,14 +22,14 @@ thin shells that load it.
 Requires Android Studio (or the Android SDK + JDK 17).
 
 ```bash
-pnpm --filter placebeen build          # produce dist/
-pnpm --filter placebeen cap:sync       # copy dist/ into android/ + update plugins
-pnpm --filter placebeen cap:open:android   # open in Android Studio → Run / Build APK/AAB
+pnpm --filter postcards build          # produce dist/
+pnpm --filter postcards cap:sync       # copy dist/ into android/ + update plugins
+pnpm --filter postcards cap:open:android   # open in Android Studio → Run / Build APK/AAB
 # or the one-shot:
-pnpm --filter placebeen native:android
+pnpm --filter postcards native:android
 ```
 
-If `android/` is ever missing or you want to regenerate it: `pnpm --filter placebeen cap:add:android`
+If `android/` is ever missing or you want to regenerate it: `pnpm --filter postcards cap:add:android`
 (takes ~milliseconds; it re-copies the template).
 
 ## iOS (macOS only)
@@ -38,11 +38,11 @@ Requires Xcode + CocoaPods. The `ios/` project isn't committed because it can't 
 macOS — create it once on a Mac:
 
 ```bash
-pnpm --filter placebeen build
-pnpm --filter placebeen cap:add:ios    # generates ios/ (Xcode project + pods)
-pnpm --filter placebeen cap:open:ios   # open in Xcode → set a signing team → Run
+pnpm --filter postcards build
+pnpm --filter postcards cap:add:ios    # generates ios/ (Xcode project + pods)
+pnpm --filter postcards cap:open:ios   # open in Xcode → set a signing team → Run
 # or, after ios/ exists:
-pnpm --filter placebeen native:ios
+pnpm --filter postcards native:ios
 ```
 
 ## Notes

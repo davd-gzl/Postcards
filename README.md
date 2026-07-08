@@ -1,19 +1,19 @@
 <div align="center">
 
-# Place'Been
+# Postcards
 
 **Remember every place you've been — privately, offline, in a file you own.**
 
 Search a city or country you've visited, tap to mark it, and watch your map fill
 in. No account, no server, no tracking.
 
-_Place'Been remembers where you've been — it is **not** a trip planner._
+_Postcards remembers where you've been — it is **not** a trip planner._
 
-<img src="docs/screenshots/map-desktop.png" alt="Place'Been world map with visited countries highlighted, cities as flag and population pills, trips drawn as great-circle arcs, and a live list of cities in view" width="880">
+<img src="docs/screenshots/map-desktop.png" alt="Postcards world map with visited countries highlighted, cities as flag and population pills, trips drawn as great-circle arcs, and a live list of cities in view" width="880">
 
 </div>
 
-## Why Place'Been
+## Why Postcards
 
 - 🔒 **Private by default** — no telemetry, no analytics, no beacons. Nothing leaves your device unless you export it.
 - ✈️ **Works offline by default** — the map and all reference data are bundled; open it in airplane mode and everything works. An online detail map is available, opt-in.
@@ -47,15 +47,15 @@ Requires [Node.js](https://nodejs.org) 20+ and [pnpm](https://pnpm.io).
 git clone https://github.com/davd-gzl/place-been.git
 cd place-been
 pnpm install
-pnpm --filter placebeen dev         # run the app at http://localhost:5173
+pnpm --filter postcards dev         # run the app at http://localhost:5173
 ```
 
 Other useful scripts:
 
 ```bash
-pnpm --filter placebeen test        # unit tests (Vitest)
-pnpm --filter placebeen test:e2e    # browser e2e (Playwright): smoke, a11y, keyboard, privacy
-pnpm --filter placebeen build       # production PWA build
+pnpm --filter postcards test        # unit tests (Vitest)
+pnpm --filter postcards test:e2e    # browser e2e (Playwright): smoke, a11y, keyboard, privacy
+pnpm --filter postcards build       # production PWA build
 ```
 
 ## Tech stack
@@ -82,12 +82,12 @@ All world facts come from named, openly-licensed datasets — the app authors no
 | OpenFlights (via `airport-data`, aggregated from OurAirports) | Airports — **5,609** IATA-coded airports worldwide, real coordinates | ODbL 1.0 / OurAirports public domain |
 | `world-countries` | Country → continent grouping (baked into `continents.json`) | ODbL 1.0 |
 
-Provenance is recorded in [`apps/placebeen/src/lib/reference/data/provenance.json`](apps/placebeen/src/lib/reference/data/provenance.json) and shown in-app.
+Provenance is recorded in [`apps/postcards/src/lib/reference/data/provenance.json`](apps/postcards/src/lib/reference/data/provenance.json) and shown in-app.
 
 ## Project layout
 
 ```
-apps/placebeen/          the app (React + TS + Vite → PWA + Capacitor)
+apps/postcards/          the app (React + TS + Vite → PWA + Capacitor)
   src/features/          visits · map · stats · travel · backup
   src/lib/               schema (Zod) · db (IndexedDB) · store (Zustand)
                          reference (datasets) · map-source · format
@@ -121,7 +121,7 @@ Planned next:
 
 ## How it's built & contributing
 
-Place'Been is developed with **Spec-Driven Development** using
+Postcards is developed with **Spec-Driven Development** using
 [GitHub Spec Kit](https://github.com/github/spec-kit): every feature flows through
 `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`. The MVP spec and
 its plan live in [`specs/001-cities-countries/`](specs/001-cities-countries/), and the project's
@@ -135,11 +135,11 @@ constitution) rather than opening code-first PRs.
 
 [**GNU Affero General Public License v3.0 or later**](LICENSE) (`AGPL-3.0-or-later`).
 
-You're free to use, study, share, and modify Place'Been. The AGPL's one condition is
+You're free to use, study, share, and modify Postcards. The AGPL's one condition is
 **reciprocity**: if you distribute a modified version — or run one as a network service others can
 use — you must offer those users the corresponding source under the same license. That keeps every
 fork and hosted copy as open, inspectable, and lock-in-free as this one, which is the whole point of
 a privacy-first app you're meant to be able to trust and self-host.
 
 The reference datasets keep their own upstream licenses (see [Reference data](#reference-data)); the
-AGPL covers Place'Been's own code.
+AGPL covers Postcards's own code.

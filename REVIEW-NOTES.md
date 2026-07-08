@@ -1,6 +1,6 @@
 # Review notes — autonomous MVP build (2026-07-01)
 
-Built the runnable Place'Been MVP so you can open it, click around, and correct it. Everything is
+Built the runnable Postcards MVP so you can open it, click around, and correct it. Everything is
 committed and pushed to `claude/repo-setup-speckit-3magw3`.
 
 ## Update — the big upgrade pass (2026-07-02)
@@ -54,7 +54,7 @@ A real, running app (React + TS + Vite, MapLibre, IndexedDB), verified by tests 
 - **US2 — Offline map**: MapLibre world map with **visited countries highlighted** + **city dots**,
   drawn from bundled Natural Earth geometry — fully offline, no Google, no tile server. Degrades
   gracefully if WebGL is unavailable.
-- **US3 — Backup/restore**: export the single portable `places.placebeen.json`, re-import it
+- **US3 — Backup/restore**: export the single portable `places.postcards.json`, re-import it
   (full-fidelity), and export a shareable Markdown map. Imports are validated + sanitized, never
   executed.
 - **US4 — Statistics**: countries visited, % of world, cities visited, and **per country BOTH % of
@@ -64,10 +64,10 @@ A real, running app (React + TS + Vite, MapLibre, IndexedDB), verified by tests 
 
 ## Verified
 
-- `pnpm --filter placebeen test` → **23 unit tests pass** (schema/sanitize, dedupe, stats math,
+- `pnpm --filter postcards test` → **23 unit tests pass** (schema/sanitize, dedupe, stats math,
   backup round-trip, import-security, search).
-- `pnpm --filter placebeen build` → **production build + PWA service worker generated**.
-- `pnpm --filter placebeen test:e2e` → **browser smoke test passes** (mount → log Paris → Visits →
+- `pnpm --filter postcards build` → **production build + PWA service worker generated**.
+- `pnpm --filter postcards test:e2e` → **browser smoke test passes** (mount → log Paris → Visits →
   Stats). Uses the environment's preinstalled Chromium.
 - Screenshots of the map + stats were captured and look correct.
 
@@ -75,13 +75,13 @@ A real, running app (React + TS + Vite, MapLibre, IndexedDB), verified by tests 
 
 ```bash
 pnpm install
-pnpm --filter placebeen dev        # open the app locally
-pnpm --filter placebeen test       # unit tests
-pnpm --filter placebeen test:e2e   # browser smoke test
-pnpm --filter placebeen build      # production PWA build
+pnpm --filter postcards dev        # open the app locally
+pnpm --filter postcards test       # unit tests
+pnpm --filter postcards test:e2e   # browser smoke test
+pnpm --filter postcards build      # production PWA build
 ```
 
-Layout: `apps/placebeen/src/{features,lib,ui,app}`; reference data in
+Layout: `apps/postcards/src/{features,lib,ui,app}`; reference data in
 `src/lib/reference/data/`; everything is a pnpm workspace so shared ecosystem packages land in
 `packages/` later.
 

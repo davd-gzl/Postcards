@@ -1,10 +1,10 @@
-# CLAUDE.md — Place'Been
+# CLAUDE.md — Postcards
 
 Guidance for Claude Code (and contributors) working in this repo.
 
 ## What this is
 
-Place'Been is a **privacy-first, local-first aggregator for remembering places you've been**
+Postcards is a **privacy-first, local-first aggregator for remembering places you've been**
 (cities, countries, and later more). It stores your visits and displays them well — it is **not** a
 trip planner. One member of a wider ecosystem of the maintainer's Capacitor apps.
 
@@ -56,7 +56,7 @@ Constitution Check.
 
 ## Planned structure (workspace)
 
-`apps/placebeen/` (the app) with `src/features/{visits,map,stats,backup}` and
+`apps/postcards/` (the app) with `src/features/{visits,map,stats,backup}` and
 `src/lib/{store,db,schema,reference,map-source,format}`; `public/{basemap,reference}` for bundled
 assets; `packages/` reserved for shared ecosystem packages. No code exists yet — the repo currently
 holds Spec Kit scaffolding and the feature's spec/plan.

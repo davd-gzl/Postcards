@@ -1,6 +1,6 @@
 # Offline maps & the Offline Map Store
 
-Place'Been renders maps only through the **`MapSource`** seam
+Postcards renders maps only through the **`MapSource`** seam
 (`src/lib/map-source/`). There are three basemaps:
 
 | Pack id | What it is | Network | Default |
@@ -28,7 +28,7 @@ never on the offline default — so the privacy-by-default guarantee holds.
 
 The project constitution requires offline maps to be **device-global / cross-app, never locked to
 app-private storage** — and a world street-level pack is far too large to ship inside an app. So
-Place'Been never bundles one and never reads tiles by a hard-coded app-private path. Instead it
+Postcards never bundles one and never reads tiles by a hard-coded app-private path. Instead it
 asks an **`OfflineMapStore`** for a pack:
 
 ```ts
@@ -53,7 +53,7 @@ changes. If a pack disappears, the app falls back to the bundled overview rather
    style in `bundledMapSource.ts` (`detailVectorStyle`) targets the Protomaps **basemap** flavor
    layer schema (`earth`, `water`, `landuse`, `roads`, `boundaries`). A pack with a different
    schema just needs its own style.
-2. Place it at `apps/placebeen/public/basemap/world-detail.pmtiles` (self-hosted PWA), or expose it
+2. Place it at `apps/postcards/public/basemap/world-detail.pmtiles` (self-hosted PWA), or expose it
    through your platform's shared store so `OfflineMapStore.detailPack()` resolves its URL.
 3. Reload — the map's basemap toggle now includes **Streets (offline)**. The `pmtiles://` protocol
    is already registered (`pmtiles` npm package), so MapLibre reads the archive directly with

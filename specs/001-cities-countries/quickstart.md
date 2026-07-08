@@ -19,17 +19,17 @@ pnpm install
 ## Run the app (web / PWA)
 
 ```bash
-pnpm --filter placebeen dev        # local dev server
-pnpm --filter placebeen build      # static, self-hostable PWA build
-pnpm --filter placebeen preview    # serve the production build
+pnpm --filter postcards dev        # local dev server
+pnpm --filter postcards build      # static, self-hostable PWA build
+pnpm --filter postcards preview    # serve the production build
 ```
 
 ## Run on a phone (Capacitor)
 
 ```bash
-pnpm --filter placebeen build
-pnpm --filter placebeen exec cap sync
-pnpm --filter placebeen exec cap run ios      # or: cap run android
+pnpm --filter postcards build
+pnpm --filter postcards exec cap sync
+pnpm --filter postcards exec cap run ios      # or: cap run android
 ```
 
 ## Automated checks

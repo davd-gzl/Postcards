@@ -1,14 +1,14 @@
 {
-  "name": "placebeen-workspace",
+  "name": "postcards-workspace",
   "private": true,
   "version": "0.0.0",
-  "description": "Place'Been — privacy-first, local-first aggregator for remembering places you've been",
+  "description": "Postcards — privacy-first, local-first aggregator for remembering places you've been",
   "scripts": {
-    "dev": "pnpm --filter placebeen dev",
-    "build": "pnpm --filter placebeen build",
-    "preview": "pnpm --filter placebeen preview",
-    "test": "pnpm --filter placebeen test",
-    "test:e2e": "pnpm --filter placebeen test:e2e"
+    "dev": "pnpm --filter postcards dev",
+    "build": "pnpm --filter postcards build",
+    "preview": "pnpm --filter postcards preview",
+    "test": "pnpm --filter postcards test",
+    "test:e2e": "pnpm --filter postcards test:e2e"
   },
   "license": "AGPL-3.0-or-later",
   "packageManager": "pnpm@10.33.0",
