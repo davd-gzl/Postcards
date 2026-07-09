@@ -40,6 +40,19 @@ export interface Airport {
   lon: number;
 }
 
+// A "category" place: a notable site that contributes to per-country coverage
+// (e.g. a UNESCO World Heritage Site). Aggregated from a named dataset — the app
+// authors none of these. The first category is World Heritage; more (museums,
+// monuments, …) are drop-in datasets of the same shape (see docs/CATEGORIES-HANDOFF.md).
+export interface HeritageSite {
+  id: string; // stable id (Wikidata QID once vendored)
+  name: string;
+  countryIso2: string;
+  lat: number;
+  lon: number;
+  category?: string; // "cultural" | "natural" | "mixed" where known
+}
+
 export interface ReferenceProvenance {
   dataset: string;
   license: string;
@@ -59,9 +72,14 @@ export interface ReferenceData {
   cityById(id: string): City | undefined;
   allAirports(): Airport[];
   airportById(id: string): Airport | undefined;
+  /** All heritage sites, those in a country (coverage denominator), one by id, or a search. */
+  allHeritage(): HeritageSite[];
+  heritageOf(countryIso2: string): HeritageSite[];
+  heritageById(id: string): HeritageSite | undefined;
   searchCountries(query: string, limit?: number): Country[];
   searchCities(query: string, limit?: number): City[];
   searchAirports(query: string, limit?: number): Airport[];
+  searchHeritage(query: string, limit?: number): HeritageSite[];
   /** Number of countries counted under the given scope (default: all, incl. territories). */
   worldCountryCount(scope?: CountryScope): number;
   provenance: ReferenceProvenance[];

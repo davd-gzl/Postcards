@@ -210,6 +210,18 @@ export function StatsView() {
               )}
             </div>
 
+            {c.heritageTotal > 0 && (
+              <div className="metric">
+                <div className="metric-label">
+                  <span>Heritage sites</span>
+                  <span className="muted">
+                    {formatPercent(c.heritagePct)} · {c.heritageVisited}/{c.heritageTotal} UNESCO
+                  </span>
+                </div>
+                <Bar value={c.heritagePct} label={`${c.name}: heritage sites visited`} color="#b45309" />
+              </div>
+            )}
+
             {(detail.cities.length > 0 || detail.regionsVisited.length > 0) && (
               <details className="country-detail">
                 <summary>Details</summary>

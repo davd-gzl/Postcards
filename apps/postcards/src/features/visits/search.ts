@@ -38,6 +38,14 @@ export function searchPlaces(ref: ReferenceData, query: string, limit = 8): Sear
     };
   });
 
+  const heritageResults: SearchResult[] = ref.searchHeritage(q, limit).map((h) => {
+    const country = ref.countryByIso2(h.countryIso2);
+    return {
+      place: { kind: "heritage", id: h.id, name: h.name, countryId: h.countryIso2 },
+      detail: country ? `Heritage site · ${country.name}` : "Heritage site",
+    };
+  });
+
   // A query typed as an explicit UPPERCASE 3-letter IATA code (e.g. "LAX", "CDG")
   // means the airport — surface it first, ahead of a like-named city ("Laxou").
   // Lowercase/mixed prefix typing ("por", "san") is treated as a place name, so
@@ -46,7 +54,7 @@ export function searchPlaces(ref: ReferenceData, query: string, limit = 8): Sear
   // written in.
   const isIataCode = /^[A-Z]{3}$/.test(q) && !!ref.airportById(q);
   const ordered = isIataCode
-    ? [...airportResults, ...countryResults, ...cityResults]
-    : [...countryResults, ...cityResults, ...airportResults];
+    ? [...airportResults, ...countryResults, ...cityResults, ...heritageResults]
+    : [...countryResults, ...cityResults, ...airportResults, ...heritageResults];
   return ordered.slice(0, limit * 2);
 }

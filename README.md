@@ -125,7 +125,7 @@ Recently shipped:
 
 Planned next:
 
-- **More place types** — UNESCO World Heritage sites and national parks, once their openly-licensed datasets are vendored (their upstream feeds are network-restricted in CI, so they wait for the dataset, not the code).
+- **Place categories & coverage %** — a generic "category" seam (UNESCO World Heritage sites first, then national parks, and per-city museums/monuments/quartiers from OpenStreetMap) giving per-country/per-city coverage like *"Paris: 3/18 museums"*. The **code is wired and tested** (`heritage` place kind, `scripts/build-heritage.mjs`); it waits on **vendoring the datasets**, which the CI network can't reach — see [`docs/CATEGORIES-HANDOFF.md`](docs/CATEGORIES-HANDOFF.md) to populate them locally.
 - **Shared Offline Map Store plugin** — the native `SharedOfflineMapStore` (iOS App Group / Android SAF) behind the seam above, so one map pack serves every app in the ecosystem.
 - **Native iOS/Android** builds via Capacitor (scaffolding + docs in place; signed builds need a Mac / Android SDK).
 

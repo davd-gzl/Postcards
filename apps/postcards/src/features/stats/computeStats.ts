@@ -25,6 +25,9 @@ export interface CountryCoverage {
   regionsVisited: number;
   regionsTotal: number;
   regionPct: number; // 0..1
+  heritageVisited: number;
+  heritageTotal: number;
+  heritagePct: number; // 0..1
 }
 
 function pct(part: number, total: number): number {
@@ -87,6 +90,16 @@ export function computeCountryCoverage(
     visitedCityIds.add(v.place.id);
     if (city.subdivisionId) visitedRegionIds.add(city.subdivisionId);
   }
+  // Heritage sites (a "category"): visited sites in this country vs the total there.
+  const heritageTotal = ref.heritageOf(iso2).length;
+  const heritageVisited = new Set(
+    onlyVisited(visits)
+      .filter((v) => v.place.kind === "heritage")
+      .map((v) => ref.heritageById(v.place.id))
+      .filter((h): h is NonNullable<typeof h> => !!h && h.countryIso2 === iso2)
+      .map((h) => h.id),
+  ).size;
+
   const citiesTotal = country?.cityCount ?? 0;
   const regionsTotal = country?.subdivisionCount ?? 0;
   return {
@@ -98,6 +111,9 @@ export function computeCountryCoverage(
     regionsVisited: visitedRegionIds.size,
     regionsTotal,
     regionPct: pct(visitedRegionIds.size, regionsTotal),
+    heritageVisited,
+    heritageTotal,
+    heritagePct: pct(heritageVisited, heritageTotal),
   };
 }
 

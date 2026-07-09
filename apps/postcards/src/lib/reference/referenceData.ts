@@ -4,6 +4,7 @@ import type {
   Airport,
   City,
   Country,
+  HeritageSite,
   ReferenceData,
   ReferenceProvenance,
   Subdivision,
@@ -24,6 +25,7 @@ const sovereignty = sovereigntyData as Record<string, Sovereignty>;
 const CITIES_URL = `${import.meta.env.BASE_URL}reference/cities.json`;
 const SUBDIVISIONS_URL = `${import.meta.env.BASE_URL}reference/subdivisions.json`;
 const AIRPORTS_URL = `${import.meta.env.BASE_URL}reference/airports.json`;
+const HERITAGE_URL = `${import.meta.env.BASE_URL}reference/heritage.json`;
 
 function buildCountries(cities: City[], subdivisions: Subdivision[]): Country[] {
   const names = countries.getNames("en");
@@ -69,22 +71,35 @@ interface IndexedAirport extends Airport {
   search: string;
 }
 
+interface IndexedHeritage extends HeritageSite {
+  search: string;
+}
+
 class ReferenceDataImpl implements ReferenceData {
   readonly countries: Country[];
   readonly provenance: ReferenceProvenance[] = provenance;
   private cities: IndexedCity[];
   private airports: IndexedAirport[];
+  private heritage: IndexedHeritage[];
   private byIso2 = new Map<string, Country>();
   private byNumeric = new Map<string, Country>();
   private cityIndex = new Map<string, City>();
   private airportIndex = new Map<string, Airport>();
+  private heritageIndex = new Map<string, HeritageSite>();
+  private heritageByCountry = new Map<string, HeritageSite[]>();
   private subIndex = new Map<string, Subdivision>();
   private subsByCountry = new Map<string, Subdivision[]>();
   private countrySearch: { c: Country; search: string }[];
 
-  constructor(cities: City[], subdivisions: Subdivision[], airports: Airport[] = []) {
+  constructor(
+    cities: City[],
+    subdivisions: Subdivision[],
+    airports: Airport[] = [],
+    heritage: HeritageSite[] = [],
+  ) {
     this.cities = cities.map((c) => ({ ...c, search: normalize(c.name) }));
     this.airports = airports.map((a) => ({ ...a, search: normalize(a.name) }));
+    this.heritage = heritage.map((h) => ({ ...h, search: normalize(h.name) }));
     this.countries = buildCountries(cities, subdivisions);
     this.countrySearch = this.countries.map((c) => ({ c, search: normalize(c.name) }));
     for (const c of this.countries) {
@@ -93,6 +108,12 @@ class ReferenceDataImpl implements ReferenceData {
     }
     for (const c of this.cities) this.cityIndex.set(c.id, c);
     for (const a of this.airports) this.airportIndex.set(a.id, a);
+    for (const h of this.heritage) {
+      this.heritageIndex.set(h.id, h);
+      const arr = this.heritageByCountry.get(h.countryIso2);
+      if (arr) arr.push(h);
+      else this.heritageByCountry.set(h.countryIso2, [h]);
+    }
     for (const s of subdivisions) {
       this.subIndex.set(s.id, s);
       const arr = this.subsByCountry.get(s.countryIso2);
@@ -130,6 +151,26 @@ class ReferenceDataImpl implements ReferenceData {
   }
   airportById(id: string): Airport | undefined {
     return this.airportIndex.get(id.toUpperCase());
+  }
+  allHeritage(): HeritageSite[] {
+    return this.heritage;
+  }
+  heritageOf(countryIso2: string): HeritageSite[] {
+    return this.heritageByCountry.get(countryIso2.toUpperCase()) ?? [];
+  }
+  heritageById(id: string): HeritageSite | undefined {
+    return this.heritageIndex.get(id);
+  }
+  searchHeritage(query: string, limit = 8): HeritageSite[] {
+    const q = normalize(query);
+    if (!q) return [];
+    const starts: HeritageSite[] = [];
+    const contains: HeritageSite[] = [];
+    for (const h of this.heritage) {
+      if (h.search.startsWith(q)) starts.push(h);
+      else if (h.search.includes(q)) contains.push(h);
+    }
+    return [...starts, ...contains].slice(0, limit);
   }
   searchCountries(query: string, limit = 8): Country[] {
     const q = normalize(query);
@@ -186,28 +227,31 @@ export function initReferenceDataSync(
   cities: City[],
   subdivisions: Subdivision[],
   airports: Airport[] = [],
+  heritage: HeritageSite[] = [],
 ): ReferenceData {
-  instance = new ReferenceDataImpl(cities, subdivisions, airports);
+  instance = new ReferenceDataImpl(cities, subdivisions, airports, heritage);
   return instance;
 }
 
-/** Load the bundled gazetteer + subdivisions + airports assets and build the reference data. */
+/** Load the bundled gazetteer + subdivisions + airports + heritage assets. */
 export async function initReferenceData(): Promise<ReferenceData> {
   if (instance) return instance;
   try {
-    const [cities, subdivisions, airports] = await Promise.all([
+    const [cities, subdivisions, airports, heritage] = await Promise.all([
       fetch(CITIES_URL).then((r) => (r.ok ? r.json() : Promise.reject(new Error("cities")))),
       fetch(SUBDIVISIONS_URL).then((r) => (r.ok ? r.json() : [])),
       fetch(AIRPORTS_URL).then((r) => (r.ok ? r.json() : [])),
+      fetch(HERITAGE_URL).then((r) => (r.ok ? r.json() : [])),
     ]);
     return initReferenceDataSync(
       cities as City[],
       subdivisions as Subdivision[],
       airports as Airport[],
+      heritage as HeritageSite[],
     );
   } catch {
     console.warn("Postcards: reference data failed to load; continuing without cities.");
-    return initReferenceDataSync([], [], []);
+    return initReferenceDataSync([], [], [], []);
   }
 }
 
