@@ -25,6 +25,11 @@ function placeMeta(ref: ReferenceData, v: Visit): { coord: { lon: number; lat: n
     const a = ref.airportById(v.place.id);
     return { coord: a ? { lon: a.lon, lat: a.lat } : null, sub: `Airport · ${country}` };
   }
+  if (v.place.kind === "heritage") {
+    const h = ref.heritageById(v.place.id);
+    const coord = h && (h.lat !== 0 || h.lon !== 0) ? { lon: h.lon, lat: h.lat } : null;
+    return { coord, sub: `Heritage site · ${country}` };
+  }
   return { coord: null, sub: "Country" };
 }
 

@@ -1,7 +1,7 @@
 import type { PlaceRef, TravelMode, Trip } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
 
-/** Resolve a place reference to coordinates, if it has any (cities + airports do). */
+/** Resolve a place reference to coordinates, if it has any (cities, airports, heritage sites do). */
 export function coordsOf(place: PlaceRef, ref: ReferenceData): { lon: number; lat: number } | null {
   if (place.kind === "city") {
     const c = ref.cityById(place.id);
@@ -10,6 +10,11 @@ export function coordsOf(place: PlaceRef, ref: ReferenceData): { lon: number; la
   if (place.kind === "airport") {
     const a = ref.airportById(place.id);
     return a ? { lon: a.lon, lat: a.lat } : null;
+  }
+  if (place.kind === "heritage") {
+    const h = ref.heritageById(place.id);
+    // Some sites have no coordinate in the source (stored as 0,0) — treat as unknown.
+    return h && (h.lat !== 0 || h.lon !== 0) ? { lon: h.lon, lat: h.lat } : null;
   }
   return null; // countries have no single coordinate
 }

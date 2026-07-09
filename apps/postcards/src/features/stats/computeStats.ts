@@ -91,13 +91,14 @@ export function computeCountryCoverage(
     if (city.subdivisionId) visitedRegionIds.add(city.subdivisionId);
   }
   // Heritage sites (a "category"): visited sites in this country vs the total there.
-  const heritageTotal = ref.heritageOf(iso2).length;
+  // Membership is by the country's own site list (heritageOf), so a transnational
+  // site that spans several countries counts toward each — matching the denominator.
+  const heritageIdsHere = new Set(ref.heritageOf(iso2).map((h) => h.id));
+  const heritageTotal = heritageIdsHere.size;
   const heritageVisited = new Set(
     onlyVisited(visits)
-      .filter((v) => v.place.kind === "heritage")
-      .map((v) => ref.heritageById(v.place.id))
-      .filter((h): h is NonNullable<typeof h> => !!h && h.countryIso2 === iso2)
-      .map((h) => h.id),
+      .filter((v) => v.place.kind === "heritage" && heritageIdsHere.has(v.place.id))
+      .map((v) => v.place.id),
   ).size;
 
   const citiesTotal = country?.cityCount ?? 0;

@@ -21,12 +21,42 @@ export function PostcardPhoto({
   const setPhoto = useVisits((s) => s.setPhoto);
   const showToast = useToast((s) => s.show);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null); // the row control (thumb or "Photo")
+  const wasOpen = useRef(false);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // Modal focus contract: move focus into the dialog on open, restore it to the
+  // row control on close (Constitution: keyboard-first, WCAG 2.4.3).
+  useEffect(() => {
+    if (open) closeRef.current?.focus();
+    else if (wasOpen.current) triggerRef.current?.focus();
+    wasOpen.current = open;
+  }, [open]);
+
+  // Escape closes; Tab is trapped within the dialog while it is open.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const f = dialogRef.current?.querySelectorAll<HTMLElement>("button:not([disabled])");
+      if (!f || f.length === 0) return;
+      const first = f[0]!;
+      const last = f[f.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
@@ -58,6 +88,7 @@ export function PostcardPhoto({
       />
       {photo ? (
         <button
+          ref={triggerRef}
           type="button"
           className="postcard-thumb"
           onClick={() => setOpen(true)}
@@ -67,6 +98,7 @@ export function PostcardPhoto({
         </button>
       ) : (
         <button
+          ref={triggerRef}
           type="button"
           className="mini-btn"
           disabled={busy}
@@ -80,6 +112,7 @@ export function PostcardPhoto({
       {open && photo && (
         <div
           className="lightbox"
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-label={`Your photo of ${placeName}`}
@@ -98,6 +131,7 @@ export function PostcardPhoto({
             <button
               type="button"
               className="link-danger"
+              disabled={busy}
               onClick={async () => {
                 await setPhoto(visitId, null);
                 setOpen(false);
@@ -105,7 +139,7 @@ export function PostcardPhoto({
             >
               Remove
             </button>
-            <button type="button" className="btn-ghost" onClick={() => setOpen(false)}>
+            <button ref={closeRef} type="button" className="btn-ghost" onClick={() => setOpen(false)}>
               Close
             </button>
           </div>

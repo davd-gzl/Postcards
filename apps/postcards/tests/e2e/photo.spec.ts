@@ -26,10 +26,11 @@ test("attach a postcard photo to a visited place, then view and remove it", asyn
   await expect(thumb).toBeVisible();
   await expect(thumb).toHaveAttribute("src", /^data:image\/jpeg/);
 
-  // Open the lightbox, then remove the photo.
+  // Open the lightbox; focus moves into the dialog (WCAG). Then remove the photo.
   await page.locator(".postcard-thumb").click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Close" })).toBeFocused();
   await dialog.getByRole("button", { name: "Remove" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Add a photo for Paris/ })).toBeVisible();
