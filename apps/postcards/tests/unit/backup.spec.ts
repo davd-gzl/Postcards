@@ -25,6 +25,29 @@ describe("backup round-trip (SC-003)", () => {
   });
 });
 
+describe("postcard photos", () => {
+  const dataUrl =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+  it("accepts an inline image data URL and round-trips it", () => {
+    const original = [{ ...visit(), photo: dataUrl }];
+    const text = serializeFile(original);
+    const result = importFile(text);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.visits[0]!.photo).toBe(dataUrl);
+  });
+
+  it("rejects a photo that is an external URL (privacy: photos must be inline)", () => {
+    const text = JSON.stringify({
+      format: "postcards",
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      visits: [{ ...visit(), photo: "https://evil.example/track.png" }],
+    });
+    expect(importFile(text)).toMatchObject({ ok: false });
+  });
+});
+
 describe("import security (SC-008, Constitution VI)", () => {
   it("rejects malformed JSON", () => {
     expect(importFile("{not json")).toMatchObject({ ok: false });

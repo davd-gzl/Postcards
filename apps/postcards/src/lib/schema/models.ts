@@ -54,6 +54,17 @@ export const VisitSchema = z.object({
     .nullable()
     .optional()
     .transform((v) => (v == null ? null : sanitizeText(v, 2000))),
+  /**
+   * Your own "postcard" photo for this place, stored on-device as an inline image
+   * data URL — never an external link (privacy: it can't phone home; inert: it's
+   * only ever shown via <img src>, never executed). Downscaled on capture.
+   */
+  photo: z
+    .string()
+    .max(6_000_000)
+    .refine((s) => s.startsWith("data:image/"), "photo must be an inline image data URL")
+    .nullable()
+    .optional(),
   addedAt: z.string().datetime({ offset: true }),
 }).strict();
 

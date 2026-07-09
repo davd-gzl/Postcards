@@ -9,6 +9,7 @@ import type { Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
 import { inScope } from "../../lib/reference/scope";
 import { CountryScopeSelect } from "../../ui/CountryScopeSelect";
+import { PostcardPhoto } from "./PostcardPhoto";
 import { StateToggles } from "./StateToggles";
 
 type View = "visited" | "wishlist" | "countries";
@@ -140,6 +141,7 @@ export function PlacesScreen() {
                       </span>
                     </span>
                   </button>
+                  <PostcardPhoto visitId={v.visitId} photo={v.photo} placeName={v.place.name} />
                   <button
                     className={"star-btn" + (v.favorite ? " star-on" : "")}
                     type="button"

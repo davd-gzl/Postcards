@@ -49,6 +49,8 @@ interface VisitsState {
   toggleWish: (place: PlaceRef) => Promise<void>;
   /** "★" on an existing record (visited or wishlist). */
   toggleFavorite: (place: PlaceRef) => Promise<void>;
+  /** Attach (or clear, with null) a "postcard" photo data URL on an existing visit. */
+  setPhoto: (visitId: string, photo: string | null) => Promise<void>;
   setAll: (visits: Visit[]) => Promise<void>;
 }
 
@@ -68,6 +70,7 @@ export const useVisits = create<VisitsState>((set, get) => ({
       favorite: existing?.favorite ?? favorite,
       date: date ?? existing?.date ?? null,
       note: note ?? existing?.note ?? null,
+      photo: existing?.photo, // keep an attached postcard across re-logs/status changes
       addedAt: existing?.addedAt ?? new Date().toISOString(),
     };
     set({ visits: dedupeUpsert(get().visits, visit) });
@@ -97,6 +100,13 @@ export const useVisits = create<VisitsState>((set, get) => ({
     if (!existing) return;
     const updated: Visit = { ...existing, favorite: !existing.favorite };
     set({ visits: get().visits.map((v) => (v.visitId === updated.visitId ? updated : v)) });
+    await db.putVisit(updated);
+  },
+  async setPhoto(visitId, photo) {
+    const existing = get().visits.find((v) => v.visitId === visitId);
+    if (!existing) return;
+    const updated: Visit = { ...existing, photo };
+    set({ visits: get().visits.map((v) => (v.visitId === visitId ? updated : v)) });
     await db.putVisit(updated);
   },
   async setAll(visits) {

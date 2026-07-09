@@ -5,8 +5,9 @@ export type ImportResult =
   | { ok: true; visits: Visit[]; trips: Trip[]; warnings: string[] }
   | { ok: false; error: string };
 
-/** Reject absurdly large inputs before parsing (main-thread DoS guard). */
-const MAX_IMPORT_CHARS = 20_000_000;
+/** Reject absurdly large inputs before parsing (main-thread DoS guard).
+ *  Generous enough for photo-rich files (postcards are embedded, downscaled). */
+const MAX_IMPORT_CHARS = 80_000_000;
 
 /**
  * Parse + validate + sanitize an imported file (Constitution VI: data is inert).
