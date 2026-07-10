@@ -34,7 +34,7 @@ const res = await fetch(`${ENDPOINT}?query=${encodeURIComponent(QUERY)}`, {
   headers: {
     Accept: "application/sparql-results+json",
     // Wikidata asks for a descriptive UA with contact info.
-    "User-Agent": "Postcards/1.0 (https://github.com/davd-gzl/place-been) heritage dataset build",
+    "User-Agent": "Postcards/1.0 (https://github.com/davd-gzl/Postcards) heritage dataset build",
   },
 });
 if (!res.ok) throw new Error(`Wikidata query failed: ${res.status} ${res.statusText}`);
