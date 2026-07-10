@@ -1,0 +1,13 @@
+# Netlify build config for the Postcards PWA (pnpm workspace; app in apps/postcards).
+# Connect the repo on Netlify and it auto-reads this — no manual settings needed.
+# Redirects + headers live in apps/postcards/public/{_redirects,_headers} so they
+# also apply to a no-repo drag-and-drop deploy of the dist/ folder.
+
+[build]
+  # Run from the repo root so the pnpm workspace resolves; build only the app.
+  command = "pnpm --filter postcards build"
+  publish = "apps/postcards/dist"
+
+[build.environment]
+  # The app requires Node 20+. Also pinned in .nvmrc for local/CLI parity.
+  NODE_VERSION = "22"

@@ -64,6 +64,14 @@ pnpm --filter postcards test:e2e    # browser e2e (Playwright): smoke, a11y, key
 pnpm --filter postcards build       # production PWA build
 ```
 
+### Host it for free
+
+It's a static PWA, so it hosts for free anywhere — including from a **private
+repo** (where GitHub Pages won't). Config for **Netlify** is committed
+(`netlify.toml`, `_redirects`, `_headers`): connect the repo for auto-deploys, or
+build locally and drag `apps/postcards/dist` to Netlify Drop (no repo access
+needed). Step-by-step: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
 ## Tech stack
 
 | Area | Choice |
