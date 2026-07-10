@@ -51,8 +51,13 @@ Constitution Check.
 - Active feature: **`specs/001-cities-countries/`** (MVP: log cities/countries, offline map, stats
   incl. both %-of-cities and %-of-regions per country, single-file backup/restore). See its
   `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`.
-- Out of scope for the MVP: extra place types, ticket logs, Wikivoyage, downloadable map packs, the
-  shared Offline Map Store implementation, comparisons/leaderboards, tracking, P2P, AI suggestions.
+- Out of scope for the MVP: ticket logs, downloadable map packs, the shared Offline Map Store
+  implementation, comparisons/leaderboards, tracking, P2P, AI suggestions.
+- Shipped beyond the original MVP (later features): extra place types (airports, monuments), a
+  per-place **photo gallery** with captions, **Wikivoyage** guides/phrasebooks (opt-in online, a
+  reusable seam under `src/lib/wikivoyage/` — see its README), and a "How it works" screen. These
+  honour the constitution: opt-in, inert, privacy-preserving, gracefully degrading. Country coverage
+  is **derived** — visiting a city counts its country; there is no separate per-country record.
 
 ## Planned structure (workspace)
 

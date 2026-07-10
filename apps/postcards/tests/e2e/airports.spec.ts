@@ -10,7 +10,7 @@ test("log an airport by IATA code and see it counted", async ({ page }) => {
   // Search by IATA code; the top result is the matching airport.
   await page.getByLabel("Search a city or country").fill("JFK");
   await page.getByRole("button", { name: /JFK/ }).first().click();
-  await expect(page.getByText(/Added .*JFK/)).toBeVisible(); // undo toast
+  // Add is silent; verified by the totals strip + Places list below.
 
   // Totals strip gains an airports counter.
   await expect(page.locator(".stat-strip")).toContainText("airports");

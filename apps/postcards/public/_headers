@@ -6,7 +6,13 @@
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
-  Referrer-Policy: no-referrer
+  # strict-origin-when-cross-origin: send only our ORIGIN (never the path/query)
+  # as the Referer on cross-origin requests. The opt-in OpenStreetMap tile server
+  # BLOCKS requests with no Referer ("Referer is required"), so `no-referrer` broke
+  # it; this is the least-leaky policy OSM accepts and is also the browser default.
+  # Same-origin navigations still send no path leak beyond the origin. (Mirrored by
+  # the <meta name="referrer"> in index.html so dev/preview/native honour it too.)
+  Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
 
 # Content-hashed build assets are immutable — cache them hard.
