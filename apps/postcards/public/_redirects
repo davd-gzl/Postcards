@@ -1,0 +1,6 @@
+# SPA/PWA fallback: serve index.html for any path that isn't a real file, so a
+# refresh or deep link always loads the app. Existing files (assets, sw.js,
+# manifest.webmanifest) are served directly and take precedence.
+# Honoured by Netlify and Cloudflare Pages; baked into dist/ so it works for a
+# connected-repo build AND a drag-and-drop deploy.
+/*    /index.html   200
