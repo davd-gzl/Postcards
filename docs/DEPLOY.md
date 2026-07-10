@@ -19,7 +19,7 @@ Pick one of the two paths below.
 Best if you want the live site to update whenever you push.
 
 1. Go to **[app.netlify.com](https://app.netlify.com)** → **Add new site** → **Import an existing project** → **GitHub**.
-2. Authorize Netlify's GitHub app and **grant it access to `davd-gzl/place-been`** (you can scope it to just this repo — the repo stays private).
+2. Authorize Netlify's GitHub app and **grant it access to `davd-gzl/Postcards`** (you can scope it to just this repo — the repo stays private).
 3. Pick the repo. Netlify reads `netlify.toml`, so the settings are pre-filled:
    - **Build command:** `pnpm --filter postcards build`
    - **Publish directory:** `apps/postcards/dist`
