@@ -21,7 +21,8 @@ export function buildFile(visits: Visit[], trips: Trip[] = [], now = new Date())
     format: FORMAT,
     schemaVersion: SCHEMA_VERSION,
     exportedAt: now.toISOString(),
-    visits,
+    // Drop empty `photos` arrays so a photo-less export stays lean and readable.
+    visits: visits.map(({ photos, ...rest }) => (photos && photos.length ? { ...rest, photos } : rest)),
     trips,
     referenceSources,
   };

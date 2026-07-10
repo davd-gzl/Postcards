@@ -24,6 +24,12 @@ const MODE_GLYPH: Record<string, string> = {
   other: "•",
 };
 
+/** Join names, capping a long list so a huge country doesn't flood the card. */
+function capList(names: string[], max = 18): string {
+  if (names.length <= max) return names.join(", ");
+  return `${names.slice(0, max).join(", ")} +${names.length - max} more`;
+}
+
 function Bar({ value, label, color }: { value: number; label: string; color?: string }) {
   return (
     <div
@@ -84,6 +90,12 @@ export function StatsView() {
           <div className="stat-tile">
             <div className="num">{formatInt(coverage.airportsVisited)}</div>
             <div className="label">airports</div>
+          </div>
+        )}
+        {coverage.monumentsVisited > 0 && (
+          <div className="stat-tile">
+            <div className="num">{formatInt(coverage.monumentsVisited)}</div>
+            <div className="label">monuments</div>
           </div>
         )}
       </div>
@@ -222,9 +234,12 @@ export function StatsView() {
               </div>
             )}
 
-            {(detail.cities.length > 0 || detail.regionsVisited.length > 0) && (
+            {(detail.cities.length > 0 ||
+              detail.regionsVisited.length > 0 ||
+              detail.regionsRemainingNames.length > 0 ||
+              detail.monumentsVisited.length > 0) && (
               <details className="country-detail">
-                <summary>Details</summary>
+                <summary>What you've seen · what's left</summary>
                 {detail.cities.length > 0 && (
                   <p className="muted small">
                     <strong>Cities:</strong> {detail.cities.join(", ")}
@@ -232,8 +247,22 @@ export function StatsView() {
                 )}
                 {detail.regionsVisited.length > 0 && (
                   <p className="muted small">
-                    <strong>Regions:</strong> {detail.regionsVisited.join(", ")}
-                    {detail.regionsRemaining > 0 && ` — ${detail.regionsRemaining} to go`}
+                    <strong>Regions visited:</strong> {detail.regionsVisited.join(", ")}
+                  </p>
+                )}
+                {detail.regionsRemainingNames.length > 0 && (
+                  <p className="muted small">
+                    <strong>Regions to visit:</strong> {capList(detail.regionsRemainingNames)}
+                  </p>
+                )}
+                {detail.monumentsVisited.length > 0 && (
+                  <p className="muted small">
+                    <strong>Monuments seen:</strong> {detail.monumentsVisited.join(", ")}
+                  </p>
+                )}
+                {detail.monumentsRemaining.length > 0 && (
+                  <p className="muted small">
+                    <strong>Monuments to see:</strong> {capList(detail.monumentsRemaining)}
                   </p>
                 )}
               </details>

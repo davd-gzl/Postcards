@@ -10,7 +10,9 @@
 //
 // NOTE: this could not run in the sandbox that first scaffolded the feature —
 // query.wikidata.org is blocked there by the network policy. Run it on a machine
-// with open network access. See docs/CATEGORIES-HANDOFF.md for the full plan.
+// with open network access. Until then, scripts/build-heritage-seed.mjs ships a
+// curated subset so the feature works; running THIS script overwrites it with the
+// complete list. See docs/CATEGORIES-HANDOFF.md for the full plan.
 
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

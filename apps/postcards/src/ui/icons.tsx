@@ -54,3 +54,13 @@ export function RouteIcon() {
     </svg>
   );
 }
+
+export function InfoIcon() {
+  return (
+    <svg {...common}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <circle cx="12" cy="7.6" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}

@@ -1,7 +1,6 @@
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import type { Trip, Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
-import { formatCompact } from "../../lib/format/format";
 import { coordsOf } from "../travel/distance";
 
 function isVisited(v: Visit): boolean {
@@ -20,9 +19,10 @@ export function visitedCountryNumerics(visits: Visit[], ref: ReferenceData): str
 }
 
 /**
- * Point features for visited cities. Each carries what the flag-pill marker
- * needs: country code, compact population label, favorite flag, and a
- * collision sort key so the most populous city wins when markers collide.
+ * Point features for visited cities. Each carries what the flag marker needs
+ * (country code, favourite flag, collision sort key) plus the details shown in
+ * the tap popup (exact population and region name) — the population is
+ * deliberately NOT rendered on the marker, only revealed on tap.
  */
 export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureCollection<Point> {
   const features: Feature<Point>[] = [];
@@ -30,13 +30,15 @@ export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureC
     if (!isVisited(v) || v.place.kind !== "city") continue;
     const city = ref.cityById(v.place.id);
     if (!city) continue;
+    const region = city.subdivisionId ? ref.subdivisionById(city.subdivisionId)?.name ?? "" : "";
     features.push({
       type: "Feature",
       geometry: { type: "Point", coordinates: [city.lon, city.lat] },
       properties: {
         name: city.name,
         cc: city.countryIso2,
-        popLabel: city.population != null ? formatCompact(city.population) : "",
+        pop: city.population ?? 0,
+        region,
         fav: v.favorite ? 1 : 0,
         sortKey: -(city.population ?? 0),
       },

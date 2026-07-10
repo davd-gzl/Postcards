@@ -35,9 +35,13 @@ export default defineConfig({
             urlPattern: ({ url }) => url.hostname.endsWith("tile.openstreetmap.org"),
             handler: "CacheFirst",
             options: {
-              cacheName: "osm-tiles",
+              // v2: the old cache may hold opaque "Referer required" error tiles
+              // (status 0) from before the Referrer-Policy fix; a new name drops them.
+              cacheName: "osm-tiles-v2",
               expiration: { maxEntries: 4000, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] },
+              // Only cache real successes now that tiles are fetched with CORS —
+              // never poison the cache with error/opaque responses.
+              cacheableResponse: { statuses: [200] },
             },
           },
         ],
