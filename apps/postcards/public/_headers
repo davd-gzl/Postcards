@@ -1,0 +1,18 @@
+# Response headers for the hosted PWA (Netlify / Cloudflare Pages syntax).
+# Deliberately no Content-Security-Policy: MapLibre uses blob: web workers, the
+# opt-in OpenStreetMap basemap fetches tiles cross-origin, and postcard photos
+# render as data: URLs — a wrong CSP would break those. The headers below are the
+# safe, privacy-friendly set that never affects resource loading.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+# Content-hashed build assets are immutable — cache them hard.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The service worker must revalidate so app updates ship promptly.
+/sw.js
+  Cache-Control: no-cache
