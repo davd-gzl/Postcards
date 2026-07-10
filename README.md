@@ -50,8 +50,8 @@ _Postcards remembers where you've been — it is **not** a trip planner._
 Requires [Node.js](https://nodejs.org) 20+ and [pnpm](https://pnpm.io).
 
 ```bash
-git clone https://github.com/davd-gzl/place-been.git
-cd place-been
+git clone https://github.com/davd-gzl/Postcards.git
+cd Postcards
 pnpm install
 pnpm --filter postcards dev         # run the app at http://localhost:5173
 ```
