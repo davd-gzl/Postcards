@@ -9,7 +9,7 @@ test("add a place via search and see it in stats + places", async ({ page }) => 
   // Map screen is default: search and add Paris (top result = Paris, France).
   await page.getByLabel("Search a city or country").fill("Paris");
   await page.getByRole("button", { name: /Paris/ }).first().click();
-  await expect(page.getByText("Added Paris")).toBeVisible(); // undo toast
+  // Adds are silent (no toast noise); the result is verified in Stats + Places below.
 
   // Stats reflects it, including the continent section.
   await page.getByRole("button", { name: "Stats", exact: true }).click();
@@ -22,14 +22,19 @@ test("add a place via search and see it in stats + places", async ({ page }) => 
   await expect(page.getByText("Paris", { exact: true })).toBeVisible();
 });
 
-test("undo reverts an add", async ({ page }) => {
+test("undo reverts a removal", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Search a city or country").fill("Tokyo");
   await page.getByRole("button", { name: /Tokyo/ }).first().click();
-  await page.getByRole("button", { name: "Undo" }).click();
 
+  // Removing a place (which can drop photos/notes) is the one action with an
+  // undoable toast. Remove Tokyo, then undo — it comes back.
   await page.getByRole("button", { name: "Places", exact: true }).click();
-  await expect(page.getByText("Nothing yet", { exact: false })).toBeVisible();
+  await expect(page.getByText("Tokyo", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Remove Tokyo" }).click();
+  await expect(page.getByText("Removed Tokyo")).toBeVisible();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByText("Tokyo", { exact: true })).toBeVisible();
 });
 
 test("country checklist toggles a country", async ({ page }) => {

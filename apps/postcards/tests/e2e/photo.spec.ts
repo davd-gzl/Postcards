@@ -6,14 +6,14 @@ const PNG = Buffer.from(
   "base64",
 );
 
-test("attach a postcard photo to a visited place, then view and remove it", async ({ page }) => {
+test("attach photos to a place, caption one, view and remove", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Search a city or country").fill("Paris");
   await page.getByRole("button", { name: /Paris/ }).first().click();
 
   await page.getByRole("button", { name: "Places", exact: true }).click();
 
-  // No photo yet → the "Photo" affordance is present; attach the image.
+  // No photos yet → the "Add a photo" affordance is present; attach an image.
   await expect(page.getByRole("button", { name: /Add a photo for Paris/ })).toBeVisible();
   await page.locator('input[type="file"]').first().setInputFiles({
     name: "postcard.png",
@@ -21,17 +21,24 @@ test("attach a postcard photo to a visited place, then view and remove it", asyn
     buffer: PNG,
   });
 
+  // The gallery opens automatically; caption the photo (spaces must survive).
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const caption = dialog.getByLabel(/Caption for photo 1 of Paris/);
+  await caption.fill("The Louvre at dusk");
+  await expect(caption).toHaveValue("The Louvre at dusk");
+  await dialog.getByRole("button", { name: "Close" }).click();
+
   // A thumbnail appears (downscaled on-device to a JPEG data URL).
   const thumb = page.locator(".postcard-thumb img");
   await expect(thumb).toBeVisible();
   await expect(thumb).toHaveAttribute("src", /^data:image\/jpeg/);
 
-  // Open the lightbox; focus moves into the dialog (WCAG). Then remove the photo.
+  // Reopen; focus moves into the dialog (WCAG). Remove the only photo → empties.
   await page.locator(".postcard-thumb").click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Close" })).toBeFocused();
-  await dialog.getByRole("button", { name: "Remove" }).click();
+  const dialog2 = page.getByRole("dialog");
+  await expect(dialog2.getByRole("button", { name: "Close" })).toBeFocused();
+  await dialog2.getByRole("button", { name: "Remove" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Add a photo for Paris/ })).toBeVisible();
 });

@@ -34,5 +34,17 @@
     "license": "ODbL-1.0",
     "version": "5.1.0",
     "url": "https://github.com/mledoze/countries"
+  },
+  {
+    "dataset": "Per-country spoken languages (via world-countries)",
+    "license": "ODbL-1.0",
+    "version": "5.1.0",
+    "url": "https://github.com/mledoze/countries"
+  },
+  {
+    "dataset": "Wikivoyage travel guides, phrasebooks & overviews (opt-in)",
+    "license": "CC-BY-SA-4.0",
+    "version": "live",
+    "url": "https://en.wikivoyage.org"
   }
 ]
