@@ -86,7 +86,18 @@ function GuidesModal({
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [summary, setSummary] = useState<WikivoyageSummary | null>(null);
+  // Overviews are SAVED on-device once loaded, so they reopen offline.
+  const key = (proj: string) => `postcards-guide:${proj}:${summaryTitle}`;
+  const readSaved = (proj: string): WikivoyageSummary | null => {
+    try {
+      const raw = localStorage.getItem(key(proj));
+      return raw ? (JSON.parse(raw) as WikivoyageSummary) : null;
+    } catch {
+      return null;
+    }
+  };
+  const [summary, setSummary] = useState<WikivoyageSummary | null>(() => readSaved("wikivoyage"));
+  const [wpSummary, setWpSummary] = useState<WikivoyageSummary | null>(() => readSaved("wikipedia"));
   const [state, setState] = useState<"idle" | "loading" | "empty">("idle");
 
   useEffect(() => {
@@ -97,9 +108,22 @@ function GuidesModal({
 
   async function loadOverview() {
     setState("loading");
-    const s = await fetchSummary(summaryTitle);
-    setSummary(s);
-    setState(s ? "idle" : "empty");
+    const [wv, wp] = await Promise.all([
+      fetchSummary(summaryTitle),
+      fetchSummary(summaryTitle, { project: "wikipedia" }),
+    ]);
+    setSummary(wv);
+    setWpSummary(wp);
+    for (const [proj, val] of [["wikivoyage", wv], ["wikipedia", wp]] as const) {
+      if (val) {
+        try {
+          localStorage.setItem(key(proj), JSON.stringify(val));
+        } catch {
+          /* private mode / full: shown but not saved */
+        }
+      }
+    }
+    setState(wv || wp ? "idle" : "empty");
   }
 
   const grouped = GROUP_ORDER.map((g) => ({
@@ -122,17 +146,17 @@ function GuidesModal({
           From Wikivoyage — the free travel guide. Links open in your browser.
         </p>
 
-        {state !== "empty" && !summary && (
+        {state !== "empty" && !summary && !wpSummary && (
           <button
             type="button"
             className="btn-ghost guide-overview-btn"
             disabled={state === "loading"}
             onClick={loadOverview}
           >
-            {state === "loading" ? "Loading…" : "↧ Load a short overview (online)"}
+            {state === "loading" ? "Loading…" : "↧ Load & save overviews (online)"}
           </button>
         )}
-        {state === "empty" && !summary && (
+        {state === "empty" && !summary && !wpSummary && (
           <p className="muted small">
             {typeof navigator !== "undefined" && !navigator.onLine
               ? "You're offline — the links below open when you're back online."
@@ -154,6 +178,17 @@ function GuidesModal({
               >
                 CC BY-SA 4.0
               </a>
+            </cite>
+          </blockquote>
+        )}
+        {wpSummary && (
+          <blockquote className="guide-summary">
+            <p>{wpSummary.extract}</p>
+            <cite className="muted small">
+              <a href={wpSummary.url} target="_blank" rel="noopener noreferrer">
+                Wikipedia
+              </a>{" "}
+              · CC BY-SA 4.0 · saved for offline
             </cite>
           </blockquote>
         )}

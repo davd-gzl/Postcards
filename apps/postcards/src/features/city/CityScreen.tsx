@@ -26,21 +26,27 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
   const visits = useVisits((s) => s.visits);
   const flyTo = useUi((s) => s.flyTo);
 
+  // The page serves cities, World Heritage monuments, and your own custom places.
   const city = ref.cityById(cityId);
+  const monument = !city ? ref.heritageById(cityId) : undefined;
   const visit = city
     ? findByPlace(visits, { kind: "city", id: city.id })
-    : findByPlace(visits, { kind: "custom", id: cityId });
-  const customPlace = !city && visit?.place.kind === "custom" ? visit.place : null;
+    : monument
+      ? findByPlace(visits, { kind: "heritage", id: monument.id })
+      : findByPlace(visits, { kind: "custom", id: cityId });
+  const customPlace = !city && !monument && visit?.place.kind === "custom" ? visit.place : null;
 
-  const name = city?.name ?? customPlace?.name ?? "Unknown place";
-  const cc = city?.countryIso2 ?? customPlace?.countryId ?? "";
+  const name = city?.name ?? monument?.name ?? customPlace?.name ?? "Unknown place";
+  const cc = city?.countryIso2 ?? monument?.countryIso2 ?? customPlace?.countryId ?? "";
   const country = ref.countryByIso2(cc);
   const region = city?.subdivisionId ? ref.subdivisionById(city.subdivisionId)?.name : null;
-  const lat = city?.lat ?? customPlace?.lat ?? null;
-  const lon = city?.lon ?? customPlace?.lon ?? null;
+  const lat = city?.lat ?? (monument && (monument.lat !== 0 || monument.lon !== 0) ? monument.lat : null) ?? customPlace?.lat ?? null;
+  const lon = city?.lon ?? (monument && (monument.lat !== 0 || monument.lon !== 0) ? monument.lon : null) ?? customPlace?.lon ?? null;
   const place = city
     ? { kind: "city" as const, id: city.id, name: city.name, countryId: city.countryIso2 }
-    : customPlace;
+    : monument
+      ? { kind: "heritage" as const, id: monument.id, name: monument.name, countryId: monument.countryIso2 }
+      : customPlace;
 
   // Nearby points of interest, by great-circle distance (nothing invented).
   const nearby = useMemo(() => {
@@ -76,6 +82,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
           <p className="muted">
             {country?.name ?? cc}
             {region ? ` - ${region}` : ""}
+            {monument ? " · UNESCO World Heritage Site" : ""}
             {customPlace ? " · your own place" : ""}
           </p>
         </div>
@@ -108,7 +115,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
         )}
       </div>
 
-      {!city && !customPlace && (
+      {!city && !monument && !customPlace && (
         <p className="notice">
           This place isn't in the loaded reference data, and you haven't created it yourself yet.
           Search for it on the Map tab — if it's missing there too, use “Add it yourself” under the

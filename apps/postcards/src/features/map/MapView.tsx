@@ -67,38 +67,55 @@ const PILL_FONT = '600 21px "Inter Variable", system-ui, sans-serif';
  * label (that's shown on tap, in a popup). Favourites get a gold ring. Drawn at
  * 2× for crispness.
  */
+/**
+ * Visited-city marker: the bare flag emoji (no box) with a soft white halo so it
+ * reads on any basemap. Favourites get a small gold star at the corner.
+ */
 function makeCityPill(iso2: string, favorite: boolean): ImageData {
-  const h = 38; // 19px on screen — clearly visible on large displays
-  const pad = 9;
-  const flagFont = `25px ${EMOJI_FONT}`;
+  const w = 44;
+  const h = 38; // ~19px on screen
   const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d")!;
-  ctx.font = flagFont;
-  const flagW = ctx.measureText(countryFlag(iso2)).width;
-  const w = Math.ceil(pad + flagW + pad);
   canvas.width = w;
   canvas.height = h;
-
-  const r = h / 2;
-  ctx.beginPath();
-  ctx.moveTo(r, 1);
-  ctx.arcTo(w - 1, 1, w - 1, h - 1, r - 1);
-  ctx.arcTo(w - 1, h - 1, 1, h - 1, r - 1);
-  ctx.arcTo(1, h - 1, 1, 1, r - 1);
-  ctx.arcTo(1, 1, w - 1, 1, r - 1);
-  ctx.closePath();
-  ctx.fillStyle = "#ffffff";
-  ctx.fill();
-  ctx.lineWidth = favorite ? 3 : 1.5;
-  ctx.strokeStyle = favorite ? "#f59e0b" : "rgba(15, 23, 41, 0.25)";
-  ctx.stroke();
-
+  const ctx = canvas.getContext("2d")!;
+  ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.textAlign = "left";
-  ctx.font = flagFont;
-  ctx.fillStyle = "#334155";
-  ctx.fillText(countryFlag(iso2), pad, h / 2 + 1);
+  ctx.font = `27px ${EMOJI_FONT}`;
+  ctx.shadowColor = "rgba(255, 255, 255, 0.95)";
+  ctx.shadowBlur = 5;
+  // Draw twice: a stronger halo pass, then the crisp flag.
+  ctx.fillText(countryFlag(iso2), w / 2, h / 2 + 1);
+  ctx.shadowBlur = 0;
+  ctx.fillText(countryFlag(iso2), w / 2, h / 2 + 1);
+  if (favorite) {
+    ctx.font = `14px ${EMOJI_FONT}`;
+    ctx.shadowColor = "rgba(255, 255, 255, 0.9)";
+    ctx.shadowBlur = 3;
+    ctx.fillText("⭐", w - 9, 9);
+  }
   return ctx.getImageData(0, 0, w, h);
+}
+
+/** Monument marker: the bare 🏛 emoji with a white halo; a ✅ badge once seen. */
+function makeMonumentPin(seen: boolean): ImageData {
+  const s = 38; // 19px on screen
+  const canvas = document.createElement("canvas");
+  canvas.width = s;
+  canvas.height = s;
+  const ctx = canvas.getContext("2d")!;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `24px ${EMOJI_FONT}`;
+  ctx.shadowColor = "rgba(255, 255, 255, 0.95)";
+  ctx.shadowBlur = 5;
+  ctx.fillText("🏛️", s / 2, s / 2 + 1);
+  ctx.shadowBlur = 0;
+  ctx.fillText("🏛️", s / 2, s / 2 + 1);
+  if (seen) {
+    ctx.font = `13px ${EMOJI_FONT}`;
+    ctx.fillText("✅", s - 8, 8);
+  }
+  return ctx.getImageData(0, 0, s, s);
 }
 
 /** Airport marker: [✈ CODE] pill, tinted (sky = been, amber = wish). */
@@ -181,18 +198,24 @@ function openPlacePopup(
   }
   const actions = document.createElement("div");
   actions.className = "map-popup-actions";
-  const popup = new maplibregl.Popup({ closeButton: false, offset: 16, maxWidth: "260px" })
+  const popup = new maplibregl.Popup({ closeButton: false, offset: 12, maxWidth: "220px" })
     .setLngLat(lngLat)
     .setDOMContent(el);
 
-  const visited = findByPlace(useVisits.getState().visits, info.place)?.status === "visited";
+  // The toggle flips in place — the popup STAYS OPEN so you can check/uncheck
+  // (or read the details) without re-tapping the marker.
+  let visited = findByPlace(useVisits.getState().visits, info.place)?.status === "visited";
   const toggle = document.createElement("button");
   toggle.type = "button";
-  toggle.className = "mini-btn" + (visited ? " mini-on" : "");
-  toggle.textContent = visited ? "✓ Visited — uncheck" : "✓ Been there";
+  const paint = () => {
+    toggle.className = "mini-btn" + (visited ? " mini-on" : "");
+    toggle.textContent = visited ? "✓ Visited" : "✓ Been there";
+  };
+  paint();
   toggle.onclick = () => {
     void useVisits.getState().toggleVisit(info.place);
-    popup.remove();
+    visited = !visited;
+    paint();
   };
   actions.appendChild(toggle);
 
@@ -223,6 +246,13 @@ export interface MapFit {
 }
 
 export type Basemap = "simple" | "osm" | "detail";
+export type MapMode = "all" | "cities" | "monuments" | "airports";
+
+const MODE_LAYERS: Record<Exclude<MapMode, "all">, string[]> = {
+  cities: ["cities-visited", "cities-inview", "cities-all", "cities-wishlist"],
+  monuments: ["poi-monuments"],
+  airports: ["airports"],
+};
 
 // Theme colours for the offline overview base (kept out of the render body).
 function themeColors(dark: boolean) {
@@ -280,6 +310,18 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
         "line-opacity": 0.75,
       },
     },
+    // The whole gazetteer as a faint dot field (~135k points, loaded once) — you
+    // can SEE every city/town in the world, at any zoom.
+    {
+      id: "cities-all",
+      type: "circle",
+      source: "cities-all",
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 1, 0.7, 4, 1.6, 8, 3.2],
+        "circle-color": "#93a0b4",
+        "circle-opacity": 0.45,
+      },
+    },
     {
       id: "cities-inview",
       type: "circle",
@@ -302,16 +344,16 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
         "circle-stroke-width": 2.5,
       },
     },
-    // Monuments (UNESCO World Heritage): amber diamonds — filled once seen.
+    // Monuments (UNESCO World Heritage): 🏛 badges — filled amber once seen.
     {
       id: "poi-monuments",
-      type: "circle",
+      type: "symbol",
       source: "monuments",
-      paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 4.5, 8, 7],
-        "circle-color": ["case", ["==", ["get", "seen"], 1], "#b45309", "#ffffff"],
-        "circle-stroke-color": "#b45309",
-        "circle-stroke-width": 2,
+      layout: {
+        "icon-image": ["concat", "mon-", ["to-string", ["get", "seen"]]],
+        "icon-size": 1,
+        "icon-padding": 0,
+        "icon-allow-overlap": true,
       },
     },
     {
@@ -323,6 +365,9 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
         // Grow with zoom so markers stay obvious on big screens & close views.
         "icon-size": ["interpolate", ["linear"], ["zoom"], 1, 0.9, 5, 1.1, 10, 1.35],
         "icon-padding": 1,
+        // EVERY visited city keeps its flag on screen — where you've been should
+        // always be visible, even when markers crowd each other.
+        "icon-allow-overlap": true,
         "symbol-sort-key": ["get", "sortKey"],
       },
     },
@@ -358,8 +403,11 @@ export function MapView({
   dark = false,
   globe = false,
   reducedMotion = false,
+  mode = "all",
   onBaseUnavailable,
 }: {
+  /** Which marker categories are shown (a "mode" switcher over the map). */
+  mode?: MapMode;
   onBounds?: (b: Bounds) => void;
   focus?: MapFocus | null;
   fit?: MapFit | null;
@@ -423,6 +471,15 @@ export function MapView({
     );
   }
 
+  function applyMode(map: MlMap, m: MapMode) {
+    for (const [cat, ids] of Object.entries(MODE_LAYERS)) {
+      const on = m === "all" || m === cat;
+      for (const id of ids) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
+      }
+    }
+  }
+
   function applyViewCities(map: MlMap) {
     (map.getSource("cities-inview") as GeoJSONSource | undefined)?.setData(
       inViewPoints(viewCitiesRef.current ?? []),
@@ -483,6 +540,7 @@ export function MapView({
           // simplification of the huge Arctic multipolygons produces degenerate
           // triangles that render as ghostly land-coloured streaks over the ocean.
           countries: { type: "geojson", data: EMPTY_FC, attribution, tolerance: 0 },
+          "cities-all": { type: "geojson", data: EMPTY_FC },
           "trip-arcs": { type: "geojson", data: EMPTY_FC },
           "cities-inview": { type: "geojson", data: EMPTY_FC },
           wishlist: { type: "geojson", data: EMPTY_FC },
@@ -516,6 +574,8 @@ export function MapView({
         if (e.id.startsWith("pill-")) {
           const [, cc, fav] = e.id.split("-");
           map.addImage(e.id, makeCityPill(cc ?? "", fav === "1"), { pixelRatio: 2 });
+        } else if (e.id.startsWith("mon-")) {
+          map.addImage(e.id, makeMonumentPin(e.id === "mon-1"), { pixelRatio: 2 });
         } else if (e.id.startsWith("air-")) {
           const [, iata, wish, fav] = e.id.split("-");
           map.addImage(e.id, makeAirportPin(iata ?? "", wish === "1", fav === "1"), {
@@ -532,6 +592,17 @@ export function MapView({
         applyViewCities(map);
         applyTripArcs(map);
         loadGeometry(map);
+        applyMode(map, mode);
+        // The full-gazetteer dot field: set ONCE (static), so it costs nothing
+        // on pan/zoom.
+        (map.getSource("cities-all") as GeoJSONSource | undefined)?.setData({
+          type: "FeatureCollection",
+          features: ref.allCities().map((c) => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [c.lon, c.lat] },
+            properties: {},
+          })),
+        });
         emitBounds(map);
       });
 
@@ -570,7 +641,14 @@ export function MapView({
       const tappable = ["cities-visited", "cities-inview", "cities-wishlist", "poi-monuments"];
       for (const layer of tappable) {
         map.on("click", layer, (e) => {
-          const f = e.features?.[0];
+          // Overlapping markers: the most populous place wins the tap.
+          const f = (e.features ?? []).reduce<maplibregl.MapGeoJSONFeature | undefined>(
+            (best, cur) =>
+              !best || Number(cur.properties?.pop ?? 0) > Number(best.properties?.pop ?? 0)
+                ? cur
+                : best,
+            undefined,
+          );
           if (!f || !map) return;
           const p = f.properties ?? {};
           const isMonument = layer === "poi-monuments";
@@ -592,7 +670,7 @@ export function MapView({
               name: String(p.name ?? ""),
               countryId: String(p.cc ?? ""),
             } as PlaceRef,
-            hasPage: kind === "city",
+            hasPage: kind === "city" || kind === "heritage",
           });
           // Zoom toward the tapped place (suppress the list refresh — it's programmatic).
           suppressBoundsRef.current = true;
@@ -647,6 +725,12 @@ export function MapView({
 
   useEffect(() => {
     const map = mapRef.current;
+    if (map && loadedRef.current) applyMode(map, mode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     if (!map || !loadedRef.current) return;
     // Crossfade globe↔flat: freeze the last frame as an overlay image, switch the
     // projection underneath, fade the frozen frame out. (Needs preserveDrawingBuffer.)
@@ -675,11 +759,12 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !focus) return;
     suppressBoundsRef.current = true; // programmatic — the list must not move
-    map.flyTo({
+    // easeTo, not flyTo: fly's zoom-out-then-in arc reads as a jarring
+    // "dezoom/rezoom" when hopping between nearby places (Lyon → its airport).
+    map.easeTo({
       center: [focus.lon, focus.lat],
       zoom: Math.max(map.getZoom(), 4.5),
-      speed: 1.4,
-      animate: !reducedRef.current,
+      duration: reducedRef.current ? 0 : 650,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.key]);
