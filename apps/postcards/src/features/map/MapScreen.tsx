@@ -177,12 +177,24 @@ export function MapScreen() {
       ? lon >= bounds.west && lon <= bounds.east
       : lon >= bounds.west || lon <= bounds.east);
   const poi = useMemo(() => {
+    // The header shows totals over EVERYTHING in view (visited counted from
+    // your records of this kind), even though the list renders at most 100.
+    const visitedOf = (kind: "heritage" | "airport") =>
+      new Set(
+        useVisits
+          .getState()
+          .visits.filter((v) => v.place.kind === kind && v.status !== "wishlist")
+          .map((v) => v.place.id),
+      );
     if (mode === "monuments") {
-      return ref
+      const all = ref
         .allHeritage()
-        .filter((h) => (h.lat !== 0 || h.lon !== 0) && inB(h.lat, h.lon))
-        .slice(0, 100)
-        .map((h) => ({
+        .filter((h) => (h.lat !== 0 || h.lon !== 0) && inB(h.lat, h.lon));
+      const seen = visitedOf("heritage");
+      return {
+        total: all.length,
+        visited: all.reduce((n, h) => n + (seen.has(h.id) ? 1 : 0), 0),
+        items: all.slice(0, 100).map((h) => ({
           key: h.id,
           flag: "🏛️",
           name: h.name,
@@ -191,14 +203,16 @@ export function MapScreen() {
           lon: h.lon,
           place: { kind: "heritage" as const, id: h.id, name: h.name, countryId: h.countryIso2 },
           page: true,
-        }));
+        })),
+      };
     }
     if (mode === "airports") {
-      return ref
-        .allAirports()
-        .filter((a) => inB(a.lat, a.lon))
-        .slice(0, 100)
-        .map((a) => ({
+      const all = ref.allAirports().filter((a) => inB(a.lat, a.lon));
+      const seen = visitedOf("airport");
+      return {
+        total: all.length,
+        visited: all.reduce((n, a) => n + (seen.has(a.id) ? 1 : 0), 0),
+        items: all.slice(0, 100).map((a) => ({
           key: a.id,
           flag: "✈️",
           name: `${a.name} (${a.id})`,
@@ -207,9 +221,12 @@ export function MapScreen() {
           lon: a.lon,
           place: { kind: "airport" as const, id: a.id, name: `${a.name} (${a.id})`, countryId: a.countryIso2 },
           page: false,
-        }));
+        })),
+      };
     }
     return null;
+    // visits deliberately via getState() — the header count refreshing on a
+    // check is fine to defer to the next bounds/mode change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, bounds, ref]);
 
@@ -223,10 +240,16 @@ export function MapScreen() {
       const res = await saveAreaOffline(bounds, bounds.zoom ?? 3, {
         onProgress: (p) => setSaving(p.total ? p.done / p.total : 1),
       });
+      // saveAreaOffline never throws — report failures/caps honestly instead
+      // of claiming success when every tile fetch failed.
       showToast(
         res.total === 0
           ? "Nothing to save at this zoom — zoom in first."
-          : `Saved ${res.saved} map tiles for offline use.`,
+          : res.saved === 0
+            ? "Couldn't save this view — check your connection and try again."
+            : `Saved ${res.saved} map tiles for offline use.` +
+              (res.failed > 0 ? ` ${res.failed} failed — save again for the rest.` : "") +
+              (res.capped ? " The view was large, so only part fit — zoom in and save areas you need." : ""),
       );
     } catch {
       showToast("Couldn't save this view — check your connection.");
@@ -278,13 +301,27 @@ export function MapScreen() {
 
   function fitToMyPlaces() {
     if (!visitedCityCoords.length) return;
-    let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
+    let south = Infinity, north = -Infinity;
     for (const c of visitedCityCoords) {
-      west = Math.min(west, c.lon);
-      east = Math.max(east, c.lon);
       south = Math.min(south, c.lat);
       north = Math.max(north, c.lat);
     }
+    // Longitude needs antimeridian care (Fiji + Samoa must not frame the whole
+    // globe): the tightest frame is the complement of the LARGEST gap between
+    // consecutive sorted longitudes (wrapping counts as a gap too).
+    const lons = visitedCityCoords.map((c) => c.lon).sort((a, b) => a - b);
+    let gapAfter = lons.length - 1;
+    let gapSize = lons[0]! + 360 - lons[lons.length - 1]!;
+    for (let i = 1; i < lons.length; i++) {
+      const g = lons[i]! - lons[i - 1]!;
+      if (g > gapSize) {
+        gapSize = g;
+        gapAfter = i - 1;
+      }
+    }
+    const west = lons[(gapAfter + 1) % lons.length]!;
+    let east = lons[gapAfter]!;
+    if (east < west) east += 360; // the frame crosses the antimeridian
     setFit((f) => ({ bounds: [[west, south], [east, north]], key: (f?.key ?? 0) + 1 }));
   }
 
@@ -413,17 +450,20 @@ export function MapScreen() {
             {listTall ? "▼ Map" : "▲ List"}
           </button>
           <span className="list-head-meta muted">
-            <span>{inView.length} in view</span>
-            {visitedInView > 0 && <span>· {visitedInView} visited</span>}
+            <span>{poi ? poi.total : inView.length} in view</span>
+            {(poi ? poi.visited : visitedInView) > 0 && (
+              <span>· {poi ? poi.visited : visitedInView} visited</span>
+            )}
           </span>
         </div>
 
         {poi ? (
-          poi.length === 0 ? (
+          poi.items.length === 0 ? (
             <p className="muted empty">Nothing in this view — pan or zoom the map.</p>
           ) : (
+            <>
             <ul className="city-list">
-              {poi.map((x) => (
+              {poi.items.map((x) => (
                 <li key={x.key} className="city-row compact">
                   <button
                     className="city-focus"
@@ -438,6 +478,12 @@ export function MapScreen() {
                 </li>
               ))}
             </ul>
+            {poi.total > poi.items.length && (
+              <p className="muted small">
+                Showing {poi.items.length} of {poi.total} — zoom in to narrow the list.
+              </p>
+            )}
+            </>
           )
         ) : (
         <>

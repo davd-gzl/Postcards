@@ -61,9 +61,11 @@ export function App() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        // A modal/lightbox on screen consumes Escape (its own handler closes
-        // it) — only an unobstructed Escape navigates back.
-        const dialogOpen = !!document.querySelector(".modal-backdrop, .lightbox, .maplibregl-popup");
+        // A modal/lightbox/open composer on screen consumes Escape (its own
+        // handler closes it) — only an unobstructed Escape navigates back.
+        const dialogOpen = !!document.querySelector(
+          ".modal-backdrop, .lightbox, .maplibregl-popup, .journal-composer",
+        );
         setShowHelp(false);
         setShowAbout(false);
         if (!dialogOpen) useUi.getState().goBack(); // Escape = previous screen

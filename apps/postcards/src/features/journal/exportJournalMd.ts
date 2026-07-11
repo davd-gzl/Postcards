@@ -5,11 +5,19 @@ import { formatDate } from "../../lib/format/format";
 /**
  * Escape free text for a shared Markdown document so it stays inert: angle
  * brackets and backticks are neutralized so imported titles/text can't smuggle
- * raw HTML or code spans into a downstream renderer that permits inline HTML.
- * Newlines are kept — a story body is multi-line prose.
+ * raw HTML or code spans, and square brackets are escaped so `[link](…)` /
+ * `![img](…)` syntax can't form — a hostile imported story must not plant a
+ * remote tracking pixel in a journal the user shares. Newlines are kept —
+ * a story body is multi-line prose.
  */
 function md(s: string): string {
-  return s.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/`/g, "\\`").trim();
+  return s
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/`/g, "\\`")
+    .replace(/\[/g, "\\[")
+    .replace(/\]/g, "\\]")
+    .trim();
 }
 
 /**

@@ -3,6 +3,8 @@ import { serializeFile } from "../../src/features/backup/exportJson";
 import { importFile } from "../../src/features/backup/importJson";
 import { StorySchema, type Story } from "../../src/lib/schema/models";
 import { sortStories } from "../../src/lib/store/useStories";
+import { journalToMarkdown } from "../../src/features/journal/exportJournalMd";
+import { getReferenceData } from "../../src/lib/reference/referenceData";
 
 const dataUrl =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -92,9 +94,33 @@ describe("StorySchema (strict, sanitized)", () => {
     expect(r.text).toBe("IMPORTXML(evil)");
   });
 
+  it("rejects a title that sanitizes to empty (would break the export round-trip)", () => {
+    // "===" passes min(1) on the raw input, but sanitizing strips it to "" —
+    // such a story would export as title "" and the backup would refuse to restore.
+    expect(StorySchema.safeParse({ ...story(), title: "===" }).success).toBe(false);
+  });
+
   it("caps a story's gallery at 24 photos", () => {
     const photos = Array.from({ length: 25 }, () => ({ src: dataUrl, caption: null }));
     expect(StorySchema.safeParse({ ...story(), photos }).success).toBe(false);
+  });
+});
+
+describe("journal markdown export (inert for sharing)", () => {
+  it("neutralizes Markdown image/link syntax so a hostile story can't plant a tracker", () => {
+    const hostile = {
+      ...story(),
+      title: "Nice day ![](https://tracker.example/p.png)",
+      text: "See [here](https://tracker.example/x) for more.",
+    };
+    const out = journalToMarkdown([hostile], getReferenceData());
+    // Square brackets must be escaped — `![](…)` / `[](…)` must not survive
+    // as renderable syntax in the shared document.
+    expect(out).not.toContain("![](https://tracker.example/p.png)");
+    expect(out).not.toContain("[here](https://tracker.example/x)");
+    expect(out).toContain("\\[");
+    // The visible text itself is preserved (escaped, not deleted).
+    expect(out).toContain("tracker.example");
   });
 });
 

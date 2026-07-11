@@ -87,9 +87,10 @@ export function SettingsScreen() {
       <section className="settings-section">
         <h3>Offline maps</h3>
         <p className="muted small">
-          Download a whole region of the detailed OpenStreetMap basemap for offline use — with the
-          real download size up front. Tiles come from OpenStreetMap and are fetched only when you
-          tap Download.
+          Download a whole region of the OpenStreetMap basemap for offline use — with the real
+          download size up front. Region packs cover world-to-regional zoom (countries, big cities);
+          for street-level detail, frame the area on the Map tab and tap “⬇ Offline”. Tiles come
+          from OpenStreetMap and are fetched only when you tap Download.
         </p>
         <ul className="region-list">
           {OFFLINE_REGIONS.map((r) => {

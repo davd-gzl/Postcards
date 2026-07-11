@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useStories } from "../../lib/store/useStories";
@@ -38,7 +38,14 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
     : monument
       ? findByPlace(visits, { kind: "heritage", id: monument.id })
       : findByPlace(visits, { kind: "custom", id: cityId });
-  const customPlace = !city && !monument && visit?.place.kind === "custom" ? visit.place : null;
+  const liveCustom = !city && !monument && visit?.place.kind === "custom" ? visit.place : null;
+  // A custom place exists ONLY as its visit's embedded PlaceRef — remember it so
+  // unchecking "Been there" on this very page doesn't collapse the header to
+  // "Unknown place" and strand the user (the toggles must stay to re-add it).
+  const lastCustom = useRef<{ id: string; place: NonNullable<typeof liveCustom> } | null>(null);
+  if (liveCustom) lastCustom.current = { id: cityId, place: liveCustom };
+  const customPlace =
+    liveCustom ?? (lastCustom.current?.id === cityId ? lastCustom.current.place : null);
 
   const name = city?.name ?? monument?.name ?? customPlace?.name ?? "Unknown place";
   const cc = city?.countryIso2 ?? monument?.countryIso2 ?? customPlace?.countryId ?? "";
@@ -64,7 +71,8 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
     const from = { lat, lon };
     const monuments = ref
       .allHeritage()
-      .filter((h) => h.lat !== 0 || h.lon !== 0)
+      // Never list the page's own monument as its "nearby" site at 0.0 km.
+      .filter((h) => (h.lat !== 0 || h.lon !== 0) && h.id !== cityId)
       .map((h) => ({ ...h, km: haversineKm(from, h) }))
       .filter((h) => h.km < 300)
       .sort((a, b) => a.km - b.km)
@@ -75,7 +83,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
       .sort((a, b) => a.km - b.km)
       .slice(0, 3);
     return { monuments, airports };
-  }, [ref, lat, lon]);
+  }, [ref, lat, lon, cityId]);
 
   return (
     <div className="screen city-page">

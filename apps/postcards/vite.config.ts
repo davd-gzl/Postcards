@@ -39,7 +39,10 @@ export default defineConfig({
               // v2: the old cache may hold opaque "Referer required" error tiles
               // (status 0) from before the Referrer-Policy fix; a new name drops them.
               cacheName: "osm-tiles-v2",
-              expiration: { maxEntries: 4000, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              // Must exceed the offline seam's REGION_MAX_TILES (40k) with browsing
+              // headroom — a lower LRU cap would silently evict tiles the user
+              // explicitly downloaded as a region pack.
+              expiration: { maxEntries: 50_000, maxAgeSeconds: 60 * 60 * 24 * 30 },
               // Only cache real successes now that tiles are fetched with CORS —
               // never poison the cache with error/opaque responses.
               cacheableResponse: { statuses: [200] },
