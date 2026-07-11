@@ -75,7 +75,14 @@ for (const c of allCities) {
   });
 }
 cities.sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
-writeFileSync(join(refDir, "cities.json"), JSON.stringify(cities) + "\n");
+// Two tiers: a small CORE file (major cities) that the app blocks on at startup,
+// and the FULL world gazetteer streamed in the background once the UI is up —
+// 17 MB must never sit on the first-paint critical path.
+const CORE_POPULATION = 15000;
+const core = cities.filter((c) => (c.population ?? 0) >= CORE_POPULATION);
+writeFileSync(join(refDir, "cities.json"), JSON.stringify(core) + "\n");
+writeFileSync(join(refDir, "cities-all.json"), JSON.stringify(cities) + "\n");
+console.log(`core cities: ${core.length} | full: ${cities.length}`);
 
 // --- Name each region by nearest state centroid (or FR override) ---
 function nearestName(cc, lat, lon) {
