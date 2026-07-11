@@ -11,6 +11,7 @@ import { JournalScreen } from "../features/journal/JournalScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { CityScreen } from "../features/city/CityScreen";
 import { CountryScreen } from "../features/country/CountryScreen";
+import { PlaceSearch } from "../features/visits/PlaceSearch";
 import { ShortcutsHelp } from "../ui/ShortcutsHelp";
 import { AboutModal } from "../ui/AboutModal";
 import { Toast } from "../ui/Toast";
@@ -106,6 +107,13 @@ export function App() {
 
       <header className="topbar">
             <h1 className="brand">Postcards</h1>
+            {/* Global search in the bar itself — no screen spends a row on it.
+                Picking a city flies the map there (flyTo also switches the tab). */}
+            <div className="topbar-search">
+              <PlaceSearch
+                onFocusCity={(c) => useUi.getState().flyTo(c.lon, c.lat)}
+              />
+            </div>
             <span className="topbar-actions">
               {canInstall && (
                 <button
@@ -148,10 +156,12 @@ export function App() {
             type="button"
             className={"nav-item" + (tab === id ? " active" : "")}
             aria-current={tab === id ? "page" : undefined}
+            aria-label={label}
+            title={label}
             onClick={() => setTab(id)}
           >
             <Icon />
-            <span>{label}</span>
+            <span aria-hidden>{label}</span>
           </button>
         ))}
       </nav>

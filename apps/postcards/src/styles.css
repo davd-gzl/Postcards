@@ -2214,3 +2214,74 @@ button.stat-tile:hover .num {
     min-height: 0;
   }
 }
+
+/* ===== Search in the top bar (it was eating a whole row on every screen) ===== */
+.topbar-search {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 420px;
+  /* Hug the brand — otherwise space-between floats the search into the
+     middle of the bar, under the centered desktop tabs. */
+  margin-right: auto;
+}
+.topbar-search .search-input {
+  height: 32px;
+  font-size: 14px;
+  padding: 0 12px;
+}
+/* Dropdowns anchor under the bar, not in the page flow. */
+.topbar-search .results {
+  top: 40px;
+  left: 0;
+  right: auto;
+  width: min(460px, calc(100vw - 24px));
+}
+.topbar-search .search-empty {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  z-index: 20;
+  width: min(460px, calc(100vw - 24px));
+  margin: 0;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+@media (max-width: 899.98px) {
+  .topbar-search .search-input {
+    height: 30px;
+    padding: 0 11px;
+    font-size: 16px; /* below 16px, iOS zooms the page on focus */
+  }
+  /* The input can be narrow between the brand and the icons — span the
+     dropdowns across the viewport instead of the input's own width. */
+  .topbar-search .results,
+  .topbar-search .search-empty {
+    position: fixed;
+    top: 44px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+}
+/* Desktop: keep the search clear of the tabs centered in the same bar.
+   Mid-width screens drop the tab labels (icons keep their aria-labels). */
+@media (min-width: 900px) and (max-width: 1199.98px) {
+  .bottom-nav .nav-item span {
+    display: none;
+  }
+  .bottom-nav .nav-item {
+    padding: 6px 10px;
+  }
+  .topbar-search {
+    max-width: clamp(120px, calc(50vw - 330px), 420px);
+  }
+}
+@media (min-width: 1200px) {
+  .topbar-search {
+    max-width: clamp(140px, calc(50vw - 500px), 420px);
+  }
+}

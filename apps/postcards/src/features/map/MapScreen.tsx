@@ -6,7 +6,6 @@ import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
 import { usePrefersReducedMotion } from "../../lib/hooks/usePrefersReducedMotion";
 import { countryFlag, formatInt } from "../../lib/format/format";
-import { PlaceSearch } from "../visits/PlaceSearch";
 import { StateToggles } from "../visits/StateToggles";
 import { GuideButton } from "../guides/GuideButton";
 import { StatStrip } from "../stats/StatStrip";
@@ -327,8 +326,8 @@ export function MapScreen() {
 
   return (
     <div className={"map-screen" + (listTall ? " list-tall" : "")}>
+      {/* Search lives in the app top bar now — this row is just the counters. */}
       <div className="map-top">
-        <PlaceSearch onFocusCity={focusCity} />
         <StatStrip />
       </div>
 
