@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
 import { useTrips } from "../../lib/store/useTrips";
@@ -10,7 +10,7 @@ import { PlaceSearch } from "../visits/PlaceSearch";
 import { StateToggles } from "../visits/StateToggles";
 import { GuideButton } from "../guides/GuideButton";
 import { StatStrip } from "../stats/StatStrip";
-import { MapView, type Basemap, type MapFocus, type MapFit, type MapMode } from "./MapView";
+import { MapView, hasSavedCamera, type Basemap, type MapFocus, type MapFit, type MapMode } from "./MapView";
 import { tripArcs } from "./visitedLayers";
 import { tripsInPeriod, periodLabel } from "../travel/period";
 import { citiesInView, type Bounds } from "./viewport";
@@ -20,6 +20,7 @@ import type { City } from "../../lib/reference/types";
 import { CityLine } from "../../ui/CityLine";
 
 const PAGE = 100;
+const collator = new Intl.Collator(); // hoisted: per-pair localeCompare over 135k rows janks pans
 type CityFilter = "all" | "unvisited" | "visited";
 const BASEMAP_KEY = "postcards-basemap";
 const GLOBE_KEY = "postcards-globe";
@@ -75,6 +76,8 @@ export function MapScreen() {
   const trips = useTrips((s) => s.trips);
   const [showTrips, setShowTrips] = useState(true);
   const [globe, setGlobe] = useState(() => loadPref(GLOBE_KEY, (v) => v === "1"));
+  const [showTowns, setShowTowns] = useState(() => loadPref("postcards-towns", (v) => v === "1"));
+  const [listTall, setListTall] = useState(false);
   const [mode, setMode] = useState<MapMode>(() =>
     loadPref("postcards-map-mode", (v) =>
       v === "cities" || v === "monuments" || v === "airports" ? v : "all",
@@ -146,7 +149,7 @@ export function MapScreen() {
       cityFilter === "all"
         ? inView
         : inView.filter((c) => ids.has(c.id) === (cityFilter === "visited"));
-    setSnapshot(sortAZ ? [...arr].sort((a, b) => a.name.localeCompare(b.name)) : arr);
+    setSnapshot(sortAZ ? [...arr].sort((a, b) => collator.compare(a.name, b.name)) : arr);
     setShown(PAGE);
     // visitedCityIds deliberately NOT a dependency — see comment above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -264,6 +267,15 @@ export function MapScreen() {
     [visits, ref],
   );
 
+  // First open: show YOUR world (visited + wishlist), not a generic world view.
+  const didInitFit = useRef(false);
+  useEffect(() => {
+    if (didInitFit.current || hasSavedCamera() || visitedCityCoords.length === 0) return;
+    didInitFit.current = true;
+    fitToMyPlaces();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visitedCityCoords]);
+
   function fitToMyPlaces() {
     if (!visitedCityCoords.length) return;
     let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
@@ -277,7 +289,7 @@ export function MapScreen() {
   }
 
   return (
-    <div className="map-screen">
+    <div className={"map-screen" + (listTall ? " list-tall" : "")}>
       <div className="map-top">
         <PlaceSearch onFocusCity={focusCity} />
         <StatStrip />
@@ -295,6 +307,7 @@ export function MapScreen() {
           tripArcs={showTrips ? arcs : null}
           globe={globe}
           mode={mode}
+          showTowns={showTowns}
           reducedMotion={reducedMotion}
           onBaseUnavailable={() => {
             if (basemap === "osm") {
@@ -363,6 +376,20 @@ export function MapScreen() {
             </button>
           )}
           <button
+            className={"map-btn" + (showTowns ? " on" : "")}
+            type="button"
+            aria-pressed={showTowns}
+            title={showTowns ? "Hide the every-town dot field" : "Show a dot for every town on earth"}
+            onClick={() => {
+              setShowTowns((v) => {
+                savePref("postcards-towns", !v ? "1" : "0");
+                return !v;
+              });
+            }}
+          >
+            ∴ Towns
+          </button>
+          <button
             className="map-btn"
             type="button"
             onClick={switchBasemap}
@@ -376,6 +403,15 @@ export function MapScreen() {
       <section className="view-list" aria-label="Cities in view">
         <div className="section-head">
           <h2>{mode === "monuments" ? "Monuments in view" : mode === "airports" ? "Airports in view" : "Cities in view"}</h2>
+          <button
+            className="mini-btn list-expand"
+            type="button"
+            aria-pressed={listTall}
+            title={listTall ? "Show the map again" : "Expand the list over the map"}
+            onClick={() => setListTall((v) => !v)}
+          >
+            {listTall ? "▼ Map" : "▲ List"}
+          </button>
           <span className="list-head-meta muted">
             <span>{inView.length} in view</span>
             {visitedInView > 0 && <span>· {visitedInView} visited</span>}
