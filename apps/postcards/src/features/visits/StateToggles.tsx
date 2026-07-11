@@ -24,7 +24,8 @@ export function StateToggles({ place }: { place: PlaceRef }) {
     const prev = useVisits.getState().visits;
     const wasVisited = findByPlace(prev, place)?.status === "visited";
     void toggleVisit(place);
-    show(wasVisited ? `Removed ${place.name}` : `Added ${place.name}`, () => setAll(prev));
+    // Silent on add; a removal (which can delete photos/notes) gets an undoable toast.
+    if (wasVisited) show(`Removed ${place.name}`, () => setAll(prev));
   }
   function onWant() {
     void toggleWish(place);

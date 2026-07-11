@@ -27,10 +27,18 @@ export function Backup() {
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   function exportJson() {
-    download(EXPORT_FILENAME, serializeFile(visits, trips), "application/json");
+    try {
+      download(EXPORT_FILENAME, serializeFile(visits, trips), "application/json");
+    } catch {
+      setMessage({ kind: "err", text: "Couldn't build the export file. Your data is unchanged." });
+    }
   }
   function exportMd() {
-    download("places.md", toMarkdown(visits, trips, ref), "text/markdown");
+    try {
+      download("places.md", toMarkdown(visits, trips, ref), "text/markdown");
+    } catch {
+      setMessage({ kind: "err", text: "Couldn't build the summary file. Your data is unchanged." });
+    }
   }
 
   async function onImport(e: React.ChangeEvent<HTMLInputElement>) {

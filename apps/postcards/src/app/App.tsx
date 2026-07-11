@@ -8,8 +8,9 @@ import { TravelScreen } from "../features/travel/TravelScreen";
 import { Backup } from "../features/backup/Backup";
 import { Attribution } from "../ui/Attribution";
 import { ShortcutsHelp } from "../ui/ShortcutsHelp";
+import { AboutModal } from "../ui/AboutModal";
 import { Toast } from "../ui/Toast";
-import { MapIcon, ChartIcon, ListIcon, RouteIcon } from "../ui/icons";
+import { MapIcon, ChartIcon, ListIcon, RouteIcon, InfoIcon } from "../ui/icons";
 import { useState } from "react";
 
 // Code-split MapLibre so it loads only when the map is shown.
@@ -28,6 +29,7 @@ export function App() {
   const tab = useUi((s) => s.tab);
   const setTab = useUi((s) => s.setTab);
   const [showHelp, setShowHelp] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
   const firstRender = useRef(true);
 
@@ -49,6 +51,7 @@ export function App() {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setShowHelp(false);
+        setShowAbout(false);
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -84,57 +87,76 @@ export function App() {
         Skip to content
       </a>
 
-      <header className="topbar">
-        <span className="brand">Postcards</span>
-      </header>
+      <div className="app-shell">
+        <nav className="bottom-nav" aria-label="Sections">
+          {TABS.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              className={"nav-item" + (tab === id ? " active" : "")}
+              aria-current={tab === id ? "page" : undefined}
+              onClick={() => setTab(id)}
+            >
+              <Icon />
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
 
-      <p className="sr-only" role="status" aria-live="polite">
-        {currentLabel} section
-      </p>
+        <div className="app-content">
+          <header className="topbar">
+            <h1 className="brand">Postcards</h1>
+            <button
+              type="button"
+              className="topbar-about"
+              aria-haspopup="dialog"
+              onClick={() => setShowAbout(true)}
+            >
+              <InfoIcon />
+              <span>How it works</span>
+            </button>
+          </header>
 
-      <main ref={mainRef} id="main" tabIndex={-1} className={"content" + (tab === "map" ? " flush" : "")}>
-        {tab === "map" && (
-          <Suspense fallback={<p className="muted empty">Loading map…</p>}>
-            <MapScreen />
-          </Suspense>
-        )}
-        {tab === "stats" && (
-          <div className="screen">
-            <StatsView />
-          </div>
-        )}
-        {tab === "places" && (
-          <div className="screen">
-            <PlacesScreen />
-            <Backup />
-            <Attribution />
-          </div>
-        )}
-        {tab === "trips" && (
-          <div className="screen">
-            <TravelScreen />
-          </div>
-        )}
-      </main>
+          <p className="sr-only" role="status" aria-live="polite">
+            {currentLabel} section
+          </p>
+
+          <main
+            ref={mainRef}
+            id="main"
+            tabIndex={-1}
+            className={"content" + (tab === "map" ? " flush" : "")}
+          >
+            {tab === "map" && (
+              <Suspense fallback={<p className="muted empty">Loading map…</p>}>
+                <MapScreen />
+              </Suspense>
+            )}
+            {tab === "stats" && (
+              <div className="screen">
+                <StatsView />
+              </div>
+            )}
+            {tab === "places" && (
+              <div className="screen">
+                <PlacesScreen />
+                <Backup />
+                <Attribution />
+              </div>
+            )}
+            {tab === "trips" && (
+              <div className="screen">
+                <TravelScreen />
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
 
       <Toast />
 
-      <nav className="bottom-nav" aria-label="Sections">
-        {TABS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            className={"nav-item" + (tab === id ? " active" : "")}
-            aria-current={tab === id ? "page" : undefined}
-            onClick={() => setTab(id)}
-          >
-            <Icon />
-            <span>{label}</span>
-          </button>
-        ))}
-      </nav>
-
       {showHelp && <ShortcutsHelp onClose={() => setShowHelp(false)} />}
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
     </div>
   );
 }

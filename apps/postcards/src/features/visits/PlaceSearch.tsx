@@ -43,7 +43,9 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
     const prev = useVisits.getState().visits;
     const wasVisited = findByPlace(prev, place)?.status === "visited";
     void toggleVisit(place);
-    showToast(wasVisited ? `Removed ${place.name}` : `Added ${place.name}`, () => setAll(prev));
+    // Adds are silent (the result is visible in the list); only a removal — which
+    // can drop photos/notes — gets a toast, and only so it can be undone.
+    if (wasVisited) showToast(`Removed ${place.name}`, () => setAll(prev));
     if (place.kind === "city") {
       const c = ref.cityById(place.id);
       if (c) onFocusCity?.({ lon: c.lon, lat: c.lat });
