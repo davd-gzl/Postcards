@@ -147,6 +147,28 @@ function makeMonumentPin(category: string, seen: boolean): ImageData {
   return ctx.getImageData(0, 0, s, s);
 }
 
+/** Browsable airport marker: a plain ✈ chip, one shared image for every airport
+ * (the [✈ CODE] pill is reserved for airports you've actually logged). */
+function makeAirportDot(): ImageData {
+  const s = 34; // 17px on screen
+  const canvas = document.createElement("canvas");
+  canvas.width = s;
+  canvas.height = s;
+  const ctx = canvas.getContext("2d")!;
+  ctx.beginPath();
+  ctx.arc(s / 2, s / 2, s / 2 - 3, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = "#0284c7";
+  ctx.stroke();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `17px ${EMOJI_FONT}`;
+  ctx.fillText("✈️", s / 2, s / 2 + 1);
+  return ctx.getImageData(0, 0, s, s);
+}
+
 /** Airport marker: [✈ CODE] pill, tinted (sky = been, amber = wish). */
 function makeAirportPin(iata: string, wish: boolean, favorite: boolean): ImageData {
   const h = 30;
@@ -408,6 +430,21 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
         "circle-opacity": 0.35,
       },
     },
+    // Every airport as a plain ✈ marker (one shared image), so you can SEE and
+    // tap airports on the map — not only the ones you've logged. Hidden by
+    // default; applyMode reveals it in Airports mode (and All at closer zoom).
+    {
+      id: "airports-all",
+      type: "symbol",
+      source: "airports-all",
+      layout: {
+        visibility: "none",
+        "icon-image": "airport-all-dot",
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 3, 0.6, 7, 0.85, 11, 1],
+        "icon-padding": 0,
+        "icon-allow-overlap": true,
+      },
+    },
     {
       id: "cities-inview",
       type: "circle",
@@ -567,6 +604,19 @@ export function MapView({
     });
   }
 
+  // Every airport in the gazetteer, so they're browsable on the map (not just the
+  // ones you've logged). Static per session — built once at idle.
+  function applyAllAirports(map: MlMap) {
+    (map.getSource("airports-all") as GeoJSONSource | undefined)?.setData({
+      type: "FeatureCollection",
+      features: ref.allAirports().map((a) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [a.lon, a.lat] },
+        properties: { id: a.id, iata: a.id, name: a.name, cc: a.countryIso2 },
+      })),
+    });
+  }
+
   function applyVisited(map: MlMap) {
     (map.getSource("cities") as GeoJSONSource | undefined)?.setData(
       visitedCityPoints(visitsRef.current, ref),
@@ -611,6 +661,13 @@ export function MapView({
     // zoom they blanketed whole continents. Monuments mode shows them always.
     if (map.getLayer("poi-monuments")) {
       map.setLayerZoomRange("poi-monuments", m === "monuments" ? 0 : 4.5, 24);
+    }
+    // Browsable airports: always in Airports mode; in All mode only once you've
+    // zoomed into a region, so ~7,000 planes don't blanket the world view.
+    if (map.getLayer("airports-all")) {
+      const on = m === "airports" || m === "all";
+      map.setLayoutProperty("airports-all", "visibility", on ? "visible" : "none");
+      map.setLayerZoomRange("airports-all", m === "airports" ? 0 : 5, 24);
     }
     // The full-gazetteer dot field is a power view — hidden unless toggled on,
     // and never shown in the monuments/airports modes.
@@ -692,6 +749,7 @@ export function MapView({
           // triangles that render as ghostly land-coloured streaks over the ocean.
           countries: { type: "geojson", data: EMPTY_FC, attribution, tolerance: 0 },
           "cities-all": { type: "geojson", data: EMPTY_FC },
+          "airports-all": { type: "geojson", data: EMPTY_FC },
           "trip-arcs": { type: "geojson", data: EMPTY_FC },
           "cities-inview": { type: "geojson", data: EMPTY_FC },
           wishlist: { type: "geojson", data: EMPTY_FC },
@@ -726,6 +784,8 @@ export function MapView({
         } else if (e.id.startsWith("mon-")) {
           const [, cat, seen] = e.id.split("-");
           map.addImage(e.id, makeMonumentPin(cat ?? "cultural", seen === "1"), { pixelRatio: 2 });
+        } else if (e.id === "airport-all-dot") {
+          map.addImage(e.id, makeAirportDot(), { pixelRatio: 2 });
         } else if (e.id.startsWith("air-")) {
           const [, iata, wish, fav] = e.id.split("-");
           map.addImage(e.id, makeAirportPin(iata ?? "", wish === "1", fav === "1"), {
@@ -759,7 +819,10 @@ export function MapView({
             ? (cb) => requestIdleCallback(cb, { timeout: 1500 })
             : (cb) => void setTimeout(cb, 300);
         idle(() => {
-          if (!cancelled && map && loadedRef.current) applyAllCityDots(map);
+          if (!cancelled && map && loadedRef.current) {
+            applyAllCityDots(map);
+            applyAllAirports(map);
+          }
         });
         emitBounds(map);
       });
@@ -800,7 +863,13 @@ export function MapView({
       // tappable layers — per-layer handlers would fire together when a city
       // and a monument overlap under the tap). Cities outrank monuments;
       // among cities the most populous wins.
-      const tappable = ["cities-visited", "cities-inview", "cities-wishlist", "poi-monuments"];
+      const tappable = [
+        "cities-visited",
+        "cities-inview",
+        "cities-wishlist",
+        "poi-monuments",
+        "airports-all",
+      ];
       map.on("click", (e) => {
         if (!map || !loadedRef.current) return;
         const m = map; // narrow once — closures below can't re-null it
@@ -808,27 +877,36 @@ export function MapView({
         if (!layers.length) return;
         const feats = m.queryRenderedFeatures(e.point, { layers });
         if (!feats.length) return;
+        // Cities outrank airports outrank monuments when they overlap; among
+        // cities the most populous wins.
         const score = (f: maplibregl.MapGeoJSONFeature) =>
-          f.layer.id === "poi-monuments" ? -1 : Number(f.properties?.pop ?? 0);
+          f.layer.id === "poi-monuments" ? -1 : f.layer.id === "airports-all" ? -0.5 : Number(f.properties?.pop ?? 0);
         const f = feats.reduce((best, cur) => (score(cur) > score(best) ? cur : best));
         const p = f.properties ?? {};
         const isMonument = f.layer.id === "poi-monuments";
+        const isAirport = f.layer.id === "airports-all";
         const isCustom = Number(p.custom) === 1;
-        const kind = isMonument ? "heritage" : isCustom ? "custom" : "city";
+        const kind = isMonument ? "heritage" : isAirport ? "airport" : isCustom ? "custom" : "city";
         const region = p.region ? String(p.region) : "";
         const popN = Number(p.pop);
+        const iata = String(p.iata ?? "");
         const country = ref.countryByIso2(String(p.cc ?? ""))?.name ?? String(p.cc ?? "");
         const sub = isMonument
           ? `Site · ${country}`
-          : [country, region].filter(Boolean).join(" - ") +
-            (popN > 0 ? ` · ${formatInt(popN)} people` : "");
+          : isAirport
+            ? `✈ ${iata} airport · ${country}`
+            : [country, region].filter(Boolean).join(" - ") +
+              (popN > 0 ? ` · ${formatInt(popN)} people` : "");
+        // Airports are stored with the code in the name (matching the list/search),
+        // so toggling from the map records the same place.
+        const displayName = isAirport && iata ? `${String(p.name ?? "")} (${iata})` : String(p.name ?? "");
         openPlacePopup(map, e.lngLat, {
-          name: String(p.name ?? ""),
+          name: displayName,
           sub,
           place: {
             kind,
             id: String(p.id ?? ""),
-            name: String(p.name ?? ""),
+            name: displayName,
             countryId: String(p.cc ?? ""),
           } as PlaceRef,
           hasPage: kind === "city" || kind === "heritage",
