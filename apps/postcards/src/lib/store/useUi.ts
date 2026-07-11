@@ -1,7 +1,15 @@
 import { create } from "zustand";
 import type { PlaceRef } from "../schema/models";
 
-export type Tab = "map" | "stats" | "places" | "trips" | "passport" | "journal" | "settings";
+export type Tab =
+  | "map"
+  | "stats"
+  | "places"
+  | "trips"
+  | "passport"
+  | "journal"
+  | "experiences"
+  | "settings";
 export type PlacesView = "visited" | "wishlist" | "countries" | "monuments" | "favorites";
 
 /** One navigation snapshot — what Escape/Back returns to. */
@@ -41,6 +49,8 @@ interface UiState {
   history: NavState[];
   /** Return to the previous screen. True if there was somewhere to go back to. */
   goBack: () => boolean;
+  /** Close every open city/country page at once (Escape semantics). */
+  closePages: () => void;
   // Travel-log time filter — shared so the map's trip arcs honour the same
   // period as the Trips list. "all" | 4-digit year, and "all" | "01".."12".
   tripYear: string;
@@ -114,6 +124,17 @@ export const useUi = create<UiState>((set, get) => {
       if (!last) return false;
       set({ ...last, history: h.slice(0, -1) });
       return true;
+    },
+    // Escape from a city/country page leaves the PAGE LAYER entirely — it must
+    // never walk back through other pages you viewed earlier (open Istanbul,
+    // then Budapest: Escape goes to the map, not to Istanbul). The ← Back
+    // button keeps the full history via goBack.
+    closePages: () => {
+      const h = [...get().history];
+      while (h.length && (h[h.length - 1]!.cityPageId || h[h.length - 1]!.countryPageId)) h.pop();
+      const target = h.pop();
+      if (target) set({ ...target, cityPageId: null, countryPageId: null, history: h });
+      else set({ cityPageId: null, countryPageId: null, history: h });
     },
     tripYear: "all",
     tripMonth: "all",

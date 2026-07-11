@@ -40,9 +40,15 @@ export function onlyVisited(visits: Visit[]): Visit[] {
   return visits.filter((v) => v.status !== "wishlist");
 }
 
-/** Distinct country ids across visited records (a city visit implies its country). */
+/** Distinct country ids across visited records (a city visit implies its
+ *  country). Airports deliberately do NOT count: changing planes in a country
+ *  is not visiting it. */
 export function visitedCountryIds(visits: Visit[]): Set<string> {
-  return new Set(onlyVisited(visits).map((v) => v.place.countryId));
+  return new Set(
+    onlyVisited(visits)
+      .filter((v) => v.place.kind !== "airport" && v.place.countryId !== "ZZ")
+      .map((v) => v.place.countryId),
+  );
 }
 
 export function computeCoverage(
@@ -159,29 +165,35 @@ export function computeContinentCoverage(
     .sort((a, b) => b.visited - a.visited || a.continent.localeCompare(b.continent));
 }
 
+export interface NamedRef {
+  id: string;
+  name: string;
+}
+
 export interface CountryDetail {
-  cities: string[];
+  /** Visited cities here, with ids so the UI can open each city's page. */
+  cities: NamedRef[];
   regionsVisited: string[];
   regionsRemaining: number;
   /** Names of the country's first-level regions not yet visited (what's left to see). */
   regionsRemainingNames: string[];
-  monumentsVisited: string[];
-  monumentsRemaining: string[];
+  monumentsVisited: NamedRef[];
+  monumentsRemaining: NamedRef[];
 }
 
 /** Names behind a country's numbers: visited cities + covered regions + monuments,
  *  and — the headline for "what's left" — the NAMES of the regions still to visit. */
 export function countryDetail(visits: Visit[], ref: ReferenceData, iso2: string): CountryDetail {
-  const cities: string[] = [];
+  const cities: NamedRef[] = [];
   const regionIds = new Set<string>();
   for (const v of onlyVisited(visits)) {
     if (v.place.kind !== "city") continue;
     const city = ref.cityById(v.place.id);
     if (!city || city.countryIso2 !== iso2) continue;
-    cities.push(city.name);
+    cities.push({ id: city.id, name: city.name });
     if (city.subdivisionId) regionIds.add(city.subdivisionId);
   }
-  cities.sort((a, b) => a.localeCompare(b));
+  cities.sort((a, b) => a.name.localeCompare(b.name));
   const regionsVisited = [...regionIds]
     .map((id) => ref.subdivisionById(id)?.name ?? id)
     .sort((a, b) => a.localeCompare(b));
@@ -201,12 +213,12 @@ export function countryDetail(visits: Visit[], ref: ReferenceData, iso2: string)
   const here = ref.heritageOf(iso2);
   const monumentsVisited = here
     .filter((h) => visitedMonumentIds.has(h.id))
-    .map((h) => h.name)
-    .sort((a, b) => a.localeCompare(b));
+    .map((h) => ({ id: h.id, name: h.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const monumentsRemaining = here
     .filter((h) => !visitedMonumentIds.has(h.id))
-    .map((h) => h.name)
-    .sort((a, b) => a.localeCompare(b));
+    .map((h) => ({ id: h.id, name: h.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return {
     cities,

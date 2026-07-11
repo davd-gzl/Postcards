@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { useToast } from "../../lib/store/useToast";
 import { saveAreaOffline } from "../map/offlineTiles";
 import { OFFLINE_REGIONS, REGION_MAX_TILES, estimateRegion, type OfflineRegion } from "./regions";
@@ -33,6 +34,33 @@ export function SettingsScreen() {
     () => Object.fromEntries(OFFLINE_REGIONS.map((r) => [r.id, estimateRegion(r)])),
     [],
   );
+  const [confirmReset, setConfirmReset] = useState(false);
+  const resetRef = useRef<HTMLDivElement>(null);
+  useModalKeys(resetRef, () => setConfirmReset(false), { enabled: confirmReset });
+
+  // Deletes ONLY map caches and map view preferences. Your places, journal and
+  // backups are untouched (they live in IndexedDB, not the tile cache).
+  async function resetMaps() {
+    for (const r of OFFLINE_REGIONS) controllers.current[r.id]?.abort();
+    try {
+      const names = await caches.keys();
+      await Promise.all(
+        names.filter((n) => n.startsWith("osm-tiles")).map((n) => caches.delete(n)),
+      );
+    } catch {
+      /* cache API unavailable: nothing stored anyway */
+    }
+    try {
+      for (const r of OFFLINE_REGIONS) localStorage.removeItem(`postcards-region-saved:${r.id}`);
+      for (const k of ["postcards-basemap", "postcards-globe", "postcards-towns", "postcards-map-mode", "postcards-city-filter", "postcards-hint-offline"])
+        localStorage.removeItem(k);
+    } catch {
+      /* private mode */
+    }
+    setSavedAt({});
+    setConfirmReset(false);
+    showToast("Map caches and view settings were reset.");
+  }
 
   async function download(r: OfflineRegion) {
     if (progress[r.id] != null) return;
@@ -87,10 +115,10 @@ export function SettingsScreen() {
       <section className="settings-section">
         <h3>Offline maps</h3>
         <p className="muted small">
-          Download a whole region of the OpenStreetMap basemap for offline use — with the real
-          download size up front. Region packs cover world-to-regional zoom (countries, big cities);
-          for street-level detail, frame the area on the Map tab and tap “⬇ Offline”. Tiles come
-          from OpenStreetMap and are fetched only when you tap Download.
+          Download the world or a whole region of the OpenStreetMap basemap for offline use; the
+          real download size is shown up front. Packs cover overview zoom (countries, big cities).
+          Street-level areas you browse on the online map are kept offline automatically. Tiles
+          come from OpenStreetMap and are fetched only when you tap Download.
         </p>
         <ul className="region-list">
           {OFFLINE_REGIONS.map((r) => {
@@ -136,6 +164,35 @@ export function SettingsScreen() {
           Sizes are estimates (~18 KB per tile). Tiles live in your browser's cache for ~30 days of
           non-use; browsing an area on the online map also keeps it available offline.
         </p>
+        <button className="link-danger" type="button" onClick={() => setConfirmReset(true)}>
+          Reset offline maps…
+        </button>
+        {confirmReset && (
+          <div className="modal-backdrop" onClick={() => setConfirmReset(false)}>
+            <div
+              className="modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Reset offline maps"
+              ref={resetRef}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2>Reset offline maps?</h2>
+              <p className="muted">
+                This deletes all downloaded map tiles and resets the map view settings (basemap,
+                globe, towns). Your places, photos, journal and backups are not touched.
+              </p>
+              <div className="trip-form-actions">
+                <button className="btn" type="button" autoFocus onClick={() => void resetMaps()}>
+                  Reset maps
+                </button>
+                <button className="btn-ghost" type="button" onClick={() => setConfirmReset(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="settings-section">

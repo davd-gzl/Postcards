@@ -64,10 +64,10 @@ describe("airport visits and coverage", () => {
   const jfk = ref.airportById("JFK")!;
   const cdg = ref.airportById("CDG")!;
 
-  it("a visited airport counts its country but never inflates % of cities/regions", () => {
+  it("a visited airport never counts a country (a layover is not a visit) nor cities/regions", () => {
     const visits = [airportVisit(jfk)];
     const cov = computeCoverage(visits, ref);
-    expect(cov.countriesVisited).toBe(1); // US, from the airport
+    expect(cov.countriesVisited).toBe(0); // changing planes in the US ≠ visiting the US
     expect(cov.citiesVisited).toBe(0); // airports are not cities
     expect(cov.airportsVisited).toBe(1);
 
@@ -80,7 +80,7 @@ describe("airport visits and coverage", () => {
   it("counts distinct visited airports only (wishlist excluded)", () => {
     const cov = computeCoverage([airportVisit(jfk), airportVisit(cdg, "wishlist")], ref);
     expect(cov.airportsVisited).toBe(1);
-    expect(cov.countriesVisited).toBe(1); // FR is only wished, so US only
+    expect(cov.countriesVisited).toBe(0); // airports never imply countries
   });
 
   it("emits map points tagged wish/fav, resolving coordinates from the gazetteer", () => {

@@ -43,13 +43,27 @@ export function PassportScreen() {
   }, [posterUrl]);
 
   const visitedIds = useMemo(() => visitedCountryIds(visits), [visits]);
-  const { collected, missing } = useMemo(() => {
+  const { collected, missing, continents } = useMemo(() => {
     const all = ref.countries.filter((c) => inScope(c.sovereignty, scope));
-    return {
-      collected: all.filter((c) => visitedIds.has(c.iso2)),
-      missing: all.filter((c) => !visitedIds.has(c.iso2)),
-    };
+    const collected = all.filter((c) => visitedIds.has(c.iso2));
+    const missing = all.filter((c) => !visitedIds.has(c.iso2));
+    // Collected flags grouped by continent, each with its own progress, so the
+    // passport reads like pages of a real one.
+    const byCont = new Map<string, { done: typeof all; total: number }>();
+    for (const c of all) {
+      const key = c.continent || "Elsewhere";
+      if (!byCont.has(key)) byCont.set(key, { done: [], total: 0 });
+      const g = byCont.get(key)!;
+      g.total += 1;
+      if (visitedIds.has(c.iso2)) g.done.push(c);
+    }
+    const continents = [...byCont.entries()]
+      .filter(([, g]) => g.done.length > 0)
+      .map(([name, g]) => ({ name, done: g.done, total: g.total }))
+      .sort((a, b) => b.done.length - a.done.length || a.name.localeCompare(b.name));
+    return { collected, missing, continents };
   }, [ref, visitedIds, scope]);
+  const [shownMissing, setShownMissing] = useState(60);
 
   // Where to stamp a visited country whose geometry the basemap lacks (Kosovo,
   // Tuvalu, overseas territories…): the coordinates of a place you visited there.
@@ -126,23 +140,30 @@ export function PassportScreen() {
           No stamps yet — visit a city and its country's flag lands here.
         </p>
       ) : (
-        <ul className="flag-grid">
-          {collected.map((c) => (
-            <li key={c.iso2}>
-              <button
-                type="button"
-                className="flag-card"
-                title={`Open ${c.name}`}
-                onClick={() => useUi.getState().openCountry(c.iso2)}
-              >
-                <span className="flag-big" aria-hidden>
-                  {countryFlag(c.iso2)}
-                </span>
-                <span className="flag-name">{c.name}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        continents.map((cont) => (
+          <section key={cont.name} className="passport-continent">
+            <h3>
+              {cont.name} <span className="muted small">{cont.done.length} of {cont.total}</span>
+            </h3>
+            <ul className="flag-grid">
+              {cont.done.map((c) => (
+                <li key={c.iso2}>
+                  <button
+                    type="button"
+                    className="flag-card"
+                    title={`Open ${c.name}`}
+                    onClick={() => useUi.getState().openCountry(c.iso2)}
+                  >
+                    <span className="flag-big" aria-hidden>
+                      {countryFlag(c.iso2)}
+                    </span>
+                    <span className="flag-name">{c.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
       )}
 
       <button
@@ -168,8 +189,9 @@ export function PassportScreen() {
       )}
 
       {showMissing && (
+        <>
         <ul className="flag-grid">
-          {missing.map((c) => (
+          {missing.slice(0, shownMissing).map((c) => (
             <li key={c.iso2}>
               <button
                 type="button"
@@ -185,6 +207,17 @@ export function PassportScreen() {
             </li>
           ))}
         </ul>
+        {missing.length > shownMissing && (
+          <div className="list-pager">
+            <span className="muted small">
+              Showing {shownMissing} of {missing.length}
+            </span>
+            <button className="mini-btn" type="button" onClick={() => setShownMissing((n) => n + 60)}>
+              Show 60 more
+            </button>
+          </div>
+        )}
+        </>
       )}
     </section>
   );

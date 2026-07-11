@@ -5,6 +5,8 @@ import { test, expect } from "@playwright/test";
 test("toggle the 3D globe view and persist the choice", async ({ page }) => {
   await page.goto("/");
 
+  // The view toggles are grouped behind the Layers button now.
+  await page.getByRole("button", { name: /Layers/ }).click();
   const globe = page.getByRole("button", { name: "Globe" });
   await expect(globe).toBeVisible();
   await expect(globe).toHaveAttribute("aria-pressed", "false");
@@ -15,8 +17,9 @@ test("toggle the 3D globe view and persist the choice", async ({ page }) => {
   // The map is still there (projection switched in place, no crash/remount fallback).
   await expect(page.getByLabel("Map of visited places")).toBeVisible();
 
-  // The choice is remembered across a reload.
+  // The choice is remembered across a reload (the panel starts closed).
   await page.reload();
+  await page.getByRole("button", { name: /Layers/ }).click();
   await expect(page.getByRole("button", { name: "Globe" })).toHaveAttribute("aria-pressed", "true");
 
   // And back to flat.
