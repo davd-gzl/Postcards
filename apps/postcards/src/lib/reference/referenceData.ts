@@ -27,6 +27,9 @@ const CITIES_URL = `${import.meta.env.BASE_URL}reference/cities.json`;
 const SUBDIVISIONS_URL = `${import.meta.env.BASE_URL}reference/subdivisions.json`;
 const AIRPORTS_URL = `${import.meta.env.BASE_URL}reference/airports.json`;
 const HERITAGE_URL = `${import.meta.env.BASE_URL}reference/heritage.json`;
+// Famous landmarks (Eiffel Tower, …) share the HeritageSite shape and merge into
+// the same sites/monuments machinery — one more named dataset, not new code.
+const LANDMARKS_URL = `${import.meta.env.BASE_URL}reference/landmarks.json`;
 const LANGUAGES_URL = `${import.meta.env.BASE_URL}reference/languages.json`;
 const ARTICLE_NAMES_URL = `${import.meta.env.BASE_URL}reference/article-names.json`;
 
@@ -260,11 +263,12 @@ export function initReferenceDataSync(
 export async function initReferenceData(): Promise<ReferenceData> {
   if (instance) return instance;
   try {
-    const [cities, subdivisions, airports, heritage, languages, articleNames] = await Promise.all([
+    const [cities, subdivisions, airports, heritage, landmarks, languages, articleNames] = await Promise.all([
       fetch(CITIES_URL).then((r) => (r.ok ? r.json() : Promise.reject(new Error("cities")))),
       fetch(SUBDIVISIONS_URL).then((r) => (r.ok ? r.json() : [])),
       fetch(AIRPORTS_URL).then((r) => (r.ok ? r.json() : [])),
       fetch(HERITAGE_URL).then((r) => (r.ok ? r.json() : [])),
+      fetch(LANDMARKS_URL).then((r) => (r.ok ? r.json() : [])),
       fetch(LANGUAGES_URL).then((r) => (r.ok ? r.json() : {})),
       fetch(ARTICLE_NAMES_URL).then((r) => (r.ok ? r.json() : {})),
     ]);
@@ -272,7 +276,7 @@ export async function initReferenceData(): Promise<ReferenceData> {
       cities as City[],
       subdivisions as Subdivision[],
       airports as Airport[],
-      heritage as HeritageSite[],
+      [...(heritage as HeritageSite[]), ...(landmarks as HeritageSite[])],
       languages as Record<string, Language[]>,
       articleNames as Record<string, string>,
     );

@@ -146,6 +146,7 @@ function GuidesModal({
           From Wikivoyage — the free travel guide. Links open in your browser.
         </p>
 
+        <div className="guide-overviews">
         {state !== "empty" && !summary && !wpSummary && (
           <button
             type="button"
@@ -192,7 +193,9 @@ function GuidesModal({
             </cite>
           </blockquote>
         )}
+        </div>
 
+        <div className="guide-groups-col">
         {grouped.map(({ group, items }) => (
           <div key={group} className="guide-group">
             <h3>{group}</h3>
@@ -208,6 +211,7 @@ function GuidesModal({
             </ul>
           </div>
         ))}
+        </div>
 
         {/* Honest fallback: a search link always works, even when an exact article
             title doesn't match (name variants) or the overview fetch fails. */}
