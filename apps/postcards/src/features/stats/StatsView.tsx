@@ -298,12 +298,17 @@ export function StatsView() {
         return (
           <div key={c.iso2} className="country-card">
             <div className="country-head">
-              <strong>
+              <button
+                type="button"
+                className="country-open"
+                title={`Open ${c.name}`}
+                onClick={() => useUi.getState().openCountry(c.iso2)}
+              >
                 <span className="flag" aria-hidden>
                   {countryFlag(c.iso2)}
                 </span>{" "}
                 {c.name}
-              </strong>
+              </button>
               <span className="muted">
                 {formatInt(c.citiesVisited)} cities · {formatInt(c.regionsVisited)} regions
               </span>

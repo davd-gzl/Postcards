@@ -10,6 +10,7 @@ import { PassportScreen } from "../features/passport/PassportScreen";
 import { JournalScreen } from "../features/journal/JournalScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { CityScreen } from "../features/city/CityScreen";
+import { CountryScreen } from "../features/country/CountryScreen";
 import { ShortcutsHelp } from "../ui/ShortcutsHelp";
 import { AboutModal } from "../ui/AboutModal";
 import { Toast } from "../ui/Toast";
@@ -34,6 +35,7 @@ export function App() {
   const tab = useUi((s) => s.tab);
   const setTab = useUi((s) => s.setTab);
   const cityPageId = useUi((s) => s.cityPageId);
+  const countryPageId = useUi((s) => s.countryPageId);
   const [showHelp, setShowHelp] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
@@ -57,9 +59,12 @@ export function App() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        // A modal/lightbox on screen consumes Escape (its own handler closes
+        // it) — only an unobstructed Escape navigates back.
+        const dialogOpen = !!document.querySelector(".modal-backdrop, .lightbox");
         setShowHelp(false);
         setShowAbout(false);
-        useUi.getState().closeCity(); // Escape backs out of a detail page too
+        if (!dialogOpen) useUi.getState().goBack(); // Escape = previous screen
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -142,10 +147,12 @@ export function App() {
             ref={mainRef}
             id="main"
             tabIndex={-1}
-            className={"content" + (tab === "map" && !cityPageId ? " flush" : "")}
+            className={"content" + (tab === "map" && !cityPageId && !countryPageId ? " flush" : "")}
           >
             {cityPageId ? (
               <CityScreen cityId={cityPageId} onBack={() => useUi.getState().closeCity()} />
+            ) : countryPageId ? (
+              <CountryScreen iso2={countryPageId} onBack={() => useUi.getState().closeCity()} />
             ) : (
               <>
                 {tab === "map" && (

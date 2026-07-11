@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
+import { useUi } from "../../lib/store/useUi";
 import { useSettings } from "../../lib/store/useSettings";
 import { useToast } from "../../lib/store/useToast";
 import { computeCoverage, visitedCountryIds } from "../stats/computeStats";
@@ -81,11 +82,18 @@ export function PassportScreen() {
       ) : (
         <ul className="flag-grid">
           {collected.map((c) => (
-            <li key={c.iso2} className="flag-card" title={c.continent}>
-              <span className="flag-big" aria-hidden>
-                {countryFlag(c.iso2)}
-              </span>
-              <span className="flag-name">{c.name}</span>
+            <li key={c.iso2}>
+              <button
+                type="button"
+                className="flag-card"
+                title={`Open ${c.name}`}
+                onClick={() => useUi.getState().openCountry(c.iso2)}
+              >
+                <span className="flag-big" aria-hidden>
+                  {countryFlag(c.iso2)}
+                </span>
+                <span className="flag-name">{c.name}</span>
+              </button>
             </li>
           ))}
         </ul>
@@ -116,11 +124,18 @@ export function PassportScreen() {
       {showMissing && (
         <ul className="flag-grid">
           {missing.map((c) => (
-            <li key={c.iso2} className="flag-card flag-locked" title={c.continent}>
-              <span className="flag-big" aria-hidden>
-                {countryFlag(c.iso2)}
-              </span>
-              <span className="flag-name">{c.name}</span>
+            <li key={c.iso2}>
+              <button
+                type="button"
+                className="flag-card flag-locked"
+                title={`Open ${c.name}`}
+                onClick={() => useUi.getState().openCountry(c.iso2)}
+              >
+                <span className="flag-big" aria-hidden>
+                  {countryFlag(c.iso2)}
+                </span>
+                <span className="flag-name">{c.name}</span>
+              </button>
             </li>
           ))}
         </ul>
