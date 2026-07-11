@@ -24,6 +24,11 @@ const sovereignty = sovereigntyData as Record<string, Sovereignty>;
 // Gazetteer + subdivisions are served as static, SW-cached assets and loaded once
 // at startup (see initReferenceData()).
 const CITIES_URL = `${import.meta.env.BASE_URL}reference/cities.json`;
+// The full world gazetteer (~135k, ~17 MB) — loaded AFTER first render so the
+// map appears immediately with the core cities; the long tail streams in behind.
+const CITIES_ALL_URL = `${import.meta.env.BASE_URL}reference/cities-all.json`;
+/** Fired on window when the full gazetteer replaces the core one. */
+export const GAZETTEER_UPGRADED_EVENT = "postcards:gazetteer-upgraded";
 const SUBDIVISIONS_URL = `${import.meta.env.BASE_URL}reference/subdivisions.json`;
 const AIRPORTS_URL = `${import.meta.env.BASE_URL}reference/airports.json`;
 const HERITAGE_URL = `${import.meta.env.BASE_URL}reference/heritage.json`;
@@ -98,6 +103,19 @@ class ReferenceDataImpl implements ReferenceData {
   private countrySearch: { c: Country; search: string }[];
   private languages: Record<string, Language[]>;
   private articleNames: Record<string, string>;
+
+  /** Swap in a bigger city set in place (same instance every consumer holds). */
+  replaceCities(cities: City[]): void {
+    this.cities = cities
+      .map((c) => ({ ...c, search: normalize(c.name) }))
+      .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
+    this.cityIndex.clear();
+    for (const c of this.cities) this.cityIndex.set(c.id, c);
+    // Refresh the per-country "known cities" denominators the stats show.
+    const counts = new Map<string, number>();
+    for (const c of cities) counts.set(c.countryIso2, (counts.get(c.countryIso2) ?? 0) + 1);
+    for (const country of this.countries) country.cityCount = counts.get(country.iso2) ?? 0;
+  }
 
   constructor(
     cities: City[],
@@ -272,7 +290,7 @@ export async function initReferenceData(): Promise<ReferenceData> {
       fetch(LANGUAGES_URL).then((r) => (r.ok ? r.json() : {})),
       fetch(ARTICLE_NAMES_URL).then((r) => (r.ok ? r.json() : {})),
     ]);
-    return initReferenceDataSync(
+    const ref = initReferenceDataSync(
       cities as City[],
       subdivisions as Subdivision[],
       airports as Airport[],
@@ -280,9 +298,31 @@ export async function initReferenceData(): Promise<ReferenceData> {
       languages as Record<string, Language[]>,
       articleNames as Record<string, string>,
     );
+    // Fire-and-forget: the full 135k-city set streams in behind the UI.
+    void upgradeToFullGazetteer(ref as ReferenceDataImpl);
+    return ref;
   } catch {
     console.warn("Postcards: reference data failed to load; continuing without cities.");
     return initReferenceDataSync([], [], [], [], {}, {});
+  }
+}
+
+/**
+ * Background upgrade to the full world gazetteer. Never blocks startup; on
+ * success every live consumer of the singleton sees the bigger set, and a
+ * window event lets screens holding memoized snapshots refresh.
+ */
+async function upgradeToFullGazetteer(impl: ReferenceDataImpl): Promise<void> {
+  try {
+    const res = await fetch(CITIES_ALL_URL);
+    if (!res.ok) return; // core set keeps working offline
+    const cities = (await res.json()) as City[];
+    if (cities.length > impl.allCities().length) {
+      impl.replaceCities(cities);
+      window.dispatchEvent(new Event(GAZETTEER_UPGRADED_EVENT));
+    }
+  } catch {
+    /* offline / interrupted: the core gazetteer keeps working */
   }
 }
 
