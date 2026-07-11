@@ -311,8 +311,9 @@ h1.brand {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
-  padding: 8px 11px;
+  padding: 6px 9px;
   font: inherit;
+  font-size: 12.5px;
 }
 .maplibregl-popup-tip {
   border-top-color: var(--surface) !important;
@@ -1470,25 +1471,35 @@ h1.brand {
 /* Desktop: the section tabs move to the TOP (a horizontal bar under the title
    bar), and the map becomes a true two-pane layout (map beside the cities list). */
 @media (min-width: 900px) {
+  /* The tabs live INSIDE the 46px top bar (centered), not on a second row. */
+  .app {
+    position: relative;
+  }
   .bottom-nav {
-    order: 0; /* natural DOM spot: right under the top bar */
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 46px;
+    align-items: center;
+    z-index: 30;
     flex-direction: row;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
     border-top: none;
-    border-bottom: 1px solid var(--border);
-    padding: 6px 12px;
+    background: transparent;
+    padding: 0;
   }
   .nav-item {
     flex: none;
     flex-direction: row;
-    gap: 9px;
-    padding: 8px 18px;
+    gap: 8px;
+    padding: 6px 13px;
     border-radius: 999px;
     min-height: 0;
   }
   .nav-item span {
-    font-size: 14px;
+    font-size: 13.5px;
   }
   .nav-item.active {
     background: var(--accent-soft);
@@ -1597,7 +1608,7 @@ h1.brand {
 /* Subtle pop when a place flips to visited. */
 @keyframes visit-pop {
   0% { transform: scale(1); }
-  45% { transform: scale(1.25); }
+  45% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
 .state.been.on {
@@ -1876,3 +1887,16 @@ h1.brand {
     gap: 4px 26px;
   }
 }
+
+/* Compact popup actions + tighter stat boxes (efficiency pass). */
+.map-popup strong { font-size: 13px; }
+.map-popup-actions .mini-btn { font-size: 11px; padding: 2px 8px; }
+.map-ctl-top { top: 10px; left: 50%; transform: translateX(-50%); bottom: auto; flex-direction: row; box-shadow: var(--shadow); }
+.map-ctl-top button { font-size: 12px; padding: 4px 10px; }
+.stat-tile { padding: 8px 10px; }
+.stat-tile .num { font-size: 21px; }
+.stat-grid { gap: 7px; margin-bottom: 10px; }
+.country-card { padding: 8px 10px; }
+.metric { margin-top: 5px; }
+.brand { font-size: 19px; }
+.brand::before { width: 15px; height: 15px; }

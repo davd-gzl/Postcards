@@ -10,7 +10,7 @@ import { PlaceSearch } from "../visits/PlaceSearch";
 import { StateToggles } from "../visits/StateToggles";
 import { GuideButton } from "../guides/GuideButton";
 import { StatStrip } from "../stats/StatStrip";
-import { MapView, type Basemap, type MapFocus, type MapFit } from "./MapView";
+import { MapView, type Basemap, type MapFocus, type MapFit, type MapMode } from "./MapView";
 import { tripArcs } from "./visitedLayers";
 import { tripsInPeriod, periodLabel } from "../travel/period";
 import { citiesInView, type Bounds } from "./viewport";
@@ -74,6 +74,11 @@ export function MapScreen() {
   const trips = useTrips((s) => s.trips);
   const [showTrips, setShowTrips] = useState(true);
   const [globe, setGlobe] = useState(() => loadPref(GLOBE_KEY, (v) => v === "1"));
+  const [mode, setMode] = useState<MapMode>(() =>
+    loadPref("postcards-map-mode", (v) =>
+      v === "cities" || v === "monuments" || v === "airports" ? v : "all",
+    ),
+  );
   const [dark, setDark] = useState(() =>
     typeof matchMedia === "undefined" ? false : matchMedia("(prefers-color-scheme: dark)").matches,
   );
@@ -133,17 +138,18 @@ export function MapScreen() {
   // instead of yanking it away mid-action.
   const [snapshot, setSnapshot] = useState<City[]>([]);
   const [shown, setShown] = useState(PAGE);
+  const [sortAZ, setSortAZ] = useState(false);
   useEffect(() => {
     const ids = visitedCityIdsNow();
-    setSnapshot(
+    const arr =
       cityFilter === "all"
         ? inView
-        : inView.filter((c) => ids.has(c.id) === (cityFilter === "visited")),
-    );
+        : inView.filter((c) => ids.has(c.id) === (cityFilter === "visited"));
+    setSnapshot(sortAZ ? [...arr].sort((a, b) => a.name.localeCompare(b.name)) : arr);
     setShown(PAGE);
     // visitedCityIds deliberately NOT a dependency — see comment above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, cityFilter]);
+  }, [inView, cityFilter, sortAZ]);
   function visitedCityIdsNow(): Set<string> {
     return new Set(
       useVisits
@@ -220,6 +226,7 @@ export function MapScreen() {
           viewCities={visible}
           tripArcs={showTrips ? arcs : null}
           globe={globe}
+          mode={mode}
           reducedMotion={reducedMotion}
           onBaseUnavailable={() => {
             if (basemap === "osm") {
@@ -229,6 +236,22 @@ export function MapScreen() {
             }
           }}
         />
+        <div className="map-ctl map-ctl-top segmented" role="group" aria-label="Map mode">
+          {(["all", "cities", "monuments", "airports"] as MapMode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={mode === m}
+              className={mode === m ? "seg-on" : ""}
+              onClick={() => {
+                setMode(m);
+                savePref("postcards-map-mode", m);
+              }}
+            >
+              {m === "all" ? "All" : m === "cities" ? "Cities" : m === "monuments" ? "🏛 Monuments" : "✈ Airports"}
+            </button>
+          ))}
+        </div>
         <div className="map-ctl map-ctl-left">
           {visitedCityCoords.length > 0 && (
             <button className="map-btn" type="button" onClick={fitToMyPlaces}>
@@ -292,6 +315,17 @@ export function MapScreen() {
               {f === "all" ? "All" : f === "unvisited" ? "Hide visited" : "Visited"}
             </button>
           ))}
+          <label className="sort-label">
+            <span className="sr-only">Sort cities</span>
+            <select
+              className="sort-select"
+              value={sortAZ ? "az" : "pop"}
+              onChange={(e) => setSortAZ(e.target.value === "az")}
+            >
+              <option value="pop">Most people</option>
+              <option value="az">A–Z</option>
+            </select>
+          </label>
         </div>
 
         {inView.length === 0 ? (
@@ -322,7 +356,11 @@ export function MapScreen() {
                     type="button"
                     aria-expanded={selected}
                     onClick={() => {
-                      setSelectedCityId(selected ? null : c.id);
+                      if (selected) {
+                        useUi.getState().openCity(c.id);
+                        return;
+                      }
+                      setSelectedCityId(c.id);
                       focusCity(c);
                     }}
                   >
@@ -342,15 +380,6 @@ export function MapScreen() {
                       </span>
                     )}
                   </button>
-                  {selected && (
-                    <button
-                      className="mini-btn"
-                      type="button"
-                      onClick={() => useUi.getState().openCity(c.id)}
-                    >
-                      Details
-                    </button>
-                  )}
                   {selected && <GuideButton place={place} />}
                   <StateToggles place={place} />
                 </li>
