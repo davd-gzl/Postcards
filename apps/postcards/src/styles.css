@@ -2092,3 +2092,83 @@ h1.brand {
 .flag-grid button.flag-card:hover {
   border-color: var(--accent);
 }
+
+/* Install-app button: accent so it reads as the primary topbar action. */
+.topbar-install {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ===== Mobile density pass: the stacked top bars were eating the screen ===== */
+@media (max-width: 899.98px) {
+  .topbar {
+    height: 40px;
+    padding: 0 8px 0 12px;
+  }
+  .brand {
+    font-size: 16px;
+  }
+  .topbar-about span {
+    display: none; /* icon-only actions on small screens */
+  }
+  .topbar-about {
+    padding: 5px 8px;
+  }
+  .map-top {
+    padding: 5px 8px;
+  }
+  .search-input {
+    height: 38px;
+    font-size: 15px;
+  }
+  /* Counter strip: one slim line. */
+  .stat-strip {
+    margin-top: 4px;
+    padding: 4px 10px 4px 16px;
+    gap: 10px;
+    border-radius: var(--radius-sm);
+  }
+  .stat-strip::before {
+    top: 5px;
+    bottom: 5px;
+  }
+  .ss-num {
+    font-size: 14px;
+  }
+  .ss-den {
+    font-size: 11px;
+  }
+  .ss-label {
+    font-size: 10.5px;
+  }
+  /* Shorter map, slimmer floating controls → the list starts higher. */
+  .map-box {
+    height: 34vh;
+    min-height: 190px;
+  }
+  .map-ctl-top button {
+    font-size: 11px;
+    padding: 3px 7px;
+  }
+  .map-btn {
+    font-size: 12px;
+    padding: 4px 10px;
+  }
+  .view-list {
+    padding: 6px 10px 14px;
+  }
+  .section-head {
+    margin: 0 0 4px;
+  }
+  .list-filter {
+    margin: 0 0 6px;
+  }
+  .segmented button {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+  .bottom-nav .nav-item {
+    min-height: 44px;
+    padding: 5px 0 4px;
+  }
+}

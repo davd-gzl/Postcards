@@ -16,6 +16,7 @@ import { AboutModal } from "../ui/AboutModal";
 import { Toast } from "../ui/Toast";
 import { MapIcon, ChartIcon, ListIcon, RouteIcon, FlagIcon, BookIcon, GearIcon, InfoIcon } from "../ui/icons";
 import { useState } from "react";
+import { useInstallPrompt } from "../lib/hooks/useInstallPrompt";
 
 // Code-split MapLibre so it loads only when the map is shown.
 const MapScreen = lazy(() =>
@@ -37,6 +38,7 @@ export function App() {
   const cityPageId = useUi((s) => s.cityPageId);
   const countryPageId = useUi((s) => s.countryPageId);
   const [showHelp, setShowHelp] = useState(false);
+  const { canInstall, install } = useInstallPrompt();
   const [showAbout, setShowAbout] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
   const firstRender = useRef(true);
@@ -103,6 +105,15 @@ export function App() {
       <header className="topbar">
             <h1 className="brand">Postcards</h1>
             <span className="topbar-actions">
+              {canInstall && (
+                <button
+                  type="button"
+                  className="topbar-about topbar-install"
+                  onClick={() => void install()}
+                >
+                  ⬇ <span>Install app</span>
+                </button>
+              )}
               <button
                 type="button"
                 className="topbar-about"
