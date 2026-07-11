@@ -96,24 +96,28 @@ function makeCityPill(iso2: string, favorite: boolean): ImageData {
   return ctx.getImageData(0, 0, w, h);
 }
 
-/** Monument marker: the bare 🏛 emoji with a white halo; a ✅ badge once seen. */
+/** Monument pin: 🏛 on a crisp white chip with an amber ring — the bare grey
+ * emoji vanished against the basemap. Amber-filled once seen, + a ✅ badge. */
 function makeMonumentPin(seen: boolean): ImageData {
-  const s = 38; // 19px on screen
+  const s = 40; // 20px on screen
   const canvas = document.createElement("canvas");
   canvas.width = s;
   canvas.height = s;
   const ctx = canvas.getContext("2d")!;
+  ctx.beginPath();
+  ctx.arc(s / 2, s / 2, s / 2 - 3, 0, Math.PI * 2);
+  ctx.fillStyle = seen ? "#f6c98a" : "#ffffff";
+  ctx.fill();
+  ctx.lineWidth = seen ? 3.5 : 2.5;
+  ctx.strokeStyle = "#b45309";
+  ctx.stroke();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `24px ${EMOJI_FONT}`;
-  ctx.shadowColor = "rgba(255, 255, 255, 0.95)";
-  ctx.shadowBlur = 5;
-  ctx.fillText("🏛️", s / 2, s / 2 + 1);
-  ctx.shadowBlur = 0;
+  ctx.font = `22px ${EMOJI_FONT}`;
   ctx.fillText("🏛️", s / 2, s / 2 + 1);
   if (seen) {
     ctx.font = `13px ${EMOJI_FONT}`;
-    ctx.fillText("✅", s - 8, 8);
+    ctx.fillText("✅", s - 9, 9);
   }
   return ctx.getImageData(0, 0, s, s);
 }
@@ -636,58 +640,57 @@ export function MapView({
         });
       }
 
-      // Tap any place marker → popup with details + check/uncheck + city page,
-      // and gently zoom toward it. (Population/region live here, not on markers.)
+      // Tap any place marker → ONE popup (a single dispatcher across all
+      // tappable layers — per-layer handlers would fire together when a city
+      // and a monument overlap under the tap). Cities outrank monuments;
+      // among cities the most populous wins.
       const tappable = ["cities-visited", "cities-inview", "cities-wishlist", "poi-monuments"];
-      for (const layer of tappable) {
-        map.on("click", layer, (e) => {
-          // Overlapping markers: the most populous place wins the tap.
-          const f = (e.features ?? []).reduce<maplibregl.MapGeoJSONFeature | undefined>(
-            (best, cur) =>
-              !best || Number(cur.properties?.pop ?? 0) > Number(best.properties?.pop ?? 0)
-                ? cur
-                : best,
-            undefined,
-          );
-          if (!f || !map) return;
-          const p = f.properties ?? {};
-          const isMonument = layer === "poi-monuments";
-          const isCustom = Number(p.custom) === 1;
-          const kind = isMonument ? "heritage" : isCustom ? "custom" : "city";
-          const region = p.region ? String(p.region) : "";
-          const popN = Number(p.pop);
-          const country = ref.countryByIso2(String(p.cc ?? ""))?.name ?? String(p.cc ?? "");
-          const sub = isMonument
-            ? `World Heritage Site · ${country}`
-            : [country, region].filter(Boolean).join(" - ") +
-              (popN > 0 ? ` · ${formatInt(popN)} people` : "");
-          openPlacePopup(map, e.lngLat, {
+      map.on("click", (e) => {
+        if (!map || !loadedRef.current) return;
+        const m = map; // narrow once — closures below can't re-null it
+        const layers = tappable.filter((l) => m.getLayer(l));
+        if (!layers.length) return;
+        const feats = m.queryRenderedFeatures(e.point, { layers });
+        if (!feats.length) return;
+        const score = (f: maplibregl.MapGeoJSONFeature) =>
+          f.layer.id === "poi-monuments" ? -1 : Number(f.properties?.pop ?? 0);
+        const f = feats.reduce((best, cur) => (score(cur) > score(best) ? cur : best));
+        const p = f.properties ?? {};
+        const isMonument = f.layer.id === "poi-monuments";
+        const isCustom = Number(p.custom) === 1;
+        const kind = isMonument ? "heritage" : isCustom ? "custom" : "city";
+        const region = p.region ? String(p.region) : "";
+        const popN = Number(p.pop);
+        const country = ref.countryByIso2(String(p.cc ?? ""))?.name ?? String(p.cc ?? "");
+        const sub = isMonument
+          ? `Site · ${country}`
+          : [country, region].filter(Boolean).join(" - ") +
+            (popN > 0 ? ` · ${formatInt(popN)} people` : "");
+        openPlacePopup(map, e.lngLat, {
+          name: String(p.name ?? ""),
+          sub,
+          place: {
+            kind,
+            id: String(p.id ?? ""),
             name: String(p.name ?? ""),
-            sub,
-            place: {
-              kind,
-              id: String(p.id ?? ""),
-              name: String(p.name ?? ""),
-              countryId: String(p.cc ?? ""),
-            } as PlaceRef,
-            hasPage: kind === "city" || kind === "heritage",
-          });
-          // Zoom toward the tapped place (suppress the list refresh — it's programmatic).
-          suppressBoundsRef.current = true;
-          map.easeTo({
-            center: e.lngLat,
-            zoom: Math.max(map.getZoom(), 6.5),
-            duration: reducedRef.current ? 0 : 550,
-          });
-          e.preventDefault?.();
+            countryId: String(p.cc ?? ""),
+          } as PlaceRef,
+          hasPage: kind === "city" || kind === "heritage",
         });
-        map.on("mouseenter", layer, () => {
-          if (map) map.getCanvas().style.cursor = "pointer";
+        suppressBoundsRef.current = true;
+        map.easeTo({
+          center: e.lngLat,
+          zoom: Math.max(map.getZoom(), 6.5),
+          duration: reducedRef.current ? 0 : 550,
         });
-        map.on("mouseleave", layer, () => {
-          if (map) map.getCanvas().style.cursor = "";
-        });
-      }
+      });
+      map.on("mousemove", (e) => {
+        if (!map || !loadedRef.current) return;
+        const m = map;
+        const layers = tappable.filter((l) => m.getLayer(l));
+        const hit = layers.length ? m.queryRenderedFeatures(e.point, { layers }).length > 0 : false;
+        m.getCanvas().style.cursor = hit ? "pointer" : "";
+      });
     })();
 
     return () => {

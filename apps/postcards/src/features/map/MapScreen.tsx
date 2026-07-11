@@ -14,6 +14,7 @@ import { MapView, type Basemap, type MapFocus, type MapFit, type MapMode } from 
 import { tripArcs } from "./visitedLayers";
 import { tripsInPeriod, periodLabel } from "../travel/period";
 import { citiesInView, type Bounds } from "./viewport";
+import { saveAreaOffline } from "./offlineTiles";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import type { City } from "../../lib/reference/types";
 import { CityLine } from "../../ui/CityLine";
@@ -164,6 +165,73 @@ export function MapScreen() {
     [inView, visitedCityIds],
   );
 
+  // POI lists for the non-city map modes (Monuments / Airports in view).
+  const inB = (lat: number, lon: number) =>
+    !!bounds &&
+    lat >= bounds.south &&
+    lat <= bounds.north &&
+    (bounds.west <= bounds.east
+      ? lon >= bounds.west && lon <= bounds.east
+      : lon >= bounds.west || lon <= bounds.east);
+  const poi = useMemo(() => {
+    if (mode === "monuments") {
+      return ref
+        .allHeritage()
+        .filter((h) => (h.lat !== 0 || h.lon !== 0) && inB(h.lat, h.lon))
+        .slice(0, 100)
+        .map((h) => ({
+          key: h.id,
+          flag: "🏛️",
+          name: h.name,
+          sub: ref.countryByIso2(h.countryIso2)?.name ?? h.countryIso2,
+          lat: h.lat,
+          lon: h.lon,
+          place: { kind: "heritage" as const, id: h.id, name: h.name, countryId: h.countryIso2 },
+          page: true,
+        }));
+    }
+    if (mode === "airports") {
+      return ref
+        .allAirports()
+        .filter((a) => inB(a.lat, a.lon))
+        .slice(0, 100)
+        .map((a) => ({
+          key: a.id,
+          flag: "✈️",
+          name: `${a.name} (${a.id})`,
+          sub: ref.countryByIso2(a.countryIso2)?.name ?? a.countryIso2,
+          lat: a.lat,
+          lon: a.lon,
+          place: { kind: "airport" as const, id: a.id, name: `${a.name} (${a.id})`, countryId: a.countryIso2 },
+          page: false,
+        }));
+    }
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, bounds, ref]);
+
+  // One-tap offline: fetch the tiles for the CURRENT view (finer control and
+  // whole regions live in Settings → Offline maps).
+  const [saving, setSaving] = useState<number | null>(null);
+  async function saveThisView() {
+    if (!bounds || saving != null) return;
+    setSaving(0);
+    try {
+      const res = await saveAreaOffline(bounds, bounds.zoom ?? 3, {
+        onProgress: (p) => setSaving(p.total ? p.done / p.total : 1),
+      });
+      showToast(
+        res.total === 0
+          ? "Nothing to save at this zoom — zoom in first."
+          : `Saved ${res.saved} map tiles for offline use.`,
+      );
+    } catch {
+      showToast("Couldn't save this view — check your connection.");
+    } finally {
+      setSaving(null);
+    }
+  }
+
   // Trip arcs honour the Travel-log time filter (shared via useUi).
   const arcTrips = useMemo(
     () => tripsInPeriod(trips, tripYear, tripMonth),
@@ -258,6 +326,17 @@ export function MapScreen() {
               Fit to my places
             </button>
           )}
+          {basemap === "osm" && (
+            <button
+              className="map-btn"
+              type="button"
+              disabled={saving != null}
+              onClick={() => void saveThisView()}
+              title="Keep the detailed map of this view available offline (whole regions: Settings → Offline maps)"
+            >
+              {saving == null ? "⬇ Offline" : `${Math.round(saving * 100)}%`}
+            </button>
+          )}
         </div>
         <div className="map-ctl map-ctl-right">
           <button
@@ -296,13 +375,36 @@ export function MapScreen() {
 
       <section className="view-list" aria-label="Cities in view">
         <div className="section-head">
-          <h2>Cities in view</h2>
+          <h2>{mode === "monuments" ? "Monuments in view" : mode === "airports" ? "Airports in view" : "Cities in view"}</h2>
           <span className="list-head-meta muted">
             <span>{inView.length} in view</span>
             {visitedInView > 0 && <span>· {visitedInView} visited</span>}
           </span>
         </div>
 
+        {poi ? (
+          poi.length === 0 ? (
+            <p className="muted empty">Nothing in this view — pan or zoom the map.</p>
+          ) : (
+            <ul className="city-list">
+              {poi.map((x) => (
+                <li key={x.key} className="city-row compact">
+                  <button
+                    className="city-focus"
+                    type="button"
+                    onClick={() =>
+                      x.page ? useUi.getState().openCity(x.place.id) : focusCity({ lon: x.lon, lat: x.lat })
+                    }
+                  >
+                    <CityLine flag={x.flag} name={x.name} sub={<>· {x.sub}</>} />
+                  </button>
+                  <StateToggles place={x.place} />
+                </li>
+              ))}
+            </ul>
+          )
+        ) : (
+        <>
         <div className="segmented list-filter" role="group" aria-label="Filter cities">
           {(["all", "unvisited", "visited"] as CityFilter[]).map((f) => (
             <button
@@ -396,6 +498,8 @@ export function MapScreen() {
               Show {Math.min(PAGE, snapshot.length - shown)} more
             </button>
           </div>
+        )}
+        </>
         )}
       </section>
     </div>

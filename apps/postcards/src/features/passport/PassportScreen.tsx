@@ -21,6 +21,13 @@ export function PassportScreen() {
   const showToast = useToast((s) => s.show);
   const [showMissing, setShowMissing] = useState(false);
   const [rendering, setRendering] = useState(false);
+  // The rendered poster is SHOWN first (a preview overlay); downloading is a
+  // button inside it — not a silent file drop.
+  const [posterUrl, setPosterUrl] = useState<string | null>(null);
+  function closePoster() {
+    if (posterUrl) URL.revokeObjectURL(posterUrl);
+    setPosterUrl(null);
+  }
 
   const visitedIds = useMemo(() => visitedCountryIds(visits), [visits]);
   const { collected, missing } = useMemo(() => {
@@ -39,12 +46,7 @@ export function PassportScreen() {
         countries: cov.countriesVisited,
         cities: cov.citiesVisited,
       });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "postcards-world.png";
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      setPosterUrl(URL.createObjectURL(blob));
     } catch {
       showToast("Couldn't render the poster (map geometry unavailable offline?).");
     } finally {
@@ -65,7 +67,7 @@ export function PassportScreen() {
           {formatInt(collected.length + missing.length)} flags collected
         </p>
         <button className="btn" type="button" disabled={rendering} onClick={() => void exportPoster()}>
-          {rendering ? "Rendering…" : "⬇ Export world poster (PNG)"}
+          {rendering ? "Rendering…" : "🖼 World poster"}
         </button>
       </div>
 
@@ -97,6 +99,20 @@ export function PassportScreen() {
       >
         {showMissing ? "Hide" : "Show"} the {formatInt(missing.length)} still to collect
       </button>
+      {posterUrl && (
+        <div className="lightbox" role="dialog" aria-modal="true" aria-label="Your world poster" onClick={closePoster}>
+          <img className="lightbox-img" src={posterUrl} alt="World map poster with a flag on every visited country" />
+          <div className="lightbox-actions" onClick={(e) => e.stopPropagation()}>
+            <a className="mini-btn" href={posterUrl} download="postcards-world.png">
+              ⬇ Download PNG
+            </a>
+            <button className="btn-ghost" type="button" onClick={closePoster}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {showMissing && (
         <ul className="flag-grid">
           {missing.map((c) => (

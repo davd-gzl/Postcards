@@ -4,12 +4,13 @@ import {
   placeKey,
   PostcardsFileSchema,
   SCHEMA_VERSION,
+  type Story,
   type Trip,
   type Visit,
 } from "../../lib/schema/models";
 
 export type ImportResult =
-  | { ok: true; visits: Visit[]; trips: Trip[]; warnings: string[] }
+  | { ok: true; visits: Visit[]; trips: Trip[]; stories: Story[]; warnings: string[] }
   | { ok: false; error: string };
 
 /** Reject absurdly large inputs before parsing (main-thread DoS guard). Generous
@@ -86,8 +87,14 @@ export function importFile(text: string): ImportResult {
   const tripById = new Map<string, Trip>();
   for (const t of parsed.data.trips) tripById.set(t.tripId, t);
   const trips = [...tripById.values()];
+  // Same for stories — the "stories" store is keyed on storyId; last-wins matches
+  // the IndexedDB put order.
+  const storyById = new Map<string, Story>();
+  for (const s of parsed.data.stories) storyById.set(s.storyId, s);
+  const stories = [...storyById.values()];
   const warnings: string[] = [];
   if (visits.length !== parsed.data.visits.length) warnings.push("Merged duplicate places in the file.");
   if (trips.length !== parsed.data.trips.length) warnings.push("Merged duplicate trips in the file.");
-  return { ok: true, visits, trips, warnings };
+  if (stories.length !== parsed.data.stories.length) warnings.push("Merged duplicate stories in the file.");
+  return { ok: true, visits, trips, stories, warnings };
 }

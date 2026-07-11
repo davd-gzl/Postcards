@@ -1,6 +1,7 @@
 import { create } from "zustand";
+import type { PlaceRef } from "../schema/models";
 
-export type Tab = "map" | "stats" | "places" | "trips" | "passport" | "settings";
+export type Tab = "map" | "stats" | "places" | "trips" | "passport" | "journal" | "settings";
 export type PlacesView = "visited" | "wishlist" | "countries" | "monuments" | "favorites";
 
 // Small cross-cutting UI store:
@@ -9,6 +10,7 @@ export type PlacesView = "visited" | "wishlist" | "countries" | "monuments" | "f
 // - mapFocus lets other tabs ask the map to fly somewhere
 // - cityPageId opens the per-city detail page over the current tab
 // - placesViewRequest lets the stat strip open Places pre-filtered
+// - journalDraftRequest lets a city page open the Journal composer prefilled
 interface UiState {
   tab: Tab;
   setTab: (tab: Tab) => void;
@@ -22,6 +24,8 @@ interface UiState {
   closeCity: () => void;
   placesViewRequest: { view: PlacesView; nonce: number } | null;
   openPlaces: (view: PlacesView) => void;
+  journalDraftRequest: { place: PlaceRef; nonce: number } | null;
+  openJournalDraft: (place: PlaceRef) => void;
   // Travel-log time filter — shared so the map's trip arcs honour the same
   // period as the Trips list. "all" | 4-digit year, and "all" | "01".."12".
   tripYear: string;
@@ -50,6 +54,13 @@ export const useUi = create<UiState>((set, get) => ({
       tab: "places",
       cityPageId: null,
       placesViewRequest: { view, nonce: (get().placesViewRequest?.nonce ?? 0) + 1 },
+    }),
+  journalDraftRequest: null,
+  openJournalDraft: (place) =>
+    set({
+      tab: "journal",
+      cityPageId: null,
+      journalDraftRequest: { place, nonce: (get().journalDraftRequest?.nonce ?? 0) + 1 },
     }),
   tripYear: "all",
   tripMonth: "all",
