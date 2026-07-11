@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { useToast } from "../../lib/store/useToast";
+import { useSettings } from "../../lib/store/useSettings";
 import { saveAreaOffline } from "../map/offlineTiles";
 import { OFFLINE_REGIONS, REGION_MAX_TILES, estimateRegion, type OfflineRegion } from "./regions";
 import { ScopeToggle } from "../../ui/ScopeToggle";
@@ -15,6 +16,10 @@ import { formatInt } from "../../lib/format/format";
  */
 export function SettingsScreen() {
   const showToast = useToast((s) => s.show);
+  const autoLoadGuides = useSettings((s) => s.autoLoadGuides);
+  const setAutoLoadGuides = useSettings((s) => s.setAutoLoadGuides);
+  const onlineMap = useSettings((s) => s.onlineMap);
+  const setOnlineMap = useSettings((s) => s.setOnlineMap);
   const [progress, setProgress] = useState<Record<string, number | undefined>>({});
   // Downloads are cancelable, and each region remembers when it was last saved
   // (so the button honestly reads "Re-download" instead of pretending it's new).
@@ -52,7 +57,7 @@ export function SettingsScreen() {
     }
     try {
       for (const r of OFFLINE_REGIONS) localStorage.removeItem(`postcards-region-saved:${r.id}`);
-      for (const k of ["postcards-basemap", "postcards-globe", "postcards-towns", "postcards-map-mode", "postcards-city-filter", "postcards-hint-offline"])
+      for (const k of ["postcards-basemap", "postcards-globe", "postcards-towns", "postcards-countries", "postcards-map-mode", "postcards-city-filter", "postcards-hint-offline"])
         localStorage.removeItem(k);
     } catch {
       /* private mode */
@@ -113,12 +118,29 @@ export function SettingsScreen() {
       </section>
 
       <section className="settings-section">
+        <h3>Detailed map</h3>
+        <p className="muted small">
+          The detailed OpenStreetMap map is on by default; it fetches map tiles from OpenStreetMap
+          when you're online. Turn it off to use the plain offline map only, so the app makes no
+          network requests at all. Either way, no personal data ever leaves your device.
+        </p>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={onlineMap}
+            onChange={(e) => setOnlineMap(e.target.checked)}
+          />
+          <span>Use the detailed online map (OpenStreetMap)</span>
+        </label>
+      </section>
+
+      <section className="settings-section">
         <h3>Offline maps</h3>
         <p className="muted small">
-          Download the world or a whole region of the OpenStreetMap basemap for offline use; the
-          real download size is shown up front. Packs cover overview zoom (countries, big cities).
-          Street-level areas you browse on the online map are kept offline automatically. Tiles
-          come from OpenStreetMap and are fetched only when you tap Download.
+          Save the detailed OpenStreetMap map for offline use: download the whole world or a single
+          region, with the real size shown up front. Packs cover overview zoom (countries, big
+          cities); street-level areas you browse online are kept offline automatically. Tiles come
+          from OpenStreetMap and are fetched only when you tap Download.
         </p>
         <ul className="region-list">
           {OFFLINE_REGIONS.map((r) => {
@@ -196,9 +218,26 @@ export function SettingsScreen() {
       </section>
 
       <section className="settings-section">
+        <h3>Travel guides</h3>
+        <p className="muted small">
+          When you open a place, a short overview and photo can load from Wikivoyage and Wikipedia.
+          Opening a place is your own action, so this is on by default; turn it off to load guides
+          only when you tap. Nothing else leaves your device.
+        </p>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={autoLoadGuides}
+            onChange={(e) => setAutoLoadGuides(e.target.checked)}
+          />
+          <span>Load guide overviews automatically when online</span>
+        </label>
+      </section>
+
+      <section className="settings-section">
         <Backup />
         <p className="muted small">
-          Cloud sync (Nextcloud, Google Drive, …) is planned — for now, export the file and drop it
+          Cloud sync (Nextcloud, Google Drive, …) is planned; for now, export the file and drop it
           in any synced folder.
         </p>
       </section>

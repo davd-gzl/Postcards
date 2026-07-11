@@ -5,6 +5,7 @@ import { useVisits } from "../../lib/store/useVisits";
 import { useTrips } from "../../lib/store/useTrips";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
+import { useSettings } from "../../lib/store/useSettings";
 import { usePrefersReducedMotion } from "../../lib/hooks/usePrefersReducedMotion";
 import { countryFlag, formatInt } from "../../lib/format/format";
 import { StateToggles } from "../visits/StateToggles";
@@ -27,8 +28,8 @@ const FILTER_KEY = "postcards-city-filter";
 
 const BASEMAP_LABEL: Record<Basemap, string> = {
   simple: "Simple map (offline)",
-  osm: "Detail map (online)",
-  detail: "Streets (offline)",
+  osm: "Detailed map",
+  detail: "Offline streets",
 };
 
 // localStorage may throw (private mode); loading then parses null → the default,
@@ -49,8 +50,13 @@ function savePref(key: string, value: string): void {
   }
 }
 
+// The detailed OpenStreetMap map is the one true basemap now (real coastlines,
+// colour, street detail — and it's downloadable for offline in Settings). The
+// bland vector-outline "simple" map survives only as an automatic fallback when
+// OSM tiles can't load offline, so it's no longer an option here. A previously
+// saved "simple" preference migrates to "osm".
 function loadBasemap(): Basemap {
-  return loadPref(BASEMAP_KEY, (v) => (v === "osm" || v === "detail" ? v : "simple"));
+  return loadPref(BASEMAP_KEY, (v) => (v === "detail" ? "detail" : "osm"));
 }
 
 export function MapScreen() {
@@ -61,6 +67,9 @@ export function MapScreen() {
   const tripYear = useUi((s) => s.tripYear);
   const tripMonth = useUi((s) => s.tripMonth);
   const reducedMotion = usePrefersReducedMotion();
+  // The privacy escape hatch: when off, the app uses the no-network offline map
+  // only (zero outbound requests), overriding whatever detailed basemap is saved.
+  const onlineMap = useSettings((s) => s.onlineMap);
 
   // gazGen invalidates city snapshots when the full 135k-city set streams in —
   // the singleton mutates in place, so `ref` alone never re-fires these memos.
@@ -80,6 +89,9 @@ export function MapScreen() {
   const [showTrips, setShowTrips] = useState(true);
   const [globe, setGlobe] = useState(() => loadPref(GLOBE_KEY, (v) => v === "1"));
   const [showTowns, setShowTowns] = useState(() => loadPref("postcards-towns", (v) => v === "1"));
+  const [showCountries, setShowCountries] = useState(() =>
+    loadPref("postcards-countries", (v) => v === "1"),
+  );
   const [listTall, setListTall] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const [mode, setMode] = useState<MapMode>(() =>
@@ -99,8 +111,8 @@ export function MapScreen() {
       if (!alive) return;
       setHasDetail(ok);
       if (!ok && loadBasemap() === "detail") {
-        setBasemap("simple");
-        savePref(BASEMAP_KEY, "simple");
+        setBasemap("osm");
+        savePref(BASEMAP_KEY, "osm");
       }
     });
     return () => {
@@ -117,17 +129,16 @@ export function MapScreen() {
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
-  const basemapCycle: Basemap[] = hasDetail ? ["simple", "osm", "detail"] : ["simple", "osm"];
+  // Only the detailed map (and, if a device-global streets pack is installed, the
+  // offline streets map) are user choices now — no bland outline map to cycle to.
+  const basemapCycle: Basemap[] = hasDetail ? ["osm", "detail"] : ["osm"];
   const nextBasemap = basemapCycle[(basemapCycle.indexOf(basemap) + 1) % basemapCycle.length]!;
+  // When online maps are turned off in Settings, force the offline vector map.
+  const effectiveBasemap: Basemap = onlineMap ? basemap : "simple";
 
   function switchBasemap() {
     setBasemap(nextBasemap);
     savePref(BASEMAP_KEY, nextBasemap);
-    // One-time hint: offline region downloads moved to Settings (no map button).
-    if (nextBasemap === "osm" && loadPref("postcards-hint-offline", (v) => v !== "1")) {
-      savePref("postcards-hint-offline", "1");
-      showToast("Tip: download whole regions for offline use in Settings, under Offline maps.");
-    }
   }
 
 
@@ -327,8 +338,8 @@ export function MapScreen() {
 
       <div className="map-box">
         <MapView
-          key={basemap}
-          basemap={basemap}
+          key={effectiveBasemap}
+          basemap={effectiveBasemap}
           dark={dark}
           onBounds={setBounds}
           focus={focus}
@@ -338,6 +349,7 @@ export function MapScreen() {
           globe={globe}
           mode={mode}
           showTowns={showTowns}
+          showCountries={showCountries}
           reducedMotion={reducedMotion}
           onBaseUnavailable={() => {
             if (basemap === "osm") {
@@ -416,9 +428,25 @@ export function MapScreen() {
               >
                 ∴ Towns
               </button>
-              <button className="map-btn" type="button" onClick={switchBasemap}>
-                ⤳ {BASEMAP_LABEL[nextBasemap]}
+              <button
+                className={"map-btn" + (showCountries ? " on" : "")}
+                type="button"
+                aria-pressed={showCountries}
+                title="Shade the countries you've visited"
+                onClick={() => {
+                  setShowCountries((v) => {
+                    savePref("postcards-countries", !v ? "1" : "0");
+                    return !v;
+                  });
+                }}
+              >
+                🗺 My countries
               </button>
+              {onlineMap && basemapCycle.length > 1 && (
+                <button className="map-btn" type="button" onClick={switchBasemap}>
+                  ⤳ {BASEMAP_LABEL[nextBasemap]}
+                </button>
+              )}
             </div>
           )}
         </div>

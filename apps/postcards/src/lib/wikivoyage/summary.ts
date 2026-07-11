@@ -19,13 +19,14 @@ export interface FetchSummaryOpts {
 }
 
 /**
- * Opt-in ONLINE fetch of a Wikivoyage article summary (MediaWiki REST API).
+ * ONLINE fetch of a Wikivoyage/Wikipedia article summary (MediaWiki REST API).
  *
- * Only ever called on an explicit user action. Degrades gracefully: returns null
- * on offline / blocked / missing-article / any error — the caller then just shows
- * the plain links. Inert: reads only the plain-text `extract`, never HTML, and
- * strips markup defensively. No cookies, no telemetry; attribution is returned
- * for display (Wikivoyage text is CC BY-SA 4.0).
+ * Called when you open a place and guide auto-load is on (the default; a Settings
+ * switch makes it manual instead). Degrades gracefully: returns null on offline /
+ * blocked / missing-article / any error — the caller then just shows the plain
+ * links. Inert: reads only the plain-text `extract`, never HTML, and strips markup
+ * defensively. No cookies, no telemetry, no referrer; attribution is returned for
+ * display (text is CC BY-SA 4.0).
  */
 export async function fetchSummary(
   title: string,

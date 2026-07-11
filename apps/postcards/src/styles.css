@@ -2329,7 +2329,10 @@ button.brand:focus-visible {
   }
 }
 
-/* Map layers panel: one button, options above it (bottom-right corner). */
+/* Map layers panel: one button, options stacked next to it. On phones the button
+   sits at the bottom, so the panel opens UPWARD; on desktop the button sits at
+   the top, so it opens DOWNWARD (see the desktop override) — either way it never
+   flies off the map edge. */
 .layers-panel {
   position: absolute;
   bottom: calc(100% + 8px);
@@ -2339,10 +2342,13 @@ button.brand:focus-visible {
   align-items: stretch;
   gap: 6px;
   padding: 8px;
+  max-height: 60vh;
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+  z-index: 6;
 }
 .layers-panel .map-btn {
   box-shadow: none;
@@ -2350,6 +2356,14 @@ button.brand:focus-visible {
 }
 .map-ctl-right {
   position: absolute;
+}
+@media (min-width: 900px) {
+  /* Desktop: the Layers button lives near the top-right, so open the panel below
+     it instead of above (the old upward panel flew off the top of the map). */
+  .map-ctl-right .layers-panel {
+    top: calc(100% + 8px);
+    bottom: auto;
+  }
 }
 
 /* Map popup: the whole card is the toggle; state is spelled out under the name. */
@@ -2399,6 +2413,82 @@ button.brand:focus-visible {
 }
 .guide-section .guide-body {
   margin-top: 2px;
+}
+
+/* One tidy overview card (photo + short blurb) instead of stacked walls of text. */
+.guide-card {
+  margin: 0 0 12px;
+}
+.guide-extract {
+  margin: 0 0 6px;
+  padding: 0;
+  border: 0;
+}
+.guide-extract p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  /* Keep it a preview; "Read more" opens the full article. */
+  display: -webkit-box;
+  -webkit-line-clamp: 8;
+  line-clamp: 8;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.guide-cite {
+  display: block;
+}
+.guide-cite a {
+  color: var(--accent);
+  font-weight: 600;
+}
+.guide-loading {
+  margin: 0 0 12px;
+}
+
+/* Moments: each links to the real places where it happens. */
+.moment-row {
+  align-items: flex-start;
+}
+.moment-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.moment-spots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.moment-spot {
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  max-width: 100%;
+}
+.moment-spot:hover,
+.moment-spot:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Settings: a simple checkbox row. */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.toggle-row input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  accent-color: var(--accent);
 }
 
 /* Places: year chips + monuments header row. */

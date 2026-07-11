@@ -69,7 +69,14 @@ export function monumentPoints(visits: Visit[], ref: ReferenceData): FeatureColl
     features.push({
       type: "Feature",
       geometry: { type: "Point", coordinates: [h.lon, h.lat] },
-      properties: { id: h.id, name: h.name, cc: h.countryIso2, seen: seen.has(h.id) ? 1 : 0 },
+      properties: {
+        id: h.id,
+        name: h.name,
+        cc: h.countryIso2,
+        // The UNESCO kind picks the marker emoji (cultural / natural / mixed).
+        cat: h.category ?? "cultural",
+        seen: seen.has(h.id) ? 1 : 0,
+      },
     });
   }
   return { type: "FeatureCollection", features };
