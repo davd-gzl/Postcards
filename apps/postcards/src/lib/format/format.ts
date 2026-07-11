@@ -16,14 +16,6 @@ export function countryFlag(iso2: string): string {
     .replace(/[A-Z]/g, (ch) => String.fromCodePoint(0x1f1e6 + ch.charCodeAt(0) - 65));
 }
 
-/** Compact figure, e.g. 2200000 -> "2.2M". Surfaces the sort key in tight rows. */
-export function formatCompact(n: number, locale?: string): string {
-  return new Intl.NumberFormat(locale, {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(n);
-}
-
 /** Great-circle distance in km -> localized "1,234 km" (rounded to the km). */
 export function formatKm(km: number, locale?: string): string {
   return `${formatInt(km, locale)} km`;
