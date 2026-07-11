@@ -2172,3 +2172,16 @@ h1.brand {
     padding: 5px 0 4px;
   }
 }
+
+/* Map mode pill: never wrap the labels ("🏛 Monuments" was breaking into two
+   lines); scroll sideways on very narrow screens instead. */
+.map-ctl-top {
+  flex-wrap: nowrap;
+  max-width: calc(100% - 20px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.map-ctl-top button {
+  white-space: nowrap;
+  flex: none;
+}
