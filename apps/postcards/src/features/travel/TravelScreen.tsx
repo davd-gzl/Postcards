@@ -6,9 +6,11 @@ import { useUi } from "../../lib/store/useUi";
 import { formatDate, formatKm } from "../../lib/format/format";
 import type { PlaceRef, TravelMode, Trip } from "../../lib/schema/models";
 import { julianToDate, type BcbpResult } from "../../lib/bcbp/parse";
+import { CityLine } from "../../ui/CityLine";
 import { PlacePicker } from "./PlacePicker";
 import { BoardingPassImport } from "./BoardingPassImport";
 import { travelTotals, tripDistanceKm } from "./distance";
+import { MODE_GLYPH } from "./modes";
 import {
   MONTH_NAMES,
   periodLabel,
@@ -19,17 +21,14 @@ import {
   type YearFilter,
 } from "./period";
 
-const MODES: { value: TravelMode; label: string; glyph: string }[] = [
-  { value: "flight", label: "Flight", glyph: "✈️" },
-  { value: "train", label: "Train", glyph: "🚆" },
-  { value: "bus", label: "Bus", glyph: "🚌" },
-  { value: "ferry", label: "Ferry", glyph: "⛴️" },
-  { value: "car", label: "Car", glyph: "🚗" },
-  { value: "other", label: "Other", glyph: "•" },
+const MODES: { value: TravelMode; label: string }[] = [
+  { value: "flight", label: "Flight" },
+  { value: "train", label: "Train" },
+  { value: "bus", label: "Bus" },
+  { value: "ferry", label: "Ferry" },
+  { value: "car", label: "Car" },
+  { value: "other", label: "Other" },
 ];
-const GLYPH: Record<TravelMode, string> = Object.fromEntries(
-  MODES.map((m) => [m.value, m.glyph]),
-) as Record<TravelMode, string>;
 
 /** Compact endpoint label: the IATA code for airports (names are long), else the place name. */
 function endpointLabel(p: PlaceRef): string {
@@ -247,7 +246,7 @@ export function TravelScreen() {
           <span className="tt-modes">
             {totals.byMode.map((m) => (
               <span className="tt-mode" key={m.mode} title={`${m.trips} by ${m.mode}`}>
-                {GLYPH[m.mode]} {m.trips}
+                {MODE_GLYPH[m.mode]} {m.trips}
               </span>
             ))}
           </span>
@@ -271,7 +270,7 @@ export function TravelScreen() {
             >
               {MODES.map((m) => (
                 <option key={m.value} value={m.value}>
-                  {m.glyph} {m.label}
+                  {MODE_GLYPH[m.value]} {m.label}
                 </option>
               ))}
             </select>
@@ -334,17 +333,17 @@ export function TravelScreen() {
             return (
               <li key={t.tripId} className={"city-row compact" + (editingId === t.tripId ? " selected" : "")}>
                 <div className="city-focus" style={{ cursor: "default" }}>
-                  <span className="city-line">
-                    <span className="flag" aria-hidden>
-                      {GLYPH[t.mode]}
-                    </span>
-                    <span className="city-name">{label}</span>
-                    <span className="city-sub">
-                      {km == null ? "" : `· ${formatKm(km)}`}
-                      {t.date ? ` · ${formatDate(t.date)}` : ""}
-                      {t.note ? ` · ${t.note}` : ""}
-                    </span>
-                  </span>
+                  <CityLine
+                    flag={MODE_GLYPH[t.mode]}
+                    name={label}
+                    sub={
+                      <>
+                        {km == null ? "" : `· ${formatKm(km)}`}
+                        {t.date ? ` · ${formatDate(t.date)}` : ""}
+                        {t.note ? ` · ${t.note}` : ""}
+                      </>
+                    }
+                  />
                 </div>
                 <button
                   className="link"
