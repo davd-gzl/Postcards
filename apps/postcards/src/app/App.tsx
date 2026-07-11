@@ -90,24 +90,7 @@ export function App() {
         Skip to content
       </a>
 
-      <div className="app-shell">
-        <nav className="bottom-nav" aria-label="Sections">
-          {TABS.map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              className={"nav-item" + (tab === id ? " active" : "")}
-              aria-current={tab === id ? "page" : undefined}
-              onClick={() => setTab(id)}
-            >
-              <Icon />
-              <span>{label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="app-content">
-          <header className="topbar">
+      <header className="topbar">
             <h1 className="brand">Postcards</h1>
             <span className="topbar-actions">
               <button
@@ -131,11 +114,26 @@ export function App() {
             </span>
           </header>
 
-          <p className="sr-only" role="status" aria-live="polite">
-            {currentLabel} section
-          </p>
+      <p className="sr-only" role="status" aria-live="polite">
+        {currentLabel} section
+      </p>
 
-          <main
+      <nav className="bottom-nav" aria-label="Sections">
+        {TABS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            className={"nav-item" + (tab === id ? " active" : "")}
+            aria-current={tab === id ? "page" : undefined}
+            onClick={() => setTab(id)}
+          >
+            <Icon />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+
+      <main
             ref={mainRef}
             id="main"
             tabIndex={-1}
@@ -177,9 +175,7 @@ export function App() {
                 )}
               </>
             )}
-          </main>
-        </div>
-      </div>
+      </main>
 
       <Toast />
 
