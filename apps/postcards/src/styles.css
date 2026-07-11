@@ -114,22 +114,6 @@ button {
   height: 100dvh;
 }
 
-/* Shell: content + navigation. Stacks on mobile (nav at the bottom); becomes a
-   sidebar rail + content column on wide screens. */
-.app-shell {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-.app-content {
-  order: 1;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
 /* Top bar */
 .topbar {
   display: flex;
@@ -202,11 +186,11 @@ h1.brand {
   padding: 12px 14px 24px;
 }
 
-/* Bottom navigation (mobile-first, thumb reach). `order` keeps it below the
-   content even though it precedes it in the DOM (so the rail can be first on
-   desktop without reordering focus badly). */
+/* Section navigation. Mobile: a bottom tab bar (thumb reach) — `order` pushes
+   it below the content visually while it stays before <main> in the DOM (so on
+   desktop, where it renders as a TOP bar, focus order matches what you see). */
 .bottom-nav {
-  order: 2;
+  order: 9;
   flex: none;
   display: flex;
   border-top: 1px solid var(--border);
@@ -1483,30 +1467,24 @@ h1.brand {
   }
 }
 
-/* Desktop: a left navigation rail + a wider content area, and a true two-pane
-   map (map beside the cities list) instead of a fixed-height strip. */
+/* Desktop: the section tabs move to the TOP (a horizontal bar under the title
+   bar), and the map becomes a true two-pane layout (map beside the cities list). */
 @media (min-width: 900px) {
-  .app-shell {
-    flex-direction: row;
-  }
   .bottom-nav {
-    order: 0;
-    flex-direction: column;
-    align-items: stretch;
-    width: 212px;
-    flex: none;
+    order: 0; /* natural DOM spot: right under the top bar */
+    flex-direction: row;
+    justify-content: center;
+    gap: 6px;
     border-top: none;
-    border-right: 1px solid var(--border);
-    padding: 10px 10px 0;
-    gap: 2px;
-    overflow-y: auto;
+    border-bottom: 1px solid var(--border);
+    padding: 6px 12px;
   }
   .nav-item {
+    flex: none;
     flex-direction: row;
-    justify-content: flex-start;
-    gap: 11px;
-    padding: 11px 14px;
-    border-radius: var(--radius-sm);
+    gap: 9px;
+    padding: 8px 18px;
+    border-radius: 999px;
     min-height: 0;
   }
   .nav-item span {
@@ -1514,6 +1492,10 @@ h1.brand {
   }
   .nav-item.active {
     background: var(--accent-soft);
+  }
+  .nav-item svg {
+    width: 18px;
+    height: 18px;
   }
 
   .screen {
