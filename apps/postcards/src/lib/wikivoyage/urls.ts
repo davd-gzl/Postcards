@@ -31,7 +31,14 @@ export function searchUrl(query: string, lang: string = DEFAULT_LANG): string {
   return `${host(lang)}/w/index.php?search=${encodeURIComponent(query)}`;
 }
 
+/** Wikimedia sister project a summary can come from. */
+export type WikiProject = "wikivoyage" | "wikipedia";
+
 /** REST summary endpoint for a title (used by the opt-in online fetch). */
-export function summaryEndpoint(title: string, lang: string = DEFAULT_LANG): string {
-  return `${host(lang)}/api/rest_v1/page/summary/${titleToPath(title)}`;
+export function summaryEndpoint(
+  title: string,
+  lang: string = DEFAULT_LANG,
+  project: WikiProject = "wikivoyage",
+): string {
+  return `https://${lang}.${project}.org/api/rest_v1/page/summary/${titleToPath(title)}`;
 }

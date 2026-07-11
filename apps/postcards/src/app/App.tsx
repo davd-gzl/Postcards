@@ -55,6 +55,7 @@ export function App() {
       if (e.key === "Escape") {
         setShowHelp(false);
         setShowAbout(false);
+        useUi.getState().closeCity(); // Escape backs out of a detail page too
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;

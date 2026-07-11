@@ -59,8 +59,12 @@ function VisitRow({ v, wishlist }: { v: Visit; wishlist?: boolean }) {
       <button
         className="city-focus"
         type="button"
-        onClick={() => (coord ? flyTo(coord.lon, coord.lat) : undefined)}
-        aria-label={coord ? `Show ${v.place.name} on the map` : v.place.name}
+        onClick={() =>
+          v.place.kind === "country" || v.place.kind === "airport"
+            ? coord && flyTo(coord.lon, coord.lat)
+            : useUi.getState().openCity(v.place.id)
+        }
+        aria-label={`Open ${v.place.name}`}
       >
         <CityLine
           flag={countryFlag(v.place.countryId)}
@@ -78,16 +82,6 @@ function VisitRow({ v, wishlist }: { v: Visit; wishlist?: boolean }) {
           }
         />
       </button>
-      {!wishlist && (v.place.kind === "city" || v.place.kind === "custom") && (
-        <button
-          className="mini-btn"
-          type="button"
-          aria-label={`Details for ${v.place.name}`}
-          onClick={() => useUi.getState().openCity(v.place.id)}
-        >
-          Details
-        </button>
-      )}
       <GuideButton place={v.place} />
       {!wishlist && (
         <PhotoGallery visitId={v.visitId} photos={v.photos ?? []} placeName={v.place.name} />
@@ -129,7 +123,6 @@ function VisitRow({ v, wishlist }: { v: Visit; wishlist?: boolean }) {
 export function PlacesScreen() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
-  const flyTo = useUi((s) => s.flyTo);
 
   const scope = useSettings((s) => s.countryScope);
   const [view, setView] = useState<View>("visited");
@@ -227,6 +220,18 @@ export function PlacesScreen() {
               {t.label}
             </button>
           ))}
+          <button
+            type="button"
+            aria-pressed={favOnly}
+            className={favOnly ? "seg-on" : ""}
+            title="Only your favorites"
+            onClick={() => {
+              setView("visited");
+              setFavOnly((f) => !f);
+            }}
+          >
+            ★
+          </button>
         </div>
       </div>
 
@@ -311,13 +316,12 @@ export function PlacesScreen() {
                       <button
                         className="city-focus"
                         type="button"
-                        onClick={() =>
-                          h.lat !== 0 || h.lon !== 0 ? flyTo(h.lon, h.lat) : undefined
-                        }
-                        aria-label={`Show ${h.name} on the map`}
+                        onClick={() => useUi.getState().openCity(h.id)}
+                        aria-label={`Open ${h.name}`}
                       >
                         <CityLine flag={countryFlag(h.countryIso2)} name={h.name} sub={<>· {country}</>} />
                       </button>
+                      <GuideButton place={place} />
                       <StateToggles place={place} />
                     </li>
                   );

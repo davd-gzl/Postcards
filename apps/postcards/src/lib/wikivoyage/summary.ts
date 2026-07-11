@@ -11,6 +11,8 @@ function toPlainText(s: string): string {
 
 export interface FetchSummaryOpts {
   lang?: string;
+  /** Which sister project to read from (default wikivoyage). */
+  project?: "wikivoyage" | "wikipedia";
   signal?: AbortSignal;
   /** Injectable for tests; defaults to global fetch. */
   fetchFn?: typeof fetch;
@@ -30,9 +32,10 @@ export async function fetchSummary(
   opts: FetchSummaryOpts = {},
 ): Promise<WikivoyageSummary | null> {
   const lang = opts.lang ?? DEFAULT_LANG;
+  const project = opts.project ?? "wikivoyage";
   const doFetch = opts.fetchFn ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
   try {
-    const res = await doFetch(summaryEndpoint(title, lang), {
+    const res = await doFetch(summaryEndpoint(title, lang, project), {
       signal: opts.signal,
       headers: { Accept: "application/json" },
       credentials: "omit",
@@ -55,7 +58,7 @@ export async function fetchSummary(
       title: j.title ?? title,
       extract,
       url: j.content_urls?.desktop?.page ?? articleUrl(title, lang),
-      attribution: "Wikivoyage · CC BY-SA 4.0",
+      attribution: `${project === "wikipedia" ? "Wikipedia" : "Wikivoyage"} · CC BY-SA 4.0`,
     };
   } catch {
     return null;
