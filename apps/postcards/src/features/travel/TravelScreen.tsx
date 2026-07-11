@@ -35,6 +35,102 @@ function endpointLabel(p: PlaceRef): string {
   return p.kind === "airport" ? p.id : p.name;
 }
 
+interface TripFields {
+  from: PlaceRef | null;
+  to: PlaceRef | null;
+  mode: TravelMode;
+  date: string;
+  note: string;
+}
+
+const EMPTY_FIELDS: TripFields = { from: null, to: null, mode: "flight", date: "", note: "" };
+
+/**
+ * The add/edit form. Its fields are local state so keystrokes re-render only
+ * the form — never the trip list above and below it. The parent remounts it
+ * (via key) whenever it prefills values: an edit, a scanned pass, or a reset.
+ */
+function TripForm({
+  initial,
+  editing,
+  onSave,
+  onCancel,
+}: {
+  initial: TripFields;
+  editing: boolean;
+  onSave: (fields: TripFields) => void;
+  onCancel: () => void;
+}) {
+  const [from, setFrom] = useState<PlaceRef | null>(initial.from);
+  const [to, setTo] = useState<PlaceRef | null>(initial.to);
+  const [mode, setMode] = useState<TravelMode>(initial.mode);
+  const [date, setDate] = useState(initial.date);
+  const [note, setNote] = useState(initial.note);
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!from || !to) return;
+    onSave({ from, to, mode, date, note });
+  }
+
+  return (
+    <form className="trip-form" onSubmit={onSubmit}>
+      {editing && <p className="editing-note">Editing a trip</p>}
+      <PlacePicker label="From" value={from} onPick={setFrom} />
+      <PlacePicker label="To" value={to} onPick={setTo} />
+      <div className="trip-form-row">
+        <label className="picker-label" htmlFor="trip-mode">
+          Mode
+          <select
+            id="trip-mode"
+            className="select"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as TravelMode)}
+          >
+            {MODES.map((m) => (
+              <option key={m.value} value={m.value}>
+                {MODE_GLYPH[m.value]} {m.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="picker-label" htmlFor="trip-date">
+          Date (optional)
+          <input
+            id="trip-date"
+            className="select"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </label>
+      </div>
+      <label className="picker-label" htmlFor="trip-note">
+        Note (optional)
+        <input
+          id="trip-note"
+          className="select"
+          type="text"
+          maxLength={120}
+          placeholder="Flight AC834, seat 12A…"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </label>
+      <div className="trip-form-actions">
+        <button className="btn" type="submit" disabled={!from || !to}>
+          {editing ? "Save changes" : "Add trip"}
+        </button>
+        {editing && (
+          <button className="btn-ghost" type="button" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+      </div>
+    </form>
+  );
+}
+
 /** Log of journeys you've taken: add a trip, see per-trip distance and totals. */
 export function TravelScreen() {
   const ref = useMemo(() => getReferenceData(), []);
@@ -45,12 +141,12 @@ export function TravelScreen() {
   const setAll = useTrips((s) => s.setAll);
   const showToast = useToast((s) => s.show);
 
-  const [from, setFrom] = useState<PlaceRef | null>(null);
-  const [to, setTo] = useState<PlaceRef | null>(null);
-  const [mode, setMode] = useState<TravelMode>("flight");
-  const [date, setDate] = useState("");
-  const [note, setNote] = useState("");
+  // The form itself holds its fields (see TripForm); the parent only keeps what
+  // to prefill it with, and a key that remounts it when a new prefill arrives.
+  const [draft, setDraft] = useState<TripFields>(EMPTY_FIELDS);
+  const [formKey, setFormKey] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [passOpen, setPassOpen] = useState(false);
   // The period filter is shared (via useUi) so the map's trip arcs match it.
   const year = useUi((s) => s.tripYear) as YearFilter;
   const month = useUi((s) => s.tripMonth) as MonthFilter;
@@ -82,27 +178,26 @@ export function TravelScreen() {
     else if (year !== "all" && month !== "all" && !months.includes(month)) setTripPeriod(year, "all");
   }, [years, months, year, month, setTripPeriod]);
 
+  /** Remount the form with these fields (and, for an edit, the trip being edited). */
+  function loadForm(fields: TripFields, tripId: string | null = null) {
+    setDraft(fields);
+    setEditingId(tripId);
+    setFormKey((k) => k + 1);
+  }
+
   function resetForm() {
-    setFrom(null);
-    setTo(null);
-    setMode("flight");
-    setDate("");
-    setNote("");
-    setEditingId(null);
+    loadForm(EMPTY_FIELDS);
   }
 
   function startEdit(t: Trip) {
-    setFrom(t.from);
-    setTo(t.to);
-    setMode(t.mode);
-    setDate(t.date ?? "");
-    setNote(t.note ?? "");
-    setEditingId(t.tripId);
+    loadForm(
+      { from: t.from, to: t.to, mode: t.mode, date: t.date ?? "", note: t.note ?? "" },
+      t.tripId,
+    );
     document.querySelector(".trip-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function saveTrip({ from, to, mode, date, note }: TripFields) {
     if (!from || !to) return;
     const prev = useTrips.getState().trips;
     const fields = { from, to, mode, date: date || null, note: note.trim() || null };
@@ -114,6 +209,19 @@ export function TravelScreen() {
       showToast(`Added ${endpointLabel(from)} → ${endpointLabel(to)}`, () => setAll(prev));
     }
     resetForm();
+  }
+
+  // Escape backs out of the screen's transient states: the edit mode or the
+  // boarding-pass panel (claimed here so it doesn't also navigate back).
+  function onEscape(e: React.KeyboardEvent) {
+    if (e.key !== "Escape") return;
+    if (passOpen) {
+      setPassOpen(false);
+      e.stopPropagation();
+    } else if (editingId) {
+      resetForm();
+      e.stopPropagation();
+    }
   }
 
   function removeWithUndo(tripId: string, label: string) {
@@ -141,13 +249,15 @@ export function TravelScreen() {
 
     if (legs.length === 1) {
       const leg = legs[0]!;
-      setMode("flight");
       // Always replace both endpoints — clear an unresolved code so the field the
       // toast asks the user to fill is actually empty (never a stale leftover).
-      setFrom(leg.from ?? null);
-      setTo(leg.to ?? null);
-      setDate(leg.date);
-      setNote(leg.flight ? `Flight ${leg.flight}` : "");
+      loadForm({
+        from: leg.from ?? null,
+        to: leg.to ?? null,
+        mode: "flight",
+        date: leg.date,
+        note: leg.flight ? `Flight ${leg.flight}` : "",
+      });
       const missing = [!leg.from && leg.codes[0], !leg.to && leg.codes[1]].filter(Boolean);
       showToast(
         missing.length
@@ -183,7 +293,7 @@ export function TravelScreen() {
   }
 
   return (
-    <section aria-label="Travel log">
+    <section aria-label="Travel log" onKeyDown={onEscape}>
       <div className="section-head">
         <h2>Travel log</h2>
       </div>
@@ -253,62 +363,17 @@ export function TravelScreen() {
         )}
       </div>
 
-      {!editingId && <BoardingPassImport onResult={handleScan} />}
+      {!editingId && (
+        <BoardingPassImport open={passOpen} onOpenChange={setPassOpen} onResult={handleScan} />
+      )}
 
-      <form className="trip-form" onSubmit={onSubmit}>
-        {editingId && <p className="editing-note">Editing a trip</p>}
-        <PlacePicker label="From" value={from} onPick={setFrom} />
-        <PlacePicker label="To" value={to} onPick={setTo} />
-        <div className="trip-form-row">
-          <label className="picker-label" htmlFor="trip-mode">
-            Mode
-            <select
-              id="trip-mode"
-              className="select"
-              value={mode}
-              onChange={(e) => setMode(e.target.value as TravelMode)}
-            >
-              {MODES.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {MODE_GLYPH[m.value]} {m.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="picker-label" htmlFor="trip-date">
-            Date (optional)
-            <input
-              id="trip-date"
-              className="select"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </label>
-        </div>
-        <label className="picker-label" htmlFor="trip-note">
-          Note (optional)
-          <input
-            id="trip-note"
-            className="select"
-            type="text"
-            maxLength={120}
-            placeholder="Flight AC834, seat 12A…"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </label>
-        <div className="trip-form-actions">
-          <button className="btn" type="submit" disabled={!from || !to}>
-            {editingId ? "Save changes" : "Add trip"}
-          </button>
-          {editingId && (
-            <button className="btn-ghost" type="button" onClick={resetForm}>
-              Cancel
-            </button>
-          )}
-        </div>
-      </form>
+      <TripForm
+        key={formKey}
+        initial={draft}
+        editing={!!editingId}
+        onSave={(fields) => void saveTrip(fields)}
+        onCancel={resetForm}
+      />
 
       {trips.length === 0 ? (
         <p className="muted empty">
@@ -332,7 +397,12 @@ export function TravelScreen() {
             const label = `${endpointLabel(t.from)} → ${endpointLabel(t.to)}`;
             return (
               <li key={t.tripId} className={"city-row compact" + (editingId === t.tripId ? " selected" : "")}>
-                <div className="city-focus" style={{ cursor: "default" }}>
+                <button
+                  className="city-focus"
+                  type="button"
+                  title={`Edit ${label}`}
+                  onClick={() => startEdit(t)}
+                >
                   <CityLine
                     flag={MODE_GLYPH[t.mode]}
                     name={label}
@@ -344,7 +414,7 @@ export function TravelScreen() {
                       </>
                     }
                   />
-                </div>
+                </button>
                 <button
                   className="link"
                   type="button"

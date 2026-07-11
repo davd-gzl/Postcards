@@ -41,8 +41,19 @@ export function AddPlaceForm({ initialName, onDone }: { initialName: string; onD
     onDone();
   }
 
+  // Keyboard-first: Enter anywhere saves (once the form is valid), Escape cancels.
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && canSave) {
+      e.preventDefault();
+      void save();
+    } else if (e.key === "Escape") {
+      e.stopPropagation(); // cancel the form only — don't also navigate back
+      onDone();
+    }
+  }
+
   return (
-    <div className="add-place">
+    <div className="add-place" onKeyDown={onKeyDown}>
       <p className="muted small">
         Add it yourself — saved as <em>your own place</em> in your file, shown on the map if you
         give coordinates.
@@ -55,6 +66,7 @@ export function AddPlaceForm({ initialName, onDone }: { initialName: string; onD
           maxLength={200}
           placeholder="Place name"
           aria-label="Place name"
+          autoFocus
           onChange={(e) => setName(e.target.value)}
         />
         <select

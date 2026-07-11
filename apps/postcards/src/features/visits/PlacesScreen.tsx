@@ -189,8 +189,10 @@ export function PlacesScreen() {
   }, [ref, q, scope]);
 
   const monuments = useMemo(() => {
-    const all = q ? ref.searchHeritage(q, 200) : ref.allHeritage();
-    return [...all].sort((a, b) => a.name.localeCompare(b.name));
+    // A search keeps the ranker's best-match-first order; only the full
+    // unfiltered list reads better alphabetically.
+    if (q) return ref.searchHeritage(q, 200);
+    return [...ref.allHeritage()].sort((a, b) => a.name.localeCompare(b.name));
   }, [ref, q]);
 
   const TABS: { id: View; label: string }[] = [
@@ -377,15 +379,14 @@ export function PlacesScreen() {
                       }
                     />
                   </button>
-                  {isVisited && subCount > 0 ? (
-                    // Visited through its cities/monuments — already counted; no
-                    // separate per-country record needed.
+                  {isVisited && subCount > 0 && (
+                    // Visited through its cities/monuments — already counted; the
+                    // chip says so, and the toggles keep ⚑/★ reachable.
                     <span className="chip chip-on" aria-label={`${c.name} visited`}>
                       ✓ Visited
                     </span>
-                  ) : (
-                    <StateToggles place={place} />
                   )}
+                  <StateToggles place={place} />
                 </li>
               );
             })}
