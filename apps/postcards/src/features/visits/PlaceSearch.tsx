@@ -4,6 +4,7 @@ import { searchPlaces } from "./search";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { useToast } from "../../lib/store/useToast";
+import { AddPlaceForm } from "./AddPlaceForm";
 import type { PlaceRef } from "../../lib/schema/models";
 
 /**
@@ -142,10 +143,10 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
         </ul>
       )}
       {notFound && (
-        <p className="search-empty">
-          “{q.trim()}” isn’t in the loaded data. Postcards never invents places — missing ones are
-          added by contributing to the open dataset.
-        </p>
+        <div className="search-empty">
+          <p>“{q.trim()}” isn’t in the loaded data.</p>
+          <AddPlaceForm initialName={q.trim()} onDone={() => setQ("")} />
+        </div>
       )}
     </div>
   );

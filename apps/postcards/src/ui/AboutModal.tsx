@@ -50,6 +50,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
           planner.
         </p>
 
+        <div className="about-grid">
         <div className="about-item">
           <span className="about-emoji" aria-hidden>📴</span>
           <div>
@@ -111,6 +112,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
+        </div>
         <p className="muted small about-foot">
           Built to a small <a
             href="https://github.com/davd-gzl/Postcards/blob/main/.specify/memory/constitution.md"
