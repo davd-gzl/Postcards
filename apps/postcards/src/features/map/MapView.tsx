@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import maplibregl, { type GeoJSONSource, type Map as MlMap, type StyleSpecification } from "maplibre-gl";
+import maplibregl, {
+  type GeoJSONSource,
+  type Map as MlMap,
+  type StyleSpecification,
+  type FilterSpecification,
+} from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import { feature } from "topojson-client";
 import type { FeatureCollection, Polygon, MultiPolygon, Point, Feature, LineString } from "geojson";
@@ -8,6 +13,7 @@ import { useGazetteerGeneration } from "../../lib/reference/useGazetteer";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
+import { visitedCountryIds } from "../stats/computeStats";
 import { airportPoints, monumentPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
 import type { Bounds } from "./viewport";
 import type { City } from "../../lib/reference/types";
@@ -105,9 +111,19 @@ function makeCityPill(iso2: string, favorite: boolean): ImageData {
   return ctx.getImageData(0, 0, w, h);
 }
 
-/** Monument pin: 🏛 on a crisp white chip with an amber ring — the bare grey
- * emoji vanished against the basemap. Amber-filled once seen, + a ✅ badge. */
-function makeMonumentPin(seen: boolean): ImageData {
+// Each UNESCO kind gets its own emoji + ring colour, so a glance tells a temple
+// from a national park from a mixed site. The category comes from the dataset —
+// nothing is invented (Constitution: aggregator, never an author).
+const MONUMENT_STYLE: Record<string, { emoji: string; ring: string; seenFill: string }> = {
+  cultural: { emoji: "🏛️", ring: "#b45309", seenFill: "#f6c98a" },
+  natural: { emoji: "🌲", ring: "#15803d", seenFill: "#bbf7d0" },
+  mixed: { emoji: "🏞️", ring: "#7c3aed", seenFill: "#ddd6fe" },
+};
+
+/** Monument pin: a category emoji on a crisp white chip with a coloured ring —
+ * the bare emoji vanished against the basemap. Filled once seen, + a ✅ badge. */
+function makeMonumentPin(category: string, seen: boolean): ImageData {
+  const st = MONUMENT_STYLE[category] ?? MONUMENT_STYLE.cultural!;
   const s = 40; // 20px on screen
   const canvas = document.createElement("canvas");
   canvas.width = s;
@@ -115,15 +131,15 @@ function makeMonumentPin(seen: boolean): ImageData {
   const ctx = canvas.getContext("2d")!;
   ctx.beginPath();
   ctx.arc(s / 2, s / 2, s / 2 - 3, 0, Math.PI * 2);
-  ctx.fillStyle = seen ? "#f6c98a" : "#ffffff";
+  ctx.fillStyle = seen ? st.seenFill : "#ffffff";
   ctx.fill();
   ctx.lineWidth = seen ? 3.5 : 2.5;
-  ctx.strokeStyle = "#b45309";
+  ctx.strokeStyle = st.ring;
   ctx.stroke();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `22px ${EMOJI_FONT}`;
-  ctx.fillText("🏛️", s / 2, s / 2 + 1);
+  ctx.font = `21px ${EMOJI_FONT}`;
+  ctx.fillText(st.emoji, s / 2, s / 2 + 1);
   if (seen) {
     ctx.font = `13px ${EMOJI_FONT}`;
     ctx.fillText("✅", s - 9, 9);
@@ -333,6 +349,20 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
         ? { "fill-color": "#000000", "fill-opacity": 0 }
         : { "fill-color": land, "fill-outline-color": landLine },
     },
+    // Optional coverage tint: the countries you've visited, shaded green. Off by
+    // default; the "My countries" toggle turns it on. The filter (which numeric
+    // ISO codes to shade) is set from your visits at runtime.
+    {
+      id: "countries-visited-fill",
+      type: "fill",
+      source: "countries",
+      filter: ["in", ["get", "numeric"], ["literal", []]] as FilterSpecification,
+      layout: { visibility: "none" },
+      paint: {
+        "fill-color": dark ? "#1f7a4d" : "#34d399",
+        "fill-opacity": dark ? 0.34 : 0.28,
+      },
+    },
     // A faint outline that's ALWAYS drawn, so the map is never a featureless
     // rectangle even if rich-base tiles fail to load (offline / blocked).
     {
@@ -401,14 +431,16 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
         "circle-stroke-width": 2.5,
       },
     },
-    // Monuments (UNESCO World Heritage): 🏛 badges — filled amber once seen.
+    // Monuments (UNESCO World Heritage): per-kind badges (🏛 cultural, 🌲 natural,
+    // 🏞️ mixed), filled once seen. Kept smaller than city flags and scaled down at
+    // low zoom so they no longer blanket the map in "All" mode.
     {
       id: "poi-monuments",
       type: "symbol",
       source: "monuments",
       layout: {
-        "icon-image": ["concat", "mon-", ["to-string", ["get", "seen"]]],
-        "icon-size": 1,
+        "icon-image": ["concat", "mon-", ["get", "cat"], "-", ["to-string", ["get", "seen"]]],
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 4, 0.5, 7, 0.78, 11, 1],
         "icon-padding": 0,
         "icon-allow-overlap": true,
       },
@@ -462,12 +494,15 @@ export function MapView({
   reducedMotion = false,
   mode = "all",
   showTowns = false,
+  showCountries = false,
   onBaseUnavailable,
 }: {
   /** Which marker categories are shown (a "mode" switcher over the map). */
   mode?: MapMode;
   /** Show the full-gazetteer dot field (every town on earth). Default off. */
   showTowns?: boolean;
+  /** Shade the countries you've visited (coverage tint). Default off. */
+  showCountries?: boolean;
   onBounds?: (b: Bounds) => void;
   focus?: MapFocus | null;
   fit?: MapFit | null;
@@ -505,6 +540,8 @@ export function MapView({
   const suppressBoundsRef = useRef(false);
   const showTownsRef = useRef(showTowns);
   showTownsRef.current = showTowns;
+  const showCountriesRef = useRef(showCountries);
+  showCountriesRef.current = showCountries;
   const [failed, setFailed] = useState(false);
   const [dataState, setDataState] = useState<"loading" | "ready" | "error">("loading");
 
@@ -543,6 +580,24 @@ export function MapView({
     (map.getSource("monuments") as GeoJSONSource | undefined)?.setData(
       monumentPoints(visitsRef.current, ref),
     );
+    applyCountryFill(map);
+  }
+
+  // Shade the countries you've visited: set the fill layer's filter to their
+  // numeric ISO codes (which join to the geometry). Airports and neutral "ZZ"
+  // points don't count a country, matching the stats and passport.
+  function applyCountryFill(map: MlMap) {
+    if (!map.getLayer("countries-visited-fill")) return;
+    const nums: string[] = [];
+    for (const iso2 of visitedCountryIds(visitsRef.current)) {
+      const num = ref.countryByIso2(iso2)?.numeric;
+      if (num) nums.push(num);
+    }
+    map.setFilter("countries-visited-fill", [
+      "in",
+      ["get", "numeric"],
+      ["literal", nums],
+    ] as FilterSpecification);
   }
 
   function applyMode(map: MlMap, m: MapMode) {
@@ -591,6 +646,10 @@ export function MapView({
     if (basemap === "simple" && map.getLayer("countries-base")) {
       map.setPaintProperty("countries-base", "fill-color", land);
       map.setPaintProperty("countries-base", "fill-outline-color", landLine);
+    }
+    if (map.getLayer("countries-visited-fill")) {
+      map.setPaintProperty("countries-visited-fill", "fill-color", isDark ? "#1f7a4d" : "#34d399");
+      map.setPaintProperty("countries-visited-fill", "fill-opacity", isDark ? 0.34 : 0.28);
     }
   }
 
@@ -650,8 +709,6 @@ export function MapView({
           center: lastCamera?.center ?? [6, 32],
           zoom: lastCamera?.zoom ?? 1.1,
           style: fullStyle,
-          // Needed to snapshot the canvas for the globe↔flat crossfade.
-          canvasContextAttributes: { preserveDrawingBuffer: true },
         });
       } catch {
         setFailed(true);
@@ -667,7 +724,8 @@ export function MapView({
           const [, cc, fav] = e.id.split("-");
           map.addImage(e.id, makeCityPill(cc ?? "", fav === "1"), { pixelRatio: 2 });
         } else if (e.id.startsWith("mon-")) {
-          map.addImage(e.id, makeMonumentPin(e.id === "mon-1"), { pixelRatio: 2 });
+          const [, cat, seen] = e.id.split("-");
+          map.addImage(e.id, makeMonumentPin(cat ?? "cultural", seen === "1"), { pixelRatio: 2 });
         } else if (e.id.startsWith("air-")) {
           const [, iata, wish, fav] = e.id.split("-");
           map.addImage(e.id, makeAirportPin(iata ?? "", wish === "1", fav === "1"), {
@@ -681,6 +739,13 @@ export function MapView({
         loadedRef.current = true;
         applyTheme(map, dark);
         applyVisited(map);
+        if (map.getLayer("countries-visited-fill")) {
+          map.setLayoutProperty(
+            "countries-visited-fill",
+            "visibility",
+            showCountriesRef.current ? "visible" : "none",
+          );
+        }
         applyViewCities(map);
         applyTripArcs(map);
         loadGeometry(map);
@@ -837,26 +902,21 @@ export function MapView({
 
   useEffect(() => {
     const map = mapRef.current;
+    if (!map || !loadedRef.current || !map.getLayer("countries-visited-fill")) return;
+    map.setLayoutProperty(
+      "countries-visited-fill",
+      "visibility",
+      showCountries ? "visible" : "none",
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCountries]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     if (!map || !loadedRef.current) return;
-    // Crossfade globe↔flat: freeze the last frame as an overlay image, switch the
-    // projection underneath, fade the frozen frame out. (Needs preserveDrawingBuffer.)
-    const host = containerRef.current;
-    if (!reducedRef.current && host) {
-      try {
-        const url = map.getCanvas().toDataURL();
-        const ghost = document.createElement("img");
-        ghost.src = url;
-        ghost.className = "map-ghost";
-        ghost.alt = "";
-        host.appendChild(ghost);
-        requestAnimationFrame(() => {
-          ghost.style.opacity = "0";
-        });
-        setTimeout(() => ghost.remove(), 450);
-      } catch {
-        /* snapshot unavailable — switch without the fade */
-      }
-    }
+    // MapLibre morphs globe↔flat on its own. A clean setProjection avoids the
+    // canvas-snapshot overlay we used before, which could leave stale, torn
+    // frames on some GPUs (it needed preserveDrawingBuffer, now removed).
     map.setProjection({ type: globe ? "globe" : "mercator" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [globe]);

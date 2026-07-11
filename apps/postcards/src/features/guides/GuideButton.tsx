@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import { useSettings } from "../../lib/store/useSettings";
 import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { guidesFor, fetchSummary, searchUrl, type WikivoyageSummary } from "../../lib/wikivoyage";
 import type { PlaceRef } from "../../lib/schema/models";
@@ -129,9 +130,11 @@ function GuidesModal({
   );
 }
 
-/** Shared body: opt-in saved overviews (text + photo) and the grouped links. */
+/** Shared body: a single tidy overview card (photo + short extract, loaded when
+ *  online) plus the grouped guide links. */
 function GuideContent({ placeName, names }: { placeName: string; names: GuideNames }) {
   const ref = useMemo(() => getReferenceData(), []);
+  const autoLoad = useSettings((s) => s.autoLoadGuides);
   const { countryIso2, countryName, cityName, summaryTitle, searchQuery } = names;
   // Built lazily here — rows with a closed modal do no guide work at all.
   const links = useMemo(
@@ -180,29 +183,44 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
     setState(wv || wp ? "idle" : "empty");
   }
 
+  // Auto-load once, when allowed and online, if nothing is saved yet. Opening a
+  // place is the explicit action; the Settings toggle can require a manual tap.
+  const tried = useRef(false);
+  useEffect(() => {
+    if (tried.current || summary || wpSummary || !autoLoad) return;
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+    tried.current = true;
+    void loadOverview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLoad]);
+
   const grouped = GROUP_ORDER.map((g) => ({
     group: g,
     items: links.filter((l) => KIND_GROUP[l.kind] === g),
   })).filter((g) => g.items.length);
 
+  // Prefer the Wikivoyage travel blurb, fall back to Wikipedia; the photo comes
+  // from Wikipedia. One clean card, not two stacked walls of text.
+  const overview = summary ?? wpSummary;
+  const overviewSource = summary ? "Wikivoyage" : "Wikipedia";
+  const photo = wpSummary?.thumb;
+
   return (
     <div className="guide-body">
       <p className="muted small guide-source">
-        From Wikivoyage, the free travel guide. Links open in your browser.
+        Overviews from Wikivoyage and Wikipedia. Links open in your browser.
       </p>
 
       <div className="guide-overviews">
-        {state !== "empty" && !summary && !wpSummary && (
-          <button
-            type="button"
-            className="btn-ghost guide-overview-btn"
-            disabled={state === "loading"}
-            onClick={loadOverview}
-          >
-            {state === "loading" ? "Loading…" : "↧ Load overview & photo (online)"}
+        {!overview && state === "loading" && (
+          <p className="muted small guide-loading">Loading overview…</p>
+        )}
+        {!overview && state === "idle" && !autoLoad && (
+          <button type="button" className="btn-ghost guide-overview-btn" onClick={loadOverview}>
+            ↧ Load overview &amp; photo
           </button>
         )}
-        {state === "empty" && !summary && !wpSummary && (
+        {!overview && state === "empty" && (
           <p className="muted small">
             {typeof navigator !== "undefined" && !navigator.onLine
               ? "You're offline; the links below open when you're back online."
@@ -212,45 +230,27 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
             </button>
           </p>
         )}
-        {wpSummary?.thumb && (
-          // The page's lead photo, so you get an idea of how the place looks.
-          // Wikimedia-hosted; requested only after the explicit load above.
-          <img
-            className="guide-photo"
-            src={wpSummary.thumb}
-            alt={`Photo of ${placeName} (Wikipedia)`}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-          />
-        )}
-        {summary && (
-          <blockquote className="guide-summary">
-            <p>{summary.extract}</p>
-            <cite className="muted small">
-              <a href={summary.url} target="_blank" rel="noopener noreferrer">
-                Wikivoyage
+        {overview && (
+          <figure className="guide-card">
+            {photo && (
+              <img
+                className="guide-photo"
+                src={photo}
+                alt={`Photo of ${placeName}`}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+            )}
+            <blockquote className="guide-extract">
+              <p>{overview.extract}</p>
+            </blockquote>
+            <figcaption className="muted small guide-cite">
+              <a href={overview.url} target="_blank" rel="noopener noreferrer">
+                Read more on {overviewSource}
               </a>{" "}
-              ·{" "}
-              <a
-                href="https://creativecommons.org/licenses/by-sa/4.0/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                CC BY-SA 4.0
-              </a>
-            </cite>
-          </blockquote>
-        )}
-        {wpSummary && (
-          <blockquote className="guide-summary">
-            <p>{wpSummary.extract}</p>
-            <cite className="muted small">
-              <a href={wpSummary.url} target="_blank" rel="noopener noreferrer">
-                Wikipedia
-              </a>{" "}
-              · CC BY-SA 4.0 · saved for offline
-            </cite>
-          </blockquote>
+              · CC BY-SA · saved offline
+            </figcaption>
+          </figure>
         )}
       </div>
 

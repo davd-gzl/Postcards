@@ -1,14 +1,24 @@
 import { test, expect } from "@playwright/test";
 
-// SC-006 / Constitution III: zero outbound requests leave the origin during
-// normal use. Everything — app, gazetteer, map geometry — is served locally.
-test("no network request leaves the local origin during core flows", async ({ page, baseURL }) => {
+// SC-006 / Constitution III: no personal data and no third-party trackers ever
+// leave the device. The detailed OpenStreetMap map is on by default, so anonymous
+// map-tile fetches to tile.openstreetmap.org are expected and allowed (they carry
+// no personal data, and a Settings switch turns them off for a fully offline app).
+// EVERY other outbound request — telemetry, analytics, fonts, anything — is a
+// violation. App, gazetteer and map geometry are all served locally.
+const ALLOWED_HOSTS = ["tile.openstreetmap.org"];
+
+test("only OpenStreetMap tiles leave the origin during core flows", async ({ page, baseURL }) => {
   const external: string[] = [];
   page.on("request", (req) => {
     const url = req.url();
-    if (!url.startsWith(baseURL!) && !url.startsWith("data:") && !url.startsWith("blob:")) {
-      external.push(url);
+    if (url.startsWith(baseURL!) || url.startsWith("data:") || url.startsWith("blob:")) return;
+    try {
+      if (ALLOWED_HOSTS.includes(new URL(url).hostname)) return;
+    } catch {
+      /* unparseable url — treat as external below */
     }
+    external.push(url);
   });
 
   await page.goto("/");
