@@ -129,7 +129,17 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
         <p className="notice">
           This place isn't in the loaded reference data, and you haven't created it yourself yet.
           Search for it on the Map tab — if it's missing there too, use “Add it yourself” under the
-          search box.
+          search box.{" "}
+          <button
+            className="mini-btn"
+            type="button"
+            onClick={() => {
+              useUi.getState().setTab("map");
+              useUi.getState().focusSearch();
+            }}
+          >
+            Search on the map
+          </button>
         </p>
       )}
 

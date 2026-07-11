@@ -62,6 +62,59 @@ function ChipRow({
   );
 }
 
+/** A record's city name — a button that flies the map to it. */
+function RecordCity({ name, onPick }: { name: string; onPick: (name: string) => void }) {
+  return (
+    <button
+      type="button"
+      className="country-open"
+      title={`Show ${name} on the map`}
+      onClick={() => onPick(name)}
+    >
+      {name}
+    </button>
+  );
+}
+
+/** Per-country drill-down: the name lists are computed only once it's opened. */
+function CountryDrilldown({
+  iso2,
+  flyToCity,
+  flyToRegion,
+  flyToMonument,
+}: {
+  iso2: string;
+  flyToCity: (name: string) => void;
+  flyToRegion: (name: string) => void;
+  flyToMonument: (name: string) => void;
+}) {
+  const ref = useMemo(() => getReferenceData(), []);
+  const visits = useVisits((s) => s.visits);
+  const [open, setOpen] = useState(false);
+  const detail = useMemo(
+    () => (open ? countryDetail(visits, ref, iso2) : null),
+    [open, visits, ref, iso2],
+  );
+  return (
+    <details className="country-detail" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>What you've seen · what's left</summary>
+      {detail && (
+        <>
+          <ChipRow label="Cities" names={detail.cities} done onPick={flyToCity} />
+          <ChipRow label="Regions visited" names={detail.regionsVisited} done onPick={flyToRegion} />
+          <ChipRow
+            label="Regions to visit"
+            names={detail.regionsRemainingNames}
+            onPick={flyToRegion}
+          />
+          <ChipRow label="Monuments seen" names={detail.monumentsVisited} done onPick={flyToMonument} />
+          <ChipRow label="Monuments to see" names={detail.monumentsRemaining} onPick={flyToMonument} />
+        </>
+      )}
+    </details>
+  );
+}
+
 function Bar({ value, label, color }: { value: number; label: string; color?: string }) {
   return (
     <div
@@ -128,33 +181,59 @@ export function StatsView() {
         <ScopeToggle />
       </div>
 
+      {/* Each tile is a shortcut into the matching Places view. */}
       <div className="stat-grid">
-        <div className="stat-tile">
-          <div className="num">{formatInt(coverage.countriesVisited)}</div>
-          <div className="label">countries</div>
-        </div>
-        <div className="stat-tile">
-          <div className="num">{formatPercent(coverage.worldPct)}</div>
-          <div className="label">
+        <button
+          type="button"
+          className="stat-tile"
+          title="See your countries checklist"
+          onClick={() => useUi.getState().openPlaces("countries")}
+        >
+          <span className="num">{formatInt(coverage.countriesVisited)}</span>
+          <span className="label">countries</span>
+        </button>
+        <button
+          type="button"
+          className="stat-tile"
+          title="See your countries checklist"
+          onClick={() => useUi.getState().openPlaces("countries")}
+        >
+          <span className="num">{formatPercent(coverage.worldPct)}</span>
+          <span className="label">
             of {formatInt(coverage.worldCountryCount)}{" "}
             {scope === "un" ? "UN member states" : "countries & territories"}
-          </div>
-        </div>
-        <div className="stat-tile">
-          <div className="num">{formatInt(coverage.citiesVisited)}</div>
-          <div className="label">cities</div>
-        </div>
+          </span>
+        </button>
+        <button
+          type="button"
+          className="stat-tile"
+          title="See your visited places"
+          onClick={() => useUi.getState().openPlaces("visited")}
+        >
+          <span className="num">{formatInt(coverage.citiesVisited)}</span>
+          <span className="label">cities</span>
+        </button>
         {coverage.airportsVisited > 0 && (
-          <div className="stat-tile">
-            <div className="num">{formatInt(coverage.airportsVisited)}</div>
-            <div className="label">airports</div>
-          </div>
+          <button
+            type="button"
+            className="stat-tile"
+            title="See your visited places"
+            onClick={() => useUi.getState().openPlaces("visited")}
+          >
+            <span className="num">{formatInt(coverage.airportsVisited)}</span>
+            <span className="label">airports</span>
+          </button>
         )}
         {coverage.monumentsVisited > 0 && (
-          <div className="stat-tile">
-            <div className="num">{formatInt(coverage.monumentsVisited)}</div>
-            <div className="label">monuments</div>
-          </div>
+          <button
+            type="button"
+            className="stat-tile"
+            title="See the monuments list"
+            onClick={() => useUi.getState().openPlaces("monuments")}
+          >
+            <span className="num">{formatInt(coverage.monumentsVisited)}</span>
+            <span className="label">monuments</span>
+          </button>
         )}
       </div>
 
@@ -194,7 +273,11 @@ export function StatsView() {
               <div className="record">
                 <span className="record-emoji" aria-hidden>🧭</span>
                 <span>
-                  Northernmost: <strong>{records.northernmost.name}</strong>{" "}
+                  Northernmost:{" "}
+                  <RecordCity
+                    name={records.northernmost.name}
+                    onPick={flyToCity(records.northernmost.iso2)}
+                  />{" "}
                   <span className="muted">({records.northernmost.lat.toFixed(1)}°)</span>
                 </span>
               </div>
@@ -203,7 +286,11 @@ export function StatsView() {
               <div className="record">
                 <span className="record-emoji" aria-hidden>🐧</span>
                 <span>
-                  Southernmost: <strong>{records.southernmost.name}</strong>{" "}
+                  Southernmost:{" "}
+                  <RecordCity
+                    name={records.southernmost.name}
+                    onPick={flyToCity(records.southernmost.iso2)}
+                  />{" "}
                   <span className="muted">({records.southernmost.lat.toFixed(1)}°)</span>
                 </span>
               </div>
@@ -212,7 +299,11 @@ export function StatsView() {
               <div className="record">
                 <span className="record-emoji" aria-hidden>🏙️</span>
                 <span>
-                  Biggest city: <strong>{records.biggestCity.name}</strong>{" "}
+                  Biggest city:{" "}
+                  <RecordCity
+                    name={records.biggestCity.name}
+                    onPick={flyToCity(records.biggestCity.iso2)}
+                  />{" "}
                   <span className="muted">({formatInt(records.biggestCity.population)} people)</span>
                 </span>
               </div>
@@ -294,7 +385,6 @@ export function StatsView() {
       {countries.length === 0 && <p className="muted empty">No countries yet — add a place.</p>}
 
       {countries.map((c) => {
-        const detail = countryDetail(visits, ref, c.iso2);
         return (
           <div key={c.iso2} className="country-card">
             <div className="country-head">
@@ -352,36 +442,16 @@ export function StatsView() {
               </div>
             )}
 
-            {(detail.cities.length > 0 ||
-              detail.regionsVisited.length > 0 ||
-              detail.regionsRemainingNames.length > 0 ||
-              detail.monumentsVisited.length > 0) && (
-              <details className="country-detail">
-                <summary>What you've seen · what's left</summary>
-                <ChipRow label="Cities" names={detail.cities} done onPick={flyToCity(c.iso2)} />
-                <ChipRow
-                  label="Regions visited"
-                  names={detail.regionsVisited}
-                  done
-                  onPick={flyToRegion(c.iso2)}
-                />
-                <ChipRow
-                  label="Regions to visit"
-                  names={detail.regionsRemainingNames}
-                  onPick={flyToRegion(c.iso2)}
-                />
-                <ChipRow
-                  label="Monuments seen"
-                  names={detail.monumentsVisited}
-                  done
-                  onPick={flyToMonument(c.iso2)}
-                />
-                <ChipRow
-                  label="Monuments to see"
-                  names={detail.monumentsRemaining}
-                  onPick={flyToMonument(c.iso2)}
-                />
-              </details>
+            {(c.citiesVisited > 0 ||
+              c.regionsVisited > 0 ||
+              c.regionsVisited < c.regionsTotal ||
+              c.heritageVisited > 0) && (
+              <CountryDrilldown
+                iso2={c.iso2}
+                flyToCity={flyToCity(c.iso2)}
+                flyToRegion={flyToRegion(c.iso2)}
+                flyToMonument={flyToMonument(c.iso2)}
+              />
             )}
           </div>
         );
