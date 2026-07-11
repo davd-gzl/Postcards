@@ -12,19 +12,11 @@ import {
   type CountrySort,
 } from "./computeStats";
 import { travelTotals } from "../travel/distance";
+import { MODE_GLYPH } from "../travel/modes";
 import { useUi } from "../../lib/store/useUi";
 import { countryFlag, formatInt, formatKm, formatPercent } from "../../lib/format/format";
 import { CONTINENT_COLORS } from "../../lib/reference/continents";
 import { ScopeToggle } from "../../ui/ScopeToggle";
-
-const MODE_GLYPH: Record<string, string> = {
-  flight: "✈️",
-  train: "🚆",
-  bus: "🚌",
-  ferry: "⛴️",
-  car: "🚗",
-  other: "•",
-};
 
 /** A row of tappable chips, capped so a huge country doesn't flood the card. */
 function ChipRow({

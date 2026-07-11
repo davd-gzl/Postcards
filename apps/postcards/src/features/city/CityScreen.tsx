@@ -8,6 +8,7 @@ import { articleUrl } from "../../lib/wikivoyage";
 import { StateToggles } from "../visits/StateToggles";
 import { PhotoGallery } from "../visits/PhotoGallery";
 import { GuideButton } from "../guides/GuideButton";
+import { CityLine } from "../../ui/CityLine";
 
 /** Wikipedia article URL for a title (link only — nothing is fetched). */
 function wikipediaUrl(title: string): string {
@@ -170,13 +171,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
             {nearby.monuments.map((h) => (
               <li key={h.id} className="city-row compact">
                 <button className="city-focus" type="button" onClick={() => flyTo(h.lon, h.lat)}>
-                  <span className="city-line">
-                    <span className="flag" aria-hidden>
-                      🏛️
-                    </span>
-                    <span className="city-name">{h.name}</span>
-                    <span className="city-sub">· {formatKm(h.km)} away</span>
-                  </span>
+                  <CityLine flag="🏛️" name={h.name} sub={<>· {formatKm(h.km)} away</>} />
                 </button>
                 <StateToggles
                   place={{ kind: "heritage", id: h.id, name: h.name, countryId: h.countryIso2 }}
@@ -194,15 +189,15 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
             {nearby.airports.map((a) => (
               <li key={a.id} className="city-row compact">
                 <button className="city-focus" type="button" onClick={() => flyTo(a.lon, a.lat)}>
-                  <span className="city-line">
-                    <span className="flag" aria-hidden>
-                      ✈️
-                    </span>
-                    <span className="city-name">
-                      {a.name} ({a.id})
-                    </span>
-                    <span className="city-sub">· {formatKm(a.km)} away</span>
-                  </span>
+                  <CityLine
+                    flag="✈️"
+                    name={
+                      <>
+                        {a.name} ({a.id})
+                      </>
+                    }
+                    sub={<>· {formatKm(a.km)} away</>}
+                  />
                 </button>
                 <StateToggles
                   place={{ kind: "airport", id: a.id, name: `${a.name} (${a.id})`, countryId: a.countryIso2 }}
