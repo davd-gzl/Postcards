@@ -845,6 +845,20 @@ h1.brand {
   margin-top: 3px;
   line-height: 1.3;
 }
+/* Tiles are buttons — tappable shortcuts into the matching Places view. */
+button.stat-tile {
+  text-align: left;
+}
+button.stat-tile .num,
+button.stat-tile .label {
+  display: block;
+}
+button.stat-tile:hover {
+  border-color: var(--accent);
+}
+button.stat-tile:hover .num {
+  color: var(--accent);
+}
 .country-card {
   background: var(--surface);
   border: 1px solid var(--border);

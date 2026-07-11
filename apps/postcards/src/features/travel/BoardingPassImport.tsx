@@ -17,8 +17,17 @@ function getDetectorCtor(): BarcodeDetectorCtor | null {
   return typeof window !== "undefined" && w.BarcodeDetector ? w.BarcodeDetector : null;
 }
 
-export function BoardingPassImport({ onResult }: { onResult: (r: BcbpResult) => void }) {
-  const [open, setOpen] = useState(false);
+// The panel's open state is the parent's (controlled), so the Trips screen can
+// close it from its own keyboard handling (Escape).
+export function BoardingPassImport({
+  open,
+  onOpenChange,
+  onResult,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onResult: (r: BcbpResult) => void;
+}) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -32,7 +41,7 @@ export function BoardingPassImport({ onResult }: { onResult: (r: BcbpResult) => 
     }
     setError(null);
     setText("");
-    setOpen(false);
+    onOpenChange(false);
     onResult(result);
   }
 
@@ -61,7 +70,7 @@ export function BoardingPassImport({ onResult }: { onResult: (r: BcbpResult) => 
 
   if (!open) {
     return (
-      <button className="btn-ghost pass-open" type="button" onClick={() => setOpen(true)}>
+      <button className="btn-ghost pass-open" type="button" onClick={() => onOpenChange(true)}>
         ✈ Add from a boarding pass
       </button>
     );
@@ -71,7 +80,7 @@ export function BoardingPassImport({ onResult }: { onResult: (r: BcbpResult) => 
     <div className="pass-panel">
       <div className="pass-panel-head">
         <strong>From a boarding pass</strong>
-        <button className="link" type="button" onClick={() => setOpen(false)}>
+        <button className="link" type="button" onClick={() => onOpenChange(false)}>
           Close
         </button>
       </div>

@@ -7,7 +7,9 @@ import type { PlaceRef } from "../../lib/schema/models";
  * Always visible, one tap each — no menus.
  */
 export function StateToggles({ place }: { place: PlaceRef }) {
-  const visits = useVisits((s) => s.visits);
+  // Subscribe to this place's record only — record identities are stable across
+  // unrelated updates, so untouched rows don't re-render on every store change.
+  const rec = useVisits((s) => findByPlace(s.visits, place));
   const toggleVisit = useVisits((s) => s.toggleVisit);
   const toggleWish = useVisits((s) => s.toggleWish);
   const toggleFavorite = useVisits((s) => s.toggleFavorite);
@@ -15,7 +17,6 @@ export function StateToggles({ place }: { place: PlaceRef }) {
   const setAll = useVisits((s) => s.setAll);
   const show = useToast((s) => s.show);
 
-  const rec = findByPlace(visits, place);
   const been = rec?.status === "visited";
   const want = rec?.status === "wishlist";
   const fav = !!rec?.favorite;

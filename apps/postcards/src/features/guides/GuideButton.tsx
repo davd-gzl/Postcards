@@ -24,24 +24,16 @@ export function GuideButton({ place, className }: { place: PlaceRef; className?:
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  // Country & city names + languages — everything the reusable seam needs. Use the
-  // COMMON country name (the real Wikivoyage article title, e.g. "Russia") rather
-  // than the ISO-official name ("Russian Federation"), which would 404.
+  // Country & city names — everything else (the guide links) is built inside the
+  // modal, so rows with a closed modal do no guide work at all. Use the COMMON
+  // country name (the real Wikivoyage article title, e.g. "Russia") rather than
+  // the ISO-official name ("Russian Federation"), which would 404.
   const country = ref.countryByIso2(place.countryId);
   const countryName = country ? ref.articleNameOf(country.iso2) : place.countryId;
   const cityName =
     place.kind === "city" ? ref.cityById(place.id)?.name ?? place.name : undefined;
-  const links = useMemo(() => {
-    if (!country) return [];
-    return guidesFor({
-      cityName,
-      countryName,
-      countryIso2: country.iso2,
-      languages: ref.languagesOf(country.iso2),
-    });
-  }, [ref, country, countryName, cityName]);
 
-  if (!country || links.length === 0) return null;
+  if (!country) return null;
 
   return (
     <>
@@ -60,7 +52,9 @@ export function GuideButton({ place, className }: { place: PlaceRef; className?:
           placeName={place.name}
           summaryTitle={cityName ?? countryName}
           searchQuery={cityName ? `${cityName} ${countryName}` : countryName}
-          links={links}
+          cityName={cityName}
+          countryName={countryName}
+          countryIso2={country.iso2}
           onClose={() => {
             setOpen(false);
             triggerRef.current?.focus();
@@ -75,15 +69,31 @@ function GuidesModal({
   placeName,
   summaryTitle,
   searchQuery,
-  links,
+  cityName,
+  countryName,
+  countryIso2,
   onClose,
 }: {
   placeName: string;
   summaryTitle: string;
   searchQuery: string;
-  links: ReturnType<typeof guidesFor>;
+  cityName: string | undefined;
+  countryName: string;
+  countryIso2: string;
   onClose: () => void;
 }) {
+  const ref = useMemo(() => getReferenceData(), []);
+  // Built only while the modal is open — closed Guide buttons cost nothing.
+  const links = useMemo(
+    () =>
+      guidesFor({
+        cityName,
+        countryName,
+        countryIso2,
+        languages: ref.languagesOf(countryIso2),
+      }),
+    [ref, cityName, countryName, countryIso2],
+  );
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   // Overviews are SAVED on-device once loaded, so they reopen offline.
@@ -161,7 +171,10 @@ function GuidesModal({
           <p className="muted small">
             {typeof navigator !== "undefined" && !navigator.onLine
               ? "You're offline — the links below open when you're back online."
-              : "No quick overview for this exact title. Try the links or the search below."}
+              : "No quick overview for this exact title. Try the links or the search below."}{" "}
+            <button type="button" className="mini-btn" onClick={loadOverview}>
+              Retry
+            </button>
           </p>
         )}
         {summary && (
