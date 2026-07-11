@@ -92,3 +92,13 @@ export function InfoIcon() {
     </svg>
   );
 }
+
+/** A four-point spark: the Experiences tab (world moments, not places). */
+export function SparkIcon() {
+  return (
+    <svg {...common}>
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
+      <path d="M12 8.5 13.6 12 12 15.5 10.4 12 12 8.5Z" />
+    </svg>
+  );
+}

@@ -16,7 +16,6 @@ import { GuideButton } from "../guides/GuideButton";
 
 type View = "visited" | "wishlist" | "countries" | "monuments";
 
-const MONUMENT_CAP = 80;
 
 /** Map coordinate to fly to (if known) and the secondary "· type · place" label for a visit. */
 function placeMeta(ref: ReferenceData, v: Visit): { coord: { lon: number; lat: number } | null; sub: string } {
@@ -128,6 +127,8 @@ export function PlacesScreen() {
   const [view, setView] = useState<View>("visited");
   const [favOnly, setFavOnly] = useState(false);
   const [filter, setFilter] = useState("");
+  const [year, setYear] = useState<string | null>(null); // e.g. "2024"; null = all
+  const [shown, setShown] = useState(100);
   const q = filter.trim().toLowerCase();
 
   // Another screen (the map's counter strip) asked for a specific view.
@@ -174,26 +175,60 @@ export function PlacesScreen() {
     for (const v of visits) {
       if (v.status === "wishlist") continue;
       if (v.place.kind === "country") explicit.add(v.place.countryId);
-      else sub.set(v.place.countryId, (sub.get(v.place.countryId) ?? 0) + 1);
+      // Airports don't make a country visited: changing planes there is not
+      // being there (matches visitedCountryIds in Stats/Passport).
+      else if (v.place.kind !== "airport" && v.place.countryId !== "ZZ")
+        sub.set(v.place.countryId, (sub.get(v.place.countryId) ?? 0) + 1);
     }
     return { sub, explicit };
   }, [visits]);
 
-  const filterVisits = (list: Visit[]) =>
-    !q ? list : list.filter((v) => v.place.name.toLowerCase().includes(q));
+  const filterVisits = (list: Visit[]) => {
+    const byName = !q ? list : list.filter((v) => v.place.name.toLowerCase().includes(q));
+    if (!year) return byName;
+    if (year === "undated") return byName.filter((v) => !v.date);
+    return byName.filter((v) => v.date?.startsWith(year));
+  };
+
+  // The years your visits span, newest first, for the date filter chips.
+  const years = useMemo(() => {
+    const ys = new Set<string>();
+    let undated = false;
+    for (const v of visits) {
+      if (v.status === "wishlist") continue;
+      if (v.date) ys.add(v.date.slice(0, 4));
+      else undated = true;
+    }
+    return { list: [...ys].sort().reverse(), undated };
+  }, [visits]);
 
   const countryRows = useMemo(() => {
     const all = ref.countries.filter((c) => inScope(c.sovereignty, scope));
-    if (!q) return all;
-    return all.filter((c) => c.name.toLowerCase().includes(q));
-  }, [ref, q, scope]);
+    const list = !q ? [...all] : all.filter((c) => c.name.toLowerCase().includes(q));
+    // Your countries first; the rest stay alphabetical below them.
+    const seen = (c: (typeof list)[number]) =>
+      (countryVisited.sub.get(c.iso2) ?? 0) > 0 || countryVisited.explicit.has(c.iso2) ? 0 : 1;
+    return list.sort((a, b) => seen(a) - seen(b) || a.name.localeCompare(b.name));
+  }, [ref, q, scope, countryVisited]);
 
+  const [hideSeen, setHideSeen] = useState(false);
+  const seenHeritage = useMemo(
+    () =>
+      new Set(
+        visits
+          .filter((v) => v.place.kind === "heritage" && v.status !== "wishlist")
+          .map((v) => v.place.id),
+      ),
+    [visits],
+  );
   const monuments = useMemo(() => {
     // A search keeps the ranker's best-match-first order; only the full
     // unfiltered list reads better alphabetically.
-    if (q) return ref.searchHeritage(q, 200);
-    return [...ref.allHeritage()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [ref, q]);
+    const base = q
+      ? ref.searchHeritage(q, 200)
+      : [...ref.allHeritage()].sort((a, b) => a.name.localeCompare(b.name));
+    return hideSeen ? base.filter((h) => !seenHeritage.has(h.id)) : base;
+  }, [ref, q, hideSeen, seenHeritage]);
 
   const TABS: { id: View; label: string }[] = [
     { id: "visited", label: favOnly ? `★ Favorites (${visited.length})` : `Visited (${visited.length})` },
@@ -217,6 +252,8 @@ export function PlacesScreen() {
                 setView(t.id);
                 setFavOnly(false);
                 setFilter("");
+                setYear(null);
+                setShown(100);
               }}
             >
               {t.label}
@@ -253,6 +290,24 @@ export function PlacesScreen() {
 
       {view === "visited" && (
         <>
+          {(years.list.length > 1 || (years.list.length === 1 && years.undated)) && (
+            <div className="segmented wrap year-filter" role="group" aria-label="Filter by year">
+              {[null, ...years.list, ...(years.undated ? ["undated"] : [])].map((y) => (
+                <button
+                  key={y ?? "all"}
+                  type="button"
+                  aria-pressed={year === y}
+                  className={year === y ? "seg-on" : ""}
+                  onClick={() => {
+                    setYear(y);
+                    setShown(100);
+                  }}
+                >
+                  {y === null ? "All years" : y === "undated" ? "No date" : y}
+                </button>
+              ))}
+            </div>
+          )}
           {visited.length === 0 && (
             <p className="muted empty">
               <span className="empty-emoji" aria-hidden>
@@ -263,10 +318,22 @@ export function PlacesScreen() {
             </p>
           )}
           <ul className="city-list">
-            {filterVisits(visited).map((v) => (
-              <VisitRow key={v.visitId} v={v} />
-            ))}
+            {filterVisits(visited)
+              .slice(0, shown)
+              .map((v) => (
+                <VisitRow key={v.visitId} v={v} />
+              ))}
           </ul>
+          {filterVisits(visited).length > shown && (
+            <div className="list-pager">
+              <span className="muted small">
+                Showing {shown} of {filterVisits(visited).length}
+              </span>
+              <button className="mini-btn" type="button" onClick={() => setShown((n) => n + 100)}>
+                Show 100 more
+              </button>
+            </div>
+          )}
         </>
       )}
 
@@ -281,10 +348,22 @@ export function PlacesScreen() {
             </p>
           )}
           <ul className="city-list">
-            {filterVisits(wishlist).map((v) => (
-              <VisitRow key={v.visitId} v={v} wishlist />
-            ))}
+            {filterVisits(wishlist)
+              .slice(0, shown)
+              .map((v) => (
+                <VisitRow key={v.visitId} v={v} wishlist />
+              ))}
           </ul>
+          {filterVisits(wishlist).length > shown && (
+            <div className="list-pager">
+              <span className="muted small">
+                Showing {shown} of {filterVisits(wishlist).length}
+              </span>
+              <button className="mini-btn" type="button" onClick={() => setShown((n) => n + 100)}>
+                Show 100 more
+              </button>
+            </div>
+          )}
         </>
       )}
 
@@ -296,16 +375,26 @@ export function PlacesScreen() {
                 🏛️
               </span>
               The monuments dataset isn't loaded in this build. Run{" "}
-              <code>scripts/build-heritage.mjs</code> to add the full UNESCO World Heritage list.
+              <code>scripts/build-heritage-full.mjs</code> to add the full UNESCO World Heritage list.
             </p>
           ) : (
             <>
-              <p className="muted small">
-                UNESCO World Heritage Sites — mark the ones you've seen. They count toward each
-                country's coverage in Stats.
-              </p>
+              <div className="countries-head">
+                <p className="muted small" style={{ margin: 0 }}>
+                  UNESCO World Heritage Sites; mark the ones you've seen. They count toward each
+                  country's coverage in Stats.
+                </p>
+                <button
+                  type="button"
+                  className={"chip" + (hideSeen ? " chip-on" : "")}
+                  aria-pressed={hideSeen}
+                  onClick={() => setHideSeen((v) => !v)}
+                >
+                  Hide seen
+                </button>
+              </div>
               <ul className="city-list">
-                {monuments.slice(0, MONUMENT_CAP).map((h) => {
+                {monuments.slice(0, shown).map((h) => {
                   const country = ref.countryByIso2(h.countryIso2)?.name ?? h.countryIso2;
                   const place = {
                     kind: "heritage" as const,
@@ -329,10 +418,19 @@ export function PlacesScreen() {
                   );
                 })}
               </ul>
-              {monuments.length > MONUMENT_CAP && (
-                <p className="muted cap-note">
-                  Showing {MONUMENT_CAP} of {monuments.length}. Search to narrow the list.
-                </p>
+              {monuments.length > shown && (
+                <div className="list-pager">
+                  <span className="muted small">
+                    Showing {shown} of {monuments.length}
+                  </span>
+                  <button
+                    className="mini-btn"
+                    type="button"
+                    onClick={() => setShown((n) => n + 100)}
+                  >
+                    Show 100 more
+                  </button>
+                </div>
               )}
             </>
           )}

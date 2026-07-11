@@ -50,6 +50,8 @@ test("the map trip arcs honour the travel-log time filter", async ({ page }) => 
 
   // On the map, the Trips toggle now reflects the shared period.
   await page.getByRole("button", { name: "Map", exact: true }).click();
+  // The Trips toggle sits inside the Layers panel now.
+  await page.getByRole("button", { name: /Layers/ }).click();
   await expect(page.getByRole("button", { name: /Trips.*2024/ })).toBeVisible();
 
   // Clearing the filter (back on Trips) drops the tag on the map toggle.

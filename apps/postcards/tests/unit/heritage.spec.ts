@@ -1,4 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { initReferenceDataSync } from "../../src/lib/reference/referenceData";
 import { computeCountryCoverage } from "../../src/features/stats/computeStats";
 import { searchPlaces } from "../../src/features/visits/search";
@@ -6,10 +9,11 @@ import { coordsOf } from "../../src/features/travel/distance";
 import type { HeritageSite } from "../../src/lib/reference/types";
 import type { Visit } from "../../src/lib/schema/models";
 
-// The shipped heritage.json holds a curated seed subset (scripts/build-heritage-seed.mjs)
-// until the full set is fetched by scripts/build-heritage.mjs on a networked machine
-// (Wikidata is blocked in the build sandbox). These tests exercise the framework
-// wiring with injected data so the logic is verified regardless of the shipped file.
+// The shipped heritage.json is the FULL UNESCO World Heritage List (all ~1,248
+// sites, one entry per country for transnational sites), built by
+// scripts/build-heritage-full.mjs from the official UNESCO data (CC BY-SA 3.0 IGO).
+// The logic tests below still use small injected data so the wiring is verified
+// independently of the shipped file; the bundled file itself is validated at the end.
 const heritage: HeritageSite[] = [
   { id: "Q1", name: "Palace of Versailles", countryIso2: "FR", lat: 48.8, lon: 2.1 },
   { id: "Q2", name: "Mont-Saint-Michel", countryIso2: "FR", lat: 48.6, lon: -1.5 },
@@ -75,5 +79,56 @@ describe("travel: heritage endpoints resolve coordinates", () => {
   it("coordsOf returns a heritage site's coordinates for trip distance", () => {
     const c = coordsOf({ kind: "heritage", id: "Q2", name: "Mont-Saint-Michel", countryId: "FR" }, ref);
     expect(c).toEqual({ lon: -1.5, lat: 48.6 });
+  });
+});
+
+describe("bundled heritage.json integrity (full UNESCO World Heritage List)", () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const sites = JSON.parse(
+    readFileSync(join(here, "..", "..", "public", "reference", "heritage.json"), "utf8"),
+  ) as HeritageSite[];
+
+  it("is the full list (~1,248 sites; transnational ones expanded per country)", () => {
+    expect(sites.length).toBeGreaterThan(1000);
+    expect(new Set(sites.map((s) => s.countryIso2)).size).toBeGreaterThan(150);
+    // Landmarks we specifically expect from the full list (absent from the old 42-site seed).
+    expect(sites.some((s) => s.name === "Taj Mahal")).toBe(true);
+    // A transnational site appears once per country with country-suffixed ids.
+    const struve = sites.filter((s) => s.id.startsWith("whs-struve-geodetic-arc"));
+    expect(struve.length).toBe(10);
+    expect(new Set(struve.map((s) => s.countryIso2)).size).toBe(10);
+    expect(new Set(struve.map((s) => s.id)).size).toBe(10);
+  });
+
+  it("has unique whs- ids and valid records", () => {
+    // Plain-loop validation (per-record expect() calls would be needlessly slow).
+    const ids = new Set<string>();
+    let bad = 0;
+    for (const s of sites) {
+      if (
+        ids.has(s.id) ||
+        !/^whs-[a-z0-9-]+$/.test(s.id) ||
+        !/^[A-Z]{2}$/.test(s.countryIso2) ||
+        s.name.length === 0 ||
+        /[<>]/.test(s.name) || // names must be inert plain text, never HTML
+        s.lat < -90 ||
+        s.lat > 90 ||
+        s.lon < -180 ||
+        s.lon > 180 ||
+        !["cultural", "natural", "mixed"].includes(s.category ?? "")
+      ) {
+        bad++;
+      }
+      ids.add(s.id);
+    }
+    expect(bad).toBe(0);
+    expect(ids.size).toBe(sites.length);
+  });
+
+  it("carries real coordinates for essentially every site (0,0 means source had none)", () => {
+    const zero = sites.filter((s) => s.lat === 0 && s.lon === 0);
+    // Only the WWI Funerary and memory sites (BE+FR) ship without coordinates upstream.
+    expect(zero.length).toBeLessThanOrEqual(3);
+    expect(sites.length - zero.length).toBeGreaterThan(1000);
   });
 });

@@ -53,4 +53,6 @@ export interface WikivoyageSummary {
   extract: string;
   url: string;
   attribution: string;
+  /** Lead-image URL (upload.wikimedia.org), when the page has one. */
+  thumb?: string;
 }

@@ -12,28 +12,37 @@ const KIND_GROUP: Record<string, string> = {
 };
 const GROUP_ORDER = ["Explore", "Understand the country", "Language & alphabet"];
 
+/** Resolve the names a place's guides are built from (common country name —
+ *  the real Wikivoyage article title, e.g. "Russia", not "Russian Federation"). */
+function guideNames(place: PlaceRef) {
+  const ref = getReferenceData();
+  const country = ref.countryByIso2(place.countryId);
+  if (!country) return null;
+  const countryName = ref.articleNameOf(country.iso2);
+  const cityName =
+    place.kind === "city" ? ref.cityById(place.id)?.name ?? place.name : undefined;
+  return {
+    countryIso2: country.iso2,
+    countryName,
+    cityName,
+    summaryTitle: cityName ?? countryName,
+    searchQuery: cityName ? `${cityName} ${countryName}` : countryName,
+  };
+}
+
 /**
  * A "📖 Guide" affordance for a place. Opens a modal of Wikivoyage guides —
  * the city & country travel guides, the country overview, and a phrasebook per
  * spoken language (phrases + the alphabet). All links work offline; a short
- * article overview is fetched only when the user explicitly asks (online, opt-in,
- * with attribution — Constitution: privacy by default, aggregator not author).
+ * article overview (text + lead photo) is fetched only when the user explicitly
+ * asks (online, opt-in, with attribution — Constitution: privacy by default,
+ * aggregator not author).
  */
 export function GuideButton({ place, className }: { place: PlaceRef; className?: string }) {
-  const ref = useMemo(() => getReferenceData(), []);
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-
-  // Country & city names — everything else (the guide links) is built inside the
-  // modal, so rows with a closed modal do no guide work at all. Use the COMMON
-  // country name (the real Wikivoyage article title, e.g. "Russia") rather than
-  // the ISO-official name ("Russian Federation"), which would 404.
-  const country = ref.countryByIso2(place.countryId);
-  const countryName = country ? ref.articleNameOf(country.iso2) : place.countryId;
-  const cityName =
-    place.kind === "city" ? ref.cityById(place.id)?.name ?? place.name : undefined;
-
-  if (!country) return null;
+  const names = useMemo(() => guideNames(place), [place]);
+  if (!names) return null;
 
   return (
     <>
@@ -50,11 +59,7 @@ export function GuideButton({ place, className }: { place: PlaceRef; className?:
       {open && (
         <GuidesModal
           placeName={place.name}
-          summaryTitle={cityName ?? countryName}
-          searchQuery={cityName ? `${cityName} ${countryName}` : countryName}
-          cityName={cityName}
-          countryName={countryName}
-          countryIso2={country.iso2}
+          names={names}
           onClose={() => {
             setOpen(false);
             triggerRef.current?.focus();
@@ -65,25 +70,70 @@ export function GuideButton({ place, className }: { place: PlaceRef; className?:
   );
 }
 
+/** The same guides as the modal, rendered as an in-page section (city and
+ *  country pages get their guides right on the page, not behind a button). */
+export function GuideSection({ place }: { place: PlaceRef }) {
+  const names = useMemo(() => guideNames(place), [place]);
+  if (!names) return null;
+  return (
+    <section className="city-section guide-section">
+      <h3>Guides</h3>
+      <GuideContent placeName={place.name} names={names} />
+    </section>
+  );
+}
+
+interface GuideNames {
+  countryIso2: string;
+  countryName: string;
+  cityName: string | undefined;
+  summaryTitle: string;
+  searchQuery: string;
+}
+
 function GuidesModal({
   placeName,
-  summaryTitle,
-  searchQuery,
-  cityName,
-  countryName,
-  countryIso2,
+  names,
   onClose,
 }: {
   placeName: string;
-  summaryTitle: string;
-  searchQuery: string;
-  cityName: string | undefined;
-  countryName: string;
-  countryIso2: string;
+  names: GuideNames;
   onClose: () => void;
 }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+  }, []);
+
+  useModalKeys(dialogRef, onClose);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal guide-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Travel guides for ${placeName}`}
+        ref={dialogRef}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2>{placeName} — guides</h2>
+        <GuideContent placeName={placeName} names={names} />
+        <button ref={closeRef} className="btn" type="button" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Shared body: opt-in saved overviews (text + photo) and the grouped links. */
+function GuideContent({ placeName, names }: { placeName: string; names: GuideNames }) {
   const ref = useMemo(() => getReferenceData(), []);
-  // Built only while the modal is open — closed Guide buttons cost nothing.
+  const { countryIso2, countryName, cityName, summaryTitle, searchQuery } = names;
+  // Built lazily here — rows with a closed modal do no guide work at all.
   const links = useMemo(
     () =>
       guidesFor({
@@ -94,8 +144,6 @@ function GuidesModal({
       }),
     [ref, cityName, countryName, countryIso2],
   );
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
   // Overviews are SAVED on-device once loaded, so they reopen offline. The key
   // carries the country too — "Paris, TX" must never show the saved overview of
   // Paris, France as its own (same title, different place).
@@ -111,12 +159,6 @@ function GuidesModal({
   const [summary, setSummary] = useState<WikivoyageSummary | null>(() => readSaved("wikivoyage"));
   const [wpSummary, setWpSummary] = useState<WikivoyageSummary | null>(() => readSaved("wikipedia"));
   const [state, setState] = useState<"idle" | "loading" | "empty">("idle");
-
-  useEffect(() => {
-    closeRef.current?.focus();
-  }, []);
-
-  useModalKeys(dialogRef, onClose);
 
   async function loadOverview() {
     setState("loading");
@@ -144,21 +186,12 @@ function GuidesModal({
   })).filter((g) => g.items.length);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div
-        className="modal guide-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Travel guides for ${placeName}`}
-        ref={dialogRef}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2>{placeName} — guides</h2>
-        <p className="muted small guide-source">
-          From Wikivoyage — the free travel guide. Links open in your browser.
-        </p>
+    <div className="guide-body">
+      <p className="muted small guide-source">
+        From Wikivoyage, the free travel guide. Links open in your browser.
+      </p>
 
-        <div className="guide-overviews">
+      <div className="guide-overviews">
         {state !== "empty" && !summary && !wpSummary && (
           <button
             type="button"
@@ -166,18 +199,29 @@ function GuidesModal({
             disabled={state === "loading"}
             onClick={loadOverview}
           >
-            {state === "loading" ? "Loading…" : "↧ Load & save overviews (online)"}
+            {state === "loading" ? "Loading…" : "↧ Load overview & photo (online)"}
           </button>
         )}
         {state === "empty" && !summary && !wpSummary && (
           <p className="muted small">
             {typeof navigator !== "undefined" && !navigator.onLine
-              ? "You're offline — the links below open when you're back online."
+              ? "You're offline; the links below open when you're back online."
               : "No quick overview for this exact title. Try the links or the search below."}{" "}
             <button type="button" className="mini-btn" onClick={loadOverview}>
               Retry
             </button>
           </p>
+        )}
+        {wpSummary?.thumb && (
+          // The page's lead photo, so you get an idea of how the place looks.
+          // Wikimedia-hosted; requested only after the explicit load above.
+          <img
+            className="guide-photo"
+            src={wpSummary.thumb}
+            alt={`Photo of ${placeName} (Wikipedia)`}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
         )}
         {summary && (
           <blockquote className="guide-summary">
@@ -208,9 +252,9 @@ function GuidesModal({
             </cite>
           </blockquote>
         )}
-        </div>
+      </div>
 
-        <div className="guide-groups-col">
+      <div className="guide-groups-col">
         {grouped.map(({ group, items }) => (
           <div key={group} className="guide-group">
             <h3>{group}</h3>
@@ -226,20 +270,15 @@ function GuidesModal({
             </ul>
           </div>
         ))}
-        </div>
-
-        {/* Honest fallback: a search link always works, even when an exact article
-            title doesn't match (name variants) or the overview fetch fails. */}
-        <p className="muted small guide-search">
-          <a href={searchUrl(searchQuery)} target="_blank" rel="noopener noreferrer">
-            Search Wikivoyage for “{searchQuery}”
-          </a>
-        </p>
-
-        <button ref={closeRef} className="btn" type="button" onClick={onClose}>
-          Close
-        </button>
       </div>
+
+      {/* Honest fallback: a search link always works, even when an exact article
+          title doesn't match (name variants) or the overview fetch fails. */}
+      <p className="muted small guide-search">
+        <a href={searchUrl(searchQuery)} target="_blank" rel="noopener noreferrer">
+          Search Wikivoyage for “{searchQuery}”
+        </a>
+      </p>
     </div>
   );
 }

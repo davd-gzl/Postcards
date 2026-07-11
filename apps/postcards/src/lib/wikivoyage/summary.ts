@@ -49,16 +49,26 @@ export async function fetchSummary(
       extract?: string;
       type?: string;
       content_urls?: { desktop?: { page?: string } };
+      thumbnail?: { source?: string };
+      originalimage?: { source?: string };
     };
     // Disambiguation / missing pages carry no useful overview.
     if (j.type && j.type !== "standard") return null;
     const extract = typeof j.extract === "string" ? toPlainText(j.extract) : "";
     if (!extract) return null;
+    // The page's lead image (Wikimedia-hosted): shown only after the user's
+    // explicit "load overview" action, same as the text.
+    const rawThumb = j.thumbnail?.source;
+    const thumb =
+      typeof rawThumb === "string" && /^https:\/\/upload\.wikimedia\.org\//.test(rawThumb)
+        ? rawThumb
+        : undefined;
     return {
       title: j.title ?? title,
       extract,
       url: j.content_urls?.desktop?.page ?? articleUrl(title, lang),
       attribution: `${project === "wikipedia" ? "Wikipedia" : "Wikivoyage"} · CC BY-SA 4.0`,
+      ...(thumb ? { thumb } : {}),
     };
   } catch {
     return null;

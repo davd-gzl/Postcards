@@ -3,8 +3,10 @@ import { useToast } from "../../lib/store/useToast";
 import type { PlaceRef } from "../../lib/schema/models";
 
 /**
- * The three inline states from Places Been: Been (✓) · Want (⚑) · Favorite (★).
- * Always visible, one tap each — no menus.
+ * Inline states: Been (✓) always; Want (⚑) only until you've been (a wishlist
+ * for a place you've visited is meaningless); Favorite (♥) only once you've
+ * been (or while it's already set, so it can be unset). Rows show at most two
+ * buttons — one tap each, no menus.
  */
 export function StateToggles({ place }: { place: PlaceRef }) {
   // Subscribe to this place's record only — record identities are stable across
@@ -49,24 +51,30 @@ export function StateToggles({ place }: { place: PlaceRef }) {
       >
         ✓
       </button>
-      <button
-        className={"state want" + (want ? " on" : "")}
-        type="button"
-        aria-pressed={want}
-        aria-label={want ? `Remove ${place.name} from wishlist` : `Add ${place.name} to wishlist`}
-        onClick={onWant}
-      >
-        ⚑
-      </button>
-      <button
-        className={"state fav" + (fav ? " on" : "")}
-        type="button"
-        aria-pressed={fav}
-        aria-label={fav ? `Unfavorite ${place.name}` : `Favorite ${place.name}`}
-        onClick={onFav}
-      >
-        ★
-      </button>
+      {!been && (
+        <button
+          className={"state want" + (want ? " on" : "")}
+          type="button"
+          aria-pressed={want}
+          aria-label={want ? `Remove ${place.name} from wishlist` : `Add ${place.name} to wishlist`}
+          title={want ? "On your wishlist" : "Want to go"}
+          onClick={onWant}
+        >
+          ⚑
+        </button>
+      )}
+      {(been || fav) && (
+        <button
+          className={"state fav" + (fav ? " on" : "")}
+          type="button"
+          aria-pressed={fav}
+          aria-label={fav ? `Unfavorite ${place.name}` : `Favorite ${place.name}`}
+          title={fav ? "Favorite" : "Mark as a favorite"}
+          onClick={onFav}
+        >
+          ♥
+        </button>
+      )}
     </div>
   );
 }

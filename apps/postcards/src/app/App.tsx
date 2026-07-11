@@ -9,13 +9,14 @@ import { TravelScreen } from "../features/travel/TravelScreen";
 import { PassportScreen } from "../features/passport/PassportScreen";
 import { JournalScreen } from "../features/journal/JournalScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
+import { ExperiencesScreen } from "../features/experiences/ExperiencesScreen";
 import { CityScreen } from "../features/city/CityScreen";
 import { CountryScreen } from "../features/country/CountryScreen";
 import { PlaceSearch } from "../features/visits/PlaceSearch";
 import { ShortcutsHelp } from "../ui/ShortcutsHelp";
 import { AboutModal } from "../ui/AboutModal";
 import { Toast } from "../ui/Toast";
-import { MapIcon, ChartIcon, ListIcon, RouteIcon, FlagIcon, BookIcon, GearIcon, InfoIcon } from "../ui/icons";
+import { MapIcon, ChartIcon, ListIcon, RouteIcon, FlagIcon, BookIcon, SparkIcon, GearIcon, InfoIcon } from "../ui/icons";
 import { useState } from "react";
 import { useInstallPrompt } from "../lib/hooks/useInstallPrompt";
 
@@ -31,6 +32,7 @@ const TABS: { id: Tab; label: string; keys: string[]; Icon: () => JSX.Element }[
   { id: "trips", label: "Trips", keys: ["4", "t"], Icon: RouteIcon },
   { id: "passport", label: "Passport", keys: ["5", "f"], Icon: FlagIcon },
   { id: "journal", label: "Journal", keys: ["6", "j"], Icon: BookIcon },
+  { id: "experiences", label: "Moments", keys: ["7", "x"], Icon: SparkIcon },
 ];
 
 export function App() {
@@ -69,7 +71,13 @@ export function App() {
         );
         setShowHelp(false);
         setShowAbout(false);
-        if (!dialogOpen) useUi.getState().goBack(); // Escape = previous screen
+        if (!dialogOpen) {
+          // On a city/country page, Escape leaves the page layer (never back
+          // through other pages you viewed); elsewhere it walks history.
+          const ui = useUi.getState();
+          if (ui.cityPageId || ui.countryPageId) ui.closePages();
+          else ui.goBack();
+        }
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -106,7 +114,16 @@ export function App() {
       </a>
 
       <header className="topbar">
-            <h1 className="brand">Postcards</h1>
+            <h1 className="brand-wrap">
+              <button
+                type="button"
+                className="brand"
+                title="Go to the map"
+                onClick={() => setTab("map")}
+              >
+                Postcards
+              </button>
+            </h1>
             {/* Global search in the bar itself — no screen spends a row on it.
                 Picking a city flies the map there (flyTo also switches the tab). */}
             <div className="topbar-search">
@@ -119,19 +136,36 @@ export function App() {
                 <button
                   type="button"
                   className="topbar-about topbar-install"
+                  aria-label="Install the app"
+                  title="Install the app"
                   onClick={() => void install()}
                 >
-                  ⬇ <span>Install app</span>
+                  ⬇ <span aria-hidden>Install app</span>
                 </button>
               )}
+              <a
+                className="topbar-about topbar-star"
+                href="https://github.com/davd-gzl/Postcards"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Star Postcards on GitHub"
+                aria-label="Star Postcards on GitHub"
+              >
+                <span className="star-glyph" aria-hidden>
+                  ⭐
+                </span>
+                <span>GitHub</span>
+              </a>
               <button
                 type="button"
                 className="topbar-about"
                 aria-haspopup="dialog"
+                aria-label="How it works"
+                title="How it works"
                 onClick={() => setShowAbout(true)}
               >
                 <InfoIcon />
-                <span>How it works</span>
+                <span aria-hidden>How it works</span>
               </button>
               <button
                 type="button"
@@ -206,6 +240,11 @@ export function App() {
                 {tab === "journal" && (
                   <div className="screen">
                     <JournalScreen />
+                  </div>
+                )}
+                {tab === "experiences" && (
+                  <div className="screen">
+                    <ExperiencesScreen />
                   </div>
                 )}
                 {tab === "settings" && (

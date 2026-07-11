@@ -11,6 +11,9 @@ export function formatInt(n: number, locale?: string): string {
  * flag font show the letter pair, which stays informative.
  */
 export function countryFlag(iso2: string): string {
+  // "ZZ" is the ISO user-assigned code Postcards uses for places outside any
+  // country (open ocean, world moments); it has no flag, so show a pin.
+  if (iso2.toUpperCase() === "ZZ") return "📍";
   return iso2
     .toUpperCase()
     .replace(/[A-Z]/g, (ch) => String.fromCodePoint(0x1f1e6 + ch.charCodeAt(0) - 65));

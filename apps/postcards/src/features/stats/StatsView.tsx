@@ -3,6 +3,7 @@ import { useVisits } from "../../lib/store/useVisits";
 import { useTrips } from "../../lib/store/useTrips";
 import { useSettings } from "../../lib/store/useSettings";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import { useGazetteerGeneration } from "../../lib/reference/useGazetteer";
 import {
   computeCoverage,
   computeContinentCoverage,
@@ -24,6 +25,7 @@ function ChipRow({
   names,
   done,
   onPick,
+  hint = "Open",
   max = 16,
 }: {
   label: string;
@@ -31,6 +33,8 @@ function ChipRow({
   /** Style as already-seen (filled) vs still-to-do (outlined). */
   done?: boolean;
   onPick?: (name: string) => void;
+  /** Tooltip verb; chips either open a page or fly the map. */
+  hint?: string;
   max?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -47,7 +51,7 @@ function ChipRow({
             className={"place-chip" + (done ? " chip-done" : "")}
             onClick={onPick ? () => onPick(n) : undefined}
             disabled={!onPick}
-            title={onPick ? `Show ${n} on the map` : undefined}
+            title={onPick ? `${hint} ${n}` : undefined}
           >
             {n}
           </button>
@@ -79,36 +83,60 @@ function RecordCity({ name, onPick }: { name: string; onPick: (name: string) => 
 /** Per-country drill-down: the name lists are computed only once it's opened. */
 function CountryDrilldown({
   iso2,
-  flyToCity,
   flyToRegion,
-  flyToMonument,
 }: {
   iso2: string;
-  flyToCity: (name: string) => void;
   flyToRegion: (name: string) => void;
-  flyToMonument: (name: string) => void;
 }) {
   const ref = useMemo(() => getReferenceData(), []);
+  const gazGen = useGazetteerGeneration(); // city lists grow when the full gazetteer lands
   const visits = useVisits((s) => s.visits);
   const [open, setOpen] = useState(false);
   const detail = useMemo(
     () => (open ? countryDetail(visits, ref, iso2) : null),
-    [open, visits, ref, iso2],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [open, visits, ref, iso2, gazGen],
   );
+  // Tapping a city or monument chip opens its detail page directly (you
+  // clicked the place, so show the place), never just a map fly-by.
+  const openByName = (list: { id: string; name: string }[]) => (name: string) => {
+    const hit = list.find((x) => x.name === name);
+    if (hit) useUi.getState().openCity(hit.id);
+  };
   return (
     <details className="country-detail" onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>What you've seen · what's left</summary>
       {detail && (
         <>
-          <ChipRow label="Cities" names={detail.cities} done onPick={flyToCity} />
-          <ChipRow label="Regions visited" names={detail.regionsVisited} done onPick={flyToRegion} />
+          <ChipRow
+            label="Cities"
+            names={detail.cities.map((c) => c.name)}
+            done
+            onPick={openByName(detail.cities)}
+          />
+          <ChipRow
+            label="Regions visited"
+            names={detail.regionsVisited}
+            done
+            hint="Show on the map:"
+            onPick={flyToRegion}
+          />
           <ChipRow
             label="Regions to visit"
             names={detail.regionsRemainingNames}
             onPick={flyToRegion}
           />
-          <ChipRow label="Monuments seen" names={detail.monumentsVisited} done onPick={flyToMonument} />
-          <ChipRow label="Monuments to see" names={detail.monumentsRemaining} onPick={flyToMonument} />
+          <ChipRow
+            label="Monuments seen"
+            names={detail.monumentsVisited.map((m) => m.name)}
+            done
+            onPick={openByName(detail.monumentsVisited)}
+          />
+          <ChipRow
+            label="Monuments to see"
+            names={detail.monumentsRemaining.map((m) => m.name)}
+            onPick={openByName(detail.monumentsRemaining)}
+          />
         </>
       )}
     </details>
@@ -132,26 +160,22 @@ function Bar({ value, label, color }: { value: number; label: string; color?: st
 
 export function StatsView() {
   const ref = useMemo(() => getReferenceData(), []);
+  const gazGen = useGazetteerGeneration(); // denominators change when the full gazetteer lands
   const visits = useVisits((s) => s.visits);
   const trips = useTrips((s) => s.trips);
   const flyTo = useUi((s) => s.flyTo);
 
   const scope = useSettings((s) => s.countryScope);
   const [sortBy, setSortBy] = useState<CountrySort>("cities");
-  const coverage = useMemo(() => computeCoverage(visits, ref, scope), [visits, ref, scope]);
-  const records = useMemo(() => computeRecords(visits, ref), [visits, ref]);
+  /* eslint-disable react-hooks/exhaustive-deps */
+  const coverage = useMemo(() => computeCoverage(visits, ref, scope), [visits, ref, scope, gazGen]);
+  const records = useMemo(() => computeRecords(visits, ref), [visits, ref, gazGen]);
   const travel = useMemo(() => travelTotals(trips, ref), [trips, ref]);
 
   function flyToCity(iso2: string) {
     return (name: string) => {
       const c = ref.citiesOf(iso2).find((x) => x.name === name);
       if (c) flyTo(c.lon, c.lat);
-    };
-  }
-  function flyToMonument(iso2: string) {
-    return (name: string) => {
-      const h = ref.heritageOf(iso2).find((x) => x.name === name);
-      if (h && (h.lat !== 0 || h.lon !== 0)) flyTo(h.lon, h.lat);
     };
   }
   function flyToRegion(iso2: string) {
@@ -167,12 +191,13 @@ export function StatsView() {
   }
   const continentCov = useMemo(
     () => computeContinentCoverage(visits, ref, scope),
-    [visits, ref, scope],
+    [visits, ref, scope, gazGen],
   );
   const countries = useMemo(
     () => visitedCountriesList(visits, ref, sortBy, scope),
-    [visits, ref, sortBy, scope],
+    [visits, ref, sortBy, scope, gazGen],
   );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return (
     <section aria-label="Statistics">
@@ -448,9 +473,7 @@ export function StatsView() {
               c.heritageVisited > 0) && (
               <CountryDrilldown
                 iso2={c.iso2}
-                flyToCity={flyToCity(c.iso2)}
                 flyToRegion={flyToRegion(c.iso2)}
-                flyToMonument={flyToMonument(c.iso2)}
               />
             )}
           </div>

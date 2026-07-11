@@ -13,6 +13,8 @@ export interface OfflineRegion {
 }
 
 export const OFFLINE_REGIONS: OfflineRegion[] = [
+  // The whole world at overview zoom: the one-tap "never see a blank map" pack.
+  { id: "world", name: "World overview", emoji: "🌍", bounds: { west: -180, south: -85, east: 180, north: 85 }, baseZoom: 0, levels: 6 },
   { id: "europe", name: "Europe", emoji: "🏰", bounds: { west: -11, south: 35, east: 32, north: 62 }, baseZoom: 4, levels: 4 },
   { id: "north-america", name: "North America", emoji: "🗽", bounds: { west: -140, south: 15, east: -52, north: 62 }, baseZoom: 3, levels: 4 },
   { id: "south-america", name: "South America", emoji: "🦜", bounds: { west: -82, south: -56, east: -34, north: 13 }, baseZoom: 3, levels: 4 },

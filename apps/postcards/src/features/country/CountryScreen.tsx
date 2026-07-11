@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import { useGazetteerGeneration } from "../../lib/reference/useGazetteer";
 import { useVisits } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { computeCountryCoverage, countryDetail } from "../stats/computeStats";
 import { countryFlag, formatInt, formatPercent } from "../../lib/format/format";
 import { StateToggles } from "../visits/StateToggles";
-import { GuideButton } from "../guides/GuideButton";
+import { GuideSection } from "../guides/GuideButton";
 import { CityLine } from "../../ui/CityLine";
 
 const PAGE = 50;
@@ -17,16 +18,21 @@ const PAGE = 50;
  */
 export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => void }) {
   const ref = useMemo(() => getReferenceData(), []);
+  // The full-gazetteer upgrade grows this country's city list + denominators.
+  const gazGen = useGazetteerGeneration();
   const visits = useVisits((s) => s.visits);
   const flyTo = useUi((s) => s.flyTo);
   const [shown, setShown] = useState(PAGE);
+  const [shownSites, setShownSites] = useState(PAGE);
 
   const country = ref.countryByIso2(iso2);
-  const cities = useMemo(() => ref.citiesOf(iso2), [ref, iso2]); // population-desc
+  /* eslint-disable react-hooks/exhaustive-deps */
+  const cities = useMemo(() => ref.citiesOf(iso2), [ref, iso2, gazGen]); // population-desc
   const sites = useMemo(() => ref.heritageOf(iso2), [ref, iso2]);
   const languages = ref.languagesOf(iso2);
-  const cov = useMemo(() => computeCountryCoverage(visits, ref, iso2), [visits, ref, iso2]);
-  const detail = useMemo(() => countryDetail(visits, ref, iso2), [visits, ref, iso2]);
+  const cov = useMemo(() => computeCountryCoverage(visits, ref, iso2), [visits, ref, iso2, gazGen]);
+  const detail = useMemo(() => countryDetail(visits, ref, iso2), [visits, ref, iso2, gazGen]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   if (!country) {
     return (
@@ -85,7 +91,6 @@ export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => vo
             Show on map
           </button>
         )}
-        <GuideButton place={place} />
       </div>
 
       <section className="city-section">
@@ -116,11 +121,13 @@ export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => vo
         )}
       </section>
 
+      <GuideSection place={place} />
+
       {sites.length > 0 && (
         <section className="city-section">
           <h3>Sites & landmarks</h3>
           <ul className="city-list">
-            {sites.map((h) => (
+            {sites.slice(0, shownSites).map((h) => (
               <li key={h.id} className="city-row compact">
                 <button
                   className="city-focus"
@@ -135,6 +142,20 @@ export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => vo
               </li>
             ))}
           </ul>
+          {sites.length > shownSites && (
+            <div className="list-pager">
+              <span className="muted small">
+                Showing {shownSites} of {formatInt(sites.length)}
+              </span>
+              <button
+                className="mini-btn"
+                type="button"
+                onClick={() => setShownSites((n) => n + PAGE)}
+              >
+                Show {Math.min(PAGE, sites.length - shownSites)} more
+              </button>
+            </div>
+          )}
         </section>
       )}
 
