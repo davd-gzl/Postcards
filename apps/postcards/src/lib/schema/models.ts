@@ -15,7 +15,11 @@ export const FORMAT = "postcards" as const;
 // v4 adds the "custom" place kind — a USER-authored point (name + coordinates) for
 // places missing from the reference datasets. Reference data stays aggregated;
 // custom points are personal data and live only in the user's own file.
-export const SCHEMA_VERSION = 4;
+// v5 adds the optional top-level `stories` array (Journal — a mini travel blog).
+// Files stay structurally back-compatible (v4 files import unchanged), but the bump
+// means an older build opening a v5 file shows the graceful "update the app" prompt
+// rather than a cryptic strict-parse error on the unknown `stories` key.
+export const SCHEMA_VERSION = 5;
 
 const isoCountryId = z
   .string()
@@ -140,6 +144,35 @@ export const TripSchema = z
   })
   .strict();
 
+/** Most photos one journal story may hold (bounds the inline portable file). */
+export const MAX_PHOTOS_PER_STORY = 24;
+
+/**
+ * One journal story (Journal — a mini travel blog): a dated, titled entry about a
+ * place you've been, with free text and its own small photo gallery. Personal data
+ * only — the app never authors world facts here. Photos reuse PhotoSchema, so they
+ * stay inline, inert data URLs that never leave the device outside an explicit export.
+ */
+export const StorySchema = z
+  .object({
+    storyId: idString,
+    place: PlaceRefSchema,
+    /** The day the story is about — required, unlike a visit's optional date. */
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    title: z
+      .string()
+      .min(1)
+      .max(200)
+      .transform((s) => sanitizeText(s, 200)),
+    text: z
+      .string()
+      .max(8000)
+      .transform((s) => sanitizeText(s, 8000)),
+    photos: z.array(PhotoSchema).max(MAX_PHOTOS_PER_STORY).optional(),
+    addedAt: z.string().datetime({ offset: true }),
+  })
+  .strict();
+
 export const ReferenceSourceSchema = z
   .object({
     dataset: z.string().max(100),
@@ -157,6 +190,8 @@ export const PostcardsFileSchema = z
     visits: z.array(VisitSchema),
     // Additive & optional: files predating the travel log import unchanged.
     trips: z.array(TripSchema).optional().default([]),
+    // Additive & optional: files predating the journal import unchanged.
+    stories: z.array(StorySchema).optional().default([]),
     referenceSources: z.array(ReferenceSourceSchema).optional().default([]),
   })
   .strict();
@@ -183,6 +218,7 @@ export function normalizeVisitPhotos(v: Visit): Visit {
 }
 export type TravelMode = z.infer<typeof TravelModeSchema>;
 export type Trip = z.infer<typeof TripSchema>;
+export type Story = z.infer<typeof StorySchema>;
 export type ReferenceSource = z.infer<typeof ReferenceSourceSchema>;
 export type PostcardsFile = z.infer<typeof PostcardsFileSchema>;
 

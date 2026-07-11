@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useVisits } from "../../lib/store/useVisits";
 import { useTrips } from "../../lib/store/useTrips";
+import { sortStories, useStories } from "../../lib/store/useStories";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { replaceAllPortable } from "../../lib/db/visitsDb";
 import { serializeFile, EXPORT_FILENAME } from "./exportJson";
@@ -23,12 +24,13 @@ export function Backup() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const trips = useTrips((s) => s.trips);
+  const stories = useStories((s) => s.stories);
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   function exportJson() {
     try {
-      download(EXPORT_FILENAME, serializeFile(visits, trips), "application/json");
+      download(EXPORT_FILENAME, serializeFile(visits, trips, stories), "application/json");
     } catch {
       setMessage({ kind: "err", text: "Couldn't build the export file. Your data is unchanged." });
     }
@@ -51,29 +53,33 @@ export function Backup() {
       setMessage({ kind: "err", text: result.error });
       return;
     }
-    if (visits.length > 0 || trips.length > 0) {
+    if (visits.length > 0 || trips.length > 0 || stories.length > 0) {
       const ok = window.confirm(
-        `Replace your ${visits.length} place${visits.length === 1 ? "" : "s"} and ` +
-          `${trips.length} trip${trips.length === 1 ? "" : "s"} with the ` +
-          `${result.visits.length} place${result.visits.length === 1 ? "" : "s"} and ` +
-          `${result.trips.length} trip${result.trips.length === 1 ? "" : "s"} in this file? ` +
+        `Replace your ${visits.length} place${visits.length === 1 ? "" : "s"}, ` +
+          `${trips.length} trip${trips.length === 1 ? "" : "s"} and ` +
+          `${stories.length} stor${stories.length === 1 ? "y" : "ies"} with the ` +
+          `${result.visits.length} place${result.visits.length === 1 ? "" : "s"}, ` +
+          `${result.trips.length} trip${result.trips.length === 1 ? "" : "s"} and ` +
+          `${result.stories.length} stor${result.stories.length === 1 ? "y" : "ies"} in this file? ` +
           `This can't be undone.`,
       );
       if (!ok) return;
     }
     try {
-      // Persist both stores in one transaction, then reflect in memory — so the
-      // device is never left with places from the new file and trips from the old.
-      await replaceAllPortable(result.visits, result.trips);
+      // Persist all stores in one transaction, then reflect in memory — so the
+      // device is never left with places from the new file and trips or stories
+      // from the old.
+      await replaceAllPortable(result.visits, result.trips, result.stories);
     } catch {
       setMessage({ kind: "err", text: "Import failed while saving; your data is unchanged." });
       return;
     }
     useVisits.setState({ visits: result.visits });
     useTrips.setState({ trips: result.trips });
+    useStories.setState({ stories: sortStories(result.stories) });
     setMessage({
       kind: "ok",
-      text: `Imported ${result.visits.length} places and ${result.trips.length} trips.`,
+      text: `Imported ${result.visits.length} places, ${result.trips.length} trips and ${result.stories.length} stories.`,
     });
   }
 

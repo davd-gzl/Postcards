@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
+import { useStories } from "../../lib/store/useStories";
 import { useUi } from "../../lib/store/useUi";
+import { placeKey } from "../../lib/schema/models";
 import { countryFlag, formatDate, formatInt, formatKm } from "../../lib/format/format";
 import { haversineKm } from "../travel/distance";
 import { articleUrl } from "../../lib/wikivoyage";
@@ -24,7 +26,9 @@ function wikipediaUrl(title: string): string {
 export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => void }) {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
+  const stories = useStories((s) => s.stories);
   const flyTo = useUi((s) => s.flyTo);
+  const openJournalDraft = useUi((s) => s.openJournalDraft);
 
   // The page serves cities, World Heritage monuments, and your own custom places.
   const city = ref.cityById(cityId);
@@ -47,6 +51,12 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
     : monument
       ? { kind: "heritage" as const, id: monument.id, name: monument.name, countryId: monument.countryIso2 }
       : customPlace;
+
+  // This place's journal stories (already newest-first in the store).
+  const placeStories = useMemo(
+    () => (place ? stories.filter((s) => placeKey(s.place) === placeKey(place)) : []),
+    [stories, place],
+  );
 
   // Nearby points of interest, by great-circle distance (nothing invented).
   const nearby = useMemo(() => {
@@ -130,6 +140,31 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
             <PhotoGallery visitId={visit.visitId} photos={visit.photos ?? []} placeName={name} />
             {visit.note && <p className="muted">{visit.note}</p>}
           </div>
+        </section>
+      )}
+
+      {place && (placeStories.length > 0 || visit?.status === "visited") && (
+        <section className="city-section">
+          <h3>Journal</h3>
+          {placeStories.length > 0 && (
+            <ul className="city-list">
+              {placeStories.map((s) => (
+                <li key={s.storyId} className="city-row compact">
+                  <div className="city-focus" style={{ cursor: "default" }}>
+                    <CityLine flag="✍️" name={s.title} sub={<>· {formatDate(s.date)}</>} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button
+            className="mini-btn"
+            type="button"
+            style={placeStories.length ? { marginTop: 6 } : undefined}
+            onClick={() => openJournalDraft(place)}
+          >
+            ＋ Story
+          </button>
         </section>
       )}
 
