@@ -1,15 +1,18 @@
 import { useMemo } from "react";
 import { useVisits } from "../../lib/store/useVisits";
 import { useSettings } from "../../lib/store/useSettings";
+import { useUi, type PlacesView } from "../../lib/store/useUi";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { computeCoverage } from "./computeStats";
 import { formatInt } from "../../lib/format/format";
 
-/** Compact counter strip (à la Places Been): countries, cities been/want/fav. */
+/** Compact counter strip. Every counter is a shortcut: tap it to open the
+ *  matching Places view (been → visited, want → wishlist, fav → favourites…). */
 export function StatStrip() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const scope = useSettings((s) => s.countryScope);
+  const openPlaces = useUi((s) => s.openPlaces);
 
   const stats = useMemo(() => {
     const cov = computeCoverage(visits, ref, scope);
@@ -22,34 +25,50 @@ export function StatStrip() {
     return { cov, want, fav };
   }, [visits, ref, scope]);
 
+  function Counter({
+    num,
+    den,
+    label,
+    cls,
+    view,
+  }: {
+    num: number;
+    den?: number;
+    label: string;
+    cls?: string;
+    view: PlacesView;
+  }) {
+    return (
+      <button
+        type="button"
+        className="ss-item"
+        onClick={() => openPlaces(view)}
+        title={`Open your ${label}`}
+      >
+        <span className={"ss-num" + (cls ? ` ${cls}` : "")}>
+          {formatInt(num)}
+          {den != null && <span className="ss-den">/{formatInt(den)}</span>}
+        </span>
+        <span className="ss-label">{label}</span>
+      </button>
+    );
+  }
+
   return (
     <div className="stat-strip" aria-label="Your totals">
-      <span className="ss-item">
-        <span className="ss-num">
-          {formatInt(stats.cov.countriesVisited)}
-          <span className="ss-den">/{formatInt(stats.cov.worldCountryCount)}</span>
-        </span>
-        <span className="ss-label">countries</span>
-      </span>
+      <Counter
+        num={stats.cov.countriesVisited}
+        den={stats.cov.worldCountryCount}
+        label="countries"
+        view="countries"
+      />
       <span className="ss-sep" aria-hidden />
-      <span className="ss-item">
-        <span className="ss-num ss-been">{formatInt(stats.cov.citiesVisited)}</span>
-        <span className="ss-label">been</span>
-      </span>
+      <Counter num={stats.cov.citiesVisited} label="been" cls="ss-been" view="visited" />
       {stats.cov.airportsVisited > 0 && (
-        <span className="ss-item">
-          <span className="ss-num ss-air">{formatInt(stats.cov.airportsVisited)}</span>
-          <span className="ss-label">airports</span>
-        </span>
+        <Counter num={stats.cov.airportsVisited} label="airports" cls="ss-air" view="visited" />
       )}
-      <span className="ss-item">
-        <span className="ss-num ss-want">{formatInt(stats.want)}</span>
-        <span className="ss-label">want</span>
-      </span>
-      <span className="ss-item">
-        <span className="ss-num ss-fav">{formatInt(stats.fav)}</span>
-        <span className="ss-label">fav</span>
-      </span>
+      <Counter num={stats.want} label="want" cls="ss-want" view="wishlist" />
+      <Counter num={stats.fav} label="fav" cls="ss-fav" view="favorites" />
     </div>
   );
 }

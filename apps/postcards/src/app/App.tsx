@@ -5,12 +5,13 @@ import { useUi, type Tab } from "../lib/store/useUi";
 import { StatsView } from "../features/stats/StatsView";
 import { PlacesScreen } from "../features/visits/PlacesScreen";
 import { TravelScreen } from "../features/travel/TravelScreen";
-import { Backup } from "../features/backup/Backup";
-import { Attribution } from "../ui/Attribution";
+import { PassportScreen } from "../features/passport/PassportScreen";
+import { SettingsScreen } from "../features/settings/SettingsScreen";
+import { CityScreen } from "../features/city/CityScreen";
 import { ShortcutsHelp } from "../ui/ShortcutsHelp";
 import { AboutModal } from "../ui/AboutModal";
 import { Toast } from "../ui/Toast";
-import { MapIcon, ChartIcon, ListIcon, RouteIcon, InfoIcon } from "../ui/icons";
+import { MapIcon, ChartIcon, ListIcon, RouteIcon, FlagIcon, GearIcon, InfoIcon } from "../ui/icons";
 import { useState } from "react";
 
 // Code-split MapLibre so it loads only when the map is shown.
@@ -23,11 +24,13 @@ const TABS: { id: Tab; label: string; keys: string[]; Icon: () => JSX.Element }[
   { id: "stats", label: "Stats", keys: ["2", "s"], Icon: ChartIcon },
   { id: "places", label: "Places", keys: ["3", "p"], Icon: ListIcon },
   { id: "trips", label: "Trips", keys: ["4", "t"], Icon: RouteIcon },
+  { id: "passport", label: "Passport", keys: ["5", "f"], Icon: FlagIcon },
 ];
 
 export function App() {
   const tab = useUi((s) => s.tab);
   const setTab = useUi((s) => s.setTab);
+  const cityPageId = useUi((s) => s.cityPageId);
   const [showHelp, setShowHelp] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
@@ -106,15 +109,26 @@ export function App() {
         <div className="app-content">
           <header className="topbar">
             <h1 className="brand">Postcards</h1>
-            <button
-              type="button"
-              className="topbar-about"
-              aria-haspopup="dialog"
-              onClick={() => setShowAbout(true)}
-            >
-              <InfoIcon />
-              <span>How it works</span>
-            </button>
+            <span className="topbar-actions">
+              <button
+                type="button"
+                className="topbar-about"
+                aria-haspopup="dialog"
+                onClick={() => setShowAbout(true)}
+              >
+                <InfoIcon />
+                <span>How it works</span>
+              </button>
+              <button
+                type="button"
+                className={"topbar-about topbar-gear" + (tab === "settings" ? " on" : "")}
+                aria-label="Settings"
+                title="Settings"
+                onClick={() => setTab("settings")}
+              >
+                <GearIcon />
+              </button>
+            </span>
           </header>
 
           <p className="sr-only" role="status" aria-live="polite">
@@ -125,29 +139,43 @@ export function App() {
             ref={mainRef}
             id="main"
             tabIndex={-1}
-            className={"content" + (tab === "map" ? " flush" : "")}
+            className={"content" + (tab === "map" && !cityPageId ? " flush" : "")}
           >
-            {tab === "map" && (
-              <Suspense fallback={<p className="muted empty">Loading map…</p>}>
-                <MapScreen />
-              </Suspense>
-            )}
-            {tab === "stats" && (
-              <div className="screen">
-                <StatsView />
-              </div>
-            )}
-            {tab === "places" && (
-              <div className="screen">
-                <PlacesScreen />
-                <Backup />
-                <Attribution />
-              </div>
-            )}
-            {tab === "trips" && (
-              <div className="screen">
-                <TravelScreen />
-              </div>
+            {cityPageId ? (
+              <CityScreen cityId={cityPageId} onBack={() => useUi.getState().closeCity()} />
+            ) : (
+              <>
+                {tab === "map" && (
+                  <Suspense fallback={<p className="muted empty">Loading map…</p>}>
+                    <MapScreen />
+                  </Suspense>
+                )}
+                {tab === "stats" && (
+                  <div className="screen">
+                    <StatsView />
+                  </div>
+                )}
+                {tab === "places" && (
+                  <div className="screen">
+                    <PlacesScreen />
+                  </div>
+                )}
+                {tab === "trips" && (
+                  <div className="screen">
+                    <TravelScreen />
+                  </div>
+                )}
+                {tab === "passport" && (
+                  <div className="screen">
+                    <PassportScreen />
+                  </div>
+                )}
+                {tab === "settings" && (
+                  <div className="screen">
+                    <SettingsScreen />
+                  </div>
+                )}
+              </>
             )}
           </main>
         </div>

@@ -18,8 +18,17 @@ function lonInRange(lon: number, west: number, east: number): boolean {
  * Cities whose coordinates fall inside the current map viewport, sorted by
  * population (most people first). This powers the "cities in view" list that
  * updates as the user pans/zooms the map.
+ *
+ * Pass `presorted: true` when `cities` is already population-descending (the
+ * bundled gazetteer is) — with ~135k world cities, skipping the re-sort on every
+ * map move keeps panning smooth.
  */
-export function citiesInView(cities: City[], bounds: Bounds | null, limit = 25): City[] {
+export function citiesInView(
+  cities: City[],
+  bounds: Bounds | null,
+  limit = 25,
+  presorted = false,
+): City[] {
   if (!bounds) return [];
   const result = cities.filter(
     (c) =>
@@ -27,6 +36,6 @@ export function citiesInView(cities: City[], bounds: Bounds | null, limit = 25):
       c.lat <= bounds.north &&
       lonInRange(c.lon, bounds.west, bounds.east),
   );
-  result.sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
+  if (!presorted) result.sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
   return result.slice(0, limit);
 }

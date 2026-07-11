@@ -1643,3 +1643,345 @@ h1.brand {
     max-width: 1040px;
   }
 }
+
+/* ===== Batch 2: compact + new screens ===== */
+
+/* Compact pass: tighter rows & sections across the app. */
+.city-row.compact {
+  padding: 3px 0;
+}
+.section-head {
+  margin: 0 0 6px;
+}
+.screen {
+  padding-top: 10px;
+}
+.stat-grid {
+  margin-bottom: 14px;
+}
+.country-card {
+  padding: 9px 11px;
+  margin-bottom: 6px;
+}
+
+/* Topbar action cluster (About + Settings gear). */
+.topbar-actions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.topbar-gear {
+  padding: 5px 7px;
+}
+.topbar-gear.on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Counter strip items are buttons now. */
+.ss-item {
+  background: none;
+  border: none;
+  padding: 0;
+  border-radius: 8px;
+}
+.ss-item:hover .ss-label,
+.ss-item:focus-visible .ss-label {
+  color: var(--accent);
+}
+
+/* Globe↔flat crossfade ghost frame. */
+.map-ghost {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+/* Subtle pop when a place flips to visited. */
+@keyframes visit-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.state.been.on {
+  animation: visit-pop 0.28s ease;
+}
+
+/* Map popup actions. */
+.map-popup-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+/* List pager. */
+.list-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 2px;
+}
+
+/* Scope toggle (segmented) stays small inline. */
+.scope-toggle button {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* Stats: records + chips. */
+.records-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 6px 14px;
+  margin-bottom: 14px;
+  font-size: 13.5px;
+}
+.record {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.record-emoji {
+  flex: none;
+}
+.chip-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 7px 0 0;
+}
+.chip-row-label {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 104px;
+}
+.chip-row-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.place-chip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+.place-chip.chip-done {
+  background: var(--visited-soft);
+  border-color: var(--visited);
+  color: var(--visited);
+}
+.place-chip:not(:disabled):hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.place-chip.chip-more {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+/* Passport: flags. */
+.passport-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.flags-count {
+  font-size: 22px;
+  font-family: var(--display);
+  color: var(--text);
+}
+.flag-grid {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+.flag-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+.flag-big {
+  font-size: 30px;
+  line-height: 1;
+}
+.flag-name {
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.flag-locked {
+  opacity: 0.45;
+  filter: saturate(0.4);
+}
+
+/* Settings. */
+.settings-section {
+  margin-bottom: 22px;
+}
+.settings-section h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+.region-list {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+.region-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.region-emoji {
+  flex: none;
+  font-size: 18px;
+}
+.region-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+.region-progress {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* City page. */
+.back-btn {
+  margin-bottom: 10px;
+}
+.city-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.city-hero-flag {
+  font-size: 44px;
+  line-height: 1;
+}
+.city-hero h2 {
+  margin: 0;
+  font-family: var(--display);
+  letter-spacing: -0.02em;
+}
+.city-hero p {
+  margin: 2px 0 0;
+}
+.city-hero .states {
+  margin-left: auto;
+}
+.city-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  margin-bottom: 14px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.city-section {
+  margin-bottom: 18px;
+}
+.city-section h3 {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+.city-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.city-links a {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.city-gallery-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Add-your-own place form. */
+.add-place {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.add-place p {
+  margin: 0;
+}
+.add-place-row {
+  display: flex;
+  gap: 8px;
+}
+.add-place-row .search-input {
+  height: 38px;
+  font-size: 14px;
+  flex: 1;
+}
+.add-place-row .select {
+  height: 38px;
+  font-size: 14px;
+  width: auto;
+  flex: 1;
+}
+.add-place-row .btn {
+  padding: 8px 14px;
+}
+
+/* Desktop: map buttons live at the TOP corners; About modal goes two-column. */
+@media (min-width: 900px) {
+  .map-ctl-left {
+    top: 10px;
+    bottom: auto;
+  }
+  .map-ctl-right {
+    top: 90px; /* below the zoom control */
+    bottom: auto;
+  }
+  .about-modal {
+    max-width: 860px;
+  }
+  .about-modal .about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 26px;
+  }
+}

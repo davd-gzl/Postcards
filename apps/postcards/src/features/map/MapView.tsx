@@ -5,10 +5,12 @@ import { feature } from "topojson-client";
 import type { FeatureCollection, Polygon, MultiPolygon, Point, Feature, LineString } from "geojson";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
-import { useVisits } from "../../lib/store/useVisits";
-import { airportPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
+import { useVisits, findByPlace } from "../../lib/store/useVisits";
+import { useUi } from "../../lib/store/useUi";
+import { airportPoints, monumentPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
 import type { Bounds } from "./viewport";
 import type { City } from "../../lib/reference/types";
+import type { PlaceRef } from "../../lib/schema/models";
 import { countryFlag, formatInt } from "../../lib/format/format";
 
 // Natural Earth 50m country geometry, served as a static asset (SW-cached for
@@ -66,9 +68,9 @@ const PILL_FONT = '600 21px "Inter Variable", system-ui, sans-serif';
  * 2× for crispness.
  */
 function makeCityPill(iso2: string, favorite: boolean): ImageData {
-  const h = 30; // 15px on screen
-  const pad = 8;
-  const flagFont = `19px ${EMOJI_FONT}`;
+  const h = 38; // 19px on screen — clearly visible on large displays
+  const pad = 9;
+  const flagFont = `25px ${EMOJI_FONT}`;
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d")!;
   ctx.font = flagFont;
@@ -143,12 +145,70 @@ function makeAirportPin(iata: string, wish: boolean, favorite: boolean): ImageDa
 }
 
 function inViewPoints(cities: City[]): FeatureCollection<Point> {
+  const ref = getReferenceData();
   const features: Feature<Point>[] = cities.map((c) => ({
     type: "Feature",
     geometry: { type: "Point", coordinates: [c.lon, c.lat] },
-    properties: { name: c.name },
+    properties: {
+      id: c.id,
+      name: c.name,
+      cc: c.countryIso2,
+      pop: c.population ?? 0,
+      region: c.subdivisionId ? ref.subdivisionById(c.subdivisionId)?.name ?? "" : "",
+    },
   }));
   return { type: "FeatureCollection", features };
+}
+
+/**
+ * Popup for any tappable place marker: name, region · population, and actions —
+ * check/uncheck visited right from the map, plus the city detail page.
+ */
+function openPlacePopup(
+  map: MlMap,
+  lngLat: maplibregl.LngLatLike,
+  info: { name: string; sub: string; place: PlaceRef; hasPage: boolean },
+): void {
+  const el = document.createElement("div");
+  el.className = "map-popup";
+  const name = document.createElement("strong");
+  name.textContent = info.name;
+  el.appendChild(name);
+  if (info.sub) {
+    const sub = document.createElement("span");
+    sub.textContent = info.sub;
+    el.appendChild(sub);
+  }
+  const actions = document.createElement("div");
+  actions.className = "map-popup-actions";
+  const popup = new maplibregl.Popup({ closeButton: false, offset: 16, maxWidth: "260px" })
+    .setLngLat(lngLat)
+    .setDOMContent(el);
+
+  const visited = findByPlace(useVisits.getState().visits, info.place)?.status === "visited";
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "mini-btn" + (visited ? " mini-on" : "");
+  toggle.textContent = visited ? "✓ Visited — uncheck" : "✓ Been there";
+  toggle.onclick = () => {
+    void useVisits.getState().toggleVisit(info.place);
+    popup.remove();
+  };
+  actions.appendChild(toggle);
+
+  if (info.hasPage) {
+    const page = document.createElement("button");
+    page.type = "button";
+    page.className = "mini-btn";
+    page.textContent = "Details";
+    page.onclick = () => {
+      popup.remove();
+      useUi.getState().openCity(info.place.id);
+    };
+    actions.appendChild(page);
+  }
+  el.appendChild(actions);
+  popup.addTo(map);
 }
 
 export interface MapFocus {
@@ -225,10 +285,10 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
       type: "circle",
       source: "cities-inview",
       paint: {
-        "circle-radius": 3.5,
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 4, 8, 6.5],
         "circle-color": "#ffffff",
-        "circle-stroke-color": "#8a94a6",
-        "circle-stroke-width": 1.2,
+        "circle-stroke-color": "#7b8698",
+        "circle-stroke-width": 1.6,
       },
     },
     {
@@ -236,9 +296,21 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
       type: "circle",
       source: "wishlist",
       paint: {
-        "circle-radius": 4,
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 5, 8, 7.5],
         "circle-color": "#ffffff",
         "circle-stroke-color": "#f59e0b",
+        "circle-stroke-width": 2.5,
+      },
+    },
+    // Monuments (UNESCO World Heritage): amber diamonds — filled once seen.
+    {
+      id: "poi-monuments",
+      type: "circle",
+      source: "monuments",
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 4.5, 8, 7],
+        "circle-color": ["case", ["==", ["get", "seen"], 1], "#b45309", "#ffffff"],
+        "circle-stroke-color": "#b45309",
         "circle-stroke-width": 2,
       },
     },
@@ -248,7 +320,8 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
       source: "cities",
       layout: {
         "icon-image": ["concat", "pill-", ["get", "cc"], "-", ["to-string", ["get", "fav"]]],
-        "icon-size": 1,
+        // Grow with zoom so markers stay obvious on big screens & close views.
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 1, 0.9, 5, 1.1, 10, 1.35],
         "icon-padding": 1,
         "symbol-sort-key": ["get", "sortKey"],
       },
@@ -318,6 +391,9 @@ export function MapView({
   reducedRef.current = reducedMotion;
   const onBaseUnavailableRef = useRef(onBaseUnavailable);
   onBaseUnavailableRef.current = onBaseUnavailable;
+  // True while a programmatic camera move is in flight — its moveend must NOT
+  // refresh the cities list (the list only follows the user's own map moves).
+  const suppressBoundsRef = useRef(false);
   const [failed, setFailed] = useState(false);
   const [dataState, setDataState] = useState<"loading" | "ready" | "error">("loading");
 
@@ -341,6 +417,9 @@ export function MapView({
     );
     (map.getSource("airports") as GeoJSONSource | undefined)?.setData(
       airportPoints(visitsRef.current, ref),
+    );
+    (map.getSource("monuments") as GeoJSONSource | undefined)?.setData(
+      monumentPoints(visitsRef.current, ref),
     );
   }
 
@@ -400,10 +479,14 @@ export function MapView({
         projection: { type: globe ? "globe" : "mercator" },
         sources: {
           ...baseStyle.sources,
-          countries: { type: "geojson", data: EMPTY_FC, attribution },
+          // tolerance 0: never simplify the country polygons — per-zoom
+          // simplification of the huge Arctic multipolygons produces degenerate
+          // triangles that render as ghostly land-coloured streaks over the ocean.
+          countries: { type: "geojson", data: EMPTY_FC, attribution, tolerance: 0 },
           "trip-arcs": { type: "geojson", data: EMPTY_FC },
           "cities-inview": { type: "geojson", data: EMPTY_FC },
           wishlist: { type: "geojson", data: EMPTY_FC },
+          monuments: { type: "geojson", data: EMPTY_FC },
           cities: { type: "geojson", data: EMPTY_FC },
           airports: { type: "geojson", data: EMPTY_FC },
         },
@@ -417,6 +500,8 @@ export function MapView({
           center: [6, 32],
           zoom: 1.1,
           style: fullStyle,
+          // Needed to snapshot the canvas for the globe↔flat crossfade.
+          canvasContextAttributes: { preserveDrawingBuffer: true },
         });
       } catch {
         setFailed(true);
@@ -451,8 +536,19 @@ export function MapView({
       });
 
       map.on("moveend", () => {
-        if (loadedRef.current && map) emitBounds(map);
+        if (!loadedRef.current || !map) return;
+        if (suppressBoundsRef.current) {
+          suppressBoundsRef.current = false; // programmatic fly — keep the list still
+          return;
+        }
+        emitBounds(map);
       });
+      // Any real user gesture re-enables list refreshes immediately.
+      for (const ev of ["dragstart", "wheel", "dblclick"] as const) {
+        map.on(ev, () => {
+          suppressBoundsRef.current = false;
+        });
+      }
 
       // If the online (OSM) base can't fetch its tiles (offline, or blocked), fall
       // back to the always-available offline base rather than showing a bare canvas.
@@ -469,32 +565,51 @@ export function MapView({
         });
       }
 
-      // Tap a visited city marker → popup with its name, region & population
-      // (population is intentionally not on the marker itself).
-      map.on("click", "cities-visited", (e) => {
-        const f = e.features?.[0];
-        if (!f || !map) return;
-        const el = document.createElement("div");
-        el.className = "map-popup";
-        const name = document.createElement("strong");
-        name.textContent = String(f.properties?.name ?? "");
-        el.appendChild(name);
-        const sub = document.createElement("span");
-        const region = f.properties?.region ? `${f.properties.region} · ` : "";
-        const popN = Number(f.properties?.pop);
-        sub.textContent = `${region}${popN > 0 ? `${formatInt(popN)} people` : ""}`.trim();
-        if (sub.textContent) el.appendChild(sub);
-        new maplibregl.Popup({ closeButton: false, offset: 14 })
-          .setLngLat(e.lngLat)
-          .setDOMContent(el)
-          .addTo(map);
-      });
-      map.on("mouseenter", "cities-visited", () => {
-        if (map) map.getCanvas().style.cursor = "pointer";
-      });
-      map.on("mouseleave", "cities-visited", () => {
-        if (map) map.getCanvas().style.cursor = "";
-      });
+      // Tap any place marker → popup with details + check/uncheck + city page,
+      // and gently zoom toward it. (Population/region live here, not on markers.)
+      const tappable = ["cities-visited", "cities-inview", "cities-wishlist", "poi-monuments"];
+      for (const layer of tappable) {
+        map.on("click", layer, (e) => {
+          const f = e.features?.[0];
+          if (!f || !map) return;
+          const p = f.properties ?? {};
+          const isMonument = layer === "poi-monuments";
+          const isCustom = Number(p.custom) === 1;
+          const kind = isMonument ? "heritage" : isCustom ? "custom" : "city";
+          const region = p.region ? String(p.region) : "";
+          const popN = Number(p.pop);
+          const country = ref.countryByIso2(String(p.cc ?? ""))?.name ?? String(p.cc ?? "");
+          const sub = isMonument
+            ? `World Heritage Site · ${country}`
+            : [country, region].filter(Boolean).join(" - ") +
+              (popN > 0 ? ` · ${formatInt(popN)} people` : "");
+          openPlacePopup(map, e.lngLat, {
+            name: String(p.name ?? ""),
+            sub,
+            place: {
+              kind,
+              id: String(p.id ?? ""),
+              name: String(p.name ?? ""),
+              countryId: String(p.cc ?? ""),
+            } as PlaceRef,
+            hasPage: kind === "city",
+          });
+          // Zoom toward the tapped place (suppress the list refresh — it's programmatic).
+          suppressBoundsRef.current = true;
+          map.easeTo({
+            center: e.lngLat,
+            zoom: Math.max(map.getZoom(), 6.5),
+            duration: reducedRef.current ? 0 : 550,
+          });
+          e.preventDefault?.();
+        });
+        map.on("mouseenter", layer, () => {
+          if (map) map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", layer, () => {
+          if (map) map.getCanvas().style.cursor = "";
+        });
+      }
     })();
 
     return () => {
@@ -532,13 +647,34 @@ export function MapView({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (map && loadedRef.current) map.setProjection({ type: globe ? "globe" : "mercator" });
+    if (!map || !loadedRef.current) return;
+    // Crossfade globe↔flat: freeze the last frame as an overlay image, switch the
+    // projection underneath, fade the frozen frame out. (Needs preserveDrawingBuffer.)
+    const host = containerRef.current;
+    if (!reducedRef.current && host) {
+      try {
+        const url = map.getCanvas().toDataURL();
+        const ghost = document.createElement("img");
+        ghost.src = url;
+        ghost.className = "map-ghost";
+        ghost.alt = "";
+        host.appendChild(ghost);
+        requestAnimationFrame(() => {
+          ghost.style.opacity = "0";
+        });
+        setTimeout(() => ghost.remove(), 450);
+      } catch {
+        /* snapshot unavailable — switch without the fade */
+      }
+    }
+    map.setProjection({ type: globe ? "globe" : "mercator" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [globe]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !focus) return;
+    suppressBoundsRef.current = true; // programmatic — the list must not move
     map.flyTo({
       center: [focus.lon, focus.lat],
       zoom: Math.max(map.getZoom(), 4.5),
@@ -551,6 +687,7 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !fit) return;
+    suppressBoundsRef.current = true; // programmatic — the list must not move
     map.fitBounds(fit.bounds, {
       padding: 48,
       maxZoom: 6,

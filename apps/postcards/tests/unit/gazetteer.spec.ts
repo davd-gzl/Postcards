@@ -3,32 +3,52 @@ import { getReferenceData } from "../../src/lib/reference/referenceData";
 
 const ref = getReferenceData();
 
-describe("bundled gazetteer integrity (GeoNames cities15000)", () => {
+describe("bundled gazetteer integrity (full GeoNames-derived world gazetteer)", () => {
   const cities = ref.allCities();
 
-  it("is a real, sizeable gazetteer", () => {
-    expect(cities.length).toBeGreaterThan(20000);
+  it("is the full world gazetteer (small towns & islands included)", () => {
+    expect(cities.length).toBeGreaterThan(100000);
     expect(new Set(cities.map((c) => c.countryIso2)).size).toBeGreaterThan(180);
+    // Regressions we specifically guard: Lombok (Indonesia) coverage and Beaumont, US.
+    const lombok = cities.filter(
+      (c) => c.countryIso2 === "ID" && c.lon > 115.8 && c.lon < 116.8 && c.lat > -9.2 && c.lat < -8.1,
+    );
+    expect(lombok.length).toBeGreaterThan(10);
+    expect(cities.some((c) => c.name === "Beaumont" && c.countryIso2 === "US")).toBe(true);
   });
 
   it("has unique GeoNames ids and valid records", () => {
+    // Plain-loop validation (an expect() per record × 135k would take minutes).
     const ids = new Set<string>();
+    let bad = 0;
     for (const c of cities) {
-      expect(ids.has(c.id)).toBe(false);
+      if (
+        ids.has(c.id) ||
+        c.name.length === 0 ||
+        c.lat < -90 ||
+        c.lat > 90 ||
+        c.lon < -180 ||
+        c.lon > 180 ||
+        // Population is a real positive count or null (unknown) — never a fake 0.
+        (c.population != null && c.population <= 0)
+      ) {
+        bad++;
+      }
       ids.add(c.id);
-      expect(c.name.length).toBeGreaterThan(0);
-      expect(c.lat).toBeGreaterThanOrEqual(-90);
-      expect(c.lat).toBeLessThanOrEqual(90);
-      expect(c.lon).toBeGreaterThanOrEqual(-180);
-      expect(c.lon).toBeLessThanOrEqual(180);
-      expect(c.population ?? 0).toBeGreaterThanOrEqual(15000);
     }
+    expect(bad).toBe(0);
+    expect(ids.size).toBe(cities.length);
   });
 
   it("keeps the population-sorted order the ranking relies on", () => {
-    for (let i = 1; i < Math.min(cities.length, 5000); i++) {
-      expect(cities[i - 1]!.population! >= cities[i]!.population!).toBe(true);
+    let sorted = true;
+    for (let i = 1; i < cities.length; i++) {
+      if ((cities[i - 1]!.population ?? 0) < (cities[i]!.population ?? 0)) {
+        sorted = false;
+        break;
+      }
     }
+    expect(sorted).toBe(true);
   });
 
   it("maps every French city to a real (named) region", () => {
