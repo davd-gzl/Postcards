@@ -10,7 +10,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) =>
   JSON.parse(readFileSync(join(here, "..", "public", "reference", name), "utf8"));
 initReferenceDataSync(
-  read("cities.json") as City[],
+  read("cities-all.json") as City[],
   read("subdivisions.json") as Subdivision[],
   read("airports.json") as Airport[],
 );
