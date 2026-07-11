@@ -21,9 +21,9 @@ test("count with or without dependent territories", async ({ page }) => {
   await expect(countTile).toContainText("2");
   await expect(denomTile).toContainText(/countries & territories/);
 
-  // Switch to UN members only → Hong Kong (a territory) drops from the count,
-  // and the denominator relabels + shrinks.
-  await page.locator("#country-scope").selectOption("un");
+  // Switch to UN members only (segmented toggle) → Hong Kong (a territory)
+  // drops from the count, and the denominator relabels + shrinks.
+  await page.getByRole("button", { name: "UN · 193" }).first().click();
   await expect(countTile).toContainText("1");
   await expect(denomTile).toContainText(/UN member states/);
   await expect(denomTile).not.toContainText(/countries & territories/);

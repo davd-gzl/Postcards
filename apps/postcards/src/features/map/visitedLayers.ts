@@ -7,17 +7,6 @@ function isVisited(v: Visit): boolean {
   return v.status !== "wishlist";
 }
 
-/** Numeric ISO ids (matching the map geometry) of countries with any visit. */
-export function visitedCountryNumerics(visits: Visit[], ref: ReferenceData): string[] {
-  const set = new Set<string>();
-  for (const v of visits) {
-    if (!isVisited(v)) continue;
-    const c = ref.countryByIso2(v.place.countryId);
-    if (c) set.add(c.numeric);
-  }
-  return [...set];
-}
-
 /**
  * Point features for visited cities. Each carries what the flag marker needs
  * (country code, favourite flag, collision sort key) plus the details shown in
@@ -27,7 +16,27 @@ export function visitedCountryNumerics(visits: Visit[], ref: ReferenceData): str
 export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureCollection<Point> {
   const features: Feature<Point>[] = [];
   for (const v of visits) {
-    if (!isVisited(v) || v.place.kind !== "city") continue;
+    if (!isVisited(v)) continue;
+    // User-authored custom points carry their own coordinates on the record.
+    if (v.place.kind === "custom") {
+      if (v.place.lat == null || v.place.lon == null) continue;
+      features.push({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [v.place.lon, v.place.lat] },
+        properties: {
+          id: v.place.id,
+          name: v.place.name,
+          cc: v.place.countryId,
+          pop: 0,
+          region: "",
+          custom: 1,
+          fav: v.favorite ? 1 : 0,
+          sortKey: 0,
+        },
+      });
+      continue;
+    }
+    if (v.place.kind !== "city") continue;
     const city = ref.cityById(v.place.id);
     if (!city) continue;
     const region = city.subdivisionId ? ref.subdivisionById(city.subdivisionId)?.name ?? "" : "";
@@ -35,13 +44,32 @@ export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureC
       type: "Feature",
       geometry: { type: "Point", coordinates: [city.lon, city.lat] },
       properties: {
+        id: city.id,
         name: city.name,
         cc: city.countryIso2,
         pop: city.population ?? 0,
         region,
+        custom: 0,
         fav: v.favorite ? 1 : 0,
         sortKey: -(city.population ?? 0),
       },
+    });
+  }
+  return { type: "FeatureCollection", features };
+}
+
+/** ALL monuments (UNESCO heritage sites) as a browsable map layer; `seen` marks visited ones. */
+export function monumentPoints(visits: Visit[], ref: ReferenceData): FeatureCollection<Point> {
+  const seen = new Set(
+    visits.filter((v) => isVisited(v) && v.place.kind === "heritage").map((v) => v.place.id),
+  );
+  const features: Feature<Point>[] = [];
+  for (const h of ref.allHeritage()) {
+    if (h.lat === 0 && h.lon === 0) continue; // no coordinates in the dataset — never guess
+    features.push({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [h.lon, h.lat] },
+      properties: { id: h.id, name: h.name, cc: h.countryIso2, seen: seen.has(h.id) ? 1 : 0 },
     });
   }
   return { type: "FeatureCollection", features };

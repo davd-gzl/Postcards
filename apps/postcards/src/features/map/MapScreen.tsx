@@ -14,12 +14,15 @@ import { MapView, type Basemap, type MapFocus, type MapFit } from "./MapView";
 import { tripArcs } from "./visitedLayers";
 import { tripsInPeriod, periodLabel } from "../travel/period";
 import { citiesInView, type Bounds } from "./viewport";
-import { saveAreaOffline } from "./offlineTiles";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
+import type { City } from "../../lib/reference/types";
+import { CityLine } from "../../ui/CityLine";
 
-const CAP = 30;
+const PAGE = 100;
 type CityFilter = "all" | "unvisited" | "visited";
 const BASEMAP_KEY = "postcards-basemap";
+const GLOBE_KEY = "postcards-globe";
+const FILTER_KEY = "postcards-city-filter";
 
 const BASEMAP_LABEL: Record<Basemap, string> = {
   simple: "Simple map (offline)",
@@ -27,50 +30,26 @@ const BASEMAP_LABEL: Record<Basemap, string> = {
   detail: "Streets (offline)",
 };
 
+// localStorage may throw (private mode); loading then parses null → the default,
+// and saving is silently skipped.
+function loadPref<T>(key: string, parse: (v: string | null) => T): T {
+  try {
+    return parse(localStorage.getItem(key));
+  } catch {
+    return parse(null);
+  }
+}
+
+function savePref(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* private mode: not persisted */
+  }
+}
+
 function loadBasemap(): Basemap {
-  try {
-    const v = localStorage.getItem(BASEMAP_KEY);
-    return v === "osm" || v === "detail" ? v : "simple";
-  } catch {
-    return "simple";
-  }
-}
-
-function persistBasemap(b: Basemap): void {
-  try {
-    localStorage.setItem(BASEMAP_KEY, b);
-  } catch {
-    /* private mode: not persisted */
-  }
-}
-
-const GLOBE_KEY = "postcards-globe";
-
-function loadGlobe(): boolean {
-  try {
-    return localStorage.getItem(GLOBE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function persistGlobe(on: boolean): void {
-  try {
-    localStorage.setItem(GLOBE_KEY, on ? "1" : "0");
-  } catch {
-    /* private mode: not persisted */
-  }
-}
-
-const FILTER_KEY = "postcards-city-filter";
-
-function loadCityFilter(): CityFilter {
-  try {
-    const v = localStorage.getItem(FILTER_KEY);
-    return v === "unvisited" || v === "visited" ? v : "all";
-  } catch {
-    return "all";
-  }
+  return loadPref(BASEMAP_KEY, (v) => (v === "osm" || v === "detail" ? v : "simple"));
 }
 
 export function MapScreen() {
@@ -89,13 +68,12 @@ export function MapScreen() {
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [basemap, setBasemap] = useState<Basemap>(loadBasemap);
   const [hasDetail, setHasDetail] = useState(false);
-  const [online, setOnline] = useState(() =>
-    typeof navigator === "undefined" ? true : navigator.onLine,
+  const [cityFilter, setCityFilter] = useState<CityFilter>(() =>
+    loadPref(FILTER_KEY, (v) => (v === "unvisited" || v === "visited" ? v : "all")),
   );
-  const [cityFilter, setCityFilter] = useState<CityFilter>(loadCityFilter);
   const trips = useTrips((s) => s.trips);
   const [showTrips, setShowTrips] = useState(true);
-  const [globe, setGlobe] = useState(loadGlobe);
+  const [globe, setGlobe] = useState(() => loadPref(GLOBE_KEY, (v) => v === "1"));
   const [dark, setDark] = useState(() =>
     typeof matchMedia === "undefined" ? false : matchMedia("(prefers-color-scheme: dark)").matches,
   );
@@ -109,23 +87,11 @@ export function MapScreen() {
       setHasDetail(ok);
       if (!ok && loadBasemap() === "detail") {
         setBasemap("simple");
-        persistBasemap("simple");
+        savePref(BASEMAP_KEY, "simple");
       }
     });
     return () => {
       alive = false;
-    };
-  }, []);
-
-  // Track connectivity so the online OSM basemap can auto-fall back when offline.
-  useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener("online", on);
-    window.addEventListener("offline", off);
-    return () => {
-      window.removeEventListener("online", on);
-      window.removeEventListener("offline", off);
     };
   }, []);
 
@@ -140,54 +106,53 @@ export function MapScreen() {
 
   const basemapCycle: Basemap[] = hasDetail ? ["simple", "osm", "detail"] : ["simple", "osm"];
   const nextBasemap = basemapCycle[(basemapCycle.indexOf(basemap) + 1) % basemapCycle.length]!;
-  // OSM stays selected when offline so tiles you've SAVED render without network;
-  // the always-offline "Simple" overview is one tap away. (0..1 = download in progress.)
-  const [saving, setSaving] = useState<number | null>(null);
 
   function switchBasemap() {
     setBasemap(nextBasemap);
-    persistBasemap(nextBasemap);
+    savePref(BASEMAP_KEY, nextBasemap);
   }
 
   function toggleGlobe() {
     setGlobe((on) => {
-      persistGlobe(!on);
+      savePref(GLOBE_KEY, !on ? "1" : "0");
       return !on;
     });
   }
 
-  async function saveArea() {
-    if (!bounds || saving != null) return;
-    setSaving(0);
-    try {
-      const res = await saveAreaOffline(bounds, bounds.zoom ?? 3, {
-        onProgress: (p) => setSaving(p.total ? p.done / p.total : 1),
-      });
-      // Tiles are fetched no-cors, so their HTTP status is unreadable — report
-      // "fetched" (what we can verify) rather than claiming a guaranteed save.
-      showToast(
-        res.total === 0
-          ? "Nothing to save at this zoom — zoom in first."
-          : `Fetched ${res.total} map tiles for this area${res.capped ? " (zoom in to save finer detail)" : ""}.`,
-      );
-    } catch {
-      showToast("Couldn't save this area — check your connection.");
-    } finally {
-      setSaving(null);
-    }
-  }
-
-  const inView = useMemo(() => citiesInView(allCities, bounds, Infinity), [allCities, bounds]);
+  const inView = useMemo(
+    () => citiesInView(allCities, bounds, Infinity, true),
+    [allCities, bounds],
+  );
   const visitedCityIds = useMemo(
     () => new Set(visits.filter((v) => v.place.kind === "city").map((v) => v.place.id)),
     [visits],
   );
-  const filteredInView = useMemo(() => {
-    if (cityFilter === "all") return inView;
-    const want = cityFilter === "visited";
-    return inView.filter((c) => visitedCityIds.has(c.id) === want);
-  }, [inView, cityFilter, visitedCityIds]);
-  const visible = useMemo(() => filteredInView.slice(0, CAP), [filteredInView]);
+  // The filtered list is a SNAPSHOT: it recomputes only when the viewport or the
+  // filter changes — never when a visit is toggled. So under "Hide visited",
+  // checking a city keeps its row until the next map move / filter change
+  // instead of yanking it away mid-action.
+  const [snapshot, setSnapshot] = useState<City[]>([]);
+  const [shown, setShown] = useState(PAGE);
+  useEffect(() => {
+    const ids = visitedCityIdsNow();
+    setSnapshot(
+      cityFilter === "all"
+        ? inView
+        : inView.filter((c) => ids.has(c.id) === (cityFilter === "visited")),
+    );
+    setShown(PAGE);
+    // visitedCityIds deliberately NOT a dependency — see comment above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inView, cityFilter]);
+  function visitedCityIdsNow(): Set<string> {
+    return new Set(
+      useVisits
+        .getState()
+        .visits.filter((v) => v.place.kind === "city")
+        .map((v) => v.place.id),
+    );
+  }
+  const visible = useMemo(() => snapshot.slice(0, shown), [snapshot, shown]);
   const visitedInView = useMemo(
     () => inView.reduce((n, c) => n + (visitedCityIds.has(c.id) ? 1 : 0), 0),
     [inView, visitedCityIds],
@@ -213,11 +178,7 @@ export function MapScreen() {
 
   function changeFilter(f: CityFilter) {
     setCityFilter(f);
-    try {
-      localStorage.setItem(FILTER_KEY, f);
-    } catch {
-      /* private mode: not persisted */
-    }
+    savePref(FILTER_KEY, f);
   }
 
   const visitedCityCoords = useMemo(
@@ -263,7 +224,7 @@ export function MapScreen() {
           onBaseUnavailable={() => {
             if (basemap === "osm") {
               setBasemap("simple");
-              persistBasemap("simple");
+              savePref(BASEMAP_KEY, "simple");
               showToast("Online map unavailable — showing the offline map.");
             }
           }}
@@ -272,22 +233,6 @@ export function MapScreen() {
           {visitedCityCoords.length > 0 && (
             <button className="map-btn" type="button" onClick={fitToMyPlaces}>
               Fit to my places
-            </button>
-          )}
-          {basemap === "osm" && online && (
-            <button
-              className="map-btn"
-              type="button"
-              onClick={saveArea}
-              disabled={saving != null}
-              aria-label={
-                saving == null
-                  ? "Save area for offline use"
-                  : `Saving area, ${Math.round(saving * 100)} percent`
-              }
-              title="Download the current area so this map works offline"
-            >
-              {saving == null ? "⬇ Save area" : `Saving ${Math.round(saving * 100)}%`}
             </button>
           )}
         </div>
@@ -354,10 +299,10 @@ export function MapScreen() {
             <span className="empty-emoji" aria-hidden>
               🗺️
             </span>
-            No cities of 15,000+ people in this view. Pan or zoom the map, search above, or check
-            off whole countries from the Places tab.
+            No cities or towns in this view. Pan or zoom the map, search above, or add a missing
+            place from the search box.
           </p>
-        ) : filteredInView.length === 0 ? (
+        ) : snapshot.length === 0 ? (
           <p className="muted empty">
             {cityFilter === "unvisited"
               ? "You've been to every city in view. Pan somewhere new, or switch to “All”."
@@ -381,20 +326,31 @@ export function MapScreen() {
                       focusCity(c);
                     }}
                   >
-                    <span className="city-line">
-                      <span className="flag" aria-hidden>
-                        {countryFlag(c.countryIso2)}
-                      </span>
-                      <span className="city-name">{c.name}</span>
-                      <span className="city-sub">· {country}</span>
-                    </span>
+                    <CityLine
+                      flag={countryFlag(c.countryIso2)}
+                      name={c.name}
+                      sub={
+                        <>
+                          · {country}
+                          {region ? ` - ${region}` : ""}
+                        </>
+                      }
+                    />
                     {selected && (
                       <span className="city-detail">
-                        {c.population != null ? `${formatInt(c.population)} people` : "—"}
-                        {region ? ` · ${region}` : ""}
+                        {c.population != null ? `${formatInt(c.population)} people` : "population unknown"}
                       </span>
                     )}
                   </button>
+                  {selected && (
+                    <button
+                      className="mini-btn"
+                      type="button"
+                      onClick={() => useUi.getState().openCity(c.id)}
+                    >
+                      Details
+                    </button>
+                  )}
                   {selected && <GuideButton place={place} />}
                   <StateToggles place={place} />
                 </li>
@@ -402,10 +358,15 @@ export function MapScreen() {
             })}
           </ul>
         )}
-        {filteredInView.length > CAP && (
-          <p className="muted cap-note">
-            Showing the {CAP} most populous of {filteredInView.length}. Zoom in for the rest.
-          </p>
+        {snapshot.length > shown && (
+          <div className="list-pager">
+            <span className="muted small">
+              Showing the {shown} most populous of {formatInt(snapshot.length)}
+            </span>
+            <button className="mini-btn" type="button" onClick={() => setShown((n) => n + PAGE)}>
+              Show {Math.min(PAGE, snapshot.length - shown)} more
+            </button>
+          </div>
         )}
       </section>
     </div>

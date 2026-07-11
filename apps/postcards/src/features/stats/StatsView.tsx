@@ -6,28 +6,60 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import {
   computeCoverage,
   computeContinentCoverage,
+  computeRecords,
   countryDetail,
   visitedCountriesList,
   type CountrySort,
 } from "./computeStats";
 import { travelTotals } from "../travel/distance";
+import { MODE_GLYPH } from "../travel/modes";
+import { useUi } from "../../lib/store/useUi";
 import { countryFlag, formatInt, formatKm, formatPercent } from "../../lib/format/format";
 import { CONTINENT_COLORS } from "../../lib/reference/continents";
-import { CountryScopeSelect } from "../../ui/CountryScopeSelect";
+import { ScopeToggle } from "../../ui/ScopeToggle";
 
-const MODE_GLYPH: Record<string, string> = {
-  flight: "✈️",
-  train: "🚆",
-  bus: "🚌",
-  ferry: "⛴️",
-  car: "🚗",
-  other: "•",
-};
-
-/** Join names, capping a long list so a huge country doesn't flood the card. */
-function capList(names: string[], max = 18): string {
-  if (names.length <= max) return names.join(", ");
-  return `${names.slice(0, max).join(", ")} +${names.length - max} more`;
+/** A row of tappable chips, capped so a huge country doesn't flood the card. */
+function ChipRow({
+  label,
+  names,
+  done,
+  onPick,
+  max = 16,
+}: {
+  label: string;
+  names: string[];
+  /** Style as already-seen (filled) vs still-to-do (outlined). */
+  done?: boolean;
+  onPick?: (name: string) => void;
+  max?: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  if (names.length === 0) return null;
+  const shown = expanded ? names : names.slice(0, max);
+  return (
+    <div className="chip-row">
+      <span className="chip-row-label">{label}</span>
+      <span className="chip-row-chips">
+        {shown.map((n) => (
+          <button
+            key={n}
+            type="button"
+            className={"place-chip" + (done ? " chip-done" : "")}
+            onClick={onPick ? () => onPick(n) : undefined}
+            disabled={!onPick}
+            title={onPick ? `Show ${n} on the map` : undefined}
+          >
+            {n}
+          </button>
+        ))}
+        {names.length > max && (
+          <button type="button" className="place-chip chip-more" onClick={() => setExpanded((e) => !e)}>
+            {expanded ? "less" : `+${names.length - max} more`}
+          </button>
+        )}
+      </span>
+    </div>
+  );
 }
 
 function Bar({ value, label, color }: { value: number; label: string; color?: string }) {
@@ -49,11 +81,37 @@ export function StatsView() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const trips = useTrips((s) => s.trips);
+  const flyTo = useUi((s) => s.flyTo);
 
   const scope = useSettings((s) => s.countryScope);
   const [sortBy, setSortBy] = useState<CountrySort>("cities");
   const coverage = useMemo(() => computeCoverage(visits, ref, scope), [visits, ref, scope]);
+  const records = useMemo(() => computeRecords(visits, ref), [visits, ref]);
   const travel = useMemo(() => travelTotals(trips, ref), [trips, ref]);
+
+  function flyToCity(iso2: string) {
+    return (name: string) => {
+      const c = ref.citiesOf(iso2).find((x) => x.name === name);
+      if (c) flyTo(c.lon, c.lat);
+    };
+  }
+  function flyToMonument(iso2: string) {
+    return (name: string) => {
+      const h = ref.heritageOf(iso2).find((x) => x.name === name);
+      if (h && (h.lat !== 0 || h.lon !== 0)) flyTo(h.lon, h.lat);
+    };
+  }
+  function flyToRegion(iso2: string) {
+    return (name: string) => {
+      const sub = ref.subdivisionsOf(iso2).find((s) => s.name === name);
+      if (!sub) return;
+      const cities = ref.citiesOf(iso2).filter((c) => c.subdivisionId === sub.id);
+      if (!cities.length) return;
+      const lat = cities.reduce((s, c) => s + c.lat, 0) / cities.length;
+      const lon = cities.reduce((s, c) => s + c.lon, 0) / cities.length;
+      flyTo(lon, lat);
+    };
+  }
   const continentCov = useMemo(
     () => computeContinentCoverage(visits, ref, scope),
     [visits, ref, scope],
@@ -67,7 +125,7 @@ export function StatsView() {
     <section aria-label="Statistics">
       <div className="section-head">
         <h2>Statistics</h2>
-        <CountryScopeSelect />
+        <ScopeToggle />
       </div>
 
       <div className="stat-grid">
@@ -121,6 +179,61 @@ export function StatsView() {
                   </span>
                 ))}
               </span>
+            )}
+          </div>
+        </>
+      )}
+
+      {(records.northernmost || records.biggestCity || records.firstVisit) && (
+        <>
+          <div className="section-head">
+            <h3>Records</h3>
+          </div>
+          <div className="records-grid">
+            {records.northernmost && (
+              <div className="record">
+                <span className="record-emoji" aria-hidden>🧭</span>
+                <span>
+                  Northernmost: <strong>{records.northernmost.name}</strong>{" "}
+                  <span className="muted">({records.northernmost.lat.toFixed(1)}°)</span>
+                </span>
+              </div>
+            )}
+            {records.southernmost && records.southernmost.name !== records.northernmost?.name && (
+              <div className="record">
+                <span className="record-emoji" aria-hidden>🐧</span>
+                <span>
+                  Southernmost: <strong>{records.southernmost.name}</strong>{" "}
+                  <span className="muted">({records.southernmost.lat.toFixed(1)}°)</span>
+                </span>
+              </div>
+            )}
+            {records.biggestCity && (
+              <div className="record">
+                <span className="record-emoji" aria-hidden>🏙️</span>
+                <span>
+                  Biggest city: <strong>{records.biggestCity.name}</strong>{" "}
+                  <span className="muted">({formatInt(records.biggestCity.population)} people)</span>
+                </span>
+              </div>
+            )}
+            {records.firstVisit && (
+              <div className="record">
+                <span className="record-emoji" aria-hidden>🌱</span>
+                <span>
+                  First dated visit: <strong>{records.firstVisit.name}</strong>{" "}
+                  <span className="muted">({records.firstVisit.date})</span>
+                </span>
+              </div>
+            )}
+            {records.latestVisit && records.latestVisit.date !== records.firstVisit?.date && (
+              <div className="record">
+                <span className="record-emoji" aria-hidden>🆕</span>
+                <span>
+                  Latest: <strong>{records.latestVisit.name}</strong>{" "}
+                  <span className="muted">({records.latestVisit.date})</span>
+                </span>
+              </div>
             )}
           </div>
         </>
@@ -240,31 +353,29 @@ export function StatsView() {
               detail.monumentsVisited.length > 0) && (
               <details className="country-detail">
                 <summary>What you've seen · what's left</summary>
-                {detail.cities.length > 0 && (
-                  <p className="muted small">
-                    <strong>Cities:</strong> {detail.cities.join(", ")}
-                  </p>
-                )}
-                {detail.regionsVisited.length > 0 && (
-                  <p className="muted small">
-                    <strong>Regions visited:</strong> {detail.regionsVisited.join(", ")}
-                  </p>
-                )}
-                {detail.regionsRemainingNames.length > 0 && (
-                  <p className="muted small">
-                    <strong>Regions to visit:</strong> {capList(detail.regionsRemainingNames)}
-                  </p>
-                )}
-                {detail.monumentsVisited.length > 0 && (
-                  <p className="muted small">
-                    <strong>Monuments seen:</strong> {detail.monumentsVisited.join(", ")}
-                  </p>
-                )}
-                {detail.monumentsRemaining.length > 0 && (
-                  <p className="muted small">
-                    <strong>Monuments to see:</strong> {capList(detail.monumentsRemaining)}
-                  </p>
-                )}
+                <ChipRow label="Cities" names={detail.cities} done onPick={flyToCity(c.iso2)} />
+                <ChipRow
+                  label="Regions visited"
+                  names={detail.regionsVisited}
+                  done
+                  onPick={flyToRegion(c.iso2)}
+                />
+                <ChipRow
+                  label="Regions to visit"
+                  names={detail.regionsRemainingNames}
+                  onPick={flyToRegion(c.iso2)}
+                />
+                <ChipRow
+                  label="Monuments seen"
+                  names={detail.monumentsVisited}
+                  done
+                  onPick={flyToMonument(c.iso2)}
+                />
+                <ChipRow
+                  label="Monuments to see"
+                  names={detail.monumentsRemaining}
+                  onPick={flyToMonument(c.iso2)}
+                />
               </details>
             )}
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { fileToPostcard } from "../../lib/image/downscale";
@@ -69,34 +70,24 @@ export function PhotoGallery({
   }, [open]);
 
   // Escape closes; arrows page; Tab is trapped within the dialog.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") return setOpen(false);
+  useModalKeys(dialogRef, () => setOpen(false), {
+    enabled: open,
+    selector: "button:not([disabled]), input, textarea",
+    onKey: (e) => {
       const t = e.target as HTMLElement | null;
       const typing = !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA");
       // Arrows page between photos — but not while the caption field has focus,
       // where they must move the text cursor.
-      if (!typing && e.key === "ArrowLeft" && count > 1) return setIndex((i) => (i - 1 + count) % count);
-      if (!typing && e.key === "ArrowRight" && count > 1) return setIndex((i) => (i + 1) % count);
-      if (e.key !== "Tab") return;
-      const f = dialogRef.current?.querySelectorAll<HTMLElement>(
-        "button:not([disabled]), input, textarea",
-      );
-      if (!f || f.length === 0) return;
-      const first = f[0]!;
-      const last = f[f.length - 1]!;
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
+      if (!typing && e.key === "ArrowLeft" && count > 1) {
+        setIndex((i) => (i - 1 + count) % count);
+        return true;
       }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, count]);
+      if (!typing && e.key === "ArrowRight" && count > 1) {
+        setIndex((i) => (i + 1) % count);
+        return true;
+      }
+    },
+  });
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);

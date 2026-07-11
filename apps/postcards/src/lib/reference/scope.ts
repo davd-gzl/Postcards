@@ -9,19 +9,6 @@ export type CountryScope = "all" | "un";
 
 export const DEFAULT_SCOPE: CountryScope = "all";
 
-export const COUNTRY_SCOPES: { value: CountryScope; label: string; hint: string }[] = [
-  {
-    value: "all",
-    label: "Countries + territories",
-    hint: "Everything, including Hong Kong, Jersey, Puerto Rico, Taiwan…",
-  },
-  {
-    value: "un",
-    label: "UN member states",
-    hint: "Sovereign UN members only — dependent territories excluded.",
-  },
-];
-
 /** Does a country of the given statehood count under this scope? */
 export function inScope(sovereignty: Sovereignty, scope: CountryScope): boolean {
   return scope === "all" || sovereignty === "un";

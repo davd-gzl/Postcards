@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useModalKeys } from "../lib/hooks/useModalKeys";
 
 /**
  * "How it works" — explains the things that make Postcards unusual: it's
@@ -13,25 +14,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
     closeRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") return onClose();
-      if (e.key !== "Tab") return;
-      const f = dialogRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])");
-      if (!f || !f.length) return;
-      const first = f[0]!;
-      const last = f[f.length - 1]!;
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useModalKeys(dialogRef, onClose);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -50,6 +33,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
           planner.
         </p>
 
+        <div className="about-grid">
         <div className="about-item">
           <span className="about-emoji" aria-hidden>📴</span>
           <div>
@@ -111,6 +95,7 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
+        </div>
         <p className="muted small about-foot">
           Built to a small <a
             href="https://github.com/davd-gzl/Postcards/blob/main/.specify/memory/constitution.md"

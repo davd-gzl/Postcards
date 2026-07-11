@@ -26,7 +26,8 @@ export default defineConfig({
       workbox: {
         // Cache the app shell + bundled reference/basemap assets for offline use.
         globPatterns: ["**/*.{js,css,html,json,geojson,pmtiles,woff2}"],
-        maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
+        // The full world gazetteer (~17 MB) must precache for offline use.
+        maximumFileSizeToCacheInBytes: 24 * 1024 * 1024,
         // Runtime-cache OSM raster tiles the user actually views, so areas they've
         // browsed on the online basemap remain available OFFLINE (opt-in: no tile
         // is ever fetched until the user turns on the OpenStreetMap basemap).
