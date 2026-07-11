@@ -35,7 +35,10 @@ export const PlaceRefSchema = z
       .string()
       .min(1)
       .max(200)
-      .transform((s) => sanitizeText(s, 200)),
+      .transform((s) => sanitizeText(s, 200))
+      // min(1) runs on the INPUT; a name of only formula-prefix chars ("===")
+      // sanitizes to "" and would poison the file — reject it clearly instead.
+      .refine((s) => s.length > 0, { message: "Name is empty once sanitized" }),
     countryId: isoCountryId,
     // Coordinates carried on the record itself — only used by kind "custom"
     // (user-authored points have no reference-data entry to look coords up in).
@@ -163,7 +166,9 @@ export const StorySchema = z
       .string()
       .min(1)
       .max(200)
-      .transform((s) => sanitizeText(s, 200)),
+      .transform((s) => sanitizeText(s, 200))
+      // Same guard as PlaceRef.name: never accept a title that sanitizes away.
+      .refine((s) => s.length > 0, { message: "Title is empty once sanitized" }),
     text: z
       .string()
       .max(8000)
