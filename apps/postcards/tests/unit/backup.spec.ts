@@ -90,6 +90,36 @@ describe("import security (SC-008, Constitution VI)", () => {
     expect(importFile(JSON.stringify({ visits: [] }))).toMatchObject({ ok: false });
   });
 
+  it("rejects valid-JSON non-objects gracefully (null, string, array)", () => {
+    // Regression: `JSON.parse("null")` parses fine, and reading `.format` off it
+    // used to throw an uncaught TypeError instead of returning { ok: false }.
+    expect(importFile("null")).toMatchObject({ ok: false });
+    expect(importFile('"postcards"')).toMatchObject({ ok: false });
+    expect(importFile("[]")).toMatchObject({ ok: false });
+  });
+
+  it("rejects a place name that sanitizes to empty (formula-prefix only)", () => {
+    const text = JSON.stringify({
+      format: "postcards",
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      visits: [
+        {
+          visitId: crypto.randomUUID(),
+          place: { kind: "city", id: "x", name: "===", countryId: "FR" },
+          date: null,
+          note: null,
+          status: "visited" as const,
+          favorite: false,
+          addedAt: new Date().toISOString(),
+        },
+      ],
+    });
+    // "===" passes min(1) on the raw input but sanitizes to "" — accepting it
+    // would poison the store with a file that can never round-trip.
+    expect(importFile(text)).toMatchObject({ ok: false });
+  });
+
   it("rejects a newer schema version", () => {
     const text = JSON.stringify({
       format: "postcards",

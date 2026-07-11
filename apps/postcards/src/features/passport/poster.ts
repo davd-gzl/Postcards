@@ -18,23 +18,57 @@ function project([lon, lat]: Position): [number, number] {
   return [((lon + 180) / 360) * W, ((90 - lat) / 180) * MAP_H];
 }
 
-function drawRing(ctx: CanvasRenderingContext2D, ring: Position[]): void {
+/**
+ * Unwrap a ring's longitudes into a continuous sequence (may run past ±180).
+ * Natural Earth stores Russia/Fiji with rings that jump across the antimeridian;
+ * projecting those jumps linearly smears a fill band across the whole map.
+ */
+function unwrapRing(ring: Position[]): Position[] {
+  let prev: number | null = null;
+  let off = 0;
+  return ring.map(([lon, lat]) => {
+    if (prev !== null) {
+      while (lon! + off - prev > 180) off -= 360;
+      while (lon! + off - prev < -180) off += 360;
+    }
+    const l = lon! + off;
+    prev = l;
+    return [l, lat!];
+  });
+}
+
+function drawRing(ctx: CanvasRenderingContext2D, ring: Position[], lonShift = 0): void {
   ring.forEach((pt, i) => {
-    const [x, y] = project(pt);
+    const [x, y] = project([pt[0]! + lonShift, pt[1]!]);
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   });
   ctx.closePath();
 }
 
-/** Largest-polygon bbox centre — where the flag stamp goes. */
+/** Draw one ring, duplicated ±360° when it runs past the map edge after
+ *  unwrapping, so an antimeridian-crossing shape appears on both sides. */
+function drawWrappedRing(ctx: CanvasRenderingContext2D, rawRing: Position[]): void {
+  const ring = unwrapRing(rawRing);
+  let minLon = Infinity;
+  let maxLon = -Infinity;
+  for (const [lon] of ring as [number, number][]) {
+    minLon = Math.min(minLon, lon);
+    maxLon = Math.max(maxLon, lon);
+  }
+  drawRing(ctx, ring);
+  if (maxLon > 180) drawRing(ctx, ring, -360);
+  if (minLon < -180) drawRing(ctx, ring, 360);
+}
+
+/** Largest-polygon bbox centre (on unwrapped longitudes) — the flag stamp spot. */
 function flagAnchor(geom: Polygon | MultiPolygon): [number, number] {
   const polys = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
-  let best: Position[] | null = null;
+  let best: [number, number] | null = null;
   let bestArea = -1;
   for (const p of polys) {
-    const ring = p[0]!;
-    let minX = 180, maxX = -180, minY = 90, maxY = -90;
+    const ring = unwrapRing(p[0]!);
+    let minX = Infinity, maxX = -Infinity, minY = 90, maxY = -90;
     for (const [x, y] of ring as [number, number][]) {
       minX = Math.min(minX, x); maxX = Math.max(maxX, x);
       minY = Math.min(minY, y); maxY = Math.max(maxY, y);
@@ -42,10 +76,13 @@ function flagAnchor(geom: Polygon | MultiPolygon): [number, number] {
     const area = (maxX - minX) * (maxY - minY);
     if (area > bestArea) {
       bestArea = area;
-      best = [[(minX + maxX) / 2, (minY + maxY) / 2]];
+      // Bring the centre back into [-180, 180) — the unwrapped bbox may sit
+      // beyond the edge for shapes straddling the antimeridian.
+      const cx = ((((minX + maxX) / 2 + 180) % 360) + 360) % 360 - 180;
+      best = [cx, (minY + maxY) / 2];
     }
   }
-  return project(best![0]!);
+  return project(best!);
 }
 
 export interface PosterStats {
@@ -53,11 +90,14 @@ export interface PosterStats {
   cities: number;
 }
 
-/** Build the poster and return it as a PNG blob. */
+/** Build the poster and return it as a PNG blob. `opts.anchors` supplies a
+ *  stamp position (lon, lat) for visited countries the basemap has no polygon
+ *  for (Kosovo, small territories) — every counted flag then actually shows. */
 export async function renderPoster(
   visitedIso2: Set<string>,
   ref: ReferenceData,
   stats: PosterStats,
+  opts?: { anchors?: Map<string, [number, number]> },
 ): Promise<Blob> {
   const res = await fetch(GEOMETRY_URL);
   if (!res.ok) throw new Error("map geometry unavailable");
@@ -80,13 +120,14 @@ export async function renderPoster(
 
   // Land, visited countries coloured by continent.
   const stamps: { x: number; y: number; flag: string }[] = [];
+  const stamped = new Set<string>();
   for (const f of fc.features) {
     const numeric = String(f.id ?? "");
     const country = ref.countryByNumeric(numeric);
     const visited = !!country && visitedIso2.has(country.iso2);
     ctx.beginPath();
     const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
-    for (const p of polys) for (const ring of p) drawRing(ctx, ring);
+    for (const p of polys) for (const ring of p) drawWrappedRing(ctx, ring);
     ctx.fillStyle = visited
       ? CONTINENT_COLORS[country!.continent] ?? "#8fb4dd"
       : "#f4f6f9";
@@ -97,7 +138,19 @@ export async function renderPoster(
     if (visited && country) {
       const [x, y] = flagAnchor(f.geometry);
       stamps.push({ x, y, flag: countryFlag(country.iso2) });
+      stamped.add(country.iso2);
     }
+  }
+
+  // Visited countries with no polygon in the basemap (or an unjoinable id, like
+  // Kosovo's -99): stamp them at the caller-provided anchor so the flag count
+  // in the caption matches the flags on the map.
+  for (const iso2 of visitedIso2) {
+    if (stamped.has(iso2)) continue;
+    const anchor = opts?.anchors?.get(iso2);
+    if (!anchor) continue;
+    const [x, y] = project(anchor);
+    stamps.push({ x, y, flag: countryFlag(iso2) });
   }
 
   // Flag stamps on top (after all fills so nothing covers them).

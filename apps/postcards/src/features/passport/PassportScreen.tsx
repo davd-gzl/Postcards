@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
@@ -26,9 +26,21 @@ export function PassportScreen() {
   // button inside it — not a silent file drop.
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
   function closePoster() {
-    if (posterUrl) URL.revokeObjectURL(posterUrl);
     setPosterUrl(null);
   }
+  // The object URL is revoked here — on close, on replace AND on unmount
+  // (closing by switching tabs must not leak the rendered PNG).
+  useEffect(() => {
+    if (!posterUrl) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPosterUrl(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      URL.revokeObjectURL(posterUrl);
+    };
+  }, [posterUrl]);
 
   const visitedIds = useMemo(() => visitedCountryIds(visits), [visits]);
   const { collected, missing } = useMemo(() => {
@@ -39,14 +51,48 @@ export function PassportScreen() {
     };
   }, [ref, visitedIds, scope]);
 
+  // Where to stamp a visited country whose geometry the basemap lacks (Kosovo,
+  // Tuvalu, overseas territories…): the coordinates of a place you visited there.
+  // Nothing is invented — the anchor comes from the gazetteer/your own record.
+  const fallbackAnchors = useMemo(() => {
+    const anchors = new Map<string, [number, number]>();
+    for (const v of visits) {
+      if (v.status === "wishlist" || anchors.has(v.place.countryId)) continue;
+      let lon: number | undefined;
+      let lat: number | undefined;
+      if (v.place.kind === "city") {
+        const c = ref.cityById(v.place.id);
+        if (c) [lon, lat] = [c.lon, c.lat];
+      } else if (v.place.kind === "heritage") {
+        const h = ref.heritageById(v.place.id);
+        if (h && (h.lat !== 0 || h.lon !== 0)) [lon, lat] = [h.lon, h.lat];
+      } else if (v.place.kind === "airport") {
+        const a = ref.airportById(v.place.id);
+        if (a) [lon, lat] = [a.lon, a.lat];
+      } else if (v.place.kind === "custom" && v.place.lat != null && v.place.lon != null) {
+        [lon, lat] = [v.place.lon, v.place.lat];
+      }
+      if (lon != null && lat != null) anchors.set(v.place.countryId, [lon, lat]);
+    }
+    return anchors;
+  }, [visits, ref]);
+
   async function exportPoster() {
     setRendering(true);
     try {
       const cov = computeCoverage(visits, ref, scope);
-      const blob = await renderPoster(visitedIds, ref, {
+      // Stamp only in-scope countries, so the flags match the caption count
+      // and the flag grid (both already scope-filtered).
+      const stampIds = new Set(
+        [...visitedIds].filter((iso2) => {
+          const c = ref.countryByIso2(iso2);
+          return !!c && inScope(c.sovereignty, scope);
+        }),
+      );
+      const blob = await renderPoster(stampIds, ref, {
         countries: cov.countriesVisited,
         cities: cov.citiesVisited,
-      });
+      }, { anchors: fallbackAnchors });
       setPosterUrl(URL.createObjectURL(blob));
     } catch {
       showToast("Couldn't render the poster (map geometry unavailable offline?).");
@@ -114,7 +160,7 @@ export function PassportScreen() {
             <a className="mini-btn" href={posterUrl} download="postcards-world.png">
               ⬇ Download PNG
             </a>
-            <button className="btn-ghost" type="button" onClick={closePoster}>
+            <button className="btn-ghost" type="button" autoFocus onClick={closePoster}>
               Close
             </button>
           </div>

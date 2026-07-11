@@ -96,8 +96,10 @@ function GuidesModal({
   );
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  // Overviews are SAVED on-device once loaded, so they reopen offline.
-  const key = (proj: string) => `postcards-guide:${proj}:${summaryTitle}`;
+  // Overviews are SAVED on-device once loaded, so they reopen offline. The key
+  // carries the country too — "Paris, TX" must never show the saved overview of
+  // Paris, France as its own (same title, different place).
+  const key = (proj: string) => `postcards-guide:${proj}:${countryIso2}:${summaryTitle}`;
   const readSaved = (proj: string): WikivoyageSummary | null => {
     try {
       const raw = localStorage.getItem(key(proj));

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
+import { sanitizeText } from "../../lib/schema/sanitize";
 
 /**
  * Create a place the datasets don't know (a hamlet, a viewpoint, grandma's
@@ -24,15 +25,18 @@ export function AddPlaceForm({ initialName, onDone }: { initialName: string; onD
     return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 ? { lat, lon } : null;
   }, [coords]);
 
-  const canSave = name.trim().length > 0 && !!cc && (coords.trim() === "" || !!parsed);
+  // Sanitize like the portable-file schema will — a name that collapses to
+  // empty (e.g. "===") must not be savable, or the export wouldn't restore.
+  const cleanName = sanitizeText(name, 200);
+  const canSave = cleanName.length > 0 && !!cc && (coords.trim() === "" || !!parsed);
 
   async function save() {
-    const id = `custom-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Math.random().toString(36).slice(2, 7)}`;
+    const id = `custom-${cleanName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Math.random().toString(36).slice(2, 7)}`;
     await addVisit({
       place: {
         kind: "custom",
         id,
-        name: name.trim(),
+        name: cleanName,
         countryId: cc,
         ...(parsed ?? {}),
       },

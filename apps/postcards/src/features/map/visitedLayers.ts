@@ -82,10 +82,20 @@ export function wishlistCityPoints(visits: Visit[], ref: ReferenceData): Feature
     if (v.status !== "wishlist" || v.place.kind !== "city") continue;
     const city = ref.cityById(v.place.id);
     if (!city) continue;
+    const region = city.subdivisionId ? ref.subdivisionById(city.subdivisionId)?.name ?? "" : "";
+    // Same property shape as visitedCityPoints — the tap popup builds its
+    // PlaceRef from `id`, so omitting it here would toggle a phantom "" city.
     features.push({
       type: "Feature",
       geometry: { type: "Point", coordinates: [city.lon, city.lat] },
-      properties: { name: city.name, cc: city.countryIso2 },
+      properties: {
+        id: city.id,
+        name: city.name,
+        cc: city.countryIso2,
+        pop: city.population ?? 0,
+        region,
+        custom: 0,
+      },
     });
   }
   return { type: "FeatureCollection", features };

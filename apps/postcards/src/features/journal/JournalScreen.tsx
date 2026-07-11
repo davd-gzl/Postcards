@@ -14,6 +14,7 @@ import {
   type PlaceRef,
   type Story,
 } from "../../lib/schema/models";
+import { sanitizeText } from "../../lib/schema/sanitize";
 import { journalToMarkdown, JOURNAL_EXPORT_FILENAME } from "./exportJournalMd";
 
 function download(filename: string, text: string, type: string) {
@@ -279,14 +280,18 @@ export function JournalScreen() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!place || !date || !title.trim()) return;
+    // Store the SANITIZED text (same transform the portable-file schema applies),
+    // so what's saved round-trips: a title like "===" collapses to empty and must
+    // not be storable — it would export as "" and the backup would refuse to restore.
+    const cleanTitle = sanitizeText(title, 200);
+    if (!place || !date || !cleanTitle) return;
     const prev = useStories.getState().stories;
     // Blank captions become null (never stored as empty strings).
     const cleanPhotos = photos.map((p) => ({
       ...p,
       caption: p.caption?.trim() ? p.caption.trim() : null,
     }));
-    const fields = { place, date, title: title.trim(), text: text.trim(), photos: cleanPhotos };
+    const fields = { place, date, title: cleanTitle, text: sanitizeText(text, 8000), photos: cleanPhotos };
     if (editingId) {
       await updateStory(editingId, fields);
       showToast(`Updated "${fields.title}"`, () => setAll(prev));
@@ -452,7 +457,7 @@ export function JournalScreen() {
           </div>
 
           <div className="trip-form-actions">
-            <button className="btn" type="submit" disabled={!place || !date || !title.trim()}>
+            <button className="btn" type="submit" disabled={!place || !date || !sanitizeText(title, 200)}>
               {editingId ? "Save changes" : "Save story"}
             </button>
             <button className="btn-ghost" type="button" onClick={resetForm}>
