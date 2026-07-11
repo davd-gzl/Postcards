@@ -16,10 +16,13 @@ import { tripsInPeriod, periodLabel } from "../travel/period";
 import { citiesInView, type Bounds } from "./viewport";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import type { City } from "../../lib/reference/types";
+import { CityLine } from "../../ui/CityLine";
 
 const PAGE = 100;
 type CityFilter = "all" | "unvisited" | "visited";
 const BASEMAP_KEY = "postcards-basemap";
+const GLOBE_KEY = "postcards-globe";
+const FILTER_KEY = "postcards-city-filter";
 
 const BASEMAP_LABEL: Record<Basemap, string> = {
   simple: "Simple map (offline)",
@@ -27,50 +30,26 @@ const BASEMAP_LABEL: Record<Basemap, string> = {
   detail: "Streets (offline)",
 };
 
+// localStorage may throw (private mode); loading then parses null → the default,
+// and saving is silently skipped.
+function loadPref<T>(key: string, parse: (v: string | null) => T): T {
+  try {
+    return parse(localStorage.getItem(key));
+  } catch {
+    return parse(null);
+  }
+}
+
+function savePref(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* private mode: not persisted */
+  }
+}
+
 function loadBasemap(): Basemap {
-  try {
-    const v = localStorage.getItem(BASEMAP_KEY);
-    return v === "osm" || v === "detail" ? v : "simple";
-  } catch {
-    return "simple";
-  }
-}
-
-function persistBasemap(b: Basemap): void {
-  try {
-    localStorage.setItem(BASEMAP_KEY, b);
-  } catch {
-    /* private mode: not persisted */
-  }
-}
-
-const GLOBE_KEY = "postcards-globe";
-
-function loadGlobe(): boolean {
-  try {
-    return localStorage.getItem(GLOBE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function persistGlobe(on: boolean): void {
-  try {
-    localStorage.setItem(GLOBE_KEY, on ? "1" : "0");
-  } catch {
-    /* private mode: not persisted */
-  }
-}
-
-const FILTER_KEY = "postcards-city-filter";
-
-function loadCityFilter(): CityFilter {
-  try {
-    const v = localStorage.getItem(FILTER_KEY);
-    return v === "unvisited" || v === "visited" ? v : "all";
-  } catch {
-    return "all";
-  }
+  return loadPref(BASEMAP_KEY, (v) => (v === "osm" || v === "detail" ? v : "simple"));
 }
 
 export function MapScreen() {
@@ -89,10 +68,12 @@ export function MapScreen() {
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [basemap, setBasemap] = useState<Basemap>(loadBasemap);
   const [hasDetail, setHasDetail] = useState(false);
-  const [cityFilter, setCityFilter] = useState<CityFilter>(loadCityFilter);
+  const [cityFilter, setCityFilter] = useState<CityFilter>(() =>
+    loadPref(FILTER_KEY, (v) => (v === "unvisited" || v === "visited" ? v : "all")),
+  );
   const trips = useTrips((s) => s.trips);
   const [showTrips, setShowTrips] = useState(true);
-  const [globe, setGlobe] = useState(loadGlobe);
+  const [globe, setGlobe] = useState(() => loadPref(GLOBE_KEY, (v) => v === "1"));
   const [dark, setDark] = useState(() =>
     typeof matchMedia === "undefined" ? false : matchMedia("(prefers-color-scheme: dark)").matches,
   );
@@ -106,7 +87,7 @@ export function MapScreen() {
       setHasDetail(ok);
       if (!ok && loadBasemap() === "detail") {
         setBasemap("simple");
-        persistBasemap("simple");
+        savePref(BASEMAP_KEY, "simple");
       }
     });
     return () => {
@@ -128,12 +109,12 @@ export function MapScreen() {
 
   function switchBasemap() {
     setBasemap(nextBasemap);
-    persistBasemap(nextBasemap);
+    savePref(BASEMAP_KEY, nextBasemap);
   }
 
   function toggleGlobe() {
     setGlobe((on) => {
-      persistGlobe(!on);
+      savePref(GLOBE_KEY, !on ? "1" : "0");
       return !on;
     });
   }
@@ -197,11 +178,7 @@ export function MapScreen() {
 
   function changeFilter(f: CityFilter) {
     setCityFilter(f);
-    try {
-      localStorage.setItem(FILTER_KEY, f);
-    } catch {
-      /* private mode: not persisted */
-    }
+    savePref(FILTER_KEY, f);
   }
 
   const visitedCityCoords = useMemo(
@@ -247,7 +224,7 @@ export function MapScreen() {
           onBaseUnavailable={() => {
             if (basemap === "osm") {
               setBasemap("simple");
-              persistBasemap("simple");
+              savePref(BASEMAP_KEY, "simple");
               showToast("Online map unavailable — showing the offline map.");
             }
           }}
@@ -349,16 +326,16 @@ export function MapScreen() {
                       focusCity(c);
                     }}
                   >
-                    <span className="city-line">
-                      <span className="flag" aria-hidden>
-                        {countryFlag(c.countryIso2)}
-                      </span>
-                      <span className="city-name">{c.name}</span>
-                      <span className="city-sub">
-                        · {country}
-                        {region ? ` - ${region}` : ""}
-                      </span>
-                    </span>
+                    <CityLine
+                      flag={countryFlag(c.countryIso2)}
+                      name={c.name}
+                      sub={
+                        <>
+                          · {country}
+                          {region ? ` - ${region}` : ""}
+                        </>
+                      }
+                    />
                     {selected && (
                       <span className="city-detail">
                         {c.population != null ? `${formatInt(c.population)} people` : "population unknown"}
