@@ -46,5 +46,11 @@
     "license": "CC-BY-SA-4.0",
     "version": "live",
     "url": "https://en.wikivoyage.org"
+  },
+  {
+    "dataset": "Famous landmarks seed (full set via Wikidata build script)",
+    "license": "CC0 (facts)",
+    "version": "seed",
+    "url": "https://www.wikidata.org"
   }
 ]
