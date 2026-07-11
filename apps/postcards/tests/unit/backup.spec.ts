@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { serializeFile } from "../../src/features/backup/exportJson";
 import { importFile } from "../../src/features/backup/importJson";
-import type { Visit } from "../../src/lib/schema/models";
+import { normalizeVisitPhotos, type Visit } from "../../src/lib/schema/models";
 
 function visit(): Visit {
   return {
@@ -29,12 +29,16 @@ describe("postcard photos", () => {
   const dataUrl =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
-  it("accepts an inline image data URL and round-trips it", () => {
+  it("accepts a legacy inline photo and migrates it into the gallery on import", () => {
     const original = [{ ...visit(), photo: dataUrl }];
     const text = serializeFile(original);
     const result = importFile(text);
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.visits[0]!.photo).toBe(dataUrl);
+    if (result.ok) {
+      // Legacy single `photo` is migrated to `photos[0]` (import normalizes to v3).
+      expect(result.visits[0]!.photo).toBeUndefined();
+      expect(result.visits[0]!.photos).toEqual([{ src: dataUrl, caption: null }]);
+    }
   });
 
   it("rejects a photo that is an external URL (privacy: photos must be inline)", () => {
@@ -43,6 +47,35 @@ describe("postcard photos", () => {
       schemaVersion: 1,
       exportedAt: new Date().toISOString(),
       visits: [{ ...visit(), photo: "https://evil.example/track.png" }],
+    });
+    expect(importFile(text)).toMatchObject({ ok: false });
+  });
+
+  it("migrates a legacy single `photo` into the `photos` gallery", () => {
+    const legacy: Visit = { ...visit(), photo: dataUrl };
+    const migrated = normalizeVisitPhotos(legacy);
+    expect(migrated.photo).toBeUndefined();
+    expect(migrated.photos).toEqual([{ src: dataUrl, caption: null }]);
+  });
+
+  it("round-trips a multi-photo gallery with captions", () => {
+    const original: Visit[] = [
+      { ...visit(), photos: [{ src: dataUrl, caption: "the monument" }, { src: dataUrl, caption: null }] },
+    ];
+    const result = importFile(serializeFile(original));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.visits[0]!.photos).toHaveLength(2);
+      expect(result.visits[0]!.photos![0]!.caption).toBe("the monument");
+    }
+  });
+
+  it("rejects a gallery photo whose src is an external URL", () => {
+    const text = JSON.stringify({
+      format: "postcards",
+      schemaVersion: 3,
+      exportedAt: new Date().toISOString(),
+      visits: [{ ...visit(), photos: [{ src: "https://evil.example/track.png" }] }],
     });
     expect(importFile(text)).toMatchObject({ ok: false });
   });

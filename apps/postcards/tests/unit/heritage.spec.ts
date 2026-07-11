@@ -6,9 +6,10 @@ import { coordsOf } from "../../src/features/travel/distance";
 import type { HeritageSite } from "../../src/lib/reference/types";
 import type { Visit } from "../../src/lib/schema/models";
 
-// The shipped heritage.json is empty until `scripts/build-heritage.mjs` is run on
-// a networked machine (Wikidata is blocked in the build sandbox). These tests
-// exercise the framework wiring with injected data so the logic is verified now.
+// The shipped heritage.json holds a curated seed subset (scripts/build-heritage-seed.mjs)
+// until the full set is fetched by scripts/build-heritage.mjs on a networked machine
+// (Wikidata is blocked in the build sandbox). These tests exercise the framework
+// wiring with injected data so the logic is verified regardless of the shipped file.
 const heritage: HeritageSite[] = [
   { id: "Q1", name: "Palace of Versailles", countryIso2: "FR", lat: 48.8, lon: 2.1 },
   { id: "Q2", name: "Mont-Saint-Michel", countryIso2: "FR", lat: 48.6, lon: -1.5 },

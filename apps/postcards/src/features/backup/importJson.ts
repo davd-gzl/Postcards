@@ -1,13 +1,21 @@
-import { PostcardsFileSchema, SCHEMA_VERSION, type Trip, type Visit } from "../../lib/schema/models";
-import { dedupeUpsert } from "../../lib/store/useVisits";
+import {
+  MAX_PHOTOS_PER_VISIT,
+  normalizeVisitPhotos,
+  placeKey,
+  PostcardsFileSchema,
+  SCHEMA_VERSION,
+  type Trip,
+  type Visit,
+} from "../../lib/schema/models";
 
 export type ImportResult =
   | { ok: true; visits: Visit[]; trips: Trip[]; warnings: string[] }
   | { ok: false; error: string };
 
-/** Reject absurdly large inputs before parsing (main-thread DoS guard).
- *  Generous enough for photo-rich files (postcards are embedded, downscaled). */
-const MAX_IMPORT_CHARS = 80_000_000;
+/** Reject absurdly large inputs before parsing (main-thread DoS guard). Generous
+ *  enough for photo-rich gallery files (postcards are embedded, downscaled) — this
+ *  is a safety ceiling, not a schema rule, so the user's own backup always restores. */
+const MAX_IMPORT_CHARS = 256_000_000;
 
 /**
  * Parse + validate + sanitize an imported file (Constitution VI: data is inert).
@@ -49,9 +57,29 @@ export function importFile(text: string): ImportResult {
     return { ok: false, error: `Invalid data at "${where}": ${first?.message ?? "unknown error"}.` };
   }
 
-  // Future: migrate parsed.data.schemaVersion < SCHEMA_VERSION here.
-  // Enforce one-visit-per-place on import too (FR-015), not only on add.
-  const visits = parsed.data.visits.reduce<Visit[]>((acc, v) => dedupeUpsert(acc, v), []);
+  // Migrate every record to the current photo shape (legacy `photo` -> `photos`)
+  // so both the persisted copy and the in-memory copy are v3-shaped — otherwise a
+  // restored postcard is invisible until the next reload.
+  // Enforce one-visit-per-place on import too (FR-015); when a hand-edited file
+  // lists a place twice, keep the first record's identity but UNION the galleries
+  // (photos are now the payload — dropping one silently would lose data).
+  const byPlace = new Map<string, Visit>();
+  for (const raw of parsed.data.visits) {
+    const v = normalizeVisitPhotos(raw);
+    const key = placeKey(v.place);
+    const existing = byPlace.get(key);
+    if (!existing) {
+      byPlace.set(key, v);
+      continue;
+    }
+    const photos = [...(existing.photos ?? [])];
+    for (const p of v.photos ?? []) {
+      if (photos.length >= MAX_PHOTOS_PER_VISIT) break;
+      if (!photos.some((q) => q.src === p.src)) photos.push(p);
+    }
+    byPlace.set(key, { ...v, visitId: existing.visitId, addedAt: existing.addedAt, photos });
+  }
+  const visits = [...byPlace.values()];
   // Enforce one-record-per-tripId too — the "trips" store is keyed on tripId, so a
   // hand-edited file with a duplicate id would silently drop rows on persist and
   // diverge from the in-memory count. Keep last-wins to match the IndexedDB put order.

@@ -9,7 +9,10 @@ export const FORMAT = "postcards" as const;
 // structurally back-compatible (v1 files import unchanged), but the bump means an
 // older build opening a v2 file shows the graceful "update the app" prompt rather
 // than a cryptic strict-parse error on the unknown `trips` key.
-export const SCHEMA_VERSION = 2;
+// v3 turns a visit's single `photo` into a `photos` gallery (each with an optional
+// caption). Both fields validate, so v1/v2 files import unchanged; new exports write
+// `photos`. Older builds opening a v3 file get the same graceful "update" prompt.
+export const SCHEMA_VERSION = 3;
 
 const isoCountryId = z
   .string()
@@ -35,6 +38,33 @@ export const PlaceRefSchema = z
 // strict RFC-4122 form (Zod 4 tightened .uuid()); just a bounded non-empty id.
 const idString = z.string().min(1).max(100);
 
+/** Most photos one place's gallery may hold (bounds the inline portable file). */
+export const MAX_PHOTOS_PER_VISIT = 48;
+
+/** A bounded, inert inline image data URL (never an external link). */
+const photoDataUrl = z
+  .string()
+  .max(6_000_000)
+  .refine((s) => s.startsWith("data:image/"), "photo must be an inline image data URL");
+
+/**
+ * One photo in a place's gallery: the inline image + an optional short caption
+ * (e.g. "the old town", "the monument"). Inert & private: the image is only ever
+ * rendered via <img src>, never executed, and never leaves the device except in an
+ * explicit export. Downscaled on capture.
+ */
+export const PhotoSchema = z
+  .object({
+    src: photoDataUrl,
+    caption: z
+      .string()
+      .max(300)
+      .nullable()
+      .optional()
+      .transform((v) => (v == null ? null : sanitizeText(v, 300))),
+  })
+  .strict();
+
 export const VisitSchema = z.object({
   visitId: idString,
   place: PlaceRefSchema,
@@ -55,16 +85,15 @@ export const VisitSchema = z.object({
     .optional()
     .transform((v) => (v == null ? null : sanitizeText(v, 2000))),
   /**
-   * Your own "postcard" photo for this place, stored on-device as an inline image
-   * data URL — never an external link (privacy: it can't phone home; inert: it's
-   * only ever shown via <img src>, never executed). Downscaled on capture.
+   * Legacy single "postcard" photo (schema ≤ v2). Kept so v1/v2 files import
+   * unchanged; on load it is migrated into `photos[0]` (see normalizeVisitPhotos).
    */
-  photo: z
-    .string()
-    .max(6_000_000)
-    .refine((s) => s.startsWith("data:image/"), "photo must be an inline image data URL")
-    .nullable()
-    .optional(),
+  photo: photoDataUrl.nullable().optional(),
+  /**
+   * Your gallery of photos for this place — a postcard, a monument, the view, …
+   * each with an optional caption. Stored on-device (privacy/inert as above).
+   */
+  photos: z.array(PhotoSchema).max(MAX_PHOTOS_PER_VISIT).optional(),
   addedAt: z.string().datetime({ offset: true }),
 }).strict();
 
@@ -127,7 +156,24 @@ export const PostcardsFileSchema = z
 
 export type PlaceKind = z.infer<typeof PlaceRefSchema>["kind"];
 export type PlaceRef = z.infer<typeof PlaceRefSchema>;
+export type Photo = z.infer<typeof PhotoSchema>;
 export type Visit = z.infer<typeof VisitSchema>;
+
+/**
+ * Migrate a visit's legacy single `photo` into the `photos` gallery and drop the
+ * legacy field, so the rest of the app only ever reads `photos`. Idempotent —
+ * safe to run on every load/import. Returns a new object (never mutates input).
+ */
+export function normalizeVisitPhotos(v: Visit): Visit {
+  const photos: Photo[] = v.photos ? [...v.photos] : [];
+  if (v.photo && !photos.some((p) => p.src === v.photo)) {
+    photos.unshift({ src: v.photo, caption: null });
+  }
+  const { photo: _legacy, ...rest } = v;
+  // Only carry `photos` when there is at least one — keeps photo-less records and
+  // exports clean, and the rest of the app reads `v.photos ?? []`.
+  return photos.length ? { ...rest, photos } : rest;
+}
 export type TravelMode = z.infer<typeof TravelModeSchema>;
 export type Trip = z.infer<typeof TripSchema>;
 export type ReferenceSource = z.infer<typeof ReferenceSourceSchema>;

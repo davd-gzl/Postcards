@@ -62,8 +62,10 @@ export interface SaveProgress {
 }
 
 /**
- * Fetch every tile so the SW caches it. Uses no-cors (opaque responses are
- * cacheable per the workbox rule's status:0). Concurrency-limited and abortable.
+ * Fetch every tile so the SW caches it. Uses CORS (OSM sends
+ * Access-Control-Allow-Origin) so only real 200s are stored — no opaque error
+ * tiles poison the cache — and an explicit referrerPolicy guarantees the Referer
+ * OSM requires. Concurrency-limited and abortable.
  */
 export async function saveAreaOffline(
   bounds: Bounds,
@@ -91,7 +93,11 @@ export async function saveAreaOffline(
       if (opts.signal?.aborted) return;
       const url = urls[i++]!;
       try {
-        await doFetch(url, { mode: "no-cors" });
+        const res = await doFetch(url, {
+          mode: "cors",
+          referrerPolicy: "strict-origin-when-cross-origin",
+        });
+        if (!res.ok) failed++;
       } catch {
         failed++;
       }

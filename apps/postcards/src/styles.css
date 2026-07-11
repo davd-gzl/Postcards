@@ -114,15 +114,57 @@ button {
   height: 100dvh;
 }
 
+/* Shell: content + navigation. Stacks on mobile (nav at the bottom); becomes a
+   sidebar rail + content column on wide screens. */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.app-content {
+  order: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 /* Top bar */
 .topbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   height: 46px;
-  padding: 0 15px;
+  padding: 0 12px 0 15px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   flex: none;
+}
+.topbar-about {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 5px 11px 5px 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.topbar-about svg {
+  width: 16px;
+  height: 16px;
+}
+.topbar-about:hover,
+.topbar-about:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+h1.brand {
+  margin: 0;
 }
 .brand {
   font-weight: 600;
@@ -160,8 +202,11 @@ button {
   padding: 12px 14px 24px;
 }
 
-/* Bottom navigation (mobile-first, thumb reach) */
+/* Bottom navigation (mobile-first, thumb reach). `order` keeps it below the
+   content even though it precedes it in the DOM (so the rail can be first on
+   desktop without reordering focus badly). */
 .bottom-nav {
+  order: 2;
   flex: none;
   display: flex;
   border-top: 1px solid var(--border);
@@ -193,6 +238,8 @@ button {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   margin: 2px 0 8px;
 }
 .section-head h2 {
@@ -275,6 +322,47 @@ button {
 }
 .map-fallback {
   padding: 20px 16px;
+}
+/* Non-blocking loading / retry hint centred over the map. */
+.map-status {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 14px;
+  box-shadow: var(--shadow-sm);
+  pointer-events: auto;
+}
+/* City tap popup (MapLibre) — themed to match the app. */
+.maplibregl-popup-content {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 8px 11px;
+  font: inherit;
+}
+.maplibregl-popup-tip {
+  border-top-color: var(--surface) !important;
+  border-bottom-color: var(--surface) !important;
+}
+.map-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.map-popup strong {
+  font-size: 14px;
+}
+.map-popup span {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Search */
@@ -610,11 +698,31 @@ button {
   background: var(--bg-sub);
   cursor: pointer;
 }
+.postcard-thumb {
+  position: relative;
+}
 .postcard-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+}
+/* Little "N" badge when a place has more than one photo. */
+.postcard-count {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--surface);
 }
 .lightbox {
   position: fixed;
@@ -626,19 +734,95 @@ button {
   justify-content: center;
   gap: 14px;
   padding: 20px;
-  background: rgba(8, 10, 16, 0.86);
+  background: rgba(8, 10, 16, 0.9);
+}
+.lightbox-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: min(960px, 100%);
 }
 .lightbox-img {
   max-width: 100%;
-  max-height: 78vh;
+  max-height: 72vh;
   border-radius: 10px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   object-fit: contain;
+}
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(20, 22, 28, 0.72);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+.lightbox-nav.prev {
+  left: 6px;
+}
+.lightbox-nav.next {
+  right: 6px;
+}
+.lightbox-nav:hover {
+  background: rgba(20, 22, 28, 0.92);
+}
+.lightbox-panel {
+  width: min(680px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.lightbox-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.caption-input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 14px;
+}
+.caption-input::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+.lightbox-count {
+  flex: none;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 .lightbox-actions {
   display: flex;
   gap: 10px;
   align-items: center;
+  justify-content: center;
+}
+.lightbox-actions .mini-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+.lightbox-actions .btn-ghost {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+.lightbox-actions .link-danger {
+  color: #fca5a5;
 }
 
 /* Floating map controls, grouped into two tidy corner stacks. */
@@ -944,6 +1128,15 @@ button {
   box-shadow: var(--shadow);
   max-width: min(92vw, 420px);
 }
+@media (min-width: 900px) {
+  /* No bottom nav on desktop — sit the toast near the corner of the content. */
+  .toast {
+    left: auto;
+    right: 20px;
+    transform: none;
+    bottom: 20px;
+  }
+}
 .toast-msg {
   font-size: 14px;
 }
@@ -990,6 +1183,14 @@ button {
   color: var(--accent);
   box-shadow: var(--shadow-sm);
 }
+/* Allow the Places switcher (4 options) to wrap on very narrow screens. */
+.segmented.wrap {
+  flex-wrap: wrap;
+  border-radius: var(--radius);
+}
+.places-filter {
+  margin-bottom: 10px;
+}
 
 /* Fit-to-my-places button over the map */
 /* Active (keyboard) search option */
@@ -1028,6 +1229,123 @@ button {
 }
 .country-detail p {
   margin: 8px 0 0;
+}
+
+/* "How it works" modal */
+.about-modal {
+  max-width: 540px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.about-lede {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.about-item {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.about-emoji {
+  flex: none;
+  font-size: 22px;
+  line-height: 1.4;
+}
+.about-item h3 {
+  margin: 0 0 3px;
+  font-size: 14.5px;
+}
+.about-item p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.about-foot {
+  margin: 4px 0 14px;
+  line-height: 1.5;
+}
+.about-modal .btn {
+  width: 100%;
+}
+.about-foot a,
+.guide-summary a,
+.guide-search a {
+  color: var(--accent);
+  font-weight: 600;
+}
+.guide-search {
+  margin: 2px 0 12px;
+}
+
+/* Travel guides (Wikivoyage) modal */
+.guide-modal {
+  max-width: 460px;
+  max-height: 86vh;
+  overflow-y: auto;
+}
+.guide-source {
+  margin: -6px 0 12px;
+}
+.guide-overview-btn {
+  width: 100%;
+  margin-bottom: 12px;
+}
+.guide-summary {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-sub);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.guide-summary p {
+  margin: 0 0 6px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.guide-group {
+  margin-bottom: 12px;
+}
+.guide-group h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+.guide-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.guide-links a {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  text-decoration: none;
+  color: var(--text);
+}
+.guide-links a:hover,
+.guide-links a:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.guide-link-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+.guide-modal .btn {
+  width: 100%;
+  margin-top: 4px;
 }
 
 /* Shortcuts overlay */
@@ -1246,23 +1564,82 @@ button {
   color: var(--text);
 }
 
-/* Desktop refinements */
-@media (min-width: 760px) {
-  .map-screen {
-    max-width: 860px;
-    margin: 0 auto;
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
+/* Tablet: give the reading column and the map a bit more room. */
+@media (min-width: 760px) and (max-width: 899.98px) {
+  .screen {
+    max-width: 760px;
   }
   .map-box {
-    height: 52vh;
+    height: 48vh;
+  }
+}
+
+/* Desktop: a left navigation rail + a wider content area, and a true two-pane
+   map (map beside the cities list) instead of a fixed-height strip. */
+@media (min-width: 900px) {
+  .app-shell {
+    flex-direction: row;
   }
   .bottom-nav {
-    justify-content: center;
-    gap: 8px;
+    order: 0;
+    flex-direction: column;
+    align-items: stretch;
+    width: 212px;
+    flex: none;
+    border-top: none;
+    border-right: 1px solid var(--border);
+    padding: 10px 10px 0;
+    gap: 2px;
+    overflow-y: auto;
   }
   .nav-item {
-    flex: none;
-    width: 120px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 11px;
+    padding: 11px 14px;
+    border-radius: var(--radius-sm);
+    min-height: 0;
+  }
+  .nav-item span {
+    font-size: 14px;
+  }
+  .nav-item.active {
+    background: var(--accent-soft);
+  }
+
+  .screen {
+    max-width: 940px;
+    padding: 18px 24px 40px;
+  }
+
+  /* Two-pane map: search/stats span the top, then map | cities-list. */
+  .map-screen {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
+  }
+  .map-top {
+    grid-column: 1 / -1;
+    position: static;
+  }
+  .map-box {
+    grid-column: 1;
+    grid-row: 2;
+    height: auto;
+    min-height: 0;
+  }
+  .view-list {
+    grid-column: 2;
+    grid-row: 2;
+    border-left: 1px solid var(--border);
+    min-height: 0;
+  }
+}
+
+/* Wide desktop: cap the reading column so long-form text stays readable. */
+@media (min-width: 1200px) {
+  .screen {
+    max-width: 1040px;
   }
 }

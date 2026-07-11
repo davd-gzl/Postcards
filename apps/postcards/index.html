@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
+    <!-- Send our ORIGIN (not the URL) as the Referer on cross-origin requests so the
+         opt-in OpenStreetMap tile server accepts them ("Referer is required"). The
+         hosted PWA also sets this via public/_headers; this meta covers the Vite
+         dev/preview server and the Capacitor native webview, which never see _headers. -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <meta name="theme-color" content="#4338ca" />

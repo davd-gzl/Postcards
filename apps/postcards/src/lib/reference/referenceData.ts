@@ -5,6 +5,7 @@ import type {
   City,
   Country,
   HeritageSite,
+  Language,
   ReferenceData,
   ReferenceProvenance,
   Subdivision,
@@ -26,6 +27,8 @@ const CITIES_URL = `${import.meta.env.BASE_URL}reference/cities.json`;
 const SUBDIVISIONS_URL = `${import.meta.env.BASE_URL}reference/subdivisions.json`;
 const AIRPORTS_URL = `${import.meta.env.BASE_URL}reference/airports.json`;
 const HERITAGE_URL = `${import.meta.env.BASE_URL}reference/heritage.json`;
+const LANGUAGES_URL = `${import.meta.env.BASE_URL}reference/languages.json`;
+const ARTICLE_NAMES_URL = `${import.meta.env.BASE_URL}reference/article-names.json`;
 
 function buildCountries(cities: City[], subdivisions: Subdivision[]): Country[] {
   const names = countries.getNames("en");
@@ -90,13 +93,19 @@ class ReferenceDataImpl implements ReferenceData {
   private subIndex = new Map<string, Subdivision>();
   private subsByCountry = new Map<string, Subdivision[]>();
   private countrySearch: { c: Country; search: string }[];
+  private languages: Record<string, Language[]>;
+  private articleNames: Record<string, string>;
 
   constructor(
     cities: City[],
     subdivisions: Subdivision[],
     airports: Airport[] = [],
     heritage: HeritageSite[] = [],
+    languages: Record<string, Language[]> = {},
+    articleNames: Record<string, string> = {},
   ) {
+    this.languages = languages;
+    this.articleNames = articleNames;
     this.cities = cities.map((c) => ({ ...c, search: normalize(c.name) }));
     this.airports = airports.map((a) => ({ ...a, search: normalize(a.name) }));
     this.heritage = heritage.map((h) => ({ ...h, search: normalize(h.name) }));
@@ -131,6 +140,10 @@ class ReferenceDataImpl implements ReferenceData {
   continentOf(iso2: string): string {
     return continents[iso2.toUpperCase()] ?? "";
   }
+  articleNameOf(iso2: string): string {
+    const up = iso2.toUpperCase();
+    return this.articleNames[up] ?? this.byIso2.get(up)?.name ?? up;
+  }
   subdivisionsOf(countryIso2: string): Subdivision[] {
     return this.subsByCountry.get(countryIso2) ?? [];
   }
@@ -151,6 +164,9 @@ class ReferenceDataImpl implements ReferenceData {
   }
   airportById(id: string): Airport | undefined {
     return this.airportIndex.get(id.toUpperCase());
+  }
+  languagesOf(iso2: string): Language[] {
+    return this.languages[iso2.toUpperCase()] ?? [];
   }
   allHeritage(): HeritageSite[] {
     return this.heritage;
@@ -228,30 +244,36 @@ export function initReferenceDataSync(
   subdivisions: Subdivision[],
   airports: Airport[] = [],
   heritage: HeritageSite[] = [],
+  languages: Record<string, Language[]> = {},
+  articleNames: Record<string, string> = {},
 ): ReferenceData {
-  instance = new ReferenceDataImpl(cities, subdivisions, airports, heritage);
+  instance = new ReferenceDataImpl(cities, subdivisions, airports, heritage, languages, articleNames);
   return instance;
 }
 
-/** Load the bundled gazetteer + subdivisions + airports + heritage assets. */
+/** Load the bundled gazetteer + subdivisions + airports + heritage + languages. */
 export async function initReferenceData(): Promise<ReferenceData> {
   if (instance) return instance;
   try {
-    const [cities, subdivisions, airports, heritage] = await Promise.all([
+    const [cities, subdivisions, airports, heritage, languages, articleNames] = await Promise.all([
       fetch(CITIES_URL).then((r) => (r.ok ? r.json() : Promise.reject(new Error("cities")))),
       fetch(SUBDIVISIONS_URL).then((r) => (r.ok ? r.json() : [])),
       fetch(AIRPORTS_URL).then((r) => (r.ok ? r.json() : [])),
       fetch(HERITAGE_URL).then((r) => (r.ok ? r.json() : [])),
+      fetch(LANGUAGES_URL).then((r) => (r.ok ? r.json() : {})),
+      fetch(ARTICLE_NAMES_URL).then((r) => (r.ok ? r.json() : {})),
     ]);
     return initReferenceDataSync(
       cities as City[],
       subdivisions as Subdivision[],
       airports as Airport[],
       heritage as HeritageSite[],
+      languages as Record<string, Language[]>,
+      articleNames as Record<string, string>,
     );
   } catch {
     console.warn("Postcards: reference data failed to load; continuing without cities.");
-    return initReferenceDataSync([], [], [], []);
+    return initReferenceDataSync([], [], [], [], {}, {});
   }
 }
 

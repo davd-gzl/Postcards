@@ -40,6 +40,12 @@ export interface Airport {
   lon: number;
 }
 
+/** A spoken language of a country (English name + language code). */
+export interface Language {
+  code: string; // ISO 639-3 where available
+  name: string; // English name, e.g. "French"
+}
+
 // A "category" place: a notable site that contributes to per-country coverage
 // (e.g. a UNESCO World Heritage Site). Aggregated from a named dataset — the app
 // authors none of these. The first category is World Heritage; more (museums,
@@ -65,6 +71,8 @@ export interface ReferenceData {
   countryByIso2(iso2: string): Country | undefined;
   countryByNumeric(numeric: string): Country | undefined;
   continentOf(iso2: string): string;
+  /** Common country name (Wikivoyage/Wikipedia article title), e.g. "Russia". Falls back to the ISO name. */
+  articleNameOf(iso2: string): string;
   subdivisionsOf(countryIso2: string): Subdivision[];
   subdivisionById(id: string): Subdivision | undefined;
   citiesOf(countryIso2: string): City[];
@@ -72,6 +80,8 @@ export interface ReferenceData {
   cityById(id: string): City | undefined;
   allAirports(): Airport[];
   airportById(id: string): Airport | undefined;
+  /** Spoken languages of a country (for Wikivoyage phrasebook/alphabet guides). */
+  languagesOf(iso2: string): Language[];
   /** All heritage sites, those in a country (coverage denominator), one by id, or a search. */
   allHeritage(): HeritageSite[];
   heritageOf(countryIso2: string): HeritageSite[];
