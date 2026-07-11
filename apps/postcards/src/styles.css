@@ -294,24 +294,7 @@ h1.brand {
   background: var(--bg-sub);
 }
 
-/* Continent legend (colors match the map fills) */
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  list-style: none;
-  margin: 0;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--border);
-}
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.legend-dot {
+/* Continent legend (colors match the map fills) */.legend-dot {
   width: 10px;
   height: 10px;
   border-radius: 3px;
@@ -464,16 +447,7 @@ h1.brand {
 .cap-note {
   padding: 6px 2px 0;
   font-size: 12px;
-}
-.pop {
-  flex: none;
-  font-size: 12px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  min-width: 44px;
-  text-align: right;
-}
-.city-list {
+}.city-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -531,31 +505,6 @@ h1.brand {
   padding-left: 6px;
   padding-right: 4px;
 }
-.toggle.sm {
-  width: 30px;
-  height: 30px;
-  font-size: 16px;
-}
-.city-row.compact .toggle {
-  width: 32px;
-  height: 32px;
-  font-size: 17px;
-}
-.city-row.compact .toggle.sm {
-  width: 30px;
-  height: 30px;
-}
-.toggle-wish {
-  color: #b45309;
-  border-color: #f59e0b;
-  background: #fef7e8;
-}
-.fav-star {
-  flex: none;
-  color: #f59e0b;
-  font-size: 13px;
-}
-
 /* Inline Been / Want / Favorite toggles (Places-Been style) */
 .states {
   display: flex;
@@ -652,14 +601,7 @@ h1.brand {
   width: 1px;
   align-self: stretch;
   background: var(--border);
-}
-.row-quick-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: none;
-}
-.mini-btn {
+}.mini-btn {
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 999px;
@@ -882,26 +824,7 @@ h1.brand {
 .city-sub {
   font-size: 13px;
   color: var(--muted);
-}
-.toggle {
-  flex: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 20px;
-  line-height: 1;
-  display: grid;
-  place-items: center;
-}
-.toggle-on {
-  background: var(--visited);
-  border-color: var(--visited);
-  color: #fff;
-}
-.link-danger {
+}.link-danger {
   flex: none;
   background: none;
   border: none;
@@ -984,21 +907,7 @@ h1.brand {
   color: var(--text);
 }
 
-/* "What counts as a country" picker — compact, inline in a section head. */
-.scope-select {
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-}
-.scope-select .select {
-  width: auto;
-  height: auto;
-  padding: 4px 8px;
-  border-radius: 8px;
-  font-size: 13px;
-}
-.countries-head {
+/* "What counts as a country" picker — compact, inline in a section head. */.countries-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
