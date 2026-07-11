@@ -20,6 +20,14 @@ const GEOMETRY_URL = `${import.meta.env.BASE_URL}basemap/countries-50m.json`;
 
 const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
 
+// The camera survives remounts (basemap switch, tab changes) at module scope.
+let lastCamera: { center: maplibregl.LngLatLike; zoom: number } | null = null;
+/** Whether a previous map instance left a camera to restore (used to decide
+ *  whether the first load should fit to the user's own places instead). */
+export function hasSavedCamera(): boolean {
+  return lastCamera !== null;
+}
+
 let pmtilesRegistered = false;
 function ensurePmtilesProtocol(): void {
   if (pmtilesRegistered) return;
@@ -223,6 +231,31 @@ function openPlacePopup(
   };
   actions.appendChild(toggle);
 
+  // ⚑ wish-to-go, one tap from the map (no-op once visited — you've been there).
+  let wished = findByPlace(useVisits.getState().visits, info.place)?.status === "wishlist";
+  const wish = document.createElement("button");
+  wish.type = "button";
+  const paintWish = () => {
+    wish.className = "mini-btn" + (wished ? " mini-on" : "");
+    wish.textContent = "⚑";
+    wish.title = wished ? "Remove from wishlist" : "Want to go";
+  };
+  paintWish();
+  wish.onclick = () => {
+    if (visited) return;
+    void useVisits.getState().toggleWish(info.place);
+    wished = !wished;
+    paintWish();
+  };
+  actions.appendChild(wish);
+
+  // Escape dismisses the popup (keyboard parity with clicking the map).
+  const onEsc = (ev: KeyboardEvent) => {
+    if (ev.key === "Escape") popup.remove();
+  };
+  window.addEventListener("keydown", onEsc);
+  popup.on("close", () => window.removeEventListener("keydown", onEsc));
+
   if (info.hasPage) {
     const page = document.createElement("button");
     page.type = "button";
@@ -320,10 +353,11 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
       id: "cities-all",
       type: "circle",
       source: "cities-all",
+      layout: { visibility: "none" }, // off by default; a small map toggle reveals it
       paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 1, 0.7, 4, 1.6, 8, 3.2],
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 1, 0.6, 4, 1.2, 8, 2.6],
         "circle-color": "#93a0b4",
-        "circle-opacity": 0.45,
+        "circle-opacity": 0.35,
       },
     },
     {
@@ -331,10 +365,11 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
       type: "circle",
       source: "cities-inview",
       paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 4, 8, 6.5],
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 3, 8, 5.5],
         "circle-color": "#ffffff",
         "circle-stroke-color": "#7b8698",
-        "circle-stroke-width": 1.6,
+        "circle-stroke-width": 1.4,
+        "circle-opacity": 0.9,
       },
     },
     {
@@ -408,10 +443,13 @@ export function MapView({
   globe = false,
   reducedMotion = false,
   mode = "all",
+  showTowns = false,
   onBaseUnavailable,
 }: {
   /** Which marker categories are shown (a "mode" switcher over the map). */
   mode?: MapMode;
+  /** Show the full-gazetteer dot field (every town on earth). Default off. */
+  showTowns?: boolean;
   onBounds?: (b: Bounds) => void;
   focus?: MapFocus | null;
   fit?: MapFit | null;
@@ -446,6 +484,8 @@ export function MapView({
   // True while a programmatic camera move is in flight — its moveend must NOT
   // refresh the cities list (the list only follows the user's own map moves).
   const suppressBoundsRef = useRef(false);
+  const showTownsRef = useRef(showTowns);
+  showTownsRef.current = showTowns;
   const [failed, setFailed] = useState(false);
   const [dataState, setDataState] = useState<"loading" | "ready" | "error">("loading");
 
@@ -482,6 +522,17 @@ export function MapView({
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
       }
     }
+    // In "All" mode monuments only appear from country-level zoom — at world
+    // zoom they blanketed whole continents. Monuments mode shows them always.
+    if (map.getLayer("poi-monuments")) {
+      map.setLayerZoomRange("poi-monuments", m === "monuments" ? 0 : 4.5, 24);
+    }
+    // The full-gazetteer dot field is a power view — hidden unless toggled on,
+    // and never shown in the monuments/airports modes.
+    if (map.getLayer("cities-all")) {
+      const on = showTownsRef.current && (m === "all" || m === "cities");
+      map.setLayoutProperty("cities-all", "visibility", on ? "visible" : "none");
+    }
   }
 
   function applyViewCities(map: MlMap) {
@@ -500,6 +551,13 @@ export function MapView({
     const { ocean, land, landLine } = themeColors(isDark);
     if (map.getLayer("background")) map.setPaintProperty("background", "background-color", ocean);
     if (map.getLayer("osm-bg")) map.setPaintProperty("osm-bg", "background-color", ocean);
+    // Raster tiles can't be recoloured, but they CAN be dimmed & desaturated so
+    // the online map stops glowing daylight-white inside the dark UI.
+    if (map.getLayer("osm")) {
+      map.setPaintProperty("osm", "raster-saturation", isDark ? -0.55 : 0);
+      map.setPaintProperty("osm", "raster-brightness-max", isDark ? 0.6 : 1);
+      map.setPaintProperty("osm", "raster-contrast", isDark ? 0.1 : 0);
+    }
     if (basemap === "simple" && map.getLayer("countries-base")) {
       map.setPaintProperty("countries-base", "fill-color", land);
       map.setPaintProperty("countries-base", "fill-outline-color", landLine);
@@ -559,8 +617,8 @@ export function MapView({
         map = new maplibregl.Map({
           container: containerRef.current,
           attributionControl: { compact: true },
-          center: [6, 32],
-          zoom: 1.1,
+          center: lastCamera?.center ?? [6, 32],
+          zoom: lastCamera?.zoom ?? 1.1,
           style: fullStyle,
           // Needed to snapshot the canvas for the globe↔flat crossfade.
           canvasContextAttributes: { preserveDrawingBuffer: true },
@@ -611,7 +669,9 @@ export function MapView({
       });
 
       map.on("moveend", () => {
-        if (!loadedRef.current || !map) return;
+        if (!map) return;
+        lastCamera = { center: map.getCenter(), zoom: map.getZoom() };
+        if (!loadedRef.current) return;
         if (suppressBoundsRef.current) {
           suppressBoundsRef.current = false; // programmatic fly — keep the list still
           return;
@@ -730,7 +790,7 @@ export function MapView({
     const map = mapRef.current;
     if (map && loadedRef.current) applyMode(map, mode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [mode, showTowns]);
 
   useEffect(() => {
     const map = mapRef.current;

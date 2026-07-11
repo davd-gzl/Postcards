@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useToast } from "../../lib/store/useToast";
 import { saveAreaOffline } from "../map/offlineTiles";
 import { OFFLINE_REGIONS, REGION_MAX_TILES, estimateRegion, type OfflineRegion } from "./regions";
@@ -15,6 +15,20 @@ import { formatInt } from "../../lib/format/format";
 export function SettingsScreen() {
   const showToast = useToast((s) => s.show);
   const [progress, setProgress] = useState<Record<string, number | undefined>>({});
+  // Downloads are cancelable, and each region remembers when it was last saved
+  // (so the button honestly reads "Re-download" instead of pretending it's new).
+  const controllers = useRef<Record<string, AbortController | undefined>>({});
+  const [savedAt, setSavedAt] = useState<Record<string, string | undefined>>(() => {
+    const out: Record<string, string | undefined> = {};
+    for (const r of OFFLINE_REGIONS) {
+      try {
+        out[r.id] = localStorage.getItem(`postcards-region-saved:${r.id}`) ?? undefined;
+      } catch {
+        /* private mode */
+      }
+    }
+    return out;
+  });
   const estimates = useMemo(
     () => Object.fromEntries(OFFLINE_REGIONS.map((r) => [r.id, estimateRegion(r)])),
     [],
@@ -22,21 +36,36 @@ export function SettingsScreen() {
 
   async function download(r: OfflineRegion) {
     if (progress[r.id] != null) return;
+    const ctl = new AbortController();
+    controllers.current[r.id] = ctl;
     setProgress((p) => ({ ...p, [r.id]: 0 }));
     try {
       const res = await saveAreaOffline(r.bounds, r.baseZoom, {
         levels: r.levels,
         maxTiles: REGION_MAX_TILES,
+        signal: ctl.signal,
         onProgress: (p) => setProgress((s) => ({ ...s, [r.id]: p.total ? p.done / p.total : 1 })),
       });
-      showToast(
-        res.failed === 0
-          ? `${r.name}: saved ${formatInt(res.saved)} map tiles for offline use.`
-          : `${r.name}: saved ${formatInt(res.saved)} tiles (${formatInt(res.failed)} failed — try again on a better connection).`,
-      );
+      if (ctl.signal.aborted) {
+        showToast(`${r.name}: download cancelled.`);
+      } else {
+        const now = new Date().toISOString().slice(0, 10);
+        try {
+          localStorage.setItem(`postcards-region-saved:${r.id}`, now);
+        } catch {
+          /* private mode */
+        }
+        setSavedAt((sv) => ({ ...sv, [r.id]: now }));
+        showToast(
+          res.failed === 0
+            ? `${r.name}: saved ${formatInt(res.saved)} map tiles for offline use.`
+            : `${r.name}: saved ${formatInt(res.saved)} tiles (${formatInt(res.failed)} failed — try again on a better connection).`,
+        );
+      }
     } catch {
       showToast(`Couldn't download ${r.name} — check your connection.`);
     } finally {
+      controllers.current[r.id] = undefined;
       setProgress((p) => ({ ...p, [r.id]: undefined }));
     }
   }
@@ -77,16 +106,26 @@ export function SettingsScreen() {
                     {" "}
                     {formatInt(est.tiles)} tiles · ≈{est.mb} MB
                     {est.capped ? " (capped)" : ""}
+                    {savedAt[r.id] ? ` · saved ${savedAt[r.id]}` : ""}
                   </span>
                 </span>
                 {p == null ? (
                   <button className="mini-btn" type="button" onClick={() => void download(r)}>
-                    ⬇ Download
+                    {savedAt[r.id] ? "⟳ Re-download" : "⬇ Download"}
                   </button>
                 ) : (
-                  <span className="region-progress" role="status">
-                    {Math.round(p * 100)}%
-                  </span>
+                  <>
+                    <span className="region-progress" role="status">
+                      {Math.round(p * 100)}%
+                    </span>
+                    <button
+                      className="link-danger"
+                      type="button"
+                      onClick={() => controllers.current[r.id]?.abort()}
+                    >
+                      Cancel
+                    </button>
+                  </>
                 )}
               </li>
             );

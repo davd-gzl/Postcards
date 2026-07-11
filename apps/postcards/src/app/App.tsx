@@ -63,7 +63,7 @@ export function App() {
       if (e.key === "Escape") {
         // A modal/lightbox on screen consumes Escape (its own handler closes
         // it) — only an unobstructed Escape navigates back.
-        const dialogOpen = !!document.querySelector(".modal-backdrop, .lightbox");
+        const dialogOpen = !!document.querySelector(".modal-backdrop, .lightbox, .maplibregl-popup");
         setShowHelp(false);
         setShowAbout(false);
         if (!dialogOpen) useUi.getState().goBack(); // Escape = previous screen
