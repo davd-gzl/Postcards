@@ -359,7 +359,12 @@ export function PlacesScreen() {
               const place = { kind: "country" as const, id: c.iso2, name: c.name, countryId: c.iso2 };
               return (
                 <li key={c.iso2} className="city-row compact dense">
-                  <div className="city-focus" style={{ cursor: "default" }} title={c.continent}>
+                  <button
+                    className="city-focus"
+                    type="button"
+                    title={`Open ${c.name}`}
+                    onClick={() => useUi.getState().openCountry(c.iso2)}
+                  >
                     <CityLine
                       flag={countryFlag(c.iso2)}
                       name={c.name}
@@ -371,7 +376,7 @@ export function PlacesScreen() {
                         ) : undefined
                       }
                     />
-                  </div>
+                  </button>
                   {isVisited && subCount > 0 ? (
                     // Visited through its cities/monuments — already counted; no
                     // separate per-country record needed.
