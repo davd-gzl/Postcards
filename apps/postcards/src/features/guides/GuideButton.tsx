@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { guidesFor, fetchSummary, searchUrl, type WikivoyageSummary } from "../../lib/wikivoyage";
 import type { PlaceRef } from "../../lib/schema/models";
 
@@ -92,26 +93,7 @@ function GuidesModal({
     closeRef.current?.focus();
   }, []);
 
-  // Escape closes; Tab trapped within the dialog (keyboard-first, WCAG 2.4.3).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") return onClose();
-      if (e.key !== "Tab") return;
-      const f = dialogRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])");
-      if (!f || !f.length) return;
-      const first = f[0]!;
-      const last = f[f.length - 1]!;
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useModalKeys(dialogRef, onClose);
 
   async function loadOverview() {
     setState("loading");

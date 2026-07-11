@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getReferenceData } from "../../src/lib/reference/referenceData";
-import {
-  visitedCountryNumerics,
-  visitedCityPoints,
-  tripArcs,
-} from "../../src/features/map/visitedLayers";
+import { visitedCityPoints, tripArcs } from "../../src/features/map/visitedLayers";
 import type { PlaceRef, Trip, Visit } from "../../src/lib/schema/models";
 import { haversineKm } from "../../src/features/travel/distance";
 
@@ -25,12 +21,6 @@ function cityVisit(id: string, name: string, countryId: string): Visit {
 
 describe("map layers", () => {
   const visits = [cityVisit(paris.id, paris.name, paris.countryIso2)];
-
-  it("maps visited countries to their numeric geometry id", () => {
-    const numerics = visitedCountryNumerics(visits, ref);
-    // France ISO 3166-1 numeric is 250.
-    expect(numerics).toContain("250");
-  });
 
   it("emits a point at the city's [lon, lat] (GeoJSON order)", () => {
     const fc = visitedCityPoints(visits, ref);

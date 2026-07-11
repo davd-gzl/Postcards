@@ -12,7 +12,10 @@ export const FORMAT = "postcards" as const;
 // v3 turns a visit's single `photo` into a `photos` gallery (each with an optional
 // caption). Both fields validate, so v1/v2 files import unchanged; new exports write
 // `photos`. Older builds opening a v3 file get the same graceful "update" prompt.
-export const SCHEMA_VERSION = 3;
+// v4 adds the "custom" place kind — a USER-authored point (name + coordinates) for
+// places missing from the reference datasets. Reference data stays aggregated;
+// custom points are personal data and live only in the user's own file.
+export const SCHEMA_VERSION = 4;
 
 const isoCountryId = z
   .string()
@@ -22,7 +25,7 @@ export const PlaceRefSchema = z
   .object({
     // Additive: older files only ever used "country"/"city", so they still validate.
     // A file with a newer kind opened in an older app build fails closed (unknown kind), by design.
-    kind: z.enum(["country", "city", "airport", "heritage"]),
+    kind: z.enum(["country", "city", "airport", "heritage", "custom"]),
     id: z.string().min(1).max(64),
     name: z
       .string()
@@ -30,6 +33,10 @@ export const PlaceRefSchema = z
       .max(200)
       .transform((s) => sanitizeText(s, 200)),
     countryId: isoCountryId,
+    // Coordinates carried on the record itself — only used by kind "custom"
+    // (user-authored points have no reference-data entry to look coords up in).
+    lat: z.number().min(-90).max(90).optional(),
+    lon: z.number().min(-180).max(180).optional(),
   })
   .strict();
 

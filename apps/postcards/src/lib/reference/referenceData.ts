@@ -106,7 +106,12 @@ class ReferenceDataImpl implements ReferenceData {
   ) {
     this.languages = languages;
     this.articleNames = articleNames;
-    this.cities = cities.map((c) => ({ ...c, search: normalize(c.name) }));
+    // Population-descending order is the contract everywhere (search relevance,
+    // the cities-in-view list's presorted fast path). The bundled file is already
+    // sorted, so this is a near-free adaptive pass; it guarantees injected data too.
+    this.cities = cities
+      .map((c) => ({ ...c, search: normalize(c.name) }))
+      .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
     this.airports = airports.map((a) => ({ ...a, search: normalize(a.name) }));
     this.heritage = heritage.map((h) => ({ ...h, search: normalize(h.name) }));
     this.countries = buildCountries(cities, subdivisions);

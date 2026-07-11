@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
@@ -8,7 +8,8 @@ import { countryFlag, formatDate } from "../../lib/format/format";
 import type { Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
 import { inScope } from "../../lib/reference/scope";
-import { CountryScopeSelect } from "../../ui/CountryScopeSelect";
+import { CityLine } from "../../ui/CityLine";
+import { ScopeToggle } from "../../ui/ScopeToggle";
 import { PhotoGallery } from "./PhotoGallery";
 import { StateToggles } from "./StateToggles";
 import { GuideButton } from "../guides/GuideButton";
@@ -36,33 +37,131 @@ function placeMeta(ref: ReferenceData, v: Visit): { coord: { lon: number; lat: n
   return { coord: null, sub: "Country" };
 }
 
-/** Your visited places, your wish-to-go list, monuments, + a checklist of every country. */
-export function PlacesScreen() {
+/** One visited or wishlist row — visited adds details, photos and the favorite star. */
+function VisitRow({ v, wishlist }: { v: Visit; wishlist?: boolean }) {
   const ref = useMemo(() => getReferenceData(), []);
-  const visits = useVisits((s) => s.visits);
   const removeVisit = useVisits((s) => s.removeVisit);
   const toggleVisit = useVisits((s) => s.toggleVisit);
   const toggleFavorite = useVisits((s) => s.toggleFavorite);
   const setAll = useVisits((s) => s.setAll);
   const showToast = useToast((s) => s.show);
   const flyTo = useUi((s) => s.flyTo);
+  const { coord, sub } = placeMeta(ref, v);
+
+  function removeWithUndo() {
+    const prev = useVisits.getState().visits;
+    void removeVisit(v.visitId);
+    showToast(`Removed ${v.place.name}`, () => setAll(prev));
+  }
+
+  return (
+    <li className="city-row compact">
+      <button
+        className="city-focus"
+        type="button"
+        onClick={() => (coord ? flyTo(coord.lon, coord.lat) : undefined)}
+        aria-label={coord ? `Show ${v.place.name} on the map` : v.place.name}
+      >
+        <CityLine
+          flag={countryFlag(v.place.countryId)}
+          name={v.place.name}
+          sub={
+            wishlist ? (
+              <>· {sub}</>
+            ) : (
+              <>
+                · {sub}
+                {v.date ? ` · ${formatDate(v.date)}` : ""}
+                {v.note ? ` · ${v.note}` : ""}
+              </>
+            )
+          }
+        />
+      </button>
+      {!wishlist && (v.place.kind === "city" || v.place.kind === "custom") && (
+        <button
+          className="mini-btn"
+          type="button"
+          aria-label={`Details for ${v.place.name}`}
+          onClick={() => useUi.getState().openCity(v.place.id)}
+        >
+          Details
+        </button>
+      )}
+      <GuideButton place={v.place} />
+      {!wishlist && (
+        <PhotoGallery visitId={v.visitId} photos={v.photos ?? []} placeName={v.place.name} />
+      )}
+      {!wishlist && (
+        <button
+          className={"star-btn" + (v.favorite ? " star-on" : "")}
+          type="button"
+          aria-pressed={!!v.favorite}
+          aria-label={v.favorite ? `Unfavorite ${v.place.name}` : `Favorite ${v.place.name}`}
+          onClick={() => void toggleFavorite(v.place)}
+        >
+          {v.favorite ? "★" : "☆"}
+        </button>
+      )}
+      {wishlist && (
+        <button
+          className="mini-btn"
+          type="button"
+          aria-label={`Mark ${v.place.name} visited`}
+          onClick={() => void toggleVisit(v.place)}
+        >
+          ✓ Been there
+        </button>
+      )}
+      <button
+        className="link-danger"
+        type="button"
+        onClick={removeWithUndo}
+        aria-label={`Remove ${v.place.name}`}
+      >
+        Remove
+      </button>
+    </li>
+  );
+}
+
+/** Your visited places, your wish-to-go list, monuments, + a checklist of every country. */
+export function PlacesScreen() {
+  const ref = useMemo(() => getReferenceData(), []);
+  const visits = useVisits((s) => s.visits);
+  const flyTo = useUi((s) => s.flyTo);
 
   const scope = useSettings((s) => s.countryScope);
   const [view, setView] = useState<View>("visited");
+  const [favOnly, setFavOnly] = useState(false);
   const [filter, setFilter] = useState("");
   const q = filter.trim().toLowerCase();
+
+  // Another screen (the map's counter strip) asked for a specific view.
+  const request = useUi((s) => s.placesViewRequest);
+  useEffect(() => {
+    if (!request) return;
+    if (request.view === "favorites") {
+      setView("visited");
+      setFavOnly(true);
+    } else {
+      setView(request.view);
+      setFavOnly(false);
+    }
+    setFilter("");
+  }, [request?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const heritageAvailable = useMemo(() => ref.allHeritage().length > 0, [ref]);
 
   const visited = useMemo(
     () =>
       visits
-        .filter((v) => v.status === "visited")
+        .filter((v) => v.status === "visited" && (!favOnly || v.favorite))
         .sort(
           (a, b) =>
             Number(b.favorite) - Number(a.favorite) || a.place.name.localeCompare(b.place.name),
         ),
-    [visits],
+    [visits, favOnly],
   );
   const wishlist = useMemo(
     () =>
@@ -101,14 +200,8 @@ export function PlacesScreen() {
     return [...all].sort((a, b) => a.name.localeCompare(b.name));
   }, [ref, q]);
 
-  function removeWithUndo(visitId: string, name: string) {
-    const prev = useVisits.getState().visits;
-    void removeVisit(visitId);
-    showToast(`Removed ${name}`, () => setAll(prev));
-  }
-
   const TABS: { id: View; label: string }[] = [
-    { id: "visited", label: `Visited (${visited.length})` },
+    { id: "visited", label: favOnly ? `★ Favorites (${visited.length})` : `Visited (${visited.length})` },
     { id: "wishlist", label: `Wishlist (${wishlist.length})` },
     { id: "monuments", label: "Monuments" },
     { id: "countries", label: "Countries" },
@@ -127,6 +220,7 @@ export function PlacesScreen() {
               className={view === t.id ? "seg-on" : ""}
               onClick={() => {
                 setView(t.id);
+                setFavOnly(false);
                 setFilter("");
               }}
             >
@@ -162,50 +256,9 @@ export function PlacesScreen() {
             </p>
           )}
           <ul className="city-list">
-            {filterVisits(visited).map((v) => {
-              const { coord, sub } = placeMeta(ref, v);
-              return (
-                <li key={v.visitId} className="city-row compact">
-                  <button
-                    className="city-focus"
-                    type="button"
-                    onClick={() => (coord ? flyTo(coord.lon, coord.lat) : undefined)}
-                    aria-label={coord ? `Show ${v.place.name} on the map` : v.place.name}
-                  >
-                    <span className="city-line">
-                      <span className="flag" aria-hidden>
-                        {countryFlag(v.place.countryId)}
-                      </span>
-                      <span className="city-name">{v.place.name}</span>
-                      <span className="city-sub">
-                        · {sub}
-                        {v.date ? ` · ${formatDate(v.date)}` : ""}
-                        {v.note ? ` · ${v.note}` : ""}
-                      </span>
-                    </span>
-                  </button>
-                  <GuideButton place={v.place} />
-                  <PhotoGallery visitId={v.visitId} photos={v.photos ?? []} placeName={v.place.name} />
-                  <button
-                    className={"star-btn" + (v.favorite ? " star-on" : "")}
-                    type="button"
-                    aria-pressed={!!v.favorite}
-                    aria-label={v.favorite ? `Unfavorite ${v.place.name}` : `Favorite ${v.place.name}`}
-                    onClick={() => void toggleFavorite(v.place)}
-                  >
-                    {v.favorite ? "★" : "☆"}
-                  </button>
-                  <button
-                    className="link-danger"
-                    type="button"
-                    onClick={() => removeWithUndo(v.visitId, v.place.name)}
-                    aria-label={`Remove ${v.place.name}`}
-                  >
-                    Remove
-                  </button>
-                </li>
-              );
-            })}
+            {filterVisits(visited).map((v) => (
+              <VisitRow key={v.visitId} v={v} />
+            ))}
           </ul>
         </>
       )}
@@ -221,44 +274,9 @@ export function PlacesScreen() {
             </p>
           )}
           <ul className="city-list">
-            {filterVisits(wishlist).map((v) => {
-              const { coord, sub } = placeMeta(ref, v);
-              return (
-                <li key={v.visitId} className="city-row compact">
-                  <button
-                    className="city-focus"
-                    type="button"
-                    onClick={() => (coord ? flyTo(coord.lon, coord.lat) : undefined)}
-                    aria-label={coord ? `Show ${v.place.name} on the map` : v.place.name}
-                  >
-                    <span className="city-line">
-                      <span className="flag" aria-hidden>
-                        {countryFlag(v.place.countryId)}
-                      </span>
-                      <span className="city-name">{v.place.name}</span>
-                      <span className="city-sub">· {sub}</span>
-                    </span>
-                  </button>
-                  <GuideButton place={v.place} />
-                  <button
-                    className="mini-btn"
-                    type="button"
-                    aria-label={`Mark ${v.place.name} visited`}
-                    onClick={() => void toggleVisit(v.place)}
-                  >
-                    ✓ Been there
-                  </button>
-                  <button
-                    className="link-danger"
-                    type="button"
-                    onClick={() => removeWithUndo(v.visitId, v.place.name)}
-                    aria-label={`Remove ${v.place.name}`}
-                  >
-                    Remove
-                  </button>
-                </li>
-              );
-            })}
+            {filterVisits(wishlist).map((v) => (
+              <VisitRow key={v.visitId} v={v} wishlist />
+            ))}
           </ul>
         </>
       )}
@@ -298,13 +316,7 @@ export function PlacesScreen() {
                         }
                         aria-label={`Show ${h.name} on the map`}
                       >
-                        <span className="city-line">
-                          <span className="flag" aria-hidden>
-                            {countryFlag(h.countryIso2)}
-                          </span>
-                          <span className="city-name">{h.name}</span>
-                          <span className="city-sub">· {country}</span>
-                        </span>
+                        <CityLine flag={countryFlag(h.countryIso2)} name={h.name} sub={<>· {country}</>} />
                       </button>
                       <StateToggles place={place} />
                     </li>
@@ -324,7 +336,7 @@ export function PlacesScreen() {
       {view === "countries" && (
         <>
           <div className="countries-head">
-            <CountryScopeSelect id="places-country-scope" />
+            <ScopeToggle />
             <span className="muted small">{countryRows.length} shown</span>
           </div>
           <input
@@ -344,17 +356,17 @@ export function PlacesScreen() {
               return (
                 <li key={c.iso2} className="city-row compact dense">
                   <div className="city-focus" style={{ cursor: "default" }} title={c.continent}>
-                    <span className="city-line">
-                      <span className="flag" aria-hidden>
-                        {countryFlag(c.iso2)}
-                      </span>
-                      <span className="city-name">{c.name}</span>
-                      {isVisited && subCount > 0 && (
-                        <span className="city-sub">
-                          · via {subCount} place{subCount === 1 ? "" : "s"}
-                        </span>
-                      )}
-                    </span>
+                    <CityLine
+                      flag={countryFlag(c.iso2)}
+                      name={c.name}
+                      sub={
+                        isVisited && subCount > 0 ? (
+                          <>
+                            · via {subCount} place{subCount === 1 ? "" : "s"}
+                          </>
+                        ) : undefined
+                      }
+                    />
                   </div>
                   {isVisited && subCount > 0 ? (
                     // Visited through its cities/monuments — already counted; no

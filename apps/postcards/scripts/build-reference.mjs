@@ -21,7 +21,10 @@ const airportData = require("airport-data");
 const countries = require("i18n-iso-countries");
 countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
 
-const MIN_POPULATION = 15000;
+// 0 = ship EVERY city in the GeoNames-derived package (~135k) — full world
+// coverage (small islands like Lombok included), at the cost of a ~15 MB asset
+// (cached once by the service worker).
+const MIN_POPULATION = 0;
 
 // France: GeoNames admin-1 = the 13 metropolitan regions (dr5hn lists departments),
 // so name them directly by INSEE region code.
@@ -52,7 +55,7 @@ const cities = [];
 const seen = new Set();
 const regions = new Map(); // "CC-code" -> { cc, adminCode, sumLat, sumLon, n }
 for (const c of allCities) {
-  if (!c.population || c.population < MIN_POPULATION || !c.cityId || seen.has(c.cityId)) continue;
+  if ((c.population || 0) < MIN_POPULATION || !c.cityId || seen.has(c.cityId)) continue;
   const [lon, lat] = c.loc.coordinates;
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
   seen.add(c.cityId);
@@ -66,10 +69,12 @@ for (const c of allCities) {
   }
   cities.push({
     id: String(c.cityId), name: c.name, countryIso2: c.country, subdivisionId: subId,
-    lat: Math.round(lat * 1e4) / 1e4, lon: Math.round(lon * 1e4) / 1e4, population: c.population,
+    lat: Math.round(lat * 1e4) / 1e4, lon: Math.round(lon * 1e4) / 1e4,
+    // GeoNames uses 0 for "unknown population" — store null, never a fake 0.
+    population: c.population > 0 ? c.population : null,
   });
 }
-cities.sort((a, b) => b.population - a.population);
+cities.sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
 writeFileSync(join(refDir, "cities.json"), JSON.stringify(cities) + "\n");
 
 // --- Name each region by nearest state centroid (or FR override) ---

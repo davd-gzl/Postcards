@@ -39,8 +39,3 @@ export function sanitizeText(input: string, maxLength = 2000): string {
   if (out.length > maxLength) out = out.slice(0, maxLength);
   return out;
 }
-
-/** True if a value is a finite, safe number. */
-export function isFiniteNumber(v: unknown): v is number {
-  return typeof v === "number" && Number.isFinite(v);
-}
