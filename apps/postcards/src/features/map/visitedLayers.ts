@@ -7,17 +7,6 @@ function isVisited(v: Visit): boolean {
   return v.status !== "wishlist";
 }
 
-/** Numeric ISO ids (matching the map geometry) of countries with any visit. */
-export function visitedCountryNumerics(visits: Visit[], ref: ReferenceData): string[] {
-  const set = new Set<string>();
-  for (const v of visits) {
-    if (!isVisited(v)) continue;
-    const c = ref.countryByIso2(v.place.countryId);
-    if (c) set.add(c.numeric);
-  }
-  return [...set];
-}
-
 /**
  * Point features for visited cities. Each carries what the flag marker needs
  * (country code, favourite flag, collision sort key) plus the details shown in
