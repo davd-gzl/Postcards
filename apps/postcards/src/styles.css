@@ -1900,3 +1900,29 @@ h1.brand {
 .metric { margin-top: 5px; }
 .brand { font-size: 19px; }
 .brand::before { width: 15px; height: 15px; }
+
+/* Guide modal on desktop: a wide two-column sheet (overviews | guide links)
+   instead of a phone-width box. */
+@media (min-width: 900px) {
+  .guide-modal {
+    max-width: 840px;
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    column-gap: 26px;
+    align-items: start;
+  }
+  .guide-modal > h2,
+  .guide-modal > .guide-source,
+  .guide-modal > .guide-search,
+  .guide-modal > .btn {
+    grid-column: 1 / -1;
+  }
+  .guide-overviews {
+    grid-column: 1;
+    min-width: 0;
+  }
+  .guide-groups-col {
+    grid-column: 2;
+    min-width: 0;
+  }
+}

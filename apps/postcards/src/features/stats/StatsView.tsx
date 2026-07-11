@@ -338,9 +338,9 @@ export function StatsView() {
             {c.heritageTotal > 0 && (
               <div className="metric">
                 <div className="metric-label">
-                  <span>Heritage sites</span>
+                  <span>Sites & landmarks</span>
                   <span className="muted">
-                    {formatPercent(c.heritagePct)} · {c.heritageVisited}/{c.heritageTotal} UNESCO
+                    {formatPercent(c.heritagePct)} · {c.heritageVisited}/{c.heritageTotal} sites
                   </span>
                 </div>
                 <Bar value={c.heritagePct} label={`${c.name}: heritage sites visited`} color="#b45309" />
