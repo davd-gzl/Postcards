@@ -52,5 +52,11 @@
     "license": "CC0 (facts)",
     "version": "seed",
     "url": "https://www.wikidata.org"
+  },
+  {
+    "dataset": "UNESCO World Heritage List — all 1,248 sites incl. 47th session (2025)",
+    "license": "CC BY-SA 3.0 IGO — © UNESCO World Heritage Centre",
+    "version": "2025 list, retrieved 2026-07-11",
+    "url": "https://whc.unesco.org/en/list/"
   }
 ]

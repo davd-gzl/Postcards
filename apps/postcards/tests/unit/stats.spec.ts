@@ -85,8 +85,11 @@ describe("coverage statistics (real gazetteer)", () => {
 
   it("drill-down lists visited city and region names", () => {
     const d = countryDetail(visits, ref, "FR");
-    expect(d.cities).toContain("Paris");
-    expect(d.cities).toContain("Lyon");
+    const cityNames = d.cities.map((c) => c.name);
+    expect(cityNames).toContain("Paris");
+    expect(cityNames).toContain("Lyon");
+    // Every drill-down city carries its id, so the UI can open the city page.
+    expect(d.cities.every((c) => c.id.length > 0)).toBe(true);
     expect(d.regionsVisited).toContain("Île-de-France");
     expect(d.regionsRemaining).toBe(11);
   });

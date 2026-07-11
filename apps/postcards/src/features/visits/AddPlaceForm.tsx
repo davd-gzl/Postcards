@@ -80,6 +80,7 @@ export function AddPlaceForm({ initialName, onDone }: { initialName: string; onD
           onChange={(e) => setCc(e.target.value)}
         >
           <option value="">Country…</option>
+          <option value="ZZ">🌊 No country (open ocean, anywhere)</option>
           {ref.countries.map((c) => (
             <option key={c.iso2} value={c.iso2}>
               {c.name}

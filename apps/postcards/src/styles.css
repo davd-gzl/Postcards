@@ -1920,15 +1920,15 @@ button.stat-tile:hover .num {
 @media (min-width: 900px) {
   .guide-modal {
     max-width: 840px;
+  }
+  .guide-body {
     display: grid;
     grid-template-columns: 1.05fr 1fr;
     column-gap: 26px;
     align-items: start;
   }
-  .guide-modal > h2,
-  .guide-modal > .guide-source,
-  .guide-modal > .guide-search,
-  .guide-modal > .btn {
+  .guide-body > .guide-source,
+  .guide-body > .guide-search {
     grid-column: 1 / -1;
   }
   .guide-overviews {
@@ -2267,21 +2267,192 @@ button.stat-tile:hover .num {
     width: auto;
   }
 }
-/* Desktop: keep the search clear of the tabs centered in the same bar.
-   Mid-width screens drop the tab labels (icons keep their aria-labels). */
-@media (min-width: 900px) and (max-width: 1199.98px) {
+/* Mid-width: icon-only tabs so the left-anchored row stays clear of the search. */
+@media (min-width: 900px) and (max-width: 1299.98px) {
   .bottom-nav .nav-item span {
     display: none;
   }
   .bottom-nav .nav-item {
     padding: 6px 10px;
   }
+}
+
+/* ===== Batch: topbar order, layers panel, popup card, guide section, density ===== */
+
+/* Clickable brand (goes home to the map). */
+.brand-wrap {
+  margin: 0;
+}
+button.brand {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+}
+button.brand:hover,
+button.brand:focus-visible {
+  color: var(--accent);
+}
+
+/* GitHub link: the yellow star reads as "go star it". */
+.topbar-star .star-glyph {
+  color: #f5b301;
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* Desktop top bar order: brand · tabs (left) · search (right) · actions.
+   The tabs stop being absolutely centered — no more collision juggling. */
+@media (min-width: 900px) {
+  .bottom-nav {
+    left: 170px;
+    transform: none;
+    justify-content: flex-start;
+  }
   .topbar-search {
-    max-width: clamp(120px, calc(50vw - 330px), 420px);
+    margin-left: auto;
+    margin-right: 10px;
+    max-width: 280px;
   }
 }
-@media (min-width: 1200px) {
-  .topbar-search {
-    max-width: clamp(140px, calc(50vw - 500px), 420px);
+/* Action labels need the widest bar; below 1500px the icons speak alone. */
+@media (min-width: 900px) and (max-width: 1499.98px) {
+  .topbar-about span {
+    display: none;
   }
+  .topbar-about {
+    padding: 5px 8px;
+  }
+}
+
+/* Map layers panel: one button, options above it (bottom-right corner). */
+.layers-panel {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.layers-panel .map-btn {
+  box-shadow: none;
+  text-align: left;
+}
+.map-ctl-right {
+  position: absolute;
+}
+
+/* Map popup: the whole card is the toggle; state is spelled out under the name. */
+.map-popup-main {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 2px 2px 4px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.map-popup-main:hover,
+.map-popup-main:focus-visible {
+  background: var(--bg-sub);
+}
+.map-popup-main em {
+  display: block;
+  font-style: normal;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 3px;
+}
+.map-popup.popup-visited .map-popup-main em {
+  color: #15803d;
+}
+
+/* Favorite is a heart now, and only appears once you've been there. */
+.state.fav.on {
+  color: #e11d48;
+  border-color: #e11d48;
+  background: #fff1f2;
+}
+
+/* Wikipedia lead photo in the guide overviews (loaded on explicit action). */
+.guide-photo {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin: 0 0 8px;
+}
+.guide-section .guide-body {
+  margin-top: 2px;
+}
+
+/* Places: year chips + monuments header row. */
+.year-filter {
+  margin: 0 0 8px;
+}
+.countries-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 6px;
+}
+
+/* Passport: continent groups read like passport pages. */
+.passport-continent h3 {
+  margin: 12px 0 6px;
+  font-size: 14px;
+}
+
+/* Stats density: half the air, same information. */
+.stat-grid {
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.stat-tile {
+  padding: 8px 11px;
+}
+.stat-tile .num {
+  font-size: 21px;
+}
+.stat-tile .label {
+  margin-top: 1px;
+  font-size: 12px;
+}
+.country-card {
+  padding: 6px 10px;
+  margin-bottom: 4px;
+}
+.records-grid {
+  gap: 3px 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.bar {
+  height: 5px;
+}
+.chip-row {
+  margin: 3px 0;
+}
+.place-chip {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.section-head + .muted.small {
+  margin-top: 0;
 }

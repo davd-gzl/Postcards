@@ -4,6 +4,7 @@ import { Protocol } from "pmtiles";
 import { feature } from "topojson-client";
 import type { FeatureCollection, Polygon, MultiPolygon, Point, Feature, LineString } from "geojson";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import { useGazetteerGeneration } from "../../lib/reference/useGazetteer";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
@@ -200,54 +201,69 @@ function openPlacePopup(
 ): void {
   const el = document.createElement("div");
   el.className = "map-popup";
-  const name = document.createElement("strong");
-  name.textContent = info.name;
-  el.appendChild(name);
-  if (info.sub) {
-    const sub = document.createElement("span");
-    sub.textContent = info.sub;
-    el.appendChild(sub);
-  }
   const actions = document.createElement("div");
   actions.className = "map-popup-actions";
-  const popup = new maplibregl.Popup({ closeButton: false, offset: 12, maxWidth: "220px" })
+  const popup = new maplibregl.Popup({ closeButton: false, offset: 12, maxWidth: "230px" })
     .setLngLat(lngLat)
     .setDOMContent(el);
 
-  // The toggle flips in place — the popup STAYS OPEN so you can check/uncheck
-  // (or read the details) without re-tapping the marker.
+  // The WHOLE popup body is the "been there" toggle — tap the marker, then tap
+  // the card: two taps and you've been there (no tiny button to aim for). The
+  // popup STAYS OPEN so the state flip is visible and reversible. The ⚑ wish
+  // and ✍️ story buttons swap with the visited state: you wish for places you
+  // haven't seen, you journal about places you have.
   let visited = findByPlace(useVisits.getState().visits, info.place)?.status === "visited";
-  const toggle = document.createElement("button");
-  toggle.type = "button";
-  const paint = () => {
-    toggle.className = "mini-btn" + (visited ? " mini-on" : "");
-    toggle.textContent = visited ? "✓ Visited" : "✓ Been there";
-  };
-  paint();
-  toggle.onclick = () => {
-    void useVisits.getState().toggleVisit(info.place);
-    visited = !visited;
-    paint();
-  };
-  actions.appendChild(toggle);
-
-  // ⚑ wish-to-go, one tap from the map (no-op once visited — you've been there).
   let wished = findByPlace(useVisits.getState().visits, info.place)?.status === "wishlist";
+  const body = document.createElement("button");
+  body.type = "button";
+  body.className = "map-popup-main";
+  const name = document.createElement("strong");
+  name.textContent = info.name;
+  body.appendChild(name);
+  if (info.sub) {
+    const sub = document.createElement("span");
+    sub.textContent = info.sub;
+    body.appendChild(sub);
+  }
+  const state = document.createElement("em");
+  body.appendChild(state);
+  el.appendChild(body);
+
   const wish = document.createElement("button");
   wish.type = "button";
-  const paintWish = () => {
-    wish.className = "mini-btn" + (wished ? " mini-on" : "");
-    wish.textContent = "⚑";
-    wish.title = wished ? "Remove from wishlist" : "Want to go";
+  const story = document.createElement("button");
+  story.type = "button";
+  story.className = "mini-btn";
+  story.textContent = "✍️ Story";
+  story.title = "Write a journal story about today here";
+  story.onclick = () => {
+    popup.remove();
+    useUi.getState().openJournalDraft(info.place);
   };
-  paintWish();
+  const paint = () => {
+    el.classList.toggle("popup-visited", visited);
+    state.textContent = visited ? "✓ Visited · tap to undo" : "Tap to mark visited";
+    body.title = visited ? `Remove ${info.name} from visited` : `Mark ${info.name} visited`;
+    wish.className = "mini-btn" + (wished ? " mini-on" : "");
+    wish.textContent = wished ? "⚑ Wishlisted" : "⚑ Want to go";
+    wish.style.display = visited ? "none" : ""; // you've been — nothing to wish
+    story.style.display = visited ? "" : "none"; // journal what you've seen
+  };
+  paint();
+  body.onclick = () => {
+    void useVisits.getState().toggleVisit(info.place);
+    visited = !visited;
+    if (visited) wished = false;
+    paint();
+  };
   wish.onclick = () => {
     if (visited) return;
     void useVisits.getState().toggleWish(info.place);
     wished = !wished;
-    paintWish();
+    paint();
   };
   actions.appendChild(wish);
+  actions.appendChild(story);
 
   // Escape dismisses the popup (keyboard parity with clicking the map).
   const onEsc = (ev: KeyboardEvent) => {
@@ -280,6 +296,8 @@ export interface MapFocus {
 export interface MapFit {
   bounds: [[number, number], [number, number]];
   key: number;
+  /** Snap without animating — the first frame opens on your places. */
+  instant?: boolean;
 }
 
 export type Basemap = "simple" | "osm" | "detail";
@@ -465,6 +483,7 @@ export function MapView({
   onBaseUnavailable?: () => void;
 }) {
   const ref = useMemo(() => getReferenceData(), []);
+  const gazGen = useGazetteerGeneration();
   const visits = useVisits((s) => s.visits);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -497,6 +516,17 @@ export function MapView({
       east: b.getEast(),
       north: b.getNorth(),
       zoom: map.getZoom(),
+    });
+  }
+
+  function applyAllCityDots(map: MlMap) {
+    (map.getSource("cities-all") as GeoJSONSource | undefined)?.setData({
+      type: "FeatureCollection",
+      features: ref.allCities().map((c) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [c.lon, c.lat] },
+        properties: {},
+      })),
     });
   }
 
@@ -655,15 +685,16 @@ export function MapView({
         applyTripArcs(map);
         loadGeometry(map);
         applyMode(map, mode);
-        // The full-gazetteer dot field: set ONCE (static), so it costs nothing
-        // on pan/zoom.
-        (map.getSource("cities-all") as GeoJSONSource | undefined)?.setData({
-          type: "FeatureCollection",
-          features: ref.allCities().map((c) => ({
-            type: "Feature",
-            geometry: { type: "Point", coordinates: [c.lon, c.lat] },
-            properties: {},
-          })),
+        // The full-gazetteer dot field: static per gazetteer generation (it
+        // refreshes only when the background 135k-city upgrade lands). Built at
+        // idle — YOUR flags and wishlist markers paint first, the town dots can
+        // wait a beat (they're off by default anyway).
+        const idle: (cb: () => void) => void =
+          typeof requestIdleCallback === "function"
+            ? (cb) => requestIdleCallback(cb, { timeout: 1500 })
+            : (cb) => void setTimeout(cb, 300);
+        idle(() => {
+          if (!cancelled && map && loadedRef.current) applyAllCityDots(map);
         });
         emitBounds(map);
       });
@@ -768,6 +799,18 @@ export function MapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visits]);
 
+  // The background full-gazetteer upgrade landed after the map was built:
+  // rebuild the city dot field, and re-resolve visited/wishlist markers whose
+  // cities only exist in the full set (e.g. restored visits to small towns).
+  useEffect(() => {
+    if (gazGen === 0) return;
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    applyAllCityDots(map);
+    applyVisited(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gazGen]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (map && loadedRef.current) applyViewCities(map);
@@ -836,11 +879,12 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !fit) return;
     suppressBoundsRef.current = true; // programmatic — the list must not move
+    const instant = fit.instant || reducedRef.current;
     map.fitBounds(fit.bounds, {
       padding: 48,
       maxZoom: 6,
-      duration: reducedRef.current ? 0 : 700,
-      animate: !reducedRef.current,
+      duration: instant ? 0 : 700,
+      animate: !instant,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fit?.key]);

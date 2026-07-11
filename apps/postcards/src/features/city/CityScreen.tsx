@@ -9,7 +9,7 @@ import { haversineKm } from "../travel/distance";
 import { articleUrl } from "../../lib/wikivoyage";
 import { StateToggles } from "../visits/StateToggles";
 import { PhotoGallery } from "../visits/PhotoGallery";
-import { GuideButton } from "../guides/GuideButton";
+import { GuideSection } from "../guides/GuideButton";
 import { CityLine } from "../../ui/CityLine";
 
 /** Wikipedia article URL for a title (link only — nothing is fetched). */
@@ -66,6 +66,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
   );
 
   // Nearby points of interest, by great-circle distance (nothing invented).
+  // "Nearby" means easily travelable from here (≤ 30 km), not the same region.
   const nearby = useMemo(() => {
     if (lat == null || lon == null) return { monuments: [], airports: [] };
     const from = { lat, lon };
@@ -74,7 +75,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
       // Never list the page's own monument as its "nearby" site at 0.0 km.
       .filter((h) => (h.lat !== 0 || h.lon !== 0) && h.id !== cityId)
       .map((h) => ({ ...h, km: haversineKm(from, h) }))
-      .filter((h) => h.km < 300)
+      .filter((h) => h.km <= 30)
       .sort((a, b) => a.km - b.km)
       .slice(0, 6);
     const airports = ref
@@ -186,11 +187,12 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
         </section>
       )}
 
+      {place && <GuideSection place={place} />}
+
       {place && (
         <section className="city-section">
           <h3>Learn & explore</h3>
           <div className="city-links">
-            <GuideButton place={place} className="mini-btn" />
             <a
               className="mini-btn"
               href={wikipediaUrl(country ? `${name}` : name)}

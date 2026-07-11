@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import type { City } from "../../lib/reference/types";
 import { useStories } from "../../lib/store/useStories";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
 import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { fileToPostcard } from "../../lib/image/downscale";
-import { countryFlag, formatDate } from "../../lib/format/format";
+import { countryFlag, formatDate, formatKm } from "../../lib/format/format";
+import { haversineKm } from "../travel/distance";
 import {
   MAX_PHOTOS_PER_STORY,
   placeKey,
@@ -39,6 +41,88 @@ function today(): string {
 
 /** The city page serves these kinds — a story's place name links there. */
 const CITY_PAGE_KINDS: PlaceRef["kind"][] = ["city", "heritage", "custom"];
+
+/** The feed pages like the other long lists in the app. */
+const FEED_PAGE = 20;
+
+/**
+ * Composer draft cache: quitting the page must never lose writing, so the
+ * text fields are mirrored to localStorage while the composer is open. Photos
+ * are deliberately excluded — they are heavy data URLs that would blow the
+ * localStorage quota; an edit's photos are rehydrated from the store instead.
+ */
+const DRAFT_KEY = "postcards-journal-draft";
+
+interface ComposerDraft {
+  editingId: string | null;
+  place: PlaceRef | null;
+  date: string;
+  title: string;
+  text: string;
+}
+
+const PLACE_KINDS: PlaceRef["kind"][] = ["country", "city", "airport", "heritage", "custom"];
+
+/** A malformed, unreadable (private mode) or empty cached draft counts as no draft. */
+function loadDraft(): ComposerDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw) as Partial<ComposerDraft> | null;
+    if (typeof d !== "object" || d === null) return null;
+    if (typeof d.date !== "string" || typeof d.title !== "string" || typeof d.text !== "string")
+      return null;
+    const p = d.place as PlaceRef | null | undefined;
+    const place =
+      p &&
+      typeof p === "object" &&
+      PLACE_KINDS.includes(p.kind) &&
+      typeof p.id === "string" &&
+      typeof p.name === "string" &&
+      typeof p.countryId === "string"
+        ? p
+        : null;
+    const editingId = typeof d.editingId === "string" ? d.editingId : null;
+    // A blank draft would just pop an empty composer open — not worth restoring.
+    if (!d.title.trim() && !d.text.trim() && !place && !editingId) return null;
+    return { editingId, place, date: d.date, title: d.title, text: d.text };
+  } catch {
+    return null;
+  }
+}
+
+function clearDraft(): void {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    /* private mode */
+  }
+}
+
+/** How many cities "Near me" suggests. */
+const NEARBY_COUNT = 8;
+
+/**
+ * Nearest gazetteer cities to a position. The full gazetteer holds ~135k
+ * entries, so a cheap bounding-box prefilter keeps haversine off most of them;
+ * the box widens once for sparse areas.
+ */
+function nearestCities(
+  here: { lat: number; lon: number },
+  cities: City[],
+): { city: City; km: number }[] {
+  let candidates: City[] = [];
+  for (const box of [1.5, 5]) {
+    candidates = cities.filter(
+      (c) => Math.abs(c.lat - here.lat) <= box && Math.abs(c.lon - here.lon) <= box,
+    );
+    if (candidates.length >= NEARBY_COUNT) break;
+  }
+  return candidates
+    .map((city) => ({ city, km: haversineKm(here, city) }))
+    .sort((a, b) => a.km - b.km)
+    .slice(0, NEARBY_COUNT);
+}
 
 /**
  * A story's photo strip in the feed: small thumbnails that open a read-only
@@ -121,7 +205,11 @@ function StoryPhotos({ photos, title }: { photos: Photo[]; title: string }) {
                 ‹
               </button>
             )}
-            <img className="lightbox-img" src={current.src} alt={current.caption ?? `Photo — ${title}`} />
+            <img
+              className="lightbox-img"
+              src={current.src}
+              alt={current.caption ?? `Photo — ${title}`}
+            />
             {count > 1 && (
               <button
                 type="button"
@@ -144,7 +232,12 @@ function StoryPhotos({ photos, title }: { photos: Photo[]; title: string }) {
               )}
             </div>
             <div className="lightbox-actions">
-              <button ref={closeRef} type="button" className="btn-ghost" onClick={() => setOpen(false)}>
+              <button
+                ref={closeRef}
+                type="button"
+                className="btn-ghost"
+                onClick={() => setOpen(false)}
+              >
                 Close
               </button>
             </div>
@@ -168,6 +261,7 @@ export function JournalScreen() {
   const updateStory = useStories((s) => s.updateStory);
   const removeStory = useStories((s) => s.removeStory);
   const setAll = useStories((s) => s.setAll);
+  const storiesLoaded = useStories((s) => s.loaded);
   const visits = useVisits((s) => s.visits);
   const showToast = useToast((s) => s.show);
   const draftRequest = useUi((s) => s.journalDraftRequest);
@@ -181,6 +275,13 @@ export function JournalScreen() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [busy, setBusy] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
+  // A restored editing draft carries no photos (they aren't cached); this holds
+  // the story id whose photos still need rehydrating from the store.
+  const hydratePhotosFor = useRef<string | null>(null);
+  const [nearby, setNearby] = useState<{ city: City; km: number }[] | null>(null);
+  const [geoMsg, setGeoMsg] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [feedShown, setFeedShown] = useState(FEED_PAGE);
 
   // Places you can write about: your visited list, sorted by name. A prefilled
   // or edited place that's no longer visited is kept as an extra option so the
@@ -201,6 +302,8 @@ export function JournalScreen() {
     [visitedPlaces, place],
   );
 
+  // Closes the composer without touching the draft cache: Escape/Cancel must
+  // not lose writing — the draft comes back on the next visit.
   function resetForm() {
     setComposerOpen(false);
     setEditingId(null);
@@ -209,6 +312,8 @@ export function JournalScreen() {
     setTitle("");
     setText("");
     setPhotos([]);
+    setNearby(null);
+    setGeoMsg(null);
   }
 
   function openComposer(prefill?: PlaceRef) {
@@ -218,6 +323,8 @@ export function JournalScreen() {
     setTitle("");
     setText("");
     setPhotos([]);
+    setNearby(null);
+    setGeoMsg(null);
     setComposerOpen(true);
   }
 
@@ -228,9 +335,83 @@ export function JournalScreen() {
     setTitle(s.title);
     setText(s.text);
     setPhotos(s.photos ?? []);
+    setNearby(null);
+    setGeoMsg(null);
     setComposerOpen(true);
     requestAnimationFrame(() =>
-      document.querySelector(".journal-composer")?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      document
+        .querySelector(".journal-composer")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+    );
+  }
+
+  // Restore a cached draft on mount, so quitting the page mid-writing picks up
+  // where it left off. A pending "+ Story" prefill from a city page wins.
+  useEffect(() => {
+    if (useUi.getState().journalDraftRequest) return;
+    const draft = loadDraft();
+    if (!draft) return;
+    setEditingId(draft.editingId);
+    setPlace(draft.place);
+    setDate(draft.date || today());
+    setTitle(draft.title);
+    setText(draft.text);
+    if (draft.editingId) hydratePhotosFor.current = draft.editingId;
+    setComposerOpen(true);
+  }, []);
+
+  // Rehydrate a restored edit's photos once stories are loaded — saving with
+  // the cache's empty photo list would silently wipe the story's gallery. A
+  // story deleted since the draft was cached keeps the writing as a new story.
+  useEffect(() => {
+    const id = hydratePhotosFor.current;
+    if (!id || !storiesLoaded) return;
+    hydratePhotosFor.current = null;
+    const s = useStories.getState().stories.find((x) => x.storyId === id);
+    if (s) setPhotos(s.photos ?? []);
+    else setEditingId(null);
+  }, [storiesLoaded]);
+
+  // Mirror the draft to localStorage on every change while the composer is
+  // open. A blank composer is skipped so opening "New story" doesn't clobber a
+  // kept draft before any writing happens.
+  useEffect(() => {
+    if (!composerOpen) return;
+    if (!title.trim() && !text.trim() && !place && !editingId) return;
+    const draft: ComposerDraft = { editingId, place, date, title, text };
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      /* private mode: not cached */
+    }
+  }, [composerOpen, editingId, place, date, title, text]);
+
+  // Geolocation runs ONLY on this tap (privacy: the position is requested on an
+  // explicit action, used once to rank suggestions, and never stored). Picking
+  // a suggestion just fills the Place field; nothing is logged as visited.
+  function findNearby() {
+    setGeoMsg(null);
+    setNearby(null);
+    if (!navigator.geolocation) {
+      setGeoMsg("Location is not available on this device.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        const found = nearestCities(
+          { lat: pos.coords.latitude, lon: pos.coords.longitude },
+          ref.allCities(),
+        );
+        if (found.length) setNearby(found);
+        else setGeoMsg("No cities found nearby.");
+      },
+      () => {
+        setLocating(false);
+        setGeoMsg("Location unavailable. Check the browser permission and try again.");
+      },
+      { timeout: 10_000, maximumAge: 60_000 },
     );
   }
 
@@ -291,7 +472,13 @@ export function JournalScreen() {
       ...p,
       caption: p.caption?.trim() ? p.caption.trim() : null,
     }));
-    const fields = { place, date, title: cleanTitle, text: sanitizeText(text, 8000), photos: cleanPhotos };
+    const fields = {
+      place,
+      date,
+      title: cleanTitle,
+      text: sanitizeText(text, 8000),
+      photos: cleanPhotos,
+    };
     if (editingId) {
       await updateStory(editingId, fields);
       showToast(`Updated "${fields.title}"`, () => setAll(prev));
@@ -300,6 +487,8 @@ export function JournalScreen() {
       showToast(`Added "${fields.title}"`, () => setAll(prev));
     }
     resetForm();
+    // The writing is stored; the crash-recovery cache has done its job.
+    clearDraft();
   }
 
   function removeWithUndo(s: Story) {
@@ -351,9 +540,10 @@ export function JournalScreen() {
                 id="story-place"
                 className="select"
                 value={place ? placeKey(place) : ""}
-                onChange={(e) =>
-                  setPlace(placeOptions.find((p) => placeKey(p) === e.target.value) ?? null)
-                }
+                onChange={(e) => {
+                  setPlace(placeOptions.find((p) => placeKey(p) === e.target.value) ?? null);
+                  setNearby(null);
+                }}
               >
                 <option value="" disabled>
                   {visitedPlaces.length ? "Pick a place you've been…" : "No visited places yet"}
@@ -377,6 +567,39 @@ export function JournalScreen() {
               />
             </label>
           </div>
+          <div>
+            <button className="mini-btn" type="button" disabled={locating} onClick={findNearby}>
+              {locating ? "📍 Locating…" : "📍 Near me"}
+            </button>{" "}
+            <span className="muted small" role="status">
+              {geoMsg}
+            </span>
+          </div>
+          {nearby && (
+            <div className="btn-row" role="group" aria-label="Cities near you">
+              {nearby.map(({ city, km }) => (
+                <button
+                  key={city.id}
+                  className="mini-btn"
+                  type="button"
+                  aria-label={`Write about ${city.name}, ${formatKm(km)} away`}
+                  onClick={() => {
+                    // Only fills the Place field — nothing gets marked as visited.
+                    setPlace({
+                      kind: "city",
+                      id: city.id,
+                      name: city.name,
+                      countryId: city.countryIso2,
+                    });
+                    setNearby(null);
+                    setGeoMsg(null);
+                  }}
+                >
+                  {countryFlag(city.countryIso2)} {city.name} · {formatKm(km)}
+                </button>
+              ))}
+            </div>
+          )}
           <label className="picker-label" htmlFor="story-title">
             Title
             <input
@@ -449,7 +672,11 @@ export function JournalScreen() {
               className="mini-btn"
               type="button"
               disabled={busy || photos.length >= MAX_PHOTOS_PER_STORY}
-              title={photos.length >= MAX_PHOTOS_PER_STORY ? `Story is full (${MAX_PHOTOS_PER_STORY})` : undefined}
+              title={
+                photos.length >= MAX_PHOTOS_PER_STORY
+                  ? `Story is full (${MAX_PHOTOS_PER_STORY})`
+                  : undefined
+              }
               onClick={() => photoInput.current?.click()}
             >
               {busy ? "…" : "📷 Add photos"}
@@ -457,7 +684,11 @@ export function JournalScreen() {
           </div>
 
           <div className="trip-form-actions">
-            <button className="btn" type="submit" disabled={!place || !date || !sanitizeText(title, 200)}>
+            <button
+              className="btn"
+              type="submit"
+              disabled={!place || !date || !sanitizeText(title, 200)}
+            >
               {editingId ? "Save changes" : "Save story"}
             </button>
             <button className="btn-ghost" type="button" onClick={resetForm}>
@@ -476,50 +707,66 @@ export function JournalScreen() {
           the story — photos welcome.
         </p>
       ) : (
-        <div className="journal-feed">
-          {stories.map((s) => (
-            <article key={s.storyId} className="journal-card">
-              <header className="journal-card-head">
-                <time className="journal-date">{formatDate(s.date)}</time>
-                <span aria-hidden>·</span>
-                {CITY_PAGE_KINDS.includes(s.place.kind) ? (
+        <>
+          <div className="journal-feed">
+            {stories.slice(0, feedShown).map((s) => (
+              <article key={s.storyId} className="journal-card">
+                <header className="journal-card-head">
+                  <time className="journal-date">{formatDate(s.date)}</time>
+                  <span aria-hidden>·</span>
+                  {CITY_PAGE_KINDS.includes(s.place.kind) ? (
+                    <button
+                      className="link journal-place"
+                      type="button"
+                      onClick={() => useUi.getState().openCity(s.place.id)}
+                    >
+                      {countryFlag(s.place.countryId)} {s.place.name}
+                    </button>
+                  ) : (
+                    <span className="journal-place">
+                      {countryFlag(s.place.countryId)} {s.place.name}
+                    </span>
+                  )}
+                </header>
+                <h3 className="journal-title">{s.title}</h3>
+                {s.text && <p className="journal-text">{s.text}</p>}
+                <StoryPhotos photos={s.photos ?? []} title={s.title} />
+                <footer className="journal-actions">
                   <button
-                    className="link journal-place"
+                    className="link"
                     type="button"
-                    onClick={() => useUi.getState().openCity(s.place.id)}
+                    onClick={() => startEdit(s)}
+                    aria-label={`Edit story ${s.title}`}
                   >
-                    {countryFlag(s.place.countryId)} {s.place.name}
+                    Edit
                   </button>
-                ) : (
-                  <span className="journal-place">
-                    {countryFlag(s.place.countryId)} {s.place.name}
-                  </span>
-                )}
-              </header>
-              <h3 className="journal-title">{s.title}</h3>
-              {s.text && <p className="journal-text">{s.text}</p>}
-              <StoryPhotos photos={s.photos ?? []} title={s.title} />
-              <footer className="journal-actions">
-                <button
-                  className="link"
-                  type="button"
-                  onClick={() => startEdit(s)}
-                  aria-label={`Edit story ${s.title}`}
-                >
-                  Edit
-                </button>
-                <button
-                  className="link-danger"
-                  type="button"
-                  onClick={() => removeWithUndo(s)}
-                  aria-label={`Remove story ${s.title}`}
-                >
-                  Remove
-                </button>
-              </footer>
-            </article>
-          ))}
-        </div>
+                  <button
+                    className="link-danger"
+                    type="button"
+                    onClick={() => removeWithUndo(s)}
+                    aria-label={`Remove story ${s.title}`}
+                  >
+                    Remove
+                  </button>
+                </footer>
+              </article>
+            ))}
+          </div>
+          {stories.length > feedShown && (
+            <div className="list-pager">
+              <span className="muted small">
+                Showing {feedShown} of {stories.length}
+              </span>
+              <button
+                className="mini-btn"
+                type="button"
+                onClick={() => setFeedShown((n) => n + FEED_PAGE)}
+              >
+                Show {Math.min(FEED_PAGE, stories.length - feedShown)} more
+              </button>
+            </div>
+          )}
+        </>
       )}
     </section>
   );

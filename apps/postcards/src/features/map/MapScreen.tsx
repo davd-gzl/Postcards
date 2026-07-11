@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import { useGazetteerGeneration } from "../../lib/reference/useGazetteer";
 import { useVisits } from "../../lib/store/useVisits";
 import { useTrips } from "../../lib/store/useTrips";
 import { useToast } from "../../lib/store/useToast";
@@ -13,7 +14,6 @@ import { MapView, hasSavedCamera, type Basemap, type MapFocus, type MapFit, type
 import { tripArcs } from "./visitedLayers";
 import { tripsInPeriod, periodLabel } from "../travel/period";
 import { citiesInView, type Bounds } from "./viewport";
-import { saveAreaOffline } from "./offlineTiles";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import type { City } from "../../lib/reference/types";
 import { CityLine } from "../../ui/CityLine";
@@ -62,7 +62,11 @@ export function MapScreen() {
   const tripMonth = useUi((s) => s.tripMonth);
   const reducedMotion = usePrefersReducedMotion();
 
-  const allCities = useMemo(() => ref.allCities(), [ref]);
+  // gazGen invalidates city snapshots when the full 135k-city set streams in —
+  // the singleton mutates in place, so `ref` alone never re-fires these memos.
+  const gazGen = useGazetteerGeneration();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const allCities = useMemo(() => ref.allCities(), [ref, gazGen]);
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [focus, setFocus] = useState<MapFocus | null>(null);
   const [fit, setFit] = useState<MapFit | null>(null);
@@ -77,6 +81,7 @@ export function MapScreen() {
   const [globe, setGlobe] = useState(() => loadPref(GLOBE_KEY, (v) => v === "1"));
   const [showTowns, setShowTowns] = useState(() => loadPref("postcards-towns", (v) => v === "1"));
   const [listTall, setListTall] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(false);
   const [mode, setMode] = useState<MapMode>(() =>
     loadPref("postcards-map-mode", (v) =>
       v === "cities" || v === "monuments" || v === "airports" ? v : "all",
@@ -118,7 +123,13 @@ export function MapScreen() {
   function switchBasemap() {
     setBasemap(nextBasemap);
     savePref(BASEMAP_KEY, nextBasemap);
+    // One-time hint: offline region downloads moved to Settings (no map button).
+    if (nextBasemap === "osm" && loadPref("postcards-hint-offline", (v) => v !== "1")) {
+      savePref("postcards-hint-offline", "1");
+      showToast("Tip: download whole regions for offline use in Settings, under Offline maps.");
+    }
   }
+
 
   function toggleGlobe() {
     setGlobe((on) => {
@@ -195,13 +206,14 @@ export function MapScreen() {
         visited: all.reduce((n, h) => n + (seen.has(h.id) ? 1 : 0), 0),
         items: all.slice(0, 100).map((h) => ({
           key: h.id,
-          flag: "🏛️",
+          flag: countryFlag(h.countryIso2),
           name: h.name,
           sub: ref.countryByIso2(h.countryIso2)?.name ?? h.countryIso2,
           lat: h.lat,
           lon: h.lon,
           place: { kind: "heritage" as const, id: h.id, name: h.name, countryId: h.countryIso2 },
           page: true,
+          seen: seen.has(h.id),
         })),
       };
     }
@@ -220,6 +232,7 @@ export function MapScreen() {
           lon: a.lon,
           place: { kind: "airport" as const, id: a.id, name: `${a.name} (${a.id})`, countryId: a.countryIso2 },
           page: false,
+          seen: seen.has(a.id),
         })),
       };
     }
@@ -228,34 +241,6 @@ export function MapScreen() {
     // check is fine to defer to the next bounds/mode change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, bounds, ref]);
-
-  // One-tap offline: fetch the tiles for the CURRENT view (finer control and
-  // whole regions live in Settings → Offline maps).
-  const [saving, setSaving] = useState<number | null>(null);
-  async function saveThisView() {
-    if (!bounds || saving != null) return;
-    setSaving(0);
-    try {
-      const res = await saveAreaOffline(bounds, bounds.zoom ?? 3, {
-        onProgress: (p) => setSaving(p.total ? p.done / p.total : 1),
-      });
-      // saveAreaOffline never throws — report failures/caps honestly instead
-      // of claiming success when every tile fetch failed.
-      showToast(
-        res.total === 0
-          ? "Nothing to save at this zoom — zoom in first."
-          : res.saved === 0
-            ? "Couldn't save this view — check your connection and try again."
-            : `Saved ${res.saved} map tiles for offline use.` +
-              (res.failed > 0 ? ` ${res.failed} failed — save again for the rest.` : "") +
-              (res.capped ? " The view was large, so only part fit — zoom in and save areas you need." : ""),
-      );
-    } catch {
-      showToast("Couldn't save this view — check your connection.");
-    } finally {
-      setSaving(null);
-    }
-  }
 
   // Trip arcs honour the Travel-log time filter (shared via useUi).
   const arcTrips = useMemo(
@@ -280,35 +265,44 @@ export function MapScreen() {
     savePref(FILTER_KEY, f);
   }
 
-  const visitedCityCoords = useMemo(
-    () =>
-      visits
-        .filter((v) => v.place.kind === "city")
-        .map((v) => ref.cityById(v.place.id))
-        .filter((c): c is NonNullable<typeof c> => !!c),
-    [visits, ref],
-  );
+  // Everything of YOURS with coordinates — visited & wishlist cities, plus your
+  // own custom points. This is what the first frame frames.
+  const myPlaceCoords = useMemo(() => {
+    const out: { lon: number; lat: number }[] = [];
+    for (const v of visits) {
+      if (v.place.kind === "city") {
+        const c = ref.cityById(v.place.id);
+        if (c) out.push({ lon: c.lon, lat: c.lat });
+      } else if (v.place.kind === "custom" && v.place.lat != null && v.place.lon != null) {
+        out.push({ lon: v.place.lon, lat: v.place.lat });
+      }
+    }
+    return out;
+    // gazGen: a restored visit to a small town resolves once the full set lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visits, ref, gazGen]);
 
-  // First open: show YOUR world (visited + wishlist), not a generic world view.
+  // First open: SNAP to your world (visited + wishlist + custom) before the
+  // basemap even finishes — never a generic world view first.
   const didInitFit = useRef(false);
   useEffect(() => {
-    if (didInitFit.current || hasSavedCamera() || visitedCityCoords.length === 0) return;
+    if (didInitFit.current || hasSavedCamera() || myPlaceCoords.length === 0) return;
     didInitFit.current = true;
-    fitToMyPlaces();
+    fitToMyPlaces(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visitedCityCoords]);
+  }, [myPlaceCoords]);
 
-  function fitToMyPlaces() {
-    if (!visitedCityCoords.length) return;
+  function fitToMyPlaces(instant = false) {
+    if (!myPlaceCoords.length) return;
     let south = Infinity, north = -Infinity;
-    for (const c of visitedCityCoords) {
+    for (const c of myPlaceCoords) {
       south = Math.min(south, c.lat);
       north = Math.max(north, c.lat);
     }
     // Longitude needs antimeridian care (Fiji + Samoa must not frame the whole
     // globe): the tightest frame is the complement of the LARGEST gap between
     // consecutive sorted longitudes (wrapping counts as a gap too).
-    const lons = visitedCityCoords.map((c) => c.lon).sort((a, b) => a - b);
+    const lons = myPlaceCoords.map((c) => c.lon).sort((a, b) => a - b);
     let gapAfter = lons.length - 1;
     let gapSize = lons[0]! + 360 - lons[lons.length - 1]!;
     for (let i = 1; i < lons.length; i++) {
@@ -321,7 +315,7 @@ export function MapScreen() {
     const west = lons[(gapAfter + 1) % lons.length]!;
     let east = lons[gapAfter]!;
     if (east < west) east += 360; // the frame crosses the antimeridian
-    setFit((f) => ({ bounds: [[west, south], [east, north]], key: (f?.key ?? 0) + 1 }));
+    setFit((f) => ({ bounds: [[west, south], [east, north]], key: (f?.key ?? 0) + 1, instant }));
   }
 
   return (
@@ -370,69 +364,63 @@ export function MapScreen() {
           ))}
         </div>
         <div className="map-ctl map-ctl-left">
-          {visitedCityCoords.length > 0 && (
-            <button className="map-btn" type="button" onClick={fitToMyPlaces}>
+          {myPlaceCoords.length > 0 && (
+            <button className="map-btn" type="button" onClick={() => fitToMyPlaces()}>
               Fit to my places
-            </button>
-          )}
-          {basemap === "osm" && (
-            <button
-              className="map-btn"
-              type="button"
-              disabled={saving != null}
-              onClick={() => void saveThisView()}
-              title="Keep the detailed map of this view available offline (whole regions: Settings → Offline maps)"
-            >
-              {saving == null ? "⬇ Offline" : `${Math.round(saving * 100)}%`}
             </button>
           )}
         </div>
         <div className="map-ctl map-ctl-right">
           <button
-            className={"map-btn" + (globe ? " on" : "")}
+            className={"map-btn" + (layersOpen ? " on" : "")}
             type="button"
-            aria-pressed={globe}
-            onClick={toggleGlobe}
-            title={globe ? "Switch to the flat map" : "Switch to the 3D globe"}
+            aria-expanded={layersOpen}
+            aria-haspopup="true"
+            title="Map layers & view options"
+            onClick={() => setLayersOpen((v) => !v)}
           >
-            {globe ? "🌐 Globe" : "🗺 Globe"}
+            ≡ Layers
           </button>
-          {hasArcs && (
-            <button
-              className={"map-btn" + (showTrips ? " on" : "")}
-              type="button"
-              aria-pressed={showTrips}
-              onClick={() => setShowTrips((s) => !s)}
-              title={
-                (showTrips ? "Hide trip routes" : "Show trip routes") +
-                (periodTag ? ` (showing ${periodTag} — change on the Trips tab)` : "")
-              }
-            >
-              {showTrips ? `✓ Trips${periodTag ? ` · ${periodTag}` : ""}` : "Trips"}
-            </button>
+          {layersOpen && (
+            <div className="layers-panel" role="group" aria-label="Map layers">
+              <button
+                className={"map-btn" + (globe ? " on" : "")}
+                type="button"
+                aria-pressed={globe}
+                onClick={toggleGlobe}
+              >
+                🌐 Globe
+              </button>
+              {hasArcs && (
+                <button
+                  className={"map-btn" + (showTrips ? " on" : "")}
+                  type="button"
+                  aria-pressed={showTrips}
+                  onClick={() => setShowTrips((s) => !s)}
+                  title={periodTag ? `Showing ${periodTag}; change on the Trips tab` : undefined}
+                >
+                  🧵 Trips{showTrips && periodTag ? ` · ${periodTag}` : ""}
+                </button>
+              )}
+              <button
+                className={"map-btn" + (showTowns ? " on" : "")}
+                type="button"
+                aria-pressed={showTowns}
+                title="A dot for every town on earth"
+                onClick={() => {
+                  setShowTowns((v) => {
+                    savePref("postcards-towns", !v ? "1" : "0");
+                    return !v;
+                  });
+                }}
+              >
+                ∴ Towns
+              </button>
+              <button className="map-btn" type="button" onClick={switchBasemap}>
+                ⤳ {BASEMAP_LABEL[nextBasemap]}
+              </button>
+            </div>
           )}
-          <button
-            className={"map-btn" + (showTowns ? " on" : "")}
-            type="button"
-            aria-pressed={showTowns}
-            title={showTowns ? "Hide the every-town dot field" : "Show a dot for every town on earth"}
-            onClick={() => {
-              setShowTowns((v) => {
-                savePref("postcards-towns", !v ? "1" : "0");
-                return !v;
-              });
-            }}
-          >
-            ∴ Towns
-          </button>
-          <button
-            className="map-btn"
-            type="button"
-            onClick={switchBasemap}
-            title={`Switch basemap — next: ${BASEMAP_LABEL[nextBasemap]}`}
-          >
-            {BASEMAP_LABEL[nextBasemap]}
-          </button>
         </div>
       </div>
 
@@ -461,8 +449,25 @@ export function MapScreen() {
             <p className="muted empty">Nothing in this view — pan or zoom the map.</p>
           ) : (
             <>
+            <div className="segmented list-filter" role="group" aria-label="Filter">
+              {(["all", "unvisited", "visited"] as CityFilter[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  aria-pressed={cityFilter === f}
+                  className={cityFilter === f ? "seg-on" : ""}
+                  onClick={() => changeFilter(f)}
+                >
+                  {f === "all" ? "All" : f === "unvisited" ? "Hide visited" : "Visited"}
+                </button>
+              ))}
+            </div>
             <ul className="city-list">
-              {poi.items.map((x) => (
+              {poi.items
+                .filter((x) =>
+                  cityFilter === "all" ? true : cityFilter === "visited" ? x.seen : !x.seen,
+                )
+                .map((x) => (
                 <li key={x.key} className="city-row compact">
                   <button
                     className="city-focus"
@@ -475,7 +480,7 @@ export function MapScreen() {
                   </button>
                   <StateToggles place={x.place} />
                 </li>
-              ))}
+                ))}
             </ul>
             {poi.total > poi.items.length && (
               <p className="muted small">
@@ -498,17 +503,15 @@ export function MapScreen() {
               {f === "all" ? "All" : f === "unvisited" ? "Hide visited" : "Visited"}
             </button>
           ))}
-          <label className="sort-label">
-            <span className="sr-only">Sort cities</span>
-            <select
-              className="sort-select"
-              value={sortAZ ? "az" : "pop"}
-              onChange={(e) => setSortAZ(e.target.value === "az")}
-            >
-              <option value="pop">Most people</option>
-              <option value="az">A–Z</option>
-            </select>
-          </label>
+          <button
+            type="button"
+            aria-pressed={sortAZ}
+            className={sortAZ ? "seg-on" : ""}
+            title={sortAZ ? "Sorted A to Z; tap for most people first" : "Sorted by most people; tap for A to Z"}
+            onClick={() => setSortAZ((v) => !v)}
+          >
+            A–Z
+          </button>
         </div>
 
         {inView.length === 0 ? (

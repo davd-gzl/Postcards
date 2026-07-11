@@ -319,11 +319,19 @@ async function upgradeToFullGazetteer(impl: ReferenceDataImpl): Promise<void> {
     const cities = (await res.json()) as City[];
     if (cities.length > impl.allCities().length) {
       impl.replaceCities(cities);
+      generation++;
       window.dispatchEvent(new Event(GAZETTEER_UPGRADED_EVENT));
     }
   } catch {
     /* offline / interrupted: the core gazetteer keeps working */
   }
+}
+
+// Bumped when the full gazetteer replaces the core set, so React consumers can
+// subscribe (event) AND read the current state (getter) without a mount race.
+let generation = 0;
+export function gazetteerGeneration(): number {
+  return generation;
 }
 
 /** Singleton accessor. Requires initReferenceData()/initReferenceDataSync() first. */
