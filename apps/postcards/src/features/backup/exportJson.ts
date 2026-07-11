@@ -4,13 +4,19 @@ import {
   SCHEMA_VERSION,
   type PostcardsFile,
   type ReferenceSource,
+  type Story,
   type Trip,
   type Visit,
 } from "../../lib/schema/models";
 import { getReferenceData } from "../../lib/reference/referenceData";
 
-/** Build the canonical portable file object from the current visits + trips. */
-export function buildFile(visits: Visit[], trips: Trip[] = [], now = new Date()): PostcardsFile {
+/** Build the canonical portable file object from the current visits + trips + stories. */
+export function buildFile(
+  visits: Visit[],
+  trips: Trip[] = [],
+  stories: Story[] = [],
+  now = new Date(),
+): PostcardsFile {
   const referenceSources: ReferenceSource[] = getReferenceData().provenance.map((p) => ({
     dataset: p.dataset,
     license: p.license,
@@ -24,6 +30,7 @@ export function buildFile(visits: Visit[], trips: Trip[] = [], now = new Date())
     // Drop empty `photos` arrays so a photo-less export stays lean and readable.
     visits: visits.map(({ photos, ...rest }) => (photos && photos.length ? { ...rest, photos } : rest)),
     trips,
+    stories: stories.map(({ photos, ...rest }) => (photos && photos.length ? { ...rest, photos } : rest)),
     referenceSources,
   };
   // Validate our own output before handing it to the user.
@@ -31,8 +38,13 @@ export function buildFile(visits: Visit[], trips: Trip[] = [], now = new Date())
 }
 
 /** Serialize to pretty, human-readable JSON (the canonical portable format). */
-export function serializeFile(visits: Visit[], trips: Trip[] = [], now = new Date()): string {
-  return JSON.stringify(buildFile(visits, trips, now), null, 2);
+export function serializeFile(
+  visits: Visit[],
+  trips: Trip[] = [],
+  stories: Story[] = [],
+  now = new Date(),
+): string {
+  return JSON.stringify(buildFile(visits, trips, stories, now), null, 2);
 }
 
 export const EXPORT_FILENAME = "places.postcards.json";

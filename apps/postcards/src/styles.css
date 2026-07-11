@@ -1926,3 +1926,146 @@ h1.brand {
     min-width: 0;
   }
 }
+
+/* Native selects, styled: no default chrome, custom chevron, consistent hover. */
+.select,
+.sort-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%235d5f65' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background-color: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.select:hover,
+.sort-select:hover,
+.select:focus-visible,
+.sort-select:focus-visible {
+  border-color: var(--accent);
+}
+
+/* ===== Journal (mini travel blog) ===== */
+.journal-toolbar {
+  margin-bottom: 4px;
+}
+.journal-feed {
+  margin-top: 10px;
+}
+.journal-card {
+  padding: 9px 11px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.journal-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.journal-place {
+  font-weight: 600;
+}
+.journal-title {
+  margin: 3px 0 4px;
+  font-size: 15px;
+}
+/* Preserve the story's own line breaks (multi-line prose, still plain text). */
+.journal-text {
+  margin: 0;
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.journal-photos {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+}
+.journal-thumb {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-sub);
+  cursor: pointer;
+}
+.journal-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.journal-lightbox-caption {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.journal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+.journal-composer {
+  margin-top: 4px;
+  padding: 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.journal-textarea {
+  height: auto;
+  min-height: 110px;
+  padding: 10px 12px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.45;
+}
+.journal-photo-edit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.journal-photo-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.journal-photo-edit img {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+}
+.journal-photo-edit .caption-input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sub);
+  color: var(--text);
+  font-size: 13px;
+}
+.journal-photo-edit .caption-input::placeholder {
+  color: var(--muted);
+}
