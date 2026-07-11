@@ -20,7 +20,9 @@ test("no network request leaves the local origin during core flows", async ({ pa
   await page.getByRole("button", { name: "Stats", exact: true }).click();
   await expect(page.getByText("Statistics")).toBeVisible();
   await page.getByRole("button", { name: "Places", exact: true }).click();
-  await expect(page.getByText("Your data")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Places" })).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByText("Your data")).toBeVisible(); // export surface lives here now
   await page.waitForTimeout(1000); // let any stray beacons fire
 
   expect(external, `external requests: ${external.join(", ")}`).toEqual([]);

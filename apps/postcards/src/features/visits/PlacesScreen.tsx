@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
@@ -8,7 +8,7 @@ import { countryFlag, formatDate } from "../../lib/format/format";
 import type { Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
 import { inScope } from "../../lib/reference/scope";
-import { CountryScopeSelect } from "../../ui/CountryScopeSelect";
+import { ScopeToggle } from "../../ui/ScopeToggle";
 import { PhotoGallery } from "./PhotoGallery";
 import { StateToggles } from "./StateToggles";
 import { GuideButton } from "../guides/GuideButton";
@@ -49,20 +49,35 @@ export function PlacesScreen() {
 
   const scope = useSettings((s) => s.countryScope);
   const [view, setView] = useState<View>("visited");
+  const [favOnly, setFavOnly] = useState(false);
   const [filter, setFilter] = useState("");
   const q = filter.trim().toLowerCase();
+
+  // Another screen (the map's counter strip) asked for a specific view.
+  const request = useUi((s) => s.placesViewRequest);
+  useEffect(() => {
+    if (!request) return;
+    if (request.view === "favorites") {
+      setView("visited");
+      setFavOnly(true);
+    } else {
+      setView(request.view);
+      setFavOnly(false);
+    }
+    setFilter("");
+  }, [request?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const heritageAvailable = useMemo(() => ref.allHeritage().length > 0, [ref]);
 
   const visited = useMemo(
     () =>
       visits
-        .filter((v) => v.status === "visited")
+        .filter((v) => v.status === "visited" && (!favOnly || v.favorite))
         .sort(
           (a, b) =>
             Number(b.favorite) - Number(a.favorite) || a.place.name.localeCompare(b.place.name),
         ),
-    [visits],
+    [visits, favOnly],
   );
   const wishlist = useMemo(
     () =>
@@ -108,7 +123,7 @@ export function PlacesScreen() {
   }
 
   const TABS: { id: View; label: string }[] = [
-    { id: "visited", label: `Visited (${visited.length})` },
+    { id: "visited", label: favOnly ? `★ Favorites (${visited.length})` : `Visited (${visited.length})` },
     { id: "wishlist", label: `Wishlist (${wishlist.length})` },
     { id: "monuments", label: "Monuments" },
     { id: "countries", label: "Countries" },
@@ -127,6 +142,7 @@ export function PlacesScreen() {
               className={view === t.id ? "seg-on" : ""}
               onClick={() => {
                 setView(t.id);
+                setFavOnly(false);
                 setFilter("");
               }}
             >
@@ -184,6 +200,16 @@ export function PlacesScreen() {
                       </span>
                     </span>
                   </button>
+                  {(v.place.kind === "city" || v.place.kind === "custom") && (
+                    <button
+                      className="mini-btn"
+                      type="button"
+                      aria-label={`Details for ${v.place.name}`}
+                      onClick={() => useUi.getState().openCity(v.place.id)}
+                    >
+                      Details
+                    </button>
+                  )}
                   <GuideButton place={v.place} />
                   <PhotoGallery visitId={v.visitId} photos={v.photos ?? []} placeName={v.place.name} />
                   <button
@@ -324,7 +350,7 @@ export function PlacesScreen() {
       {view === "countries" && (
         <>
           <div className="countries-head">
-            <CountryScopeSelect id="places-country-scope" />
+            <ScopeToggle />
             <span className="muted small">{countryRows.length} shown</span>
           </div>
           <input

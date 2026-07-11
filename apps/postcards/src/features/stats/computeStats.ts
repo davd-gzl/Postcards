@@ -218,6 +218,38 @@ export function countryDetail(visits: Visit[], ref: ReferenceData, iso2: string)
   };
 }
 
+export interface TravelRecords {
+  northernmost: { name: string; lat: number } | null;
+  southernmost: { name: string; lat: number } | null;
+  biggestCity: { name: string; population: number } | null;
+  firstVisit: { name: string; date: string } | null;
+  latestVisit: { name: string; date: string } | null;
+}
+
+/** Fun superlatives across visited cities (dates use the visit's own date field). */
+export function computeRecords(visits: Visit[], ref: ReferenceData): TravelRecords {
+  let north: { name: string; lat: number } | null = null;
+  let south: { name: string; lat: number } | null = null;
+  let biggest: { name: string; population: number } | null = null;
+  let first: { name: string; date: string } | null = null;
+  let latest: { name: string; date: string } | null = null;
+  for (const v of onlyVisited(visits)) {
+    if (v.date) {
+      if (!first || v.date < first.date) first = { name: v.place.name, date: v.date };
+      if (!latest || v.date > latest.date) latest = { name: v.place.name, date: v.date };
+    }
+    if (v.place.kind !== "city") continue;
+    const c = ref.cityById(v.place.id);
+    if (!c) continue;
+    if (!north || c.lat > north.lat) north = { name: c.name, lat: c.lat };
+    if (!south || c.lat < south.lat) south = { name: c.name, lat: c.lat };
+    if (c.population != null && (!biggest || c.population > biggest.population)) {
+      biggest = { name: c.name, population: c.population };
+    }
+  }
+  return { northernmost: north, southernmost: south, biggestCity: biggest, firstVisit: first, latestVisit: latest };
+}
+
 export type CountrySort = "cities" | "regions" | "name";
 
 /** Countries with recorded visits, sorted by the chosen key, for the stats list. */
