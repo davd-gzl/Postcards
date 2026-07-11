@@ -2069,3 +2069,26 @@ h1.brand {
 .journal-photo-edit .caption-input::placeholder {
   color: var(--muted);
 }
+
+/* Country page hooks: stats card names + flag cards are real buttons. */
+.country-open {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+}
+.country-open:hover {
+  color: var(--accent);
+}
+.flag-grid li {
+  display: contents;
+}
+.flag-grid button.flag-card {
+  width: 100%;
+  font: inherit;
+}
+.flag-grid button.flag-card:hover {
+  border-color: var(--accent);
+}
