@@ -14,6 +14,7 @@ export interface Coverage {
   worldPct: number; // 0..1
   citiesVisited: number;
   airportsVisited: number;
+  monumentsVisited: number;
 }
 
 export interface CountryCoverage {
@@ -62,6 +63,11 @@ export function computeCoverage(
       .filter((v) => v.place.kind === "airport")
       .map((v) => v.place.id),
   );
+  const monumentIds = new Set(
+    onlyVisited(visits)
+      .filter((v) => v.place.kind === "heritage")
+      .map((v) => v.place.id),
+  );
   const worldCountryCount = ref.worldCountryCount(scope);
   return {
     countriesVisited,
@@ -69,6 +75,7 @@ export function computeCoverage(
     worldPct: pct(countriesVisited, worldCountryCount),
     citiesVisited: cityIds.size,
     airportsVisited: airportIds.size,
+    monumentsVisited: monumentIds.size,
   };
 }
 
@@ -156,9 +163,14 @@ export interface CountryDetail {
   cities: string[];
   regionsVisited: string[];
   regionsRemaining: number;
+  /** Names of the country's first-level regions not yet visited (what's left to see). */
+  regionsRemainingNames: string[];
+  monumentsVisited: string[];
+  monumentsRemaining: string[];
 }
 
-/** Names behind a country's numbers: visited cities + covered regions. */
+/** Names behind a country's numbers: visited cities + covered regions + monuments,
+ *  and — the headline for "what's left" — the NAMES of the regions still to visit. */
 export function countryDetail(visits: Visit[], ref: ReferenceData, iso2: string): CountryDetail {
   const cities: string[] = [];
   const regionIds = new Set<string>();
@@ -173,8 +185,37 @@ export function countryDetail(visits: Visit[], ref: ReferenceData, iso2: string)
   const regionsVisited = [...regionIds]
     .map((id) => ref.subdivisionById(id)?.name ?? id)
     .sort((a, b) => a.localeCompare(b));
+  const allSubs = ref.subdivisionsOf(iso2);
+  const regionsRemainingNames = allSubs
+    .filter((s) => !regionIds.has(s.id))
+    .map((s) => s.name)
+    .sort((a, b) => a.localeCompare(b));
   const totalRegions = ref.countryByIso2(iso2)?.subdivisionCount ?? 0;
-  return { cities, regionsVisited, regionsRemaining: Math.max(0, totalRegions - regionIds.size) };
+
+  // Monuments (heritage) visited here vs the rest of the country's list.
+  const visitedMonumentIds = new Set(
+    onlyVisited(visits)
+      .filter((v) => v.place.kind === "heritage")
+      .map((v) => v.place.id),
+  );
+  const here = ref.heritageOf(iso2);
+  const monumentsVisited = here
+    .filter((h) => visitedMonumentIds.has(h.id))
+    .map((h) => h.name)
+    .sort((a, b) => a.localeCompare(b));
+  const monumentsRemaining = here
+    .filter((h) => !visitedMonumentIds.has(h.id))
+    .map((h) => h.name)
+    .sort((a, b) => a.localeCompare(b));
+
+  return {
+    cities,
+    regionsVisited,
+    regionsRemaining: Math.max(0, totalRegions - regionIds.size),
+    regionsRemainingNames,
+    monumentsVisited,
+    monumentsRemaining,
+  };
 }
 
 export type CountrySort = "cities" | "regions" | "name";

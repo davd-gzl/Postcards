@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
-import { useVisits, findByPlace } from "../../lib/store/useVisits";
+import { useVisits } from "../../lib/store/useVisits";
 import { useTrips } from "../../lib/store/useTrips";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
+import { usePrefersReducedMotion } from "../../lib/hooks/usePrefersReducedMotion";
 import { countryFlag, formatInt } from "../../lib/format/format";
-import type { Country } from "../../lib/reference/types";
 import { PlaceSearch } from "../visits/PlaceSearch";
 import { StateToggles } from "../visits/StateToggles";
+import { GuideButton } from "../guides/GuideButton";
 import { StatStrip } from "../stats/StatStrip";
 import { MapView, type Basemap, type MapFocus, type MapFit } from "./MapView";
-import { MapLegend } from "./MapLegend";
 import { tripArcs } from "./visitedLayers";
 import { tripsInPeriod, periodLabel } from "../travel/period";
 import { citiesInView, type Bounds } from "./viewport";
@@ -62,15 +62,25 @@ function persistGlobe(on: boolean): void {
   }
 }
 
+const FILTER_KEY = "postcards-city-filter";
+
+function loadCityFilter(): CityFilter {
+  try {
+    const v = localStorage.getItem(FILTER_KEY);
+    return v === "unvisited" || v === "visited" ? v : "all";
+  } catch {
+    return "all";
+  }
+}
+
 export function MapScreen() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
-  const toggleVisit = useVisits((s) => s.toggleVisit);
-  const setAll = useVisits((s) => s.setAll);
   const showToast = useToast((s) => s.show);
   const mapFocus = useUi((s) => s.mapFocus);
   const tripYear = useUi((s) => s.tripYear);
   const tripMonth = useUi((s) => s.tripMonth);
+  const reducedMotion = usePrefersReducedMotion();
 
   const allCities = useMemo(() => ref.allCities(), [ref]);
   const [bounds, setBounds] = useState<Bounds | null>(null);
@@ -82,7 +92,7 @@ export function MapScreen() {
   const [online, setOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
   );
-  const [cityFilter, setCityFilter] = useState<CityFilter>("all");
+  const [cityFilter, setCityFilter] = useState<CityFilter>(loadCityFilter);
   const trips = useTrips((s) => s.trips);
   const [showTrips, setShowTrips] = useState(true);
   const [globe, setGlobe] = useState(loadGlobe);
@@ -201,15 +211,13 @@ export function MapScreen() {
     setFocus((f) => ({ lon: c.lon, lat: c.lat, key: (f?.key ?? 0) + 1 }));
   }
 
-  function toggleWithUndo(place: { kind: "country" | "city"; id: string; name: string; countryId: string }) {
-    const prev = useVisits.getState().visits;
-    const wasVisited = findByPlace(prev, place)?.status === "visited";
-    void toggleVisit(place);
-    showToast(wasVisited ? `Removed ${place.name}` : `Added ${place.name}`, () => setAll(prev));
-  }
-
-  function onCountryTap(country: Country) {
-    toggleWithUndo({ kind: "country", id: country.iso2, name: country.name, countryId: country.iso2 });
+  function changeFilter(f: CityFilter) {
+    setCityFilter(f);
+    try {
+      localStorage.setItem(FILTER_KEY, f);
+    } catch {
+      /* private mode: not persisted */
+    }
   }
 
   const visitedCityCoords = useMemo(
@@ -248,10 +256,17 @@ export function MapScreen() {
           onBounds={setBounds}
           focus={focus}
           fit={fit}
-          onCountryTap={onCountryTap}
           viewCities={visible}
           tripArcs={showTrips ? arcs : null}
           globe={globe}
+          reducedMotion={reducedMotion}
+          onBaseUnavailable={() => {
+            if (basemap === "osm") {
+              setBasemap("simple");
+              persistBasemap("simple");
+              showToast("Online map unavailable — showing the offline map.");
+            }
+          }}
         />
         <div className="map-ctl map-ctl-left">
           {visitedCityCoords.length > 0 && (
@@ -311,8 +326,6 @@ export function MapScreen() {
         </div>
       </div>
 
-      <MapLegend />
-
       <section className="view-list" aria-label="Cities in view">
         <div className="section-head">
           <h2>Cities in view</h2>
@@ -329,9 +342,9 @@ export function MapScreen() {
               type="button"
               aria-pressed={cityFilter === f}
               className={cityFilter === f ? "seg-on" : ""}
-              onClick={() => setCityFilter(f)}
+              onClick={() => changeFilter(f)}
             >
-              {f === "all" ? "All" : f === "unvisited" ? "To visit" : "Visited"}
+              {f === "all" ? "All" : f === "unvisited" ? "Hide visited" : "Visited"}
             </button>
           ))}
         </div>
@@ -341,8 +354,8 @@ export function MapScreen() {
             <span className="empty-emoji" aria-hidden>
               🗺️
             </span>
-            No cities of 15,000+ people in this view. Pan or zoom the map — or tap a country to mark
-            the whole country visited.
+            No cities of 15,000+ people in this view. Pan or zoom the map, search above, or check
+            off whole countries from the Places tab.
           </p>
         ) : filteredInView.length === 0 ? (
           <p className="muted empty">
@@ -382,6 +395,7 @@ export function MapScreen() {
                       </span>
                     )}
                   </button>
+                  {selected && <GuideButton place={place} />}
                   <StateToggles place={place} />
                 </li>
               );
