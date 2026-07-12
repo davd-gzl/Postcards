@@ -53,8 +53,36 @@ export function searchPlaces(ref: ReferenceData, query: string, limit = 8): Sear
   // after the places. Case is the disambiguator IATA codes are conventionally
   // written in.
   const isIataCode = /^[A-Z]{3}$/.test(q) && !!ref.airportById(q);
-  const ordered = isIataCode
-    ? [...airportResults, ...countryResults, ...cityResults, ...heritageResults]
-    : [...countryResults, ...cityResults, ...airportResults, ...heritageResults];
-  return ordered.slice(0, limit * 2);
+  if (isIataCode) {
+    // An exact code match outranks everything by intent, not by name quality.
+    return [...airportResults, ...countryResults, ...cityResults, ...heritageResults].slice(
+      0,
+      limit * 2,
+    );
+  }
+  const grouped = [...countryResults, ...cityResults, ...airportResults, ...heritageResults];
+  // Rank by HOW a name matches, not by what kind it is: "Ista" must put
+  // Istanbul (prefix) above Afghanistan (mid-word hit). The sort is stable, so
+  // within a rank the kind order above still breaks ties.
+  const nq = normalizeQuery(q);
+  const rank = (name: string): number => {
+    const n = normalizeQuery(name);
+    if (n.startsWith(nq)) return 0;
+    if (n.includes(` ${nq}`) || n.includes(`-${nq}`)) return 1; // word start ("new york" for "york")
+    return 2;
+  };
+  return grouped
+    .map((r, i) => ({ r, i, rank: rank(r.place.name) }))
+    .sort((a, b) => a.rank - b.rank || a.i - b.i)
+    .map((x) => x.r)
+    .slice(0, limit * 2);
+}
+
+/** Same folding the reference indexes use: diacritics off, lowercase. */
+function normalizeQuery(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
 }

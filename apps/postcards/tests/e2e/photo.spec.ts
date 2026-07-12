@@ -9,7 +9,8 @@ const PNG = Buffer.from(
 test("attach photos to a place, caption one, view and remove", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Search a city or country").fill("Paris");
-  await page.getByRole("button", { name: /Paris/ }).first().click();
+  await page.getByRole("button", { name: "Mark Paris visited" }).first().click();
+  await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Places", exact: true }).click();
 

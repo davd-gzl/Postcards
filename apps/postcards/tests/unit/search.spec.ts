@@ -31,6 +31,18 @@ describe("searchPlaces (aggregator-only, real gazetteer)", () => {
     expect(searchPlaces(ref, "zzznotarealplace")).toHaveLength(0);
   });
 
+  it("puts prefix matches above mid-word hits across kinds (ista → Istanbul, not Afghanistan)", () => {
+    const results = searchPlaces(ref, "ista");
+    expect(results[0]!.place.name.toLowerCase().startsWith("ista")).toBe(true);
+    // The mid-word country hit must not outrank every prefix-matched city.
+    const afghanistan = results.findIndex((r) => r.place.id === "AF");
+    const firstPrefixCity = results.findIndex(
+      (r) => r.place.kind === "city" && r.place.name.toLowerCase().startsWith("ista"),
+    );
+    expect(firstPrefixCity).toBeGreaterThanOrEqual(0);
+    if (afghanistan >= 0) expect(firstPrefixCity).toBeLessThan(afghanistan);
+  });
+
   it("ranks an explicit UPPERCASE IATA code first, ahead of a like-named city (LAX before Laxou)", () => {
     const results = searchPlaces(ref, "LAX");
     expect(results[0]!.place.kind).toBe("airport");
