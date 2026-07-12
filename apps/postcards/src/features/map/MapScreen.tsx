@@ -94,7 +94,31 @@ export function MapScreen() {
     loadPref("postcards-countries", (v) => v === "1"),
   );
   const [listTall, setListTall] = useState(false);
-  const [mapTall, setMapTall] = useState(false);
+  // Where the list docks relative to the map: "end" = right (desktop) / below
+  // (mobile), "start" = left / above. The list is never hidden — the old
+  // "Bigger map" button just removed it, which read as losing your data.
+  const [listSide, setListSide] = useState<"start" | "end">(() =>
+    loadPref("postcards-list-side", (v) => (v === "start" ? "start" : "end")),
+  );
+  // Desktop docks the list sideways, mobile stacks it — the move button's
+  // label follows the axis it actually moves along.
+  const [wide, setWide] = useState(
+    () => typeof matchMedia !== "undefined" && matchMedia("(min-width: 900px)").matches,
+  );
+  useEffect(() => {
+    if (typeof matchMedia === "undefined") return;
+    const mq = matchMedia("(min-width: 900px)");
+    const onChange = (e: MediaQueryListEvent) => setWide(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  function moveList() {
+    setListSide((s) => {
+      const next = s === "end" ? "start" : "end";
+      savePref("postcards-list-side", next);
+      return next;
+    });
+  }
   const [layersOpen, setLayersOpen] = useState(false);
   const [mode, setMode] = useState<MapMode>(() =>
     loadPref("postcards-map-mode", (v) =>
@@ -334,7 +358,7 @@ export function MapScreen() {
   return (
     <div
       className={
-        "map-screen" + (listTall ? " list-tall" : "") + (mapTall ? " map-tall" : "")
+        "map-screen" + (listTall ? " list-tall" : "") + (listSide === "start" ? " list-first" : "")
       }
     >
       {/* Search lives in the app top bar now — this row is just the counters. */}
@@ -383,15 +407,6 @@ export function MapScreen() {
           ))}
         </div>
         <div className="map-ctl map-ctl-left">
-          <button
-            className={"map-btn" + (mapTall ? " on" : "")}
-            type="button"
-            aria-pressed={mapTall}
-            title={mapTall ? "Show the list again" : "Make the map fill the screen"}
-            onClick={() => setMapTall((v) => !v)}
-          >
-            {mapTall ? "⤡ Show list" : "⤢ Bigger map"}
-          </button>
           {myPlaceCoords.length > 0 && (
             <button className="map-btn" type="button" onClick={() => fitToMyPlaces()}>
               Fit to my places
@@ -479,6 +494,28 @@ export function MapScreen() {
             onClick={() => setListTall((v) => !v)}
           >
             {listTall ? "▼ Map" : "▲ List"}
+          </button>
+          <button
+            className="mini-btn list-move"
+            type="button"
+            title={
+              wide
+                ? listSide === "end"
+                  ? "Move the list to the left of the map"
+                  : "Move the list to the right of the map"
+                : listSide === "end"
+                  ? "Move the list above the map"
+                  : "Move the list below the map"
+            }
+            onClick={moveList}
+          >
+            {wide
+              ? listSide === "end"
+                ? "⇤ Move left"
+                : "⇥ Move right"
+              : listSide === "end"
+                ? "⇑ Move up"
+                : "⇓ Move down"}
           </button>
           <span className="list-head-meta muted">
             <span>{poi ? poi.total : inView.length} in view</span>
@@ -570,7 +607,7 @@ export function MapScreen() {
           <p className="muted empty">
             {cityFilter === "unvisited"
               ? "You've been to every city in view. Pan somewhere new, or switch to “All”."
-              : "No visited cities in this view yet. Switch to “All” or “To visit”."}
+              : "No visited cities in this view yet. Switch to “All”, or check off a city to see it here."}
           </p>
         ) : (
           <ul className="city-list">

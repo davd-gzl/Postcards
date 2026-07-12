@@ -1,16 +1,17 @@
 import { create } from "zustand";
 import type { PlaceRef } from "../schema/models";
 
-export type Tab =
-  | "map"
-  | "stats"
-  | "places"
-  | "trips"
-  | "passport"
-  | "journal"
-  | "experiences"
-  | "settings";
-export type PlacesView = "visited" | "wishlist" | "countries" | "monuments" | "favorites";
+export type Tab = "map" | "stats" | "places" | "trips" | "journal" | "settings";
+// Passport and Moments live INSIDE Places now (fewer top-level buttons) — they
+// are views of the same screen, reachable via openPlaces.
+export type PlacesView =
+  | "visited"
+  | "favorites"
+  | "wishlist"
+  | "countries"
+  | "monuments"
+  | "moments"
+  | "passport";
 
 /** One navigation snapshot — what Escape/Back returns to. */
 interface NavState {

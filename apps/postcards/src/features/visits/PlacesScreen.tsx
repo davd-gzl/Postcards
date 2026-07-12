@@ -13,8 +13,12 @@ import { ScopeToggle } from "../../ui/ScopeToggle";
 import { PhotoGallery } from "./PhotoGallery";
 import { StateToggles } from "./StateToggles";
 import { GuideButton } from "../guides/GuideButton";
+import { PassportScreen } from "../passport/PassportScreen";
+import { ExperiencesScreen } from "../experiences/ExperiencesScreen";
 
-type View = "visited" | "wishlist" | "countries" | "monuments";
+// Everything place-shaped lives here, one view each — including Favorites (its
+// own view, not a mode that repaints "Visited"), Moments and the Passport.
+type View = "visited" | "favorites" | "wishlist" | "countries" | "monuments" | "moments" | "passport";
 
 
 /** Map coordinate to fly to (if known) and the secondary "· type · place" label for a visit. */
@@ -33,7 +37,7 @@ function placeMeta(ref: ReferenceData, v: Visit): { coord: { lon: number; lat: n
     const coord = h && (h.lat !== 0 || h.lon !== 0) ? { lon: h.lon, lat: h.lat } : null;
     return { coord, sub: `Monument · ${country}` };
   }
-  return { coord: null, sub: "Country" };
+  return { coord: null, sub: v.place.kind === "custom" ? "Your place" : "Country" };
 }
 
 /** One visited or wishlist row — visited adds details, photos and the favorite star. */
@@ -59,9 +63,11 @@ function VisitRow({ v, wishlist }: { v: Visit; wishlist?: boolean }) {
         className="city-focus"
         type="button"
         onClick={() =>
-          v.place.kind === "country" || v.place.kind === "airport"
-            ? coord && flyTo(coord.lon, coord.lat)
-            : useUi.getState().openCity(v.place.id)
+          v.place.kind === "country"
+            ? useUi.getState().openCountry(v.place.countryId)
+            : v.place.kind === "airport"
+              ? coord && flyTo(coord.lon, coord.lat)
+              : useUi.getState().openCity(v.place.id)
         }
         aria-label={`Open ${v.place.name}`}
       >
@@ -125,7 +131,6 @@ export function PlacesScreen() {
 
   const scope = useSettings((s) => s.countryScope);
   const [view, setView] = useState<View>("visited");
-  const [favOnly, setFavOnly] = useState(false);
   const [filter, setFilter] = useState("");
   const [year, setYear] = useState<string | null>(null); // e.g. "2024"; null = all
   const [shown, setShown] = useState(100);
@@ -135,14 +140,11 @@ export function PlacesScreen() {
   const request = useUi((s) => s.placesViewRequest);
   useEffect(() => {
     if (!request) return;
-    if (request.view === "favorites") {
-      setView("visited");
-      setFavOnly(true);
-    } else {
-      setView(request.view);
-      setFavOnly(false);
-    }
+    setView(request.view);
     setFilter("");
+    // Consume the request — a plain Places-tab tap later should land on the
+    // default view, not replay this one forever.
+    useUi.setState({ placesViewRequest: null });
   }, [request?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const heritageAvailable = useMemo(() => ref.allHeritage().length > 0, [ref]);
@@ -150,13 +152,14 @@ export function PlacesScreen() {
   const visited = useMemo(
     () =>
       visits
-        .filter((v) => v.status === "visited" && (!favOnly || v.favorite))
+        .filter((v) => v.status === "visited")
         .sort(
           (a, b) =>
             Number(b.favorite) - Number(a.favorite) || a.place.name.localeCompare(b.place.name),
         ),
-    [visits, favOnly],
+    [visits],
   );
+  const favorites = useMemo(() => visited.filter((v) => v.favorite), [visited]);
   const wishlist = useMemo(
     () =>
       visits
@@ -231,10 +234,17 @@ export function PlacesScreen() {
   }, [ref, q, hideSeen, seenHeritage]);
 
   const TABS: { id: View; label: string }[] = [
-    { id: "visited", label: favOnly ? `★ Favorites (${visited.length})` : `Visited (${visited.length})` },
+    { id: "visited", label: `Visited (${visited.length})` },
+    // Favorites earns its spot once you've starred something (it never repaints
+    // the Visited tab — that read as the section disappearing).
+    ...(favorites.length > 0 || view === "favorites"
+      ? [{ id: "favorites" as const, label: `★ Favorites (${favorites.length})` }]
+      : []),
     { id: "wishlist", label: `Wishlist (${wishlist.length})` },
     { id: "monuments", label: "Monuments" },
     { id: "countries", label: "Countries" },
+    { id: "moments", label: "Moments" },
+    { id: "passport", label: "Passport" },
   ];
 
   return (
@@ -250,7 +260,6 @@ export function PlacesScreen() {
               className={view === t.id ? "seg-on" : ""}
               onClick={() => {
                 setView(t.id);
-                setFavOnly(false);
                 setFilter("");
                 setYear(null);
                 setShown(100);
@@ -259,23 +268,12 @@ export function PlacesScreen() {
               {t.label}
             </button>
           ))}
-          <button
-            type="button"
-            aria-pressed={favOnly}
-            className={favOnly ? "seg-on" : ""}
-            title="Only your favorites"
-            onClick={() => {
-              setView("visited");
-              setFavOnly((f) => !f);
-            }}
-          >
-            ★
-          </button>
         </div>
       </div>
 
-      {(view === "visited" || view === "wishlist" || view === "monuments") &&
+      {(view === "visited" || view === "favorites" || view === "wishlist" || view === "monuments") &&
         (view !== "visited" || visited.length > 0) &&
+        (view !== "favorites" || favorites.length > 0) &&
         (view !== "wishlist" || wishlist.length > 0) &&
         (view !== "monuments" || heritageAvailable) && (
           <input
@@ -328,6 +326,36 @@ export function PlacesScreen() {
             <div className="list-pager">
               <span className="muted small">
                 Showing {shown} of {filterVisits(visited).length}
+              </span>
+              <button className="mini-btn" type="button" onClick={() => setShown((n) => n + 100)}>
+                Show 100 more
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {view === "favorites" && (
+        <>
+          {favorites.length === 0 && (
+            <p className="muted empty">
+              <span className="empty-emoji" aria-hidden>
+                ★
+              </span>
+              No favorites yet. Star a visited place and it lands here.
+            </p>
+          )}
+          <ul className="city-list">
+            {filterVisits(favorites)
+              .slice(0, shown)
+              .map((v) => (
+                <VisitRow key={v.visitId} v={v} />
+              ))}
+          </ul>
+          {filterVisits(favorites).length > shown && (
+            <div className="list-pager">
+              <span className="muted small">
+                Showing {shown} of {filterVisits(favorites).length}
               </span>
               <button className="mini-btn" type="button" onClick={() => setShown((n) => n + 100)}>
                 Show 100 more
@@ -491,6 +519,10 @@ export function PlacesScreen() {
           </ul>
         </>
       )}
+
+      {view === "moments" && <ExperiencesScreen embedded />}
+
+      {view === "passport" && <PassportScreen embedded />}
     </section>
   );
 }

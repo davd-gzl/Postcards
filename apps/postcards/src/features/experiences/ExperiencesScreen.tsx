@@ -66,7 +66,7 @@ function placeOf(e: Experience): PlaceRef {
   return { kind: "custom", id: e.id, name: e.name, countryId: "ZZ" };
 }
 
-export function ExperiencesScreen() {
+export function ExperiencesScreen({ embedded }: { embedded?: boolean } = {}) {
   const visits = useVisits((s) => s.visits);
   const [list, setList] = useState<Experience[]>(() => cache ?? []);
 
@@ -83,7 +83,7 @@ export function ExperiencesScreen() {
   return (
     <section aria-label="Moments">
       <div className="section-head">
-        <h2>Moments</h2>
+        {embedded ? <h3>Moments</h3> : <h2>Moments</h2>}
         <span className="list-head-meta muted">
           {lived} of {list.length} lived
         </span>

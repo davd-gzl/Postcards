@@ -22,8 +22,11 @@ export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
             <kbd>/</kbd> Search &amp; quick-add
           </li>
           <li>
-            <kbd>1</kbd>–<kbd>4</kbd> or <kbd>M</kbd> <kbd>S</kbd> <kbd>P</kbd> <kbd>T</kbd> — switch
-            tabs (Map, Stats, Places, Trips)
+            <kbd>1</kbd>–<kbd>5</kbd> or <kbd>M</kbd> <kbd>P</kbd> <kbd>T</kbd> <kbd>J</kbd>{" "}
+            <kbd>S</kbd> — switch sections (Map, Places, Trips, Journal, Stats)
+          </li>
+          <li>
+            <kbd>F</kbd> Passport · <kbd>X</kbd> Moments (inside Places)
           </li>
           <li>
             <kbd>?</kbd> This help

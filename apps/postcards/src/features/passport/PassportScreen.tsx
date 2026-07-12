@@ -13,9 +13,10 @@ import { renderPoster } from "./poster";
 /**
  * Your passport: the flags you've collected (one per visited country — a city
  * visit collects its country's flag), and a downloadable PNG poster of your
- * world. All rendered on-device.
+ * world. All rendered on-device. `embedded` renders it as a view inside the
+ * Places screen (smaller heading under the Places one).
  */
-export function PassportScreen() {
+export function PassportScreen({ embedded }: { embedded?: boolean } = {}) {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const scope = useSettings((s) => s.countryScope);
@@ -118,7 +119,7 @@ export function PassportScreen() {
   return (
     <section aria-label="Passport">
       <div className="section-head">
-        <h2>Passport</h2>
+        {embedded ? <h3>Passport</h3> : <h2>Passport</h2>}
         <ScopeToggle />
       </div>
 
