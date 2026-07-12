@@ -6,6 +6,11 @@ import { VitePWA } from "vite-plugin-pwa";
 // Web-first: this same build is the self-hostable website (PWA) and the payload
 // Capacitor wraps into native iOS/Android. No Google, no backend.
 export default defineConfig({
+  // Served from the domain root on Netlify (default "/"), but under a repo
+  // subpath on GitHub Pages (https://<user>.github.io/Postcards/). The Pages
+  // workflow sets VITE_BASE=/Postcards/ so asset URLs, the PWA manifest scope and
+  // the service worker all resolve correctly there.
+  base: process.env.VITE_BASE || "/",
   plugins: [
     react(),
     VitePWA({
