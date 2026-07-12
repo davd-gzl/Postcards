@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { gotoTab } from "./nav-helper";
 
 // "What counts as a country" — switching the scope changes both the count of
 // visited countries and the world denominator, dropping dependent territories.
@@ -13,7 +14,7 @@ test("count with or without dependent territories", async ({ page }) => {
   await page.getByLabel("Filter countries").fill("Hong Kong");
   await page.getByRole("button", { name: "Mark Hong Kong visited" }).click();
 
-  await page.getByRole("button", { name: "Stats", exact: true }).click();
+  await gotoTab(page, "Stats");
 
   // Default scope counts both, against the full countries + territories list.
   const countTile = page.locator(".stat-grid .stat-tile").first();

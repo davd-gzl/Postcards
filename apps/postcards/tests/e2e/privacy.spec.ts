@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { gotoTab } from "./nav-helper";
 
 // SC-006 / Constitution III: no personal data and no third-party trackers ever
 // leave the device. The detailed OpenStreetMap map is on by default, so anonymous
@@ -27,7 +28,7 @@ test("only OpenStreetMap tiles leave the origin during core flows", async ({ pag
   // Exercise every core flow: add, map, stats, places, export surface.
   await page.getByLabel("Search a city or country").fill("Rome");
   await page.getByRole("button", { name: /Rome/ }).first().click();
-  await page.getByRole("button", { name: "Stats", exact: true }).click();
+  await gotoTab(page, "Stats");
   await expect(page.getByText("Statistics")).toBeVisible();
   await page.getByRole("button", { name: "Places", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Places" })).toBeVisible();

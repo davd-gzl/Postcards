@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { gotoTab } from "./nav-helper";
 import AxeBuilder from "@axe-core/playwright";
 
 // WCAG 2.1 AA gate (SC-005): no serious/critical axe violations on any screen.
@@ -25,7 +26,7 @@ test("map, stats and places screens pass the axe WCAG 2.1 AA gate", async ({ pag
   await expect(page.getByText("Cities in view")).toBeVisible();
   await assertNoSeriousViolations(page, "map");
 
-  await page.getByRole("button", { name: "Stats", exact: true }).click();
+  await gotoTab(page, "Stats");
   await expect(page.getByText("Statistics")).toBeVisible();
   await assertNoSeriousViolations(page, "stats");
 

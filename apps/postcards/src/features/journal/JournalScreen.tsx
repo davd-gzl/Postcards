@@ -31,12 +31,39 @@ function download(filename: string, text: string, type: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-/** Today as a local YYYY-MM-DD (the composer's default story date). */
-function today(): string {
+/** A local YYYY-MM-DD, `offset` days from today (0 = today, -1 = yesterday). */
+function dayISO(offset = 0): string {
   const d = new Date();
+  d.setDate(d.getDate() + offset);
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${mm}-${dd}`;
+}
+/** Today as a local YYYY-MM-DD (the composer's default story date). */
+function today(): string {
+  return dayISO(0);
+}
+
+/**
+ * Near a day boundary, which day is a "daily story" about? Late evening it could
+ * be today or the day just starting; small hours it's usually yesterday. Returns
+ * the two candidate days to choose between, or null when the day is unambiguous.
+ */
+function boundaryDays(): { iso: string; hint: string }[] | null {
+  const h = new Date().getHours();
+  if (h >= 21) {
+    return [
+      { iso: dayISO(0), hint: "today" },
+      { iso: dayISO(1), hint: "the new day" },
+    ];
+  }
+  if (h < 5) {
+    return [
+      { iso: dayISO(-1), hint: "yesterday" },
+      { iso: dayISO(0), hint: "today" },
+    ];
+  }
+  return null;
 }
 
 /** The city page serves these kinds — a story's place name links there. */
@@ -282,6 +309,10 @@ export function JournalScreen() {
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const [feedShown, setFeedShown] = useState(FEED_PAGE);
+  const [dayChoice, setDayChoice] = useState(false);
+  // Feed filters: by destination / country, and by year (the "blog" views).
+  const [filterSel, setFilterSel] = useState("all");
+  const [yearSel, setYearSel] = useState("all");
 
   // Places you can write about: your visited list, sorted by name. A prefilled
   // or edited place that's no longer visited is kept as an extra option so the
@@ -302,6 +333,35 @@ export function JournalScreen() {
     [visitedPlaces, place],
   );
 
+  // Blog views: filter stories by country, by destination, and by year.
+  const storyCountries = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of stories) {
+      const iso2 = s.place.countryId;
+      if (iso2 && iso2 !== "ZZ" && !m.has(iso2)) m.set(iso2, ref.countryByIso2(iso2)?.name ?? iso2);
+    }
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [stories, ref]);
+  const storyPlaces = useMemo(() => {
+    const m = new Map<string, PlaceRef>();
+    for (const s of stories) if (!m.has(placeKey(s.place))) m.set(placeKey(s.place), s.place);
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [stories]);
+  const storyYears = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of stories) if (s.date) set.add(s.date.slice(0, 4));
+    return [...set].sort((a, b) => b.localeCompare(a));
+  }, [stories]);
+  const filtered = useMemo(() => {
+    return stories.filter((s) => {
+      if (yearSel === "none" && s.date) return false;
+      if (yearSel !== "all" && yearSel !== "none" && s.date?.slice(0, 4) !== yearSel) return false;
+      if (filterSel.startsWith("c:")) return s.place.countryId === filterSel.slice(2);
+      if (filterSel.startsWith("p:")) return placeKey(s.place) === filterSel.slice(2);
+      return true;
+    });
+  }, [stories, filterSel, yearSel]);
+
   // Closes the composer without touching the draft cache: Escape/Cancel must
   // not lose writing — the draft comes back on the next visit.
   function resetForm() {
@@ -314,18 +374,28 @@ export function JournalScreen() {
     setPhotos([]);
     setNearby(null);
     setGeoMsg(null);
+    setDayChoice(false);
   }
 
-  function openComposer(prefill?: PlaceRef) {
+  function openComposer(prefill?: PlaceRef, dateStr?: string) {
     setEditingId(null);
     setPlace(prefill ?? null);
-    setDate(today());
+    setDate(dateStr ?? today());
     setTitle("");
     setText("");
     setPhotos([]);
     setNearby(null);
     setGeoMsg(null);
+    setDayChoice(false);
     setComposerOpen(true);
+  }
+
+  // "Daily story": jump straight into today's entry. Near midnight, ask which day
+  // it's for first (a late night could be logging the day that just ended).
+  function startDailyStory() {
+    const days = boundaryDays();
+    if (days) setDayChoice(true);
+    else openComposer(undefined, today());
   }
 
   function startEdit(s: Story) {
@@ -513,9 +583,14 @@ export function JournalScreen() {
 
       <div className="btn-row journal-toolbar">
         {!composerOpen && (
-          <button className="btn" type="button" onClick={() => openComposer()}>
-            ＋ New story
-          </button>
+          <>
+            <button className="btn" type="button" onClick={startDailyStory}>
+              📔 Today's story
+            </button>
+            <button className="btn-ghost" type="button" onClick={() => openComposer()}>
+              ＋ New story
+            </button>
+          </>
         )}
         {stories.length > 0 && (
           <button className="btn-ghost" type="button" onClick={exportMd}>
@@ -523,6 +598,24 @@ export function JournalScreen() {
           </button>
         )}
       </div>
+      {dayChoice && !composerOpen && (
+        <div className="day-choice" role="group" aria-label="Which day is this story for?">
+          <span className="muted small">Which day is this for?</span>
+          {boundaryDays()?.map(({ iso, hint }) => (
+            <button
+              key={iso}
+              className="mini-btn"
+              type="button"
+              onClick={() => openComposer(undefined, iso)}
+            >
+              {formatDate(iso)} · {hint}
+            </button>
+          ))}
+          <button className="link" type="button" onClick={() => setDayChoice(false)}>
+            Cancel
+          </button>
+        </div>
+      )}
       {stories.length > 0 && (
         <p className="muted small">
           The Markdown export shares dates, places, titles and text — no photos. A shareable website
@@ -708,8 +801,80 @@ export function JournalScreen() {
         </p>
       ) : (
         <>
+          {stories.length > 1 && (
+            <div className="journal-filters">
+              <label className="picker-label">
+                Show
+                <select
+                  className="select"
+                  value={filterSel}
+                  onChange={(e) => {
+                    setFilterSel(e.target.value);
+                    setFeedShown(FEED_PAGE);
+                  }}
+                >
+                  <option value="all">All destinations</option>
+                  {storyCountries.length > 0 && (
+                    <optgroup label="By country">
+                      {storyCountries.map(([iso2, name]) => (
+                        <option key={iso2} value={`c:${iso2}`}>
+                          {countryFlag(iso2)} {name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {storyPlaces.length > 1 && (
+                    <optgroup label="By destination">
+                      {storyPlaces.map((p) => (
+                        <option key={placeKey(p)} value={`p:${placeKey(p)}`}>
+                          {countryFlag(p.countryId)} {p.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </label>
+              {storyYears.length > 0 && (
+                <label className="picker-label">
+                  When
+                  <select
+                    className="select"
+                    value={yearSel}
+                    onChange={(e) => {
+                      setYearSel(e.target.value);
+                      setFeedShown(FEED_PAGE);
+                    }}
+                  >
+                    <option value="all">Any year</option>
+                    {storyYears.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                    <option value="none">No date</option>
+                  </select>
+                </label>
+              )}
+            </div>
+          )}
+          {filtered.length === 0 ? (
+            <p className="muted empty">
+              No stories match this filter.{" "}
+              <button
+                className="link"
+                type="button"
+                onClick={() => {
+                  setFilterSel("all");
+                  setYearSel("all");
+                }}
+              >
+                Clear filters
+              </button>
+            </p>
+          ) : (
+          <>
           <div className="journal-feed">
-            {stories.slice(0, feedShown).map((s) => (
+            {filtered.slice(0, feedShown).map((s) => (
               <article key={s.storyId} className="journal-card">
                 <header className="journal-card-head">
                   <time className="journal-date">{formatDate(s.date)}</time>
@@ -752,19 +917,21 @@ export function JournalScreen() {
               </article>
             ))}
           </div>
-          {stories.length > feedShown && (
+          {filtered.length > feedShown && (
             <div className="list-pager">
               <span className="muted small">
-                Showing {feedShown} of {stories.length}
+                Showing {feedShown} of {filtered.length}
               </span>
               <button
                 className="mini-btn"
                 type="button"
                 onClick={() => setFeedShown((n) => n + FEED_PAGE)}
               >
-                Show {Math.min(FEED_PAGE, stories.length - feedShown)} more
+                Show {Math.min(FEED_PAGE, filtered.length - feedShown)} more
               </button>
             </div>
+          )}
+          </>
           )}
         </>
       )}

@@ -14,7 +14,7 @@ import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { visitedCountryIds } from "../stats/computeStats";
-import { airportPoints, monumentPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
+import { airportPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
 import type { Bounds } from "./viewport";
 import type { City } from "../../lib/reference/types";
 import type { PlaceRef } from "../../lib/schema/models";
@@ -244,6 +244,12 @@ function openPlacePopup(
   const popup = new maplibregl.Popup({ closeButton: false, offset: 12, maxWidth: "230px" })
     .setLngLat(lngLat)
     .setDOMContent(el);
+
+  // While a popup is open, dim the floating map controls (the mode bar sat on top
+  // of popups near the top edge and clipped them). Restored on close.
+  const box = map.getContainer().parentElement;
+  box?.classList.add("popup-open");
+  popup.on("close", () => box?.classList.remove("popup-open"));
 
   // The WHOLE popup body is the "been there" toggle — tap the marker, then tap
   // the card: two taps and you've been there (no tiny button to aim for). The
@@ -532,6 +538,7 @@ export function MapView({
   mode = "all",
   showTowns = false,
   showCountries = false,
+  maxMarkers = 250,
   onBaseUnavailable,
 }: {
   /** Which marker categories are shown (a "mode" switcher over the map). */
@@ -540,6 +547,8 @@ export function MapView({
   showTowns?: boolean;
   /** Shade the countries you've visited (coverage tint). Default off. */
   showCountries?: boolean;
+  /** Cap on airport/monument markers drawn in the current view (anti-blanket). */
+  maxMarkers?: number;
   onBounds?: (b: Bounds) => void;
   focus?: MapFocus | null;
   fit?: MapFit | null;
@@ -579,6 +588,10 @@ export function MapView({
   showTownsRef.current = showTowns;
   const showCountriesRef = useRef(showCountries);
   showCountriesRef.current = showCountries;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const maxMarkersRef = useRef(maxMarkers);
+  maxMarkersRef.current = maxMarkers;
   const [failed, setFailed] = useState(false);
   const [dataState, setDataState] = useState<"loading" | "ready" | "error">("loading");
 
@@ -604,17 +617,76 @@ export function MapView({
     });
   }
 
-  // Every airport in the gazetteer, so they're browsable on the map (not just the
-  // ones you've logged). Static per session — built once at idle.
-  function applyAllAirports(map: MlMap) {
-    (map.getSource("airports-all") as GeoJSONSource | undefined)?.setData({
-      type: "FeatureCollection",
-      features: ref.allAirports().map((a) => ({
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [a.lon, a.lat] },
-        properties: { id: a.id, iata: a.id, name: a.name, cc: a.countryIso2 },
-      })),
-    });
+  // Airports & monuments are drawn like cities: only what's in the current view,
+  // capped to a maximum so a dense area never blankets the map. Ones you've
+  // marked are kept first, so the cap never hides your own places.
+  function inViewport(b: maplibregl.LngLatBounds, lat: number, lon: number): boolean {
+    if (lat < b.getSouth() || lat > b.getNorth()) return false;
+    const w = b.getWest();
+    const e = b.getEast();
+    return w <= e ? lon >= w && lon <= e : lon >= w || lon <= e;
+  }
+
+  function applyViewportPoi(map: MlMap) {
+    const b = map.getBounds();
+    const cap = Math.max(1, maxMarkersRef.current);
+    const m = modeRef.current;
+
+    // Monuments: in Monuments mode always, in All mode as the zoom-gate allows.
+    const monSrc = map.getSource("monuments") as GeoJSONSource | undefined;
+    if (monSrc) {
+      if (m === "monuments" || m === "all") {
+        const seen = new Set(
+          visitsRef.current
+            .filter((v) => v.status !== "wishlist" && v.place.kind === "heritage")
+            .map((v) => v.place.id),
+        );
+        const inView = ref
+          .allHeritage()
+          .filter((h) => (h.lat !== 0 || h.lon !== 0) && inViewport(b, h.lat, h.lon));
+        inView.sort((x, y) => (seen.has(y.id) ? 1 : 0) - (seen.has(x.id) ? 1 : 0));
+        monSrc.setData({
+          type: "FeatureCollection",
+          features: inView.slice(0, cap).map((h) => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [h.lon, h.lat] },
+            properties: {
+              id: h.id,
+              name: h.name,
+              cc: h.countryIso2,
+              cat: h.category ?? "cultural",
+              seen: seen.has(h.id) ? 1 : 0,
+            },
+          })),
+        });
+      } else {
+        monSrc.setData(EMPTY_FC);
+      }
+    }
+
+    // Browsable airports: in Airports mode always, in All mode past the zoom-gate.
+    const airSrc = map.getSource("airports-all") as GeoJSONSource | undefined;
+    if (airSrc) {
+      if (m === "airports" || m === "all") {
+        const seen = new Set(
+          visitsRef.current
+            .filter((v) => v.status !== "wishlist" && v.place.kind === "airport")
+            .map((v) => v.place.id),
+        );
+        const inView = ref.allAirports().filter((a) => inViewport(b, a.lat, a.lon));
+        inView.sort((x, y) => (seen.has(y.id) ? 1 : 0) - (seen.has(x.id) ? 1 : 0));
+        airSrc.setData({
+          type: "FeatureCollection",
+          features: inView.slice(0, cap).map((a) => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [a.lon, a.lat] },
+            properties: { id: a.id, iata: a.id, name: a.name, cc: a.countryIso2 },
+          })),
+        });
+      } else {
+        airSrc.setData(EMPTY_FC);
+      }
+    }
   }
 
   function applyVisited(map: MlMap) {
@@ -627,9 +699,9 @@ export function MapView({
     (map.getSource("airports") as GeoJSONSource | undefined)?.setData(
       airportPoints(visitsRef.current, ref),
     );
-    (map.getSource("monuments") as GeoJSONSource | undefined)?.setData(
-      monumentPoints(visitsRef.current, ref),
-    );
+    // Monuments (and browsable airports) are viewport-capped, and their "seen"
+    // state depends on visits, so they refresh here too.
+    applyViewportPoi(map);
     applyCountryFill(map);
   }
 
@@ -819,10 +891,7 @@ export function MapView({
             ? (cb) => requestIdleCallback(cb, { timeout: 1500 })
             : (cb) => void setTimeout(cb, 300);
         idle(() => {
-          if (!cancelled && map && loadedRef.current) {
-            applyAllCityDots(map);
-            applyAllAirports(map);
-          }
+          if (!cancelled && map && loadedRef.current) applyAllCityDots(map);
         });
         emitBounds(map);
       });
@@ -831,6 +900,8 @@ export function MapView({
         if (!map) return;
         lastCamera = { center: map.getCenter(), zoom: map.getZoom() };
         if (!loadedRef.current) return;
+        // The in-view POI cap follows every camera move (even programmatic ones).
+        applyViewportPoi(map);
         if (suppressBoundsRef.current) {
           suppressBoundsRef.current = false; // programmatic fly — keep the list still
           return;
@@ -974,9 +1045,11 @@ export function MapView({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (map && loadedRef.current) applyMode(map, mode);
+    if (!map || !loadedRef.current) return;
+    applyMode(map, mode);
+    applyViewportPoi(map); // repopulate/clear the capped POI for the new mode/cap
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, showTowns]);
+  }, [mode, showTowns, maxMarkers]);
 
   useEffect(() => {
     const map = mapRef.current;
