@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { gotoTab } from "./nav-helper";
 
 async function addDatedTrip(page: Page, from: string, to: string, date: string) {
   await page.getByLabel("From", { exact: true }).fill(from);
@@ -14,7 +15,7 @@ async function addDatedTrip(page: Page, from: string, to: string, date: string) 
 // the list + totals narrow to the chosen period.
 test("filter the travel log by year", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Trips", exact: true }).click();
+  await gotoTab(page, "Trips");
 
   await addDatedTrip(page, "CDG", "JFK", "2024-08-14");
   await addDatedTrip(page, "LHR", "SFO", "2023-05-01");
@@ -40,7 +41,7 @@ test("filter the travel log by year", async ({ page }) => {
 // arcs shown on the map, surfaced on the map's Trips toggle.
 test("the map trip arcs honour the travel-log time filter", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Trips", exact: true }).click();
+  await gotoTab(page, "Trips");
 
   await addDatedTrip(page, "CDG", "JFK", "2024-08-14");
   await addDatedTrip(page, "LHR", "SFO", "2023-05-01");
@@ -55,7 +56,7 @@ test("the map trip arcs honour the travel-log time filter", async ({ page }) => 
   await expect(page.getByRole("button", { name: /Trips.*2024/ })).toBeVisible();
 
   // Clearing the filter (back on Trips) drops the tag on the map toggle.
-  await page.getByRole("button", { name: "Trips", exact: true }).click();
+  await gotoTab(page, "Trips");
   await page.locator("#trip-filter-year").selectOption("all");
   await page.getByRole("button", { name: "Map", exact: true }).click();
   await expect(page.getByRole("button", { name: /Trips.*2024/ })).toHaveCount(0);
@@ -66,7 +67,7 @@ test("the map trip arcs honour the travel-log time filter", async ({ page }) => 
 // silently-empty map.
 test("filtering to a year whose trips are all deleted resets to all years", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Trips", exact: true }).click();
+  await gotoTab(page, "Trips");
 
   await addDatedTrip(page, "CDG", "JFK", "2024-08-14");
   await addDatedTrip(page, "LHR", "SFO", "2023-05-01");

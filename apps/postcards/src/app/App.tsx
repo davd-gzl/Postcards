@@ -16,7 +16,7 @@ import { PlaceSearch } from "../features/visits/PlaceSearch";
 import { ShortcutsHelp } from "../ui/ShortcutsHelp";
 import { AboutModal } from "../ui/AboutModal";
 import { Toast } from "../ui/Toast";
-import { MapIcon, ChartIcon, ListIcon, RouteIcon, FlagIcon, BookIcon, SparkIcon, GearIcon, InfoIcon } from "../ui/icons";
+import { MapIcon, ChartIcon, ListIcon, RouteIcon, FlagIcon, BookIcon, SparkIcon, MoreIcon, GearIcon, InfoIcon } from "../ui/icons";
 import { useState } from "react";
 import { useInstallPrompt } from "../lib/hooks/useInstallPrompt";
 
@@ -35,6 +35,12 @@ const TABS: { id: Tab; label: string; keys: string[]; Icon: () => JSX.Element }[
   { id: "experiences", label: "Moments", keys: ["7", "x"], Icon: SparkIcon },
 ];
 
+// The bottom bar was too crowded with all seven. Keep the four everyday tabs
+// visible; the rest live behind a single "More" entry.
+const PRIMARY_TABS: Tab[] = ["map", "places", "journal", "passport"];
+const primaryTabs = TABS.filter((t) => PRIMARY_TABS.includes(t.id));
+const moreTabs = TABS.filter((t) => !PRIMARY_TABS.includes(t.id));
+
 export function App() {
   const tab = useUi((s) => s.tab);
   const setTab = useUi((s) => s.setTab);
@@ -43,6 +49,10 @@ export function App() {
   const [showHelp, setShowHelp] = useState(false);
   const { canInstall, install } = useInstallPrompt();
   const [showAbout, setShowAbout] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreOpenRef = useRef(moreOpen);
+  moreOpenRef.current = moreOpen;
+  const inMore = moreTabs.some((t) => t.id === tab);
   const mainRef = useRef<HTMLElement>(null);
   const firstRender = useRef(true);
 
@@ -64,6 +74,10 @@ export function App() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        if (moreOpenRef.current) {
+          setMoreOpen(false);
+          return;
+        }
         // A modal/lightbox/open composer on screen consumes Escape (its own
         // handler closes it) — only an unobstructed Escape navigates back.
         const dialogOpen = !!document.querySelector(
@@ -103,6 +117,52 @@ export function App() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // The phone Back gesture used to quit the whole app. Trap it: Back now unwinds
+  // the app itself — close an open dialog, then a city/country page, then return
+  // to the Map tab — instead of leaving. In an installed (standalone) app Back
+  // never exits (use the home gesture); in a browser tab a Back at the Map root
+  // is allowed through so the tab can still navigate away normally.
+  useEffect(() => {
+    const standalone =
+      (typeof matchMedia !== "undefined" && matchMedia("(display-mode: standalone)").matches) ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (navigator as any).standalone === true;
+    const arm = () => history.pushState({ pc: true }, "");
+    arm();
+    function onPop() {
+      const ui = useUi.getState();
+      const dialogOpen = !!document.querySelector(
+        ".modal-backdrop, .lightbox, .maplibregl-popup, .journal-composer",
+      );
+      if (moreOpenRef.current) {
+        setMoreOpen(false);
+        arm();
+        return;
+      }
+      if (dialogOpen) {
+        // Let the open layer close via its own Escape handler.
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+        arm();
+        return;
+      }
+      if (ui.cityPageId || ui.countryPageId) {
+        ui.closePages();
+        arm();
+        return;
+      }
+      if (ui.tab !== "map") {
+        ui.setTab("map");
+        arm();
+        return;
+      }
+      // At the Map root: keep a standalone app open (re-arm); let a browser tab go.
+      if (standalone) arm();
+    }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const currentLabel = TABS.find((x) => x.id === tab)?.label ?? "";
@@ -184,7 +244,7 @@ export function App() {
       </p>
 
       <nav className="bottom-nav" aria-label="Sections">
-        {TABS.map(({ id, label, Icon }) => (
+        {primaryTabs.map(({ id, label, Icon }) => (
           <button
             key={id}
             type="button"
@@ -192,13 +252,56 @@ export function App() {
             aria-current={tab === id ? "page" : undefined}
             aria-label={label}
             title={label}
-            onClick={() => setTab(id)}
+            onClick={() => {
+              setMoreOpen(false);
+              setTab(id);
+            }}
           >
             <Icon />
             <span aria-hidden>{label}</span>
           </button>
         ))}
+        <button
+          type="button"
+          className={"nav-item" + (inMore ? " active" : "")}
+          aria-expanded={moreOpen}
+          aria-controls="more-sheet"
+          aria-label="More sections"
+          title="More"
+          onClick={() => setMoreOpen((v) => !v)}
+        >
+          <MoreIcon />
+          <span aria-hidden>More</span>
+        </button>
       </nav>
+
+      {moreOpen && (
+        <>
+          <button
+            type="button"
+            className="more-backdrop"
+            aria-label="Close menu"
+            onClick={() => setMoreOpen(false)}
+          />
+          <div id="more-sheet" className="more-sheet" role="group" aria-label="More sections">
+            {moreTabs.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                className={"more-item" + (tab === id ? " active" : "")}
+                aria-current={tab === id ? "page" : undefined}
+                onClick={() => {
+                  setTab(id);
+                  setMoreOpen(false);
+                }}
+              >
+                <Icon />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       <main
             ref={mainRef}

@@ -1,9 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { gotoTab } from "./nav-helper";
 
 // End-to-end: a logged trip can be edited (here, adding a date) and saved.
 test("edit a logged trip", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Trips", exact: true }).click();
+  await gotoTab(page, "Trips");
 
   // Add a trip.
   await page.getByLabel("From", { exact: true }).fill("CDG");
