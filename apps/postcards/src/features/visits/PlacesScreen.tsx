@@ -37,7 +37,7 @@ function placeMeta(ref: ReferenceData, v: Visit): { coord: { lon: number; lat: n
     const coord = h && (h.lat !== 0 || h.lon !== 0) ? { lon: h.lon, lat: h.lat } : null;
     return { coord, sub: `Monument · ${country}` };
   }
-  return { coord: null, sub: "Country" };
+  return { coord: null, sub: v.place.kind === "custom" ? "Your place" : "Country" };
 }
 
 /** One visited or wishlist row — visited adds details, photos and the favorite star. */
@@ -63,9 +63,11 @@ function VisitRow({ v, wishlist }: { v: Visit; wishlist?: boolean }) {
         className="city-focus"
         type="button"
         onClick={() =>
-          v.place.kind === "country" || v.place.kind === "airport"
-            ? coord && flyTo(coord.lon, coord.lat)
-            : useUi.getState().openCity(v.place.id)
+          v.place.kind === "country"
+            ? useUi.getState().openCountry(v.place.countryId)
+            : v.place.kind === "airport"
+              ? coord && flyTo(coord.lon, coord.lat)
+              : useUi.getState().openCity(v.place.id)
         }
         aria-label={`Open ${v.place.name}`}
       >
@@ -140,6 +142,9 @@ export function PlacesScreen() {
     if (!request) return;
     setView(request.view);
     setFilter("");
+    // Consume the request — a plain Places-tab tap later should land on the
+    // default view, not replay this one forever.
+    useUi.setState({ placesViewRequest: null });
   }, [request?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const heritageAvailable = useMemo(() => ref.allHeritage().length > 0, [ref]);

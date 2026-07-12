@@ -607,7 +607,7 @@ export function MapScreen() {
           <p className="muted empty">
             {cityFilter === "unvisited"
               ? "You've been to every city in view. Pan somewhere new, or switch to “All”."
-              : "No visited cities in this view yet. Switch to “All” or “To visit”."}
+              : "No visited cities in this view yet. Switch to “All”, or check off a city to see it here."}
           </p>
         ) : (
           <ul className="city-list">
