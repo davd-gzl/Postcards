@@ -13,6 +13,7 @@ import type {
 import provenanceData from "./data/provenance.json";
 import continentsData from "./data/continents.json";
 import sovereigntyData from "./data/sovereignty.json";
+import countryNamesData from "./data/country-names.json";
 import { inScope, type CountryScope, type Sovereignty } from "./scope";
 
 countries.registerLocale(enLocale as Parameters<typeof countries.registerLocale>[0]);
@@ -20,6 +21,9 @@ countries.registerLocale(enLocale as Parameters<typeof countries.registerLocale>
 const provenance = provenanceData as ReferenceProvenance[];
 const continents = continentsData as Record<string, string>;
 const sovereignty = sovereigntyData as Record<string, Sovereignty>;
+// Common country names ("Taiwan", "Russia", "South Korea") shown everywhere, in
+// place of the raw ISO labels ("Taiwan, Province of China", "Russian Federation").
+const countryNames = countryNamesData as Record<string, string>;
 
 // Gazetteer + subdivisions are served as static, SW-cached assets and loaded once
 // at startup (see initReferenceData()).
@@ -55,7 +59,7 @@ function buildCountries(cities: City[], subdivisions: Subdivision[]): Country[] 
       iso2,
       iso3,
       numeric,
-      name,
+      name: countryNames[iso2] ?? name,
       continent: continents[iso2] ?? "",
       cityCount: cityCounts.get(iso2) ?? 0,
       subdivisionCount: subCounts.get(iso2) ?? 0,
