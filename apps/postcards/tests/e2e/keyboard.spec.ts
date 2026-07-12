@@ -14,13 +14,13 @@ test("add a visit and browse with the keyboard only", async ({ page }) => {
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
 
-  // Leave the input, then switch tabs with number keys.
+  // Leave the input, then switch tabs with number keys (5 = Stats, 2 = Places).
   await page.getByRole("heading", { name: "Postcards" }).click();
-  await page.keyboard.press("2");
+  await page.keyboard.press("5");
   await expect(page.getByText("Statistics")).toBeVisible();
   await expect(page.locator(".country-head", { hasText: "Japan" })).toBeVisible();
 
-  await page.keyboard.press("3");
+  await page.keyboard.press("2");
   await expect(page.getByRole("button", { name: "Countries" })).toBeVisible();
 
   // "?" opens the shortcuts overlay; Escape closes it.
