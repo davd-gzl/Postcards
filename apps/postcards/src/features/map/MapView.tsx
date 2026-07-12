@@ -241,7 +241,7 @@ function openPlacePopup(
   el.className = "map-popup";
   const actions = document.createElement("div");
   actions.className = "map-popup-actions";
-  const popup = new maplibregl.Popup({ closeButton: false, offset: 12, maxWidth: "230px" })
+  const popup = new maplibregl.Popup({ closeButton: false, offset: 12, maxWidth: "260px" })
     .setLngLat(lngLat)
     .setDOMContent(el);
 

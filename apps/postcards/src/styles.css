@@ -46,17 +46,18 @@
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
-  /* Semantic accent colours, brightened so they read on dark surfaces. */
-  .ss-been {
+  /* Semantic accent colours, brightened so they read on dark surfaces.
+     Doubled-up class so these beat the later light-mode .ss-* rules. */
+  .ss-num.ss-been {
     color: #4ade80;
   }
-  .ss-air {
+  .ss-num.ss-air {
     color: #56b6f0;
   }
-  .ss-want {
+  .ss-num.ss-want {
     color: #f0a35a;
   }
-  .ss-fav {
+  .ss-num.ss-fav {
     color: #f472b6;
   }
   /* Import/scan notices: dark surfaces with legible text (WCAG AA). */
@@ -120,8 +121,9 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  height: 46px;
-  padding: 0 12px 0 15px;
+  /* viewport-fit=cover: pad past the notch/status bar so the bar stays tappable. */
+  height: calc(46px + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) 12px 0 15px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   flex: none;
@@ -196,6 +198,9 @@ h1.brand {
   border-top: 1px solid var(--border);
   background: var(--surface);
   padding-bottom: env(safe-area-inset-bottom, 0);
+  /* Landscape on notched phones: keep the outer tabs clear of the rounded corners. */
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
 }
 .nav-item {
   flex: 1;
@@ -278,6 +283,25 @@ h1.brand {
   background: var(--bg-sub);
 }
 
+/* The list docks beside/under the map and is never hidden — `.list-first`
+   moves it above the map (mobile) or to its left (desktop, see the grid). */
+.map-screen .map-top {
+  order: 0;
+}
+.map-screen .map-box {
+  order: 1;
+}
+.map-screen .view-list {
+  order: 2;
+}
+.map-screen.list-first .view-list {
+  order: 1;
+  border-bottom: 1px solid var(--border);
+}
+.map-screen.list-first .map-box {
+  order: 2;
+}
+
 /* Continent legend (colors match the map fills) */.legend-dot {
   width: 10px;
   height: 10px;
@@ -309,11 +333,12 @@ h1.brand {
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 6px 9px;
+  padding: 10px 12px;
   font: inherit;
   font-size: 12.5px;
+  min-width: 176px;
 }
 .maplibregl-popup-tip {
   border-top-color: var(--surface) !important;
@@ -324,11 +349,19 @@ h1.brand {
   flex-direction: column;
   gap: 1px;
 }
+/* Name on its own line, the "Country - Region" context on the next — they used
+   to render inline and ran into each other with no space at all. */
 .map-popup strong {
+  display: block;
   font-size: 14px;
+  font-weight: 650;
+  line-height: 1.3;
 }
 .map-popup span {
+  display: block;
+  margin-top: 2px;
   font-size: 12px;
+  line-height: 1.35;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -464,12 +497,13 @@ h1.brand {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex-shrink: 3;
 }
 .city-line .city-sub {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
 }
 .flag {
@@ -502,7 +536,7 @@ h1.brand {
   border-radius: 8px;
   border: 1.5px solid var(--border-strong);
   background: var(--surface);
-  color: #b6bdc8;
+  color: var(--muted);
   font-size: 14px;
   line-height: 1;
   display: grid;
@@ -567,16 +601,16 @@ h1.brand {
   font-size: 13px;
 }
 .ss-been {
-  color: #16a34a;
+  color: #15803d;
 }
 .ss-air {
-  color: #0284c7;
+  color: #0369a1;
 }
 .ss-want {
-  color: #d97706;
+  color: #b45309;
 }
 .ss-fav {
-  color: #db2777;
+  color: #be185d;
 }
 .ss-label {
   font-size: 12px;
@@ -1551,6 +1585,19 @@ button.stat-tile:hover .num {
     border-left: 1px solid var(--border);
     min-height: 0;
   }
+  /* Docked left: mirror the two panes. */
+  .map-screen.list-first {
+    grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+  }
+  .map-screen.list-first .map-box {
+    grid-column: 2;
+  }
+  .map-screen.list-first .view-list {
+    grid-column: 1;
+    border-left: none;
+    border-right: 1px solid var(--border);
+    border-bottom: none;
+  }
 }
 
 /* Wide desktop: cap the reading column so long-form text stays readable. */
@@ -1903,8 +1950,7 @@ button.stat-tile:hover .num {
 }
 
 /* Compact popup actions + tighter stat boxes (efficiency pass). */
-.map-popup strong { font-size: 13px; }
-.map-popup-actions .mini-btn { font-size: 11px; padding: 2px 8px; }
+.map-popup-actions .mini-btn { font-size: 11.5px; padding: 3px 9px; }
 .map-ctl-top { top: 10px; left: 50%; transform: translateX(-50%); bottom: auto; flex-direction: row; box-shadow: var(--shadow); }
 .map-ctl-top button { font-size: 12px; padding: 4px 10px; }
 .stat-tile { padding: 8px 10px; }
@@ -1955,6 +2001,13 @@ button.stat-tile:hover .num {
   background-color: var(--surface);
   color: var(--text);
   cursor: pointer;
+}
+/* .select doubles as the shared text-field surface — drop the select-only chrome there. */
+input.select,
+textarea.select {
+  background-image: none;
+  padding-right: 12px;
+  cursor: text;
 }
 .select:hover,
 .sort-select:hover,
@@ -2116,8 +2169,8 @@ button.stat-tile:hover .num {
 /* ===== Mobile density pass: the stacked top bars were eating the screen ===== */
 @media (max-width: 899.98px) {
   .topbar {
-    height: 40px;
-    padding: 0 8px 0 12px;
+    height: calc(40px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) 8px 0 12px;
   }
   .brand {
     font-size: 16px;
@@ -2133,7 +2186,16 @@ button.stat-tile:hover .num {
   }
   .search-input {
     height: 38px;
-    font-size: 15px;
+    font-size: 16px; /* below 16px, iOS zooms the page on focus */
+  }
+  /* Same iOS focus-zoom fix for every other text field on the small layout. */
+  .add-place-row .search-input,
+  .add-place-row .select,
+  .caption-input,
+  .journal-photo-edit .caption-input,
+  .pass-textarea,
+  .sort-select {
+    font-size: 16px;
   }
   /* Counter strip: one slim line. */
   .stat-strip {
@@ -2167,6 +2229,11 @@ button.stat-tile:hover .num {
   .map-btn {
     font-size: 12px;
     padding: 4px 10px;
+  }
+  /* The Layers pill sits in the bottom-right corner here — lift MapLibre's
+     compact attribution ⓘ above it so the OSM/ODbL credit stays tappable. */
+  .map-box .maplibregl-ctrl-bottom-right {
+    bottom: 40px;
   }
   .view-list {
     padding: 6px 10px 14px;
@@ -2261,7 +2328,7 @@ button.stat-tile:hover .num {
   .topbar-search .results,
   .topbar-search .search-empty {
     position: fixed;
-    top: 44px;
+    top: calc(44px + env(safe-area-inset-top, 0px));
     left: 8px;
     right: 8px;
     width: auto;
@@ -2298,8 +2365,11 @@ button.brand:focus-visible {
   color: var(--accent);
 }
 
-/* GitHub link: the yellow star reads as "go star it". */
+/* GitHub link: the yellow star reads as "go star it". The glyph stays visible
+   even when narrow-screen rules hide the action labels — without this the
+   button collapsed to an empty pill. */
 .topbar-star .star-glyph {
+  display: inline;
   color: #f5b301;
   font-size: 15px;
   line-height: 1;
@@ -2425,16 +2495,15 @@ button.brand:focus-visible {
   border: 0;
 }
 .guide-extract p {
-  margin: 0;
+  /* Never clip the text — a visibly cut-off description forced a trip to the
+     website. The whole lead reads in place now. */
+  margin: 0 0 8px;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text);
-  /* Keep it a preview; "Read more" opens the full article. */
-  display: -webkit-box;
-  -webkit-line-clamp: 8;
-  line-clamp: 8;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+}
+.guide-extract p:last-child {
+  margin-bottom: 0;
 }
 .guide-cite {
   display: block;
@@ -2445,6 +2514,38 @@ button.brand:focus-visible {
 }
 .guide-loading {
   margin: 0 0 12px;
+}
+
+/* The full guide, readable in-app: one collapsible chapter per section. */
+.guide-full {
+  margin: 0 0 12px;
+}
+.guide-full-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sub);
+  margin-bottom: 6px;
+}
+.guide-full-section summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 8px 12px;
+}
+.guide-full-section summary:hover {
+  color: var(--accent);
+}
+.guide-full-section[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+.guide-full-section p {
+  margin: 8px 12px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+.guide-full > .guide-cite {
+  margin: 4px 0 0;
 }
 
 /* Moments: each links to the real places where it happens. */
@@ -2547,18 +2648,8 @@ button.brand:focus-visible {
   margin-top: 0;
 }
 
-/* ===== Bigger-map toggle: the map fills the screen, the list steps aside. ===== */
-.map-screen.map-tall .map-box {
-  height: auto;
-  min-height: 0;
-  flex: 1;
-}
-.map-screen.map-tall .view-list {
-  display: none;
-}
-
-/* While a map popup is open, step the floating controls (mode bar, zoom, Layers,
-   Bigger-map) aside so none of them sits on top of the popup and clips it. */
+/* While a map popup is open, step the floating controls (mode bar, zoom, Layers)
+   aside so none of them sits on top of the popup and clips it. */
 .maplibregl-popup {
   z-index: 7;
 }
@@ -2566,61 +2657,6 @@ button.brand:focus-visible {
 .map-box.popup-open .maplibregl-ctrl-top-right {
   opacity: 0;
   pointer-events: none;
-}
-
-/* ===== Bottom-nav "More" sheet (fewer buttons in the bar). ===== */
-.more-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  background: transparent;
-  border: 0;
-  cursor: default;
-}
-.more-sheet {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(var(--bottom-nav-h, 60px) + env(safe-area-inset-bottom, 0px) + 8px);
-  z-index: 41;
-  width: min(320px, calc(100vw - 24px));
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
-.more-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-sub);
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 600;
-  min-height: 48px;
-  text-align: left;
-}
-.more-item.active {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-@media (min-width: 900px) {
-  /* Desktop has the room — show every section, no overflow sheet needed. */
-  .more-sheet {
-    bottom: auto;
-    top: 64px;
-    left: 12px;
-    transform: none;
-    grid-template-columns: 1fr;
-    width: 200px;
-  }
 }
 
 /* ===== Journal: daily-story day picker + blog filters. ===== */
@@ -2648,4 +2684,33 @@ button.brand:focus-visible {
 .setting-picker {
   max-width: 220px;
   margin-top: 8px;
+}
+
+/* Touch screens: the 30px Been/Want/Fav toggles sat ~36px apart on compact
+   rows — thumbs hit the neighbouring row's ✓. Bigger targets on a roomier
+   pitch; desktop keeps the deliberate compact density (pointer: fine). */
+@media (pointer: coarse) {
+  .state {
+    width: 38px;
+    height: 38px;
+  }
+  .states {
+    gap: 8px;
+  }
+  .city-row.compact {
+    padding: 5px 0;
+  }
+}
+
+/* Phones: a visited row's trailing controls (Guide, Photos, ★, Remove) add up
+   to ~267px, leaving the place name — the thing the list is FOR — about six
+   characters on a 360px screen. Drop the button words (emoji stay; each button
+   keeps its full aria-label/title) and tighten the pill padding. */
+@media (max-width: 599.98px) {
+  .city-row .row-btn-label {
+    display: none;
+  }
+  .city-row .mini-btn {
+    padding: 4px 8px;
+  }
 }
