@@ -50,14 +50,15 @@ export function App() {
     void useStories.getState().load();
   }, []);
 
-  // Move focus to the content region on tab change (skip initial mount).
+  // Move focus to the content region on tab change and when a city/country
+  // detail page opens or closes — both swap out <main> (skip initial mount).
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
       return;
     }
     mainRef.current?.focus();
-  }, [tab]);
+  }, [tab, cityPageId, countryPageId]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

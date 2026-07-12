@@ -72,7 +72,7 @@ export function GuideButton({ place, className }: { place: PlaceRef; className?:
       aria-label={`Open ${place.name} with travel guides`}
       title={`Open ${place.name} with travel guides`}
     >
-      📖 Guide
+      📖 <span className="row-btn-label">Guide</span>
     </button>
   );
 }

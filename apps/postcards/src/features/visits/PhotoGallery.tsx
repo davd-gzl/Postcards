@@ -24,6 +24,7 @@ export function PhotoGallery({
   const addPhoto = useVisits((s) => s.addPhoto);
   const removePhoto = useVisits((s) => s.removePhoto);
   const setPhotoCaption = useVisits((s) => s.setPhotoCaption);
+  const setAll = useVisits((s) => s.setAll);
   const showToast = useToast((s) => s.show);
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -146,7 +147,7 @@ export function PhotoGallery({
           onClick={() => inputRef.current?.click()}
           aria-label={`Add a photo for ${placeName}`}
         >
-          {busy ? "…" : "📷 Photos"}
+          {busy ? "…" : <>📷 <span className="row-btn-label">Photos</span></>}
         </button>
       )}
 
@@ -228,8 +229,12 @@ export function PhotoGallery({
                 className="link-danger"
                 disabled={busy}
                 onClick={async () => {
+                  // Photos exist nowhere but in-app — snapshot first so the
+                  // toast can undo what would otherwise be an unrecoverable tap.
+                  const prev = useVisits.getState().visits;
                   await removePhoto(visitId, safeIndex);
                   if (count <= 1) setOpen(false);
+                  showToast("Removed photo", () => setAll(prev));
                 }}
               >
                 Remove
