@@ -66,11 +66,11 @@ pnpm --filter postcards build       # production PWA build
 
 ### Host it for free
 
-It's a static PWA, so it hosts for free anywhere — including from a **private
-repo** (where GitHub Pages won't). Config for **Netlify** is committed
-(`netlify.toml`, `_redirects`, `_headers`): connect the repo for auto-deploys, or
-build locally and drag `apps/postcards/dist` to Netlify Drop (no repo access
-needed). Step-by-step: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+It's a static PWA, so it hosts for free anywhere. This repo ships a **GitHub
+Pages** workflow ([`.github/workflows/pages.yml`](.github/workflows/pages.yml)):
+every push to the default branch builds the app with the `/Postcards/` base path
+and publishes it at `https://<user>.github.io/Postcards/`. Any other static host
+works too — build with `pnpm --filter postcards build` and serve `apps/postcards/dist`.
 
 ## Tech stack
 
