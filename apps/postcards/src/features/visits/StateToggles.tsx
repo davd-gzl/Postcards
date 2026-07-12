@@ -40,17 +40,24 @@ export function StateToggles({ place }: { place: PlaceRef }) {
     await toggleFavorite(place);
   }
 
+  // A country is never "visited" by itself — you visit a country by visiting a
+  // place inside it (coverage is derived; see the constitution). Countries keep
+  // ⚑ Want-to-go, and ✓ only to UNDO a legacy direct record.
+  const countryCheck = place.kind === "country";
+
   return (
     <div className="states" role="group" aria-label={`${place.name} status`}>
-      <button
-        className={"state been" + (been ? " on" : "")}
-        type="button"
-        aria-pressed={been}
-        aria-label={been ? `Remove ${place.name} from visited` : `Mark ${place.name} visited`}
-        onClick={onBeen}
-      >
-        ✓
-      </button>
+      {(!countryCheck || been) && (
+        <button
+          className={"state been" + (been ? " on" : "")}
+          type="button"
+          aria-pressed={been}
+          aria-label={been ? `Remove ${place.name} from visited` : `Mark ${place.name} visited`}
+          onClick={onBeen}
+        >
+          ✓
+        </button>
+      )}
       {!been && (
         <button
           className={"state want" + (want ? " on" : "")}

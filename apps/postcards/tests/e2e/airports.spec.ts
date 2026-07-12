@@ -7,9 +7,11 @@ test("log an airport by IATA code and see it counted", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Postcards")).toBeVisible();
 
-  // Search by IATA code; the top result is the matching airport.
+  // Search by IATA code; the top result is the matching airport. The row's
+  // chip logs it (picking the row itself only flies the map there).
   await page.getByLabel("Search a city or country").fill("JFK");
-  await page.getByRole("button", { name: /JFK/ }).first().click();
+  await page.getByRole("button", { name: /Mark .*JFK.* visited/ }).first().click();
+  await page.keyboard.press("Escape");
   // Add is silent; verified by the totals strip + Places list below.
 
   // Totals strip gains an airports counter.

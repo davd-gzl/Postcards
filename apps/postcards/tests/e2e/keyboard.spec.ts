@@ -9,10 +9,12 @@ test("add a visit and browse with the keyboard only", async ({ page }) => {
   await page.keyboard.press("/");
   await expect(page.getByLabel("Search a city or country")).toBeFocused();
 
-  // Type, arrow to the first option, Enter to add.
+  // Type, arrow to the first option, Shift+Enter to add (plain Enter only
+  // shows the place — adding is always explicit).
   await page.keyboard.type("tokyo");
   await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("Enter");
+  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.press("Escape");
 
   // Leave the input, then switch tabs with number keys (5 = Stats, 2 = Places).
   await page.getByRole("heading", { name: "Postcards" }).click();

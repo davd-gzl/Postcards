@@ -19,9 +19,10 @@ async function assertNoSeriousViolations(page: import("@playwright/test").Page, 
 test("map, stats and places screens pass the axe WCAG 2.1 AA gate", async ({ page }) => {
   await page.goto("/");
 
-  // Seed one visit so lists/bars render.
+  // Seed one visit so lists/bars render (the row's chip is the explicit add).
   await page.getByLabel("Search a city or country").fill("Lisbon");
-  await page.getByRole("button", { name: /Lisbon/ }).first().click();
+  await page.getByRole("button", { name: "Mark Lisbon visited" }).first().click();
+  await page.keyboard.press("Escape");
 
   await expect(page.getByText("Cities in view")).toBeVisible();
   await assertNoSeriousViolations(page, "map");

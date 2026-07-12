@@ -19,7 +19,8 @@ export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
         <h2>Keyboard shortcuts</h2>
         <ul className="shortcuts">
           <li>
-            <kbd>/</kbd> Search &amp; quick-add
+            <kbd>/</kbd> Search — <kbd>Enter</kbd> shows the place, <kbd>Shift</kbd>+
+            <kbd>Enter</kbd> marks it visited
           </li>
           <li>
             <kbd>1</kbd>–<kbd>5</kbd> or <kbd>M</kbd> <kbd>P</kbd> <kbd>T</kbd> <kbd>J</kbd>{" "}
