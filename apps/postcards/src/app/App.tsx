@@ -6,17 +6,15 @@ import { useUi, type Tab } from "../lib/store/useUi";
 import { StatsView } from "../features/stats/StatsView";
 import { PlacesScreen } from "../features/visits/PlacesScreen";
 import { TravelScreen } from "../features/travel/TravelScreen";
-import { PassportScreen } from "../features/passport/PassportScreen";
 import { JournalScreen } from "../features/journal/JournalScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
-import { ExperiencesScreen } from "../features/experiences/ExperiencesScreen";
 import { CityScreen } from "../features/city/CityScreen";
 import { CountryScreen } from "../features/country/CountryScreen";
 import { PlaceSearch } from "../features/visits/PlaceSearch";
 import { ShortcutsHelp } from "../ui/ShortcutsHelp";
 import { AboutModal } from "../ui/AboutModal";
 import { Toast } from "../ui/Toast";
-import { MapIcon, ChartIcon, ListIcon, RouteIcon, FlagIcon, BookIcon, SparkIcon, MoreIcon, GearIcon, InfoIcon } from "../ui/icons";
+import { MapIcon, ChartIcon, ListIcon, RouteIcon, BookIcon, GearIcon, InfoIcon } from "../ui/icons";
 import { useState } from "react";
 import { useInstallPrompt } from "../lib/hooks/useInstallPrompt";
 
@@ -25,21 +23,15 @@ const MapScreen = lazy(() =>
   import("../features/map/MapScreen").then((m) => ({ default: m.MapScreen })),
 );
 
+// Five sections, all visible — no overflow menu. Passport and Moments are views
+// inside Places now (they're collections of places, not destinations of their own).
 const TABS: { id: Tab; label: string; keys: string[]; Icon: () => JSX.Element }[] = [
   { id: "map", label: "Map", keys: ["1", "m"], Icon: MapIcon },
-  { id: "stats", label: "Stats", keys: ["2", "s"], Icon: ChartIcon },
-  { id: "places", label: "Places", keys: ["3", "p"], Icon: ListIcon },
-  { id: "trips", label: "Trips", keys: ["4", "t"], Icon: RouteIcon },
-  { id: "passport", label: "Passport", keys: ["5", "f"], Icon: FlagIcon },
-  { id: "journal", label: "Journal", keys: ["6", "j"], Icon: BookIcon },
-  { id: "experiences", label: "Moments", keys: ["7", "x"], Icon: SparkIcon },
+  { id: "places", label: "Places", keys: ["2", "p"], Icon: ListIcon },
+  { id: "trips", label: "Trips", keys: ["3", "t"], Icon: RouteIcon },
+  { id: "journal", label: "Journal", keys: ["4", "j"], Icon: BookIcon },
+  { id: "stats", label: "Stats", keys: ["5", "s"], Icon: ChartIcon },
 ];
-
-// The bottom bar was too crowded with all seven. Keep the four everyday tabs
-// visible; the rest live behind a single "More" entry.
-const PRIMARY_TABS: Tab[] = ["map", "places", "journal", "passport"];
-const primaryTabs = TABS.filter((t) => PRIMARY_TABS.includes(t.id));
-const moreTabs = TABS.filter((t) => !PRIMARY_TABS.includes(t.id));
 
 export function App() {
   const tab = useUi((s) => s.tab);
@@ -49,10 +41,6 @@ export function App() {
   const [showHelp, setShowHelp] = useState(false);
   const { canInstall, install } = useInstallPrompt();
   const [showAbout, setShowAbout] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const moreOpenRef = useRef(moreOpen);
-  moreOpenRef.current = moreOpen;
-  const inMore = moreTabs.some((t) => t.id === tab);
   const mainRef = useRef<HTMLElement>(null);
   const firstRender = useRef(true);
 
@@ -74,10 +62,6 @@ export function App() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        if (moreOpenRef.current) {
-          setMoreOpen(false);
-          return;
-        }
         // A modal/lightbox/open composer on screen consumes Escape (its own
         // handler closes it) — only an unobstructed Escape navigates back.
         const dialogOpen = !!document.querySelector(
@@ -109,6 +93,17 @@ export function App() {
         e.preventDefault();
         return;
       }
+      // Passport & Moments moved into Places — their old shortcuts still work.
+      if (e.key.toLowerCase() === "f") {
+        useUi.getState().openPlaces("passport");
+        e.preventDefault();
+        return;
+      }
+      if (e.key.toLowerCase() === "x") {
+        useUi.getState().openPlaces("moments");
+        e.preventDefault();
+        return;
+      }
       const match = TABS.find((x) => x.keys.includes(e.key.toLowerCase()));
       if (match) {
         useUi.getState().setTab(match.id);
@@ -136,11 +131,6 @@ export function App() {
       const dialogOpen = !!document.querySelector(
         ".modal-backdrop, .lightbox, .maplibregl-popup, .journal-composer",
       );
-      if (moreOpenRef.current) {
-        setMoreOpen(false);
-        arm();
-        return;
-      }
       if (dialogOpen) {
         // Let the open layer close via its own Escape handler.
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -244,7 +234,7 @@ export function App() {
       </p>
 
       <nav className="bottom-nav" aria-label="Sections">
-        {primaryTabs.map(({ id, label, Icon }) => (
+        {TABS.map(({ id, label, Icon }) => (
           <button
             key={id}
             type="button"
@@ -252,56 +242,13 @@ export function App() {
             aria-current={tab === id ? "page" : undefined}
             aria-label={label}
             title={label}
-            onClick={() => {
-              setMoreOpen(false);
-              setTab(id);
-            }}
+            onClick={() => setTab(id)}
           >
             <Icon />
             <span aria-hidden>{label}</span>
           </button>
         ))}
-        <button
-          type="button"
-          className={"nav-item" + (inMore ? " active" : "")}
-          aria-expanded={moreOpen}
-          aria-controls="more-sheet"
-          aria-label="More sections"
-          title="More"
-          onClick={() => setMoreOpen((v) => !v)}
-        >
-          <MoreIcon />
-          <span aria-hidden>More</span>
-        </button>
       </nav>
-
-      {moreOpen && (
-        <>
-          <button
-            type="button"
-            className="more-backdrop"
-            aria-label="Close menu"
-            onClick={() => setMoreOpen(false)}
-          />
-          <div id="more-sheet" className="more-sheet" role="group" aria-label="More sections">
-            {moreTabs.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                className={"more-item" + (tab === id ? " active" : "")}
-                aria-current={tab === id ? "page" : undefined}
-                onClick={() => {
-                  setTab(id);
-                  setMoreOpen(false);
-                }}
-              >
-                <Icon />
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
 
       <main
             ref={mainRef}
@@ -335,19 +282,9 @@ export function App() {
                     <TravelScreen />
                   </div>
                 )}
-                {tab === "passport" && (
-                  <div className="screen">
-                    <PassportScreen />
-                  </div>
-                )}
                 {tab === "journal" && (
                   <div className="screen">
                     <JournalScreen />
-                  </div>
-                )}
-                {tab === "experiences" && (
-                  <div className="screen">
-                    <ExperiencesScreen />
                   </div>
                 )}
                 {tab === "settings" && (

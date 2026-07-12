@@ -9,6 +9,14 @@ export type {
 export { guidesFor } from "./guides";
 export { fetchSummary, type FetchSummaryOpts } from "./summary";
 export {
+  fetchFullText,
+  splitSections,
+  fullTextEndpoint,
+  type FetchFullTextOpts,
+  type WikiFullText,
+  type WikiGuideSection,
+} from "./fulltext";
+export {
   articleUrl,
   phrasebookTitle,
   searchUrl,

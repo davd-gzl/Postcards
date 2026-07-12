@@ -2,7 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useSettings } from "../../lib/store/useSettings";
 import { useUi } from "../../lib/store/useUi";
-import { guidesFor, fetchSummary, searchUrl, type WikivoyageSummary } from "../../lib/wikivoyage";
+import {
+  guidesFor,
+  fetchSummary,
+  fetchFullText,
+  searchUrl,
+  type WikivoyageSummary,
+  type WikiFullText,
+} from "../../lib/wikivoyage";
 import type { PlaceRef } from "../../lib/schema/models";
 
 const KIND_GROUP: Record<string, string> = {
@@ -22,12 +29,18 @@ function guideNames(place: PlaceRef) {
   const countryName = ref.articleNameOf(country.iso2);
   const cityName =
     place.kind === "city" ? ref.cityById(place.id)?.name ?? place.name : undefined;
+  // Monuments get THEIR article as the overview (photo of the site, not the
+  // country's — whose Wikipedia lead image is usually its flag). Link-building
+  // still uses cityName only: Wikivoyage has city guides, rarely monument ones.
+  const monumentName =
+    place.kind === "heritage" ? ref.heritageById(place.id)?.name ?? place.name : undefined;
+  const focusName = cityName ?? monumentName;
   return {
     countryIso2: country.iso2,
     countryName,
     cityName,
-    summaryTitle: cityName ?? countryName,
-    searchQuery: cityName ? `${cityName} ${countryName}` : countryName,
+    summaryTitle: focusName ?? countryName,
+    searchQuery: focusName ? `${focusName} ${countryName}` : countryName,
   };
 }
 
@@ -118,6 +131,38 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
   const [wpSummary, setWpSummary] = useState<WikivoyageSummary | null>(() => readSaved("wikipedia"));
   const [state, setState] = useState<"idle" | "loading" | "empty">("idle");
 
+  // The WHOLE guide, readable in the app (the summary is just the lead and was
+  // often visibly cut off, pushing people to the website). Saved on-device too.
+  const fullKey = (proj: string) => `postcards-guidefull:${proj}:${countryIso2}:${summaryTitle}`;
+  const readSavedFull = (): WikiFullText | null => {
+    for (const proj of ["wikivoyage", "wikipedia"] as const) {
+      try {
+        const raw = localStorage.getItem(fullKey(proj));
+        if (raw) return JSON.parse(raw) as WikiFullText;
+      } catch {
+        /* unreadable / private mode */
+      }
+    }
+    return null;
+  };
+  const [full, setFull] = useState<WikiFullText | null>(() => readSavedFull());
+  const [fullState, setFullState] = useState<"idle" | "loading" | "empty">("idle");
+
+  async function loadFullGuide() {
+    setFullState("loading");
+    const wv = await fetchFullText(summaryTitle);
+    const got = wv ?? (await fetchFullText(summaryTitle, { project: "wikipedia" }));
+    setFull(got);
+    if (got) {
+      try {
+        localStorage.setItem(fullKey(wv ? "wikivoyage" : "wikipedia"), JSON.stringify(got));
+      } catch {
+        /* private mode / full: shown but not saved */
+      }
+    }
+    setFullState(got ? "idle" : "empty");
+  }
+
   async function loadOverview() {
     setState("loading");
     const [wv, wp] = await Promise.all([
@@ -160,6 +205,20 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
   const overviewSource = summary ? "Wikivoyage" : "Wikipedia";
   const photo = wpSummary?.thumb;
 
+  // Once the full guide is loaded, its complete lead replaces the summary
+  // extract (the REST summary truncates it); the citation follows the source.
+  const fullLead = full?.sections.find((s) => !s.heading)?.text;
+  const cardText =
+    fullLead && fullLead.length > (overview?.extract.length ?? 0) ? fullLead : overview?.extract;
+  const cardUrl = cardText === fullLead && full ? full.url : overview?.url;
+  const cardSource =
+    cardText === fullLead && full
+      ? full.attribution.startsWith("Wikipedia")
+        ? "Wikipedia"
+        : "Wikivoyage"
+      : overviewSource;
+  const fullSections = full?.sections.filter((s) => s.heading) ?? [];
+
   return (
     <div className="guide-body">
       <p className="muted small guide-source">
@@ -185,7 +244,7 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
             </button>
           </p>
         )}
-        {overview && (
+        {(overview || full) && cardText && (
           <figure className="guide-card">
             {photo && (
               <img
@@ -197,15 +256,58 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
               />
             )}
             <blockquote className="guide-extract">
-              <p>{overview.extract}</p>
+              {cardText.split(/\n{2,}/).map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
             </blockquote>
             <figcaption className="muted small guide-cite">
-              <a href={overview.url} target="_blank" rel="noopener noreferrer">
-                Read more on {overviewSource}
+              <a href={cardUrl} target="_blank" rel="noopener noreferrer">
+                Read more on {cardSource}
               </a>{" "}
               · CC BY-SA · saved offline
             </figcaption>
           </figure>
+        )}
+
+        {/* The whole guide, readable right here — no trip to the website. */}
+        {(overview || full) && !full && fullState === "idle" && (
+          <button type="button" className="btn-ghost guide-overview-btn" onClick={() => void loadFullGuide()}>
+            📖 Read the whole guide here
+          </button>
+        )}
+        {fullState === "loading" && (
+          <p className="muted small guide-loading">Loading the full guide…</p>
+        )}
+        {fullState === "empty" && (
+          <p className="muted small">
+            {typeof navigator !== "undefined" && !navigator.onLine
+              ? "You're offline — the full guide loads when you're back online."
+              : "No full guide for this exact title — the links below still work."}{" "}
+            <button type="button" className="mini-btn" onClick={() => void loadFullGuide()}>
+              Retry
+            </button>
+          </p>
+        )}
+        {fullSections.length > 0 && (
+          <div className="guide-full">
+            {fullSections.map((s) => (
+              <details key={s.heading} className="guide-full-section">
+                <summary>{s.heading}</summary>
+                {s.text.split(/\n{2,}/).map((p, i) => (
+                  <p key={i}>{p}</p>
+                ))}
+              </details>
+            ))}
+            {full && (
+              <p className="muted small guide-cite">
+                Full guide ·{" "}
+                <a href={full.url} target="_blank" rel="noopener noreferrer">
+                  {full.attribution}
+                </a>{" "}
+                · saved offline
+              </p>
+            )}
+          </div>
         )}
       </div>
 

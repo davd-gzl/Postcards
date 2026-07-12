@@ -5,6 +5,8 @@ import {
   phrasebookTitle,
   titleToPath,
   fetchSummary,
+  fetchFullText,
+  splitSections,
 } from "../../src/lib/wikivoyage";
 
 describe("wikivoyage URL builders", () => {
@@ -85,5 +87,72 @@ describe("fetchSummary (opt-in, degrades gracefully)", () => {
         status: 200,
       })) as unknown as typeof fetch;
     expect(await fetchSummary("Springfield", { fetchFn })).toBeNull();
+  });
+});
+
+describe("splitSections (full-guide plain text)", () => {
+  it("splits the lead and top-level sections, keeps sub-headings readable", () => {
+    const text = [
+      "Kyoto is a city in Japan.",
+      "",
+      "== See ==",
+      "Temples everywhere.",
+      "===Fushimi Inari===",
+      "Thousands of torii gates.",
+      "",
+      "== References ==",
+      "ignored boilerplate",
+    ].join("\n");
+    const sections = splitSections(text);
+    expect(sections.map((s) => s.heading)).toEqual(["", "See"]);
+    expect(sections[0]!.text).toBe("Kyoto is a city in Japan.");
+    expect(sections[1]!.text).toContain("Fushimi Inari");
+    expect(sections[1]!.text).toContain("Thousands of torii gates.");
+  });
+
+  it("drops empty and housekeeping sections", () => {
+    const sections = splitSections("== External links ==\nlink farm\n== Do ==\n\n");
+    expect(sections).toEqual([]);
+  });
+});
+
+describe("fetchFullText (opt-in, degrades gracefully)", () => {
+  it("returns null when the network fails (offline)", async () => {
+    const full = await fetchFullText("Paris", {
+      fetchFn: async () => {
+        throw new Error("offline");
+      },
+    });
+    expect(full).toBeNull();
+  });
+
+  it("returns attributed, sectioned plain text and strips markup", async () => {
+    const fetchFn = (async () =>
+      new Response(
+        JSON.stringify({
+          query: {
+            pages: [
+              {
+                title: "Paris",
+                extract: "Paris is the <b>capital</b>.\n== Eat ==\nCroissants.",
+              },
+            ],
+          },
+        }),
+        { status: 200 },
+      )) as unknown as typeof fetch;
+    const full = await fetchFullText("Paris", { fetchFn });
+    expect(full?.sections.map((s) => s.heading)).toEqual(["", "Eat"]);
+    expect(full?.sections[0]!.text).toBe("Paris is the capital.");
+    expect(full?.attribution).toContain("CC BY-SA");
+    expect(full?.url).toBe("https://en.wikivoyage.org/wiki/Paris");
+  });
+
+  it("returns null for missing pages", async () => {
+    const fetchFn = (async () =>
+      new Response(JSON.stringify({ query: { pages: [{ title: "Nope", missing: true }] } }), {
+        status: 200,
+      })) as unknown as typeof fetch;
+    expect(await fetchFullText("Nope", { fetchFn })).toBeNull();
   });
 });
