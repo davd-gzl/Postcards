@@ -1,8 +1,8 @@
 name: Deploy to GitHub Pages
 
 # Builds the Postcards PWA and publishes it to GitHub Pages at
-# https://<owner>.github.io/Postcards/. Netlify still deploys from the domain
-# root; only this job builds with the /Postcards/ base path.
+# https://<owner>.github.io/Postcards/. This job builds with the /Postcards/
+# base path (VITE_BASE); local dev and the Capacitor native wrap keep base "/".
 
 on:
   push:
