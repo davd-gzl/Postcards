@@ -8,6 +8,21 @@ import { DEFAULT_SCOPE, type CountryScope } from "../reference/scope";
 const SCOPE_KEY = "postcards-country-scope";
 const AUTO_GUIDES_KEY = "postcards-auto-guides";
 const ONLINE_MAP_KEY = "postcards-online-map";
+const MAX_MARKERS_KEY = "postcards-max-markers";
+
+// How many airport / monument markers to draw at most in the current view, so a
+// dense area doesn't blanket the map. Clamped to a sane range.
+export const MARKER_CAP_CHOICES = [100, 250, 500, 1000] as const;
+const DEFAULT_MAX_MARKERS = 250;
+
+function loadMaxMarkers(): number {
+  try {
+    const n = Number(localStorage.getItem(MAX_MARKERS_KEY));
+    return (MARKER_CAP_CHOICES as readonly number[]).includes(n) ? n : DEFAULT_MAX_MARKERS;
+  } catch {
+    return DEFAULT_MAX_MARKERS;
+  }
+}
 
 function loadScope(): CountryScope {
   try {
@@ -47,6 +62,8 @@ interface SettingsState {
   setAutoLoadGuides: (value: boolean) => void;
   onlineMap: boolean;
   setOnlineMap: (value: boolean) => void;
+  maxMarkers: number;
+  setMaxMarkers: (value: number) => void;
 }
 
 export const useSettings = create<SettingsState>((set) => ({
@@ -76,5 +93,14 @@ export const useSettings = create<SettingsState>((set) => ({
       /* private mode: not persisted */
     }
     set({ onlineMap });
+  },
+  maxMarkers: loadMaxMarkers(),
+  setMaxMarkers: (maxMarkers) => {
+    try {
+      localStorage.setItem(MAX_MARKERS_KEY, String(maxMarkers));
+    } catch {
+      /* private mode: not persisted */
+    }
+    set({ maxMarkers });
   },
 }));

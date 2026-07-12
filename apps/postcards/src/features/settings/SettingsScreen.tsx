@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { useToast } from "../../lib/store/useToast";
-import { useSettings } from "../../lib/store/useSettings";
+import { useSettings, MARKER_CAP_CHOICES } from "../../lib/store/useSettings";
 import { saveAreaOffline } from "../map/offlineTiles";
 import { OFFLINE_REGIONS, REGION_MAX_TILES, estimateRegion, type OfflineRegion } from "./regions";
 import { ScopeToggle } from "../../ui/ScopeToggle";
@@ -20,6 +20,8 @@ export function SettingsScreen() {
   const setAutoLoadGuides = useSettings((s) => s.setAutoLoadGuides);
   const onlineMap = useSettings((s) => s.onlineMap);
   const setOnlineMap = useSettings((s) => s.setOnlineMap);
+  const maxMarkers = useSettings((s) => s.maxMarkers);
+  const setMaxMarkers = useSettings((s) => s.setMaxMarkers);
   const [progress, setProgress] = useState<Record<string, number | undefined>>({});
   // Downloads are cancelable, and each region remembers when it was last saved
   // (so the button honestly reads "Re-download" instead of pretending it's new).
@@ -132,6 +134,25 @@ export function SettingsScreen() {
           />
           <span>Use the detailed online map (OpenStreetMap)</span>
         </label>
+        <label className="picker-label setting-picker" htmlFor="max-markers">
+          Most markers on screen
+          <select
+            id="max-markers"
+            className="select"
+            value={maxMarkers}
+            onChange={(e) => setMaxMarkers(Number(e.target.value))}
+          >
+            {MARKER_CAP_CHOICES.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="muted small">
+          Caps how many airports or monuments are drawn in the current view, so a dense area doesn't
+          blanket the map. Places you've marked are always kept.
+        </p>
       </section>
 
       <section className="settings-section">

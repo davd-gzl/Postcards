@@ -1,10 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { gotoTab } from "./nav-helper";
 
 // End-to-end: log a journey in the Travel log via the two place pickers, and see
 // it listed with a computed distance and reflected in the totals.
 test("log a trip and see its distance in the totals", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Trips", exact: true }).click();
+  await gotoTab(page, "Trips");
   await expect(page.getByRole("heading", { name: "Travel log" })).toBeVisible();
 
   // Pick the "from" airport by IATA code.

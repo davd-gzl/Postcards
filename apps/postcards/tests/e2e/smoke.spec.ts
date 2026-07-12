@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { gotoTab } from "./nav-helper";
 
 // End-to-end smoke: the app mounts with the real gazetteer, a place can be
 // added via search, and it shows up in statistics and the Places list.
@@ -12,7 +13,7 @@ test("add a place via search and see it in stats + places", async ({ page }) => 
   // Adds are silent (no toast noise); the result is verified in Stats + Places below.
 
   // Stats reflects it, including the continent section.
-  await page.getByRole("button", { name: "Stats", exact: true }).click();
+  await gotoTab(page, "Stats");
   await expect(page.getByText("countries", { exact: true })).toBeVisible();
   await expect(page.locator(".country-head", { hasText: "France" })).toBeVisible();
   await expect(page.getByText("By continent")).toBeVisible();
@@ -44,6 +45,6 @@ test("country checklist toggles a country", async ({ page }) => {
   await page.getByLabel("Filter countries").fill("Japan");
   await page.getByRole("button", { name: "Mark Japan visited" }).click();
 
-  await page.getByRole("button", { name: "Stats", exact: true }).click();
+  await gotoTab(page, "Stats");
   await expect(page.locator(".country-head", { hasText: "Japan" })).toBeVisible();
 });

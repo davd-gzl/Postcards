@@ -70,6 +70,7 @@ export function MapScreen() {
   // The privacy escape hatch: when off, the app uses the no-network offline map
   // only (zero outbound requests), overriding whatever detailed basemap is saved.
   const onlineMap = useSettings((s) => s.onlineMap);
+  const maxMarkers = useSettings((s) => s.maxMarkers);
 
   // gazGen invalidates city snapshots when the full 135k-city set streams in —
   // the singleton mutates in place, so `ref` alone never re-fires these memos.
@@ -93,6 +94,7 @@ export function MapScreen() {
     loadPref("postcards-countries", (v) => v === "1"),
   );
   const [listTall, setListTall] = useState(false);
+  const [mapTall, setMapTall] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const [mode, setMode] = useState<MapMode>(() =>
     loadPref("postcards-map-mode", (v) =>
@@ -330,7 +332,11 @@ export function MapScreen() {
   }
 
   return (
-    <div className={"map-screen" + (listTall ? " list-tall" : "")}>
+    <div
+      className={
+        "map-screen" + (listTall ? " list-tall" : "") + (mapTall ? " map-tall" : "")
+      }
+    >
       {/* Search lives in the app top bar now — this row is just the counters. */}
       <div className="map-top">
         <StatStrip />
@@ -350,6 +356,7 @@ export function MapScreen() {
           mode={mode}
           showTowns={showTowns}
           showCountries={showCountries}
+          maxMarkers={maxMarkers}
           reducedMotion={reducedMotion}
           onBaseUnavailable={() => {
             if (basemap === "osm") {
@@ -376,6 +383,15 @@ export function MapScreen() {
           ))}
         </div>
         <div className="map-ctl map-ctl-left">
+          <button
+            className={"map-btn" + (mapTall ? " on" : "")}
+            type="button"
+            aria-pressed={mapTall}
+            title={mapTall ? "Show the list again" : "Make the map fill the screen"}
+            onClick={() => setMapTall((v) => !v)}
+          >
+            {mapTall ? "⤡ Show list" : "⤢ Bigger map"}
+          </button>
           {myPlaceCoords.length > 0 && (
             <button className="map-btn" type="button" onClick={() => fitToMyPlaces()}>
               Fit to my places

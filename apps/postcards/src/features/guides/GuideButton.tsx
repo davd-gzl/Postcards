@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useSettings } from "../../lib/store/useSettings";
-import { useModalKeys } from "../../lib/hooks/useModalKeys";
+import { useUi } from "../../lib/store/useUi";
 import { guidesFor, fetchSummary, searchUrl, type WikivoyageSummary } from "../../lib/wikivoyage";
 import type { PlaceRef } from "../../lib/schema/models";
 
@@ -32,42 +32,35 @@ function guideNames(place: PlaceRef) {
 }
 
 /**
- * A "📖 Guide" affordance for a place. Opens a modal of Wikivoyage guides —
- * the city & country travel guides, the country overview, and a phrasebook per
- * spoken language (phrases + the alphabet). All links work offline; a short
- * article overview (text + lead photo) is fetched only when the user explicitly
- * asks (online, opt-in, with attribution — Constitution: privacy by default,
- * aggregator not author).
+ * A "📖 Guide" affordance for a place, shown in list rows. Rather than a cramped
+ * modal (bad on phones), it opens the place's own detail page, which carries the
+ * full guides inline (see GuideSection) alongside its photos and journal links.
  */
 export function GuideButton({ place, className }: { place: PlaceRef; className?: string }) {
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const names = useMemo(() => guideNames(place), [place]);
   if (!names) return null;
 
+  const open = () => {
+    const ui = useUi.getState();
+    // City/heritage/custom places have a city page; everything else (country,
+    // airport) opens the country page — both render the guides inline.
+    if (place.kind === "city" || place.kind === "heritage" || place.kind === "custom") {
+      ui.openCity(place.id);
+    } else {
+      ui.openCountry(place.countryId);
+    }
+  };
+
   return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={className ?? "mini-btn"}
-        onClick={() => setOpen(true)}
-        aria-label={`Travel guides for ${place.name}`}
-        title={`Travel guides for ${place.name}`}
-      >
-        📖 Guide
-      </button>
-      {open && (
-        <GuidesModal
-          placeName={place.name}
-          names={names}
-          onClose={() => {
-            setOpen(false);
-            triggerRef.current?.focus();
-          }}
-        />
-      )}
-    </>
+    <button
+      type="button"
+      className={className ?? "mini-btn"}
+      onClick={open}
+      aria-label={`Open ${place.name} with travel guides`}
+      title={`Open ${place.name} with travel guides`}
+    >
+      📖 Guide
+    </button>
   );
 }
 
@@ -90,44 +83,6 @@ interface GuideNames {
   cityName: string | undefined;
   summaryTitle: string;
   searchQuery: string;
-}
-
-function GuidesModal({
-  placeName,
-  names,
-  onClose,
-}: {
-  placeName: string;
-  names: GuideNames;
-  onClose: () => void;
-}) {
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    closeRef.current?.focus();
-  }, []);
-
-  useModalKeys(dialogRef, onClose);
-
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div
-        className="modal guide-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Travel guides for ${placeName}`}
-        ref={dialogRef}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2>{placeName} — guides</h2>
-        <GuideContent placeName={placeName} names={names} />
-        <button ref={closeRef} className="btn" type="button" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    </div>
-  );
 }
 
 /** Shared body: a single tidy overview card (photo + short extract, loaded when
