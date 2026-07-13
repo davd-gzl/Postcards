@@ -42,6 +42,11 @@ export function App() {
   const { canInstall, install } = useInstallPrompt();
   const [showAbout, setShowAbout] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
+  // Once the map has rendered it never unmounts again (see <main> below);
+  // the tab already re-renders on change, so a ref is enough to remember it.
+  const mapShown = useRef(false);
+  if (tab === "map") mapShown.current = true;
+  const mapVisible = tab === "map" && !cityPageId && !countryPageId;
   const firstRender = useRef(true);
 
   useEffect(() => {
@@ -255,19 +260,24 @@ export function App() {
             ref={mainRef}
             id="main"
             tabIndex={-1}
-            className={"content" + (tab === "map" && !cityPageId && !countryPageId ? " flush" : "")}
+            className={"content" + (mapVisible ? " flush" : "")}
           >
+            {/* The map stays MOUNTED (hidden, not unmounted) once it has been
+                shown: unmounting tore down MapLibre and every tab switch back
+                reloaded the whole map. Hidden it keeps its camera and tiles. */}
+            {(mapShown.current || tab === "map") && (
+              <div className={"map-keep" + (mapVisible ? "" : " map-keep-hidden")}>
+                <Suspense fallback={<p className="muted empty">Loading map…</p>}>
+                  <MapScreen active={mapVisible} />
+                </Suspense>
+              </div>
+            )}
             {cityPageId ? (
               <CityScreen cityId={cityPageId} onBack={() => useUi.getState().closeCity()} />
             ) : countryPageId ? (
               <CountryScreen iso2={countryPageId} onBack={() => useUi.getState().closeCity()} />
             ) : (
               <>
-                {tab === "map" && (
-                  <Suspense fallback={<p className="muted empty">Loading map…</p>}>
-                    <MapScreen />
-                  </Suspense>
-                )}
                 {tab === "stats" && (
                   <div className="screen">
                     <StatsView />

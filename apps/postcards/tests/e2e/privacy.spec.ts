@@ -27,7 +27,8 @@ test("only OpenStreetMap tiles leave the origin during core flows", async ({ pag
 
   // Exercise every core flow: add, map, stats, places, export surface.
   await page.getByLabel("Search a city or country").fill("Rome");
-  await page.getByRole("button", { name: /Rome/ }).first().click();
+  await page.getByRole("button", { name: "Mark Rome visited" }).first().click();
+  await page.keyboard.press("Escape");
   await gotoTab(page, "Stats");
   await expect(page.getByText("Statistics")).toBeVisible();
   await page.getByRole("button", { name: "Places", exact: true }).click();

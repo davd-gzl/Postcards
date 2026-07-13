@@ -311,8 +311,8 @@ export function PlacesScreen() {
               <span className="empty-emoji" aria-hidden>
                 🧳
               </span>
-              Nothing yet. Add places from the map, or switch to “Countries” to check off the
-              countries you've been to.
+              Nothing yet. Add places from the map or the search bar — visiting a city also
+              collects its country.
             </p>
           )}
           <ul className="city-list">
@@ -471,6 +471,10 @@ export function PlacesScreen() {
             <ScopeToggle />
             <span className="muted small">{countryRows.length} shown</span>
           </div>
+          <p className="muted small" style={{ margin: "0 0 6px" }}>
+            A country lights up when you've visited a place inside it — there's nothing to check
+            off here. ⚑ marks the ones you dream of.
+          </p>
           <input
             type="search"
             className="search-input"

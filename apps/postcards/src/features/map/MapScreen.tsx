@@ -59,7 +59,14 @@ function loadBasemap(): Basemap {
   return loadPref(BASEMAP_KEY, (v) => (v === "detail" ? "detail" : "osm"));
 }
 
-export function MapScreen() {
+/**
+ * The map screen stays mounted for the app's whole life (App hides it with CSS
+ * instead of unmounting — tearing down MapLibre made every return to the tab a
+ * full map reload). While `active` is false only the map box itself stays in
+ * the DOM; the counter strip and the in-view list unrender so their text never
+ * shadows the visible screen for screen readers or tests.
+ */
+export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const showToast = useToast((s) => s.show);
@@ -362,9 +369,11 @@ export function MapScreen() {
       }
     >
       {/* Search lives in the app top bar now — this row is just the counters. */}
-      <div className="map-top">
-        <StatStrip />
-      </div>
+      {active && (
+        <div className="map-top">
+          <StatStrip />
+        </div>
+      )}
 
       <div className="map-box">
         <MapView
@@ -483,6 +492,7 @@ export function MapScreen() {
         </div>
       </div>
 
+      {active && (
       <section className="view-list" aria-label="Cities in view">
         <div className="section-head">
           <h2>{mode === "monuments" ? "Monuments in view" : mode === "airports" ? "Airports in view" : "Cities in view"}</h2>
@@ -553,12 +563,13 @@ export function MapScreen() {
                   <button
                     className="city-focus"
                     type="button"
-                    onClick={() =>
-                      x.page ? useUi.getState().openCity(x.place.id) : focusCity({ lon: x.lon, lat: x.lat })
-                    }
+                    title={`Show ${x.name} on the map`}
+                    onClick={() => focusCity({ lon: x.lon, lat: x.lat })}
                   >
                     <CityLine flag={x.flag} name={x.name} sub={<>· {x.sub}</>} />
                   </button>
+                  {/* The row itself only zooms the map; details live behind 📖. */}
+                  {x.page && <GuideButton place={x.place} />}
                   <StateToggles place={x.place} />
                 </li>
                 ))}
@@ -622,11 +633,11 @@ export function MapScreen() {
                     className="city-focus"
                     type="button"
                     aria-expanded={selected}
+                    title={`Show ${c.name} on the map`}
                     onClick={() => {
-                      if (selected) {
-                        useUi.getState().openCity(c.id);
-                        return;
-                      }
+                      // A row click ZOOMS, always — it never yanks you off to
+                      // the detail page (that's the 📖 button on the selected
+                      // row). Tapping again just re-centres.
                       setSelectedCityId(c.id);
                       focusCity(c);
                     }}
@@ -667,6 +678,7 @@ export function MapScreen() {
         </>
         )}
       </section>
+      )}
     </div>
   );
 }
