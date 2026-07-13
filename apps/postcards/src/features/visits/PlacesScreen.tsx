@@ -243,9 +243,21 @@ export function PlacesScreen() {
     { id: "wishlist", label: `Wishlist (${wishlist.length})` },
     { id: "monuments", label: "Monuments" },
     { id: "countries", label: "Countries" },
-    { id: "moments", label: "Moments" },
-    { id: "passport", label: "Passport" },
   ];
+  // Moments and the Passport aren't list views of your places — they're little
+  // screens of their own. They get a separate cluster so they don't blend into
+  // the view switcher above.
+  const COLLECTIONS: { id: View; label: string; emoji: string }[] = [
+    { id: "moments", label: "Moments", emoji: "✨" },
+    { id: "passport", label: "Passport", emoji: "🛂" },
+  ];
+
+  function switchView(id: View) {
+    setView(id);
+    setFilter("");
+    setYear(null);
+    setShown(100);
+  }
 
   return (
     <section aria-label="Your places">
@@ -258,14 +270,26 @@ export function PlacesScreen() {
               type="button"
               aria-pressed={view === t.id}
               className={view === t.id ? "seg-on" : ""}
-              onClick={() => {
-                setView(t.id);
-                setFilter("");
-                setYear(null);
-                setShown(100);
-              }}
+              onClick={() => switchView(t.id)}
             >
               {t.label}
+            </button>
+          ))}
+        </div>
+        <div
+          className="segmented wrap places-collections"
+          role="group"
+          aria-label="Moments and Passport"
+        >
+          {COLLECTIONS.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              aria-pressed={view === c.id}
+              className={view === c.id ? "seg-on" : ""}
+              onClick={() => switchView(c.id)}
+            >
+              <span aria-hidden>{c.emoji}</span> {c.label}
             </button>
           ))}
         </div>
