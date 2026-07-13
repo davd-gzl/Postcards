@@ -5,14 +5,14 @@ import { gotoTab } from "./nav-helper";
 // visited countries and the world denominator, dropping dependent territories.
 test("count with or without dependent territories", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Places", exact: true }).click();
-  await page.getByRole("button", { name: "Countries" }).click();
 
-  // Mark a UN member (France) and a territory (Hong Kong) visited.
-  await page.getByLabel("Filter countries").fill("France");
-  await page.getByRole("button", { name: "Mark France visited" }).click();
-  await page.getByLabel("Filter countries").fill("Hong Kong");
-  await page.getByRole("button", { name: "Mark Hong Kong visited" }).click();
+  // Countries are visited via places inside them: a city in a UN member
+  // (Paris → France) and one in a territory (Hong Kong city → Hong Kong).
+  await page.getByLabel("Search a city or country").fill("Paris");
+  await page.getByRole("button", { name: "Mark Paris visited" }).first().click();
+  await page.getByLabel("Search a city or country").fill("Hong Kong");
+  await page.getByRole("button", { name: "Mark Hong Kong visited" }).first().click();
+  await page.keyboard.press("Escape");
 
   await gotoTab(page, "Stats");
 
