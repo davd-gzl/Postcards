@@ -83,8 +83,8 @@ const PILL_FONT = '600 21px "Inter Variable", system-ui, sans-serif';
  * 2× for crispness.
  */
 /**
- * Visited-city marker: the bare flag emoji (no box) with a soft white halo so it
- * reads on any basemap. Favourites get a small gold star at the corner.
+ * Visited-city marker: the bare flag emoji — no box, no halo, just the flag.
+ * Favourites get a small gold star at the corner.
  */
 function makeCityPill(iso2: string, favorite: boolean): ImageData {
   const w = 44;
@@ -96,16 +96,9 @@ function makeCityPill(iso2: string, favorite: boolean): ImageData {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.font = `27px ${EMOJI_FONT}`;
-  ctx.shadowColor = "rgba(255, 255, 255, 0.95)";
-  ctx.shadowBlur = 5;
-  // Draw twice: a stronger halo pass, then the crisp flag.
-  ctx.fillText(countryFlag(iso2), w / 2, h / 2 + 1);
-  ctx.shadowBlur = 0;
   ctx.fillText(countryFlag(iso2), w / 2, h / 2 + 1);
   if (favorite) {
     ctx.font = `14px ${EMOJI_FONT}`;
-    ctx.shadowColor = "rgba(255, 255, 255, 0.9)";
-    ctx.shadowBlur = 3;
     ctx.fillText("⭐", w - 9, 9);
   }
   return ctx.getImageData(0, 0, w, h);
@@ -124,7 +117,7 @@ const MONUMENT_STYLE: Record<string, { emoji: string; ring: string; seenFill: st
  * the bare emoji vanished against the basemap. Filled once seen, + a ✅ badge. */
 function makeMonumentPin(category: string, seen: boolean): ImageData {
   const st = MONUMENT_STYLE[category] ?? MONUMENT_STYLE.cultural!;
-  const s = 40; // 20px on screen
+  const s = 50; // 25px on screen — the emoji has to read at a glance
   const canvas = document.createElement("canvas");
   canvas.width = s;
   canvas.height = s;
@@ -138,11 +131,11 @@ function makeMonumentPin(category: string, seen: boolean): ImageData {
   ctx.stroke();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `21px ${EMOJI_FONT}`;
+  ctx.font = `29px ${EMOJI_FONT}`;
   ctx.fillText(st.emoji, s / 2, s / 2 + 1);
   if (seen) {
-    ctx.font = `13px ${EMOJI_FONT}`;
-    ctx.fillText("✅", s - 9, 9);
+    ctx.font = `15px ${EMOJI_FONT}`;
+    ctx.fillText("✅", s - 10, 10);
   }
   return ctx.getImageData(0, 0, s, s);
 }

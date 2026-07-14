@@ -18,6 +18,7 @@ import { citiesInView, type Bounds } from "./viewport";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import type { City } from "../../lib/reference/types";
 import { CityLine } from "../../ui/CityLine";
+import { MoreButton } from "../../ui/MoreButton";
 
 // Fewer rows, faster everything: the list pages in small steps, and the
 // in-view working set is capped (population-presorted, so it's always the
@@ -110,14 +111,8 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     loadPref("postcards-countries", (v) => v !== "0"),
   );
   const [listTall, setListTall] = useState(false);
-  // Where the list docks relative to the map: "end" = right (desktop) / below
-  // (mobile), "start" = left / above. The list is never hidden — the old
-  // "Bigger map" button just removed it, which read as losing your data.
-  const [listSide, setListSide] = useState<"start" | "end">(() =>
-    loadPref("postcards-list-side", (v) => (v === "start" ? "start" : "end")),
-  );
-  // Desktop docks the list sideways, mobile stacks it — the move button's
-  // label follows the axis it actually moves along.
+  // The list always sits right of the map (desktop) / below it (mobile);
+  // the slider decides how much room it gets. The axis follows the layout.
   const [wide, setWide] = useState(
     () => typeof matchMedia !== "undefined" && matchMedia("(min-width: 900px)").matches,
   );
@@ -128,55 +123,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
-  function setSideTo(next: "start" | "end") {
-    setListSide((s) => {
-      if (s === next) return s;
-      savePref("postcards-list-side", next);
-      return next;
-    });
-  }
-  // The list moves by GRABBING it: drag its ⠿ handle across the screen's
-  // midline and the panel re-docks live (left/right on desktop, above/below on
-  // mobile). Tapping or pressing Enter on the handle flips it too, so the
-  // action stays keyboard- and single-tap-operable.
   const screenRef = useRef<HTMLDivElement>(null);
-  const dragMoved = useRef(false);
-  const dragStart = useRef<{ x: number; y: number } | null>(null);
-  function onGrabDown(e: React.PointerEvent<HTMLButtonElement>) {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    dragStart.current = { x: e.clientX, y: e.clientY };
-    dragMoved.current = false;
-  }
-  function onGrabMove(e: React.PointerEvent<HTMLButtonElement>) {
-    if (!dragStart.current || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
-    if (
-      Math.abs(e.clientX - dragStart.current.x) > 6 ||
-      Math.abs(e.clientY - dragStart.current.y) > 6
-    ) {
-      dragMoved.current = true;
-    }
-    if (!dragMoved.current) return;
-    const box = screenRef.current?.getBoundingClientRect();
-    if (!box) return;
-    const firstHalf = wide
-      ? e.clientX < box.left + box.width / 2
-      : e.clientY < box.top + box.height / 2;
-    setSideTo(firstHalf ? "start" : "end");
-  }
-  function onGrabUp(e: React.PointerEvent<HTMLButtonElement>) {
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-    dragStart.current = null;
-  }
-  function onGrabClick() {
-    // A real drag already placed the panel — don't flip it back on release.
-    if (dragMoved.current) {
-      dragMoved.current = false;
-      return;
-    }
-    setSideTo(listSide === "end" ? "start" : "end");
-  }
 
   // The SLIDER between the panes: drag it to give the list more or less room —
   // continuously, not in dock-flips. On phones it slides up/down (map height);
@@ -206,13 +153,15 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     const box = screenRef.current?.getBoundingClientRect();
     if (!box) return;
     if (wide) {
-      const raw = listSide === "end" ? box.right - e.clientX : e.clientX - box.left;
+      const raw = box.right - e.clientX;
       setListW(clamp(Math.round(raw), 260, Math.max(320, Math.round(box.width * 0.6))));
     } else {
       const mapBox = screenRef.current?.querySelector(".map-box")?.getBoundingClientRect();
       if (!mapBox) return;
-      const raw = listSide === "end" ? e.clientY - mapBox.top : mapBox.bottom - e.clientY;
-      setMapH(clamp(Math.round(raw), 120, Math.max(180, Math.round(box.height - 180))));
+      const raw = e.clientY - mapBox.top;
+      // The list may be slid nearly shut — it compresses to header + rows
+      // (see the @container rule) instead of clamping early.
+      setMapH(clamp(Math.round(raw), 120, Math.max(180, Math.round(box.height - 140))));
     }
   }
   function onDivUp(e: React.PointerEvent<HTMLDivElement>) {
@@ -227,8 +176,8 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   function onDivKey(e: React.KeyboardEvent<HTMLDivElement>) {
     const step = 24;
     if (wide && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
-      // Moving the divider toward the list shrinks it, away grows it.
-      const grow = (e.key === "ArrowLeft") === (listSide === "end") ? step : -step;
+      // Moving the divider left grows the (right-docked) list.
+      const grow = e.key === "ArrowLeft" ? step : -step;
       const next = clamp((listW ?? 360) + grow, 260, 640);
       setListW(next);
       savePref("postcards-list-w", String(next));
@@ -236,8 +185,11 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     } else if (!wide && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
       const mapBox = screenRef.current?.querySelector(".map-box")?.getBoundingClientRect();
       const cur = mapH ?? Math.round(mapBox?.height ?? 300);
-      const dir = e.key === "ArrowUp" ? -step : step;
-      const next = clamp(listSide === "end" ? cur + dir : cur - dir, 120, 800);
+      const ceiling = Math.max(
+        180,
+        Math.round((screenRef.current?.getBoundingClientRect().height ?? 940) - 140),
+      );
+      const next = clamp(cur + (e.key === "ArrowUp" ? -step : step), 120, ceiling);
       setListTall(false);
       setMapH(next);
       savePref("postcards-map-h", String(next));
@@ -496,9 +448,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     <div
       ref={screenRef}
       style={paneVars}
-      className={
-        "map-screen" + (listTall ? " list-tall" : "") + (listSide === "start" ? " list-first" : "")
-      }
+      className={"map-screen" + (listTall ? " list-tall" : "")}
     >
       {/* Search lives in the app top bar now — this row is just the counters. */}
       {active && (
@@ -655,23 +605,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           >
             {listTall ? "▼ Map" : "▲ List"}
           </button>
-          <button
-            className="list-grab"
-            type="button"
-            aria-label={
-              wide
-                ? "Move the list to the other side of the map (drag or press Enter)"
-                : "Move the list above or below the map (drag or press Enter)"
-            }
-            title={wide ? "Drag to dock the list left or right" : "Drag to dock the list above or below"}
-            onPointerDown={onGrabDown}
-            onPointerMove={onGrabMove}
-            onPointerUp={onGrabUp}
-            onPointerCancel={onGrabUp}
-            onClick={onGrabClick}
-          >
-            ⠿
-          </button>
           <span className="list-head-meta muted">
             <span>
               {poi ? poi.total : formatInt(inView.length) + (inViewCapped ? "+" : "")} in view
@@ -817,9 +750,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             <span className="muted small">
               Showing the {shown} most populous of {formatInt(snapshot.length)}{inViewCapped ? "+" : ""}
             </span>
-            <button className="mini-btn" type="button" onClick={() => setShown((n) => n + PAGE)}>
+            <MoreButton onMore={() => setShown((n) => n + PAGE)}>
               Show {Math.min(PAGE, snapshot.length - shown)} more
-            </button>
+            </MoreButton>
           </div>
         )}
         </>
