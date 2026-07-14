@@ -15,10 +15,30 @@ import { StateToggles } from "./StateToggles";
 import { GuideButton } from "../guides/GuideButton";
 import { PassportScreen } from "../passport/PassportScreen";
 import { ExperiencesScreen } from "../experiences/ExperiencesScreen";
+import { MoreButton } from "../../ui/MoreButton";
 
 // Everything place-shaped lives here, one view each — including Favorites (its
 // own view, not a mode that repaints "Visited"), Moments and the Passport.
 type View = "visited" | "favorites" | "wishlist" | "countries" | "monuments" | "moments" | "passport";
+const VIEWS: readonly View[] = ["visited", "favorites", "wishlist", "countries", "monuments", "moments", "passport"];
+// The screen unmounts on every tab switch — remember the last view so coming
+// back lands where you were, not on "Visited".
+const VIEW_KEY = "postcards-places-view";
+function loadView(): View {
+  try {
+    const v = localStorage.getItem(VIEW_KEY);
+    return (VIEWS as readonly string[]).includes(v ?? "") ? (v as View) : "visited";
+  } catch {
+    return "visited";
+  }
+}
+function saveView(v: View): void {
+  try {
+    localStorage.setItem(VIEW_KEY, v);
+  } catch {
+    /* private mode: not persisted */
+  }
+}
 
 
 /** Map coordinate to fly to (if known) and the secondary "· type · place" label for a visit. */
@@ -130,7 +150,7 @@ export function PlacesScreen() {
   const visits = useVisits((s) => s.visits);
 
   const scope = useSettings((s) => s.countryScope);
-  const [view, setView] = useState<View>("visited");
+  const [view, setView] = useState<View>(loadView);
   const [filter, setFilter] = useState("");
   const [year, setYear] = useState<string | null>(null); // e.g. "2024"; null = all
   const [shown, setShown] = useState(100);
@@ -141,9 +161,10 @@ export function PlacesScreen() {
   useEffect(() => {
     if (!request) return;
     setView(request.view);
+    saveView(request.view);
     setFilter("");
     // Consume the request — a plain Places-tab tap later should land on the
-    // default view, not replay this one forever.
+    // last-used view, not replay this one forever.
     useUi.setState({ placesViewRequest: null });
   }, [request?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -254,6 +275,7 @@ export function PlacesScreen() {
 
   function switchView(id: View) {
     setView(id);
+    saveView(id);
     setFilter("");
     setYear(null);
     setShown(100);
@@ -351,9 +373,9 @@ export function PlacesScreen() {
               <span className="muted small">
                 Showing {shown} of {filterVisits(visited).length}
               </span>
-              <button className="mini-btn" type="button" onClick={() => setShown((n) => n + 100)}>
+              <MoreButton onMore={() => setShown((n) => n + 100)}>
                 Show 100 more
-              </button>
+              </MoreButton>
             </div>
           )}
         </>
@@ -381,9 +403,9 @@ export function PlacesScreen() {
               <span className="muted small">
                 Showing {shown} of {filterVisits(favorites).length}
               </span>
-              <button className="mini-btn" type="button" onClick={() => setShown((n) => n + 100)}>
+              <MoreButton onMore={() => setShown((n) => n + 100)}>
                 Show 100 more
-              </button>
+              </MoreButton>
             </div>
           )}
         </>
@@ -411,9 +433,9 @@ export function PlacesScreen() {
               <span className="muted small">
                 Showing {shown} of {filterVisits(wishlist).length}
               </span>
-              <button className="mini-btn" type="button" onClick={() => setShown((n) => n + 100)}>
+              <MoreButton onMore={() => setShown((n) => n + 100)}>
                 Show 100 more
-              </button>
+              </MoreButton>
             </div>
           )}
         </>
@@ -475,13 +497,9 @@ export function PlacesScreen() {
                   <span className="muted small">
                     Showing {shown} of {monuments.length}
                   </span>
-                  <button
-                    className="mini-btn"
-                    type="button"
-                    onClick={() => setShown((n) => n + 100)}
-                  >
+                  <MoreButton onMore={() => setShown((n) => n + 100)}>
                     Show 100 more
-                  </button>
+                  </MoreButton>
                 </div>
               )}
             </>

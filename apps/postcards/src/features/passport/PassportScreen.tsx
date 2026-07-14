@@ -9,6 +9,7 @@ import { inScope } from "../../lib/reference/scope";
 import { countryFlag, formatInt } from "../../lib/format/format";
 import { ScopeToggle } from "../../ui/ScopeToggle";
 import { renderPoster } from "./poster";
+import { MoreButton } from "../../ui/MoreButton";
 
 /**
  * Your passport: the flags you've collected (one per visited country — a city
@@ -213,9 +214,9 @@ export function PassportScreen({ embedded }: { embedded?: boolean } = {}) {
             <span className="muted small">
               Showing {shownMissing} of {missing.length}
             </span>
-            <button className="mini-btn" type="button" onClick={() => setShownMissing((n) => n + 60)}>
+            <MoreButton onMore={() => setShownMissing((n) => n + 60)}>
               Show 60 more
-            </button>
+            </MoreButton>
           </div>
         )}
         </>
