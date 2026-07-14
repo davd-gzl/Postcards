@@ -1158,6 +1158,30 @@ button.stat-tile:hover .num {
     bottom: 20px;
   }
 }
+@media (max-width: 899.98px) {
+  /* Phones: a full-width snackbar above the nav — the centered pill read as a
+     cramped sliver, and Undo needs a target you can't miss. */
+  .toast {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    width: auto;
+    max-width: none;
+    justify-content: space-between;
+    padding: 12px 14px;
+  }
+  .toast-msg {
+    font-size: 15px;
+  }
+  .toast-undo {
+    font-size: 15px;
+    padding: 4px 8px;
+  }
+  .toast-close {
+    font-size: 18px;
+    padding: 4px 8px;
+  }
+}
 .toast-msg {
   font-size: 14px;
 }
