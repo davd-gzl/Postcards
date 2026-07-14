@@ -297,29 +297,58 @@ h1.brand {
 }
 .map-box {
   position: relative;
-  height: 40vh;
-  min-height: 240px;
+  /* --map-h is set by sliding the pane divider (see .pane-divider). */
+  height: var(--map-h, 40vh);
+  min-height: 120px;
   flex: none;
   background: var(--bg-sub);
 }
 
 /* The list docks beside/under the map and is never hidden — `.list-first`
-   moves it above the map (mobile) or to its left (desktop, see the grid). */
+   moves it above the map (mobile) or to its left (desktop, see the grid).
+   The divider always sits between the two panes. */
 .map-screen .map-top {
   order: 0;
 }
 .map-screen .map-box {
   order: 1;
 }
-.map-screen .view-list {
+.map-screen .pane-divider {
   order: 2;
+}
+.map-screen .view-list {
+  order: 3;
 }
 .map-screen.list-first .view-list {
   order: 1;
-  border-bottom: 1px solid var(--border);
 }
 .map-screen.list-first .map-box {
-  order: 2;
+  order: 3;
+}
+
+/* The slider between map and list: grab it and slide — up/down on phones
+   (map height), left/right on desktop (list width). Keyboard: arrow keys. */
+.pane-divider {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  touch-action: none;
+  user-select: none;
+  cursor: row-resize;
+  height: 16px;
+}
+.pane-divider::after {
+  content: "";
+  width: 44px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--border-strong);
+}
+.pane-divider:hover::after,
+.pane-divider:focus-visible::after {
+  background: var(--accent);
 }
 
 /* Continent legend (colors match the map fills) */.legend-dot {
@@ -1624,7 +1653,7 @@ button.stat-tile:hover .num {
     max-width: 760px;
   }
   .map-box {
-    height: 48vh;
+    height: var(--map-h, 48vh);
   }
 }
 
@@ -1674,10 +1703,11 @@ button.stat-tile:hover .num {
     padding: 18px 24px 40px;
   }
 
-  /* Two-pane map: search/stats span the top, then map | cities-list. */
+  /* Two-pane map: search/stats span the top, then map | divider | list.
+     --list-w is set by sliding the divider. */
   .map-screen {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+    grid-template-columns: minmax(0, 1fr) 12px var(--list-w, minmax(320px, 400px));
     grid-template-rows: auto minmax(0, 1fr);
     height: 100%;
   }
@@ -1691,24 +1721,35 @@ button.stat-tile:hover .num {
     height: auto;
     min-height: 0;
   }
-  .view-list {
+  .pane-divider {
     grid-column: 2;
     grid-row: 2;
+    height: auto;
+    cursor: col-resize;
     border-left: 1px solid var(--border);
+  }
+  .pane-divider::after {
+    width: 5px;
+    height: 44px;
+  }
+  .view-list {
+    grid-column: 3;
+    grid-row: 2;
     min-height: 0;
   }
-  /* Docked left: mirror the two panes. */
+  /* Docked left: mirror the panes (the divider keeps the middle track). */
   .map-screen.list-first {
-    grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+    grid-template-columns: var(--list-w, minmax(320px, 400px)) 12px minmax(0, 1fr);
   }
   .map-screen.list-first .map-box {
-    grid-column: 2;
+    grid-column: 3;
+  }
+  .map-screen.list-first .pane-divider {
+    border-left: none;
+    border-right: 1px solid var(--border);
   }
   .map-screen.list-first .view-list {
     grid-column: 1;
-    border-left: none;
-    border-right: 1px solid var(--border);
-    border-bottom: none;
   }
 }
 
@@ -2331,7 +2372,7 @@ textarea.select {
   }
   /* Shorter map, slimmer floating controls → the list starts higher. */
   .map-box {
-    height: 34vh;
+    height: var(--map-h, 34vh);
     min-height: 190px;
   }
   .map-ctl-top button {
