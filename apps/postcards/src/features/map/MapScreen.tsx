@@ -119,12 +119,54 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
-  function moveList() {
+  function setSideTo(next: "start" | "end") {
     setListSide((s) => {
-      const next = s === "end" ? "start" : "end";
+      if (s === next) return s;
       savePref("postcards-list-side", next);
       return next;
     });
+  }
+  // The list moves by GRABBING it: drag its ⠿ handle across the screen's
+  // midline and the panel re-docks live (left/right on desktop, above/below on
+  // mobile). Tapping or pressing Enter on the handle flips it too, so the
+  // action stays keyboard- and single-tap-operable.
+  const screenRef = useRef<HTMLDivElement>(null);
+  const dragMoved = useRef(false);
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  function onGrabDown(e: React.PointerEvent<HTMLButtonElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    dragMoved.current = false;
+  }
+  function onGrabMove(e: React.PointerEvent<HTMLButtonElement>) {
+    if (!dragStart.current || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    if (
+      Math.abs(e.clientX - dragStart.current.x) > 6 ||
+      Math.abs(e.clientY - dragStart.current.y) > 6
+    ) {
+      dragMoved.current = true;
+    }
+    if (!dragMoved.current) return;
+    const box = screenRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const firstHalf = wide
+      ? e.clientX < box.left + box.width / 2
+      : e.clientY < box.top + box.height / 2;
+    setSideTo(firstHalf ? "start" : "end");
+  }
+  function onGrabUp(e: React.PointerEvent<HTMLButtonElement>) {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    dragStart.current = null;
+  }
+  function onGrabClick() {
+    // A real drag already placed the panel — don't flip it back on release.
+    if (dragMoved.current) {
+      dragMoved.current = false;
+      return;
+    }
+    setSideTo(listSide === "end" ? "start" : "end");
   }
   const [layersOpen, setLayersOpen] = useState(false);
   const [mode, setMode] = useState<MapMode>(() =>
@@ -364,6 +406,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
 
   return (
     <div
+      ref={screenRef}
       className={
         "map-screen" + (listTall ? " list-tall" : "") + (listSide === "start" ? " list-first" : "")
       }
@@ -506,26 +549,21 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             {listTall ? "▼ Map" : "▲ List"}
           </button>
           <button
-            className="mini-btn list-move"
+            className="list-grab"
             type="button"
-            title={
+            aria-label={
               wide
-                ? listSide === "end"
-                  ? "Move the list to the left of the map"
-                  : "Move the list to the right of the map"
-                : listSide === "end"
-                  ? "Move the list above the map"
-                  : "Move the list below the map"
+                ? "Move the list to the other side of the map (drag or press Enter)"
+                : "Move the list above or below the map (drag or press Enter)"
             }
-            onClick={moveList}
+            title={wide ? "Drag to dock the list left or right" : "Drag to dock the list above or below"}
+            onPointerDown={onGrabDown}
+            onPointerMove={onGrabMove}
+            onPointerUp={onGrabUp}
+            onPointerCancel={onGrabUp}
+            onClick={onGrabClick}
           >
-            {wide
-              ? listSide === "end"
-                ? "⇤ Move left"
-                : "⇥ Move right"
-              : listSide === "end"
-                ? "⇑ Move up"
-                : "⇓ Move down"}
+            ⠿
           </button>
           <span className="list-head-meta muted">
             <span>{poi ? poi.total : inView.length} in view</span>
