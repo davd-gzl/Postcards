@@ -65,6 +65,64 @@ export function tilesForBounds(
   return urls;
 }
 
+// Tiles already requested this session — once fetched, the service worker's
+// CacheFirst rule serves them instantly, so there's no point re-requesting.
+// Bounded so a very long session can't grow it without limit.
+const prefetched = new Set<string>();
+const PREFETCH_SEEN_CAP = 6000;
+
+/** Expand bounds by `factor` of their own span each side (lat clamped to the
+ *  Web-Mercator limit, lon wrapped so antimeridian spans keep working). */
+function padBounds(b: Bounds, factor: number): Bounds {
+  const lonSpan = b.west <= b.east ? b.east - b.west : b.east + 360 - b.west;
+  const latSpan = b.north - b.south;
+  if (lonSpan * (1 + 2 * factor) >= 360) {
+    return { west: -180, east: 180, south: Math.max(-85, b.south - latSpan * factor), north: Math.min(85, b.north + latSpan * factor) };
+  }
+  const wrap = (v: number) => ((((v + 180) % 360) + 360) % 360) - 180;
+  return {
+    west: wrap(b.west - lonSpan * factor),
+    east: wrap(b.east + lonSpan * factor),
+    south: Math.max(-85, b.south - latSpan * factor),
+    north: Math.min(85, b.north + latSpan * factor),
+  };
+}
+
+/**
+ * Quietly warm the tile cache with the ring of tiles JUST OUTSIDE the current
+ * viewport, so panning reveals ready tiles instead of blanks. Same zoom level
+ * only, a small per-stop budget, session-deduped, and low concurrency — well
+ * within the OSM tile usage policy (at most ~a viewport's worth of extra tiles
+ * per pause, and only while online).
+ */
+export function prefetchAroundBounds(
+  bounds: Bounds,
+  zoom: number,
+  opts: { maxTiles?: number; template?: string; fetchFn?: typeof fetch } = {},
+): void {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+  const maxTiles = opts.maxTiles ?? 40;
+  const doFetch = opts.fetchFn ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
+  const inside = new Set(tilesForBounds(bounds, zoom, 1, 500, opts.template));
+  const ring = tilesForBounds(padBounds(bounds, 0.5), zoom, 1, 800, opts.template)
+    .filter((u) => !inside.has(u) && !prefetched.has(u))
+    .slice(0, maxTiles);
+  if (prefetched.size > PREFETCH_SEEN_CAP) prefetched.clear();
+  for (const url of ring) prefetched.add(url);
+  let i = 0;
+  async function worker() {
+    while (i < ring.length) {
+      const url = ring[i++]!;
+      try {
+        await doFetch(url, { mode: "cors", referrerPolicy: "strict-origin-when-cross-origin" });
+      } catch {
+        prefetched.delete(url); // offline blip — let a later pause retry it
+      }
+    }
+  }
+  for (let w = 0; w < 3; w++) void worker();
+}
+
 export interface SaveProgress {
   done: number;
   total: number;

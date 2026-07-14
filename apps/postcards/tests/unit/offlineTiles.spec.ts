@@ -73,3 +73,30 @@ describe("saveAreaOffline", () => {
     expect(res.capped).toBe(true);
   });
 });
+
+describe("prefetchAroundBounds (warm the ring around the viewport)", () => {
+  it("fetches only tiles OUTSIDE the visible view, and never the same tile twice", async () => {
+    const { prefetchAroundBounds, tilesForBounds: tiles } = await import(
+      "../../src/lib/offline/tiles"
+    );
+    const bounds = { west: 2, south: 48, east: 3, north: 49 };
+    const seen: string[] = [];
+    const fetchFn = (async (url: RequestInfo | URL) => {
+      seen.push(String(url));
+      return new Response("", { status: 200 });
+    }) as unknown as typeof fetch;
+
+    prefetchAroundBounds(bounds, 8, { maxTiles: 30, fetchFn });
+    await new Promise((r) => setTimeout(r, 20));
+    const visible = new Set(tiles(bounds, 8, 1, 500));
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.length).toBeLessThanOrEqual(30);
+    for (const url of seen) expect(visible.has(url)).toBe(false);
+
+    // Same stop again: everything is already warmed — nothing refetches.
+    const before = seen.length;
+    prefetchAroundBounds(bounds, 8, { maxTiles: 30, fetchFn });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(seen.length).toBe(before);
+  });
+});
