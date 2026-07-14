@@ -84,6 +84,15 @@ body,
   margin: 0;
 }
 
+html,
+body {
+  /* The app owns all scrolling (.content). A stray body scroll (iOS keyboard,
+     focus jumps) used to survive refresh via scroll restoration and shove the
+     bottom bar off-screen — with body scroll locked, that can't happen. */
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -491,6 +500,29 @@ h1.brand {
   display: flex;
   gap: 8px;
   align-items: baseline;
+}
+/* The list's grab handle: drag it across the screen midline to re-dock the
+   panel (tap/Enter flips it — see MapScreen). touch-action:none keeps a touch
+   drag from scrolling the list instead. */
+.list-grab {
+  border: 1px solid var(--border);
+  background: var(--bg-sub);
+  border-radius: 7px;
+  padding: 2px 8px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.list-grab:active {
+  cursor: grabbing;
+}
+.list-grab:hover,
+.list-grab:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 .cap-note {
   padding: 6px 2px 0;

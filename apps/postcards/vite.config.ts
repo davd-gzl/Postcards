@@ -32,12 +32,27 @@ export default defineConfig({
       workbox: {
         // Cache the app shell + bundled reference/basemap assets for offline use.
         globPatterns: ["**/*.{js,css,html,json,geojson,pmtiles,woff2}"],
-        // The full world gazetteer (~17 MB) must precache for offline use.
-        maximumFileSizeToCacheInBytes: 24 * 1024 * 1024,
+        // The full 17 MB gazetteer is NOT precached: the app fetches it once at
+        // first idle anyway (runtime-cached below), and precaching it meant the
+        // SW install and the app raced to download 17 MB each on first visit.
+        globIgnores: ["**/reference/cities-all.json"],
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         // Runtime-cache OSM raster tiles the user actually views, so areas they've
         // browsed on the online basemap remain available OFFLINE (opt-in: no tile
         // is ever fetched until the user turns on the OpenStreetMap basemap).
         runtimeCaching: [
+          {
+            // Full world gazetteer: cached on the first (idle-time) fetch, so it
+            // reopens offline. CacheFirst because the file changes only with a
+            // release; the 60-day expiry forces an eventual refresh.
+            urlPattern: ({ url }) => url.pathname.endsWith("/reference/cities-all.json"),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "gazetteer-v1",
+              expiration: { maxEntries: 2, maxAgeSeconds: 60 * 60 * 24 * 60 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
           {
             urlPattern: ({ url }) => url.hostname.endsWith("tile.openstreetmap.org"),
             handler: "CacheFirst",
