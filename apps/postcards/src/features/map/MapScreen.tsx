@@ -177,6 +177,84 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     }
     setSideTo(listSide === "end" ? "start" : "end");
   }
+
+  // The SLIDER between the panes: drag it to give the list more or less room —
+  // continuously, not in dock-flips. On phones it slides up/down (map height);
+  // on desktop it slides left/right (list width). Arrow keys nudge it (window-
+  // splitter pattern), and the chosen size persists.
+  const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+  const [mapH, setMapH] = useState<number | null>(() =>
+    loadPref("postcards-map-h", (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) && n >= 120 ? Math.round(n) : null;
+    }),
+  );
+  const [listW, setListW] = useState<number | null>(() =>
+    loadPref("postcards-list-w", (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) && n >= 260 ? Math.round(n) : null;
+    }),
+  );
+  const dividerDrag = useRef(false);
+  function onDivDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dividerDrag.current = true;
+    setListTall(false); // the slider takes over any "expand list" preset
+  }
+  function onDivMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dividerDrag.current || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    const box = screenRef.current?.getBoundingClientRect();
+    if (!box) return;
+    if (wide) {
+      const raw = listSide === "end" ? box.right - e.clientX : e.clientX - box.left;
+      setListW(clamp(Math.round(raw), 260, Math.max(320, Math.round(box.width * 0.6))));
+    } else {
+      const mapBox = screenRef.current?.querySelector(".map-box")?.getBoundingClientRect();
+      if (!mapBox) return;
+      const raw = listSide === "end" ? e.clientY - mapBox.top : mapBox.bottom - e.clientY;
+      setMapH(clamp(Math.round(raw), 120, Math.max(180, Math.round(box.height - 180))));
+    }
+  }
+  function onDivUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    if (!dividerDrag.current) return;
+    dividerDrag.current = false;
+    if (wide && listW != null) savePref("postcards-list-w", String(listW));
+    if (!wide && mapH != null) savePref("postcards-map-h", String(mapH));
+  }
+  function onDivKey(e: React.KeyboardEvent<HTMLDivElement>) {
+    const step = 24;
+    if (wide && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+      // Moving the divider toward the list shrinks it, away grows it.
+      const grow = (e.key === "ArrowLeft") === (listSide === "end") ? step : -step;
+      const next = clamp((listW ?? 360) + grow, 260, 640);
+      setListW(next);
+      savePref("postcards-list-w", String(next));
+      e.preventDefault();
+    } else if (!wide && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      const mapBox = screenRef.current?.querySelector(".map-box")?.getBoundingClientRect();
+      const cur = mapH ?? Math.round(mapBox?.height ?? 300);
+      const dir = e.key === "ArrowUp" ? -step : step;
+      const next = clamp(listSide === "end" ? cur + dir : cur - dir, 120, 800);
+      setListTall(false);
+      setMapH(next);
+      savePref("postcards-map-h", String(next));
+      e.preventDefault();
+    }
+  }
+  const paneVars = {
+    ...(mapH != null ? { "--map-h": `${mapH}px` } : {}),
+    ...(listW != null ? { "--list-w": `${listW}px` } : {}),
+  } as React.CSSProperties;
+  // A focusable separator is the ARIA "window splitter" pattern — it must
+  // expose its position as a value (axe: aria-required-attr).
+  const dividerValue = wide
+    ? Math.round((clamp((listW ?? 360) - 260, 0, 380) / 380) * 100)
+    : mapH != null
+      ? Math.round((clamp(mapH - 120, 0, 680) / 680) * 100)
+      : 50;
   const [layersOpen, setLayersOpen] = useState(false);
   const [mode, setMode] = useState<MapMode>(() =>
     loadPref("postcards-map-mode", (v) =>
@@ -417,6 +495,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   return (
     <div
       ref={screenRef}
+      style={paneVars}
       className={
         "map-screen" + (listTall ? " list-tall" : "") + (listSide === "start" ? " list-first" : "")
       }
@@ -545,6 +624,24 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
         </div>
       </div>
 
+      {active && (
+        <div
+          className="pane-divider"
+          role="separator"
+          tabIndex={0}
+          aria-orientation={wide ? "vertical" : "horizontal"}
+          aria-valuenow={dividerValue}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Resize the list (drag, or use the arrow keys)"
+          title="Slide to resize the list"
+          onPointerDown={onDivDown}
+          onPointerMove={onDivMove}
+          onPointerUp={onDivUp}
+          onPointerCancel={onDivUp}
+          onKeyDown={onDivKey}
+        />
+      )}
       {active && (
       <section className="view-list" aria-label="Cities in view">
         <div className="section-head">

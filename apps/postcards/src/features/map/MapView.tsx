@@ -908,6 +908,17 @@ export function MapView({
         }
         emitBounds(map);
       });
+      // The list follows the map LIVE while panning/zooming (throttled — the
+      // in-view set is capped, so each refresh is cheap); moveend above still
+      // lands the final, exact frame.
+      let lastLiveBounds = 0;
+      map.on("move", () => {
+        if (!map || !loadedRef.current || suppressBoundsRef.current) return;
+        const now = performance.now();
+        if (now - lastLiveBounds < 150) return;
+        lastLiveBounds = now;
+        emitBounds(map);
+      });
       // Any real user gesture re-enables list refreshes immediately.
       for (const ev of ["dragstart", "wheel", "dblclick"] as const) {
         map.on(ev, () => {
