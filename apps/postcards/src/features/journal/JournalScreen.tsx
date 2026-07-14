@@ -293,7 +293,8 @@ export function JournalScreen() {
   const showToast = useToast((s) => s.show);
   const draftRequest = useUi((s) => s.journalDraftRequest);
 
-  const [composerOpen, setComposerOpen] = useState(false);
+  // Open by default: Journal greets you ready to write — no button first.
+  const [composerOpen, setComposerOpen] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [place, setPlace] = useState<PlaceRef | null>(null);
   const [date, setDate] = useState(today());
@@ -390,12 +391,30 @@ export function JournalScreen() {
     setComposerOpen(true);
   }
 
+  /** Anything typed that a reset would lose. */
+  const dirty = !!(title.trim() || text.trim() || photos.length);
+
   // "Daily story": jump straight into today's entry. Near midnight, ask which day
   // it's for first (a late night could be logging the day that just ended).
+  // Writing in progress is never wiped — the tap then only sets the date.
   function startDailyStory() {
     const days = boundaryDays();
-    if (days) setDayChoice(true);
+    if (days) {
+      setDayChoice(true);
+      return;
+    }
+    if (composerOpen && dirty) setDate(today());
     else openComposer(undefined, today());
+  }
+
+  /** A day picked near midnight: same rule — keep the writing, set the date. */
+  function pickDay(iso: string) {
+    if (composerOpen && dirty) {
+      setDate(iso);
+      setDayChoice(false);
+    } else {
+      openComposer(undefined, iso);
+    }
   }
 
   function startEdit(s: Story) {
@@ -493,16 +512,18 @@ export function JournalScreen() {
     useUi.setState({ journalDraftRequest: null });
   }, [draftRequest?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Escape closes the composer (keyboard-first).
+  // Escape closes the composer (keyboard-first) — but only when there's
+  // something to close: the always-open blank form must not swallow the
+  // Escape/Back that navigates away from the Journal.
   useEffect(() => {
-    if (!composerOpen) return;
+    if (!composerOpen || !(dirty || editingId)) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") resetForm();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [composerOpen]);
+  }, [composerOpen, dirty, editingId]);
 
   async function onPickPhotos(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
@@ -582,15 +603,13 @@ export function JournalScreen() {
       </div>
 
       <div className="btn-row journal-toolbar">
+        <button className="btn" type="button" onClick={startDailyStory}>
+          📔 Today's story
+        </button>
         {!composerOpen && (
-          <>
-            <button className="btn" type="button" onClick={startDailyStory}>
-              📔 Today's story
-            </button>
-            <button className="btn-ghost" type="button" onClick={() => openComposer()}>
-              ＋ New story
-            </button>
-          </>
+          <button className="btn-ghost" type="button" onClick={() => openComposer()}>
+            ＋ New story
+          </button>
         )}
         {stories.length > 0 && (
           <button className="btn-ghost" type="button" onClick={exportMd}>
@@ -598,16 +617,11 @@ export function JournalScreen() {
           </button>
         )}
       </div>
-      {dayChoice && !composerOpen && (
+      {dayChoice && (
         <div className="day-choice" role="group" aria-label="Which day is this story for?">
           <span className="muted small">Which day is this for?</span>
           {boundaryDays()?.map(({ iso, hint }) => (
-            <button
-              key={iso}
-              className="mini-btn"
-              type="button"
-              onClick={() => openComposer(undefined, iso)}
-            >
+            <button key={iso} className="mini-btn" type="button" onClick={() => pickDay(iso)}>
               {formatDate(iso)} · {hint}
             </button>
           ))}
@@ -624,7 +638,10 @@ export function JournalScreen() {
       )}
 
       {composerOpen && (
-        <form className="trip-form journal-composer" onSubmit={onSubmit}>
+        <form
+          className={"trip-form journal-composer" + (dirty || editingId ? " journal-composer-busy" : "")}
+          onSubmit={onSubmit}
+        >
           {editingId && <p className="editing-note">Editing a story</p>}
           <div className="trip-form-row">
             <label className="picker-label" htmlFor="story-place">
