@@ -15,6 +15,7 @@ import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { visitedCountryIds } from "../stats/computeStats";
 import { airportPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
+import { prefetchAroundBounds } from "../../lib/offline/tiles";
 import type { Bounds } from "./viewport";
 import type { City } from "../../lib/reference/types";
 import type { PlaceRef } from "../../lib/schema/models";
@@ -895,6 +896,15 @@ export function MapView({
         if (!loadedRef.current) return;
         // The in-view POI cap follows every camera move (even programmatic ones).
         applyViewportPoi(map);
+        // Warm the ring of tiles just outside the view, so the next pan shows
+        // ready tiles instead of blanks (online OSM basemap only).
+        if (basemap === "osm") {
+          const b = map.getBounds();
+          prefetchAroundBounds(
+            { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() },
+            Math.round(map.getZoom()),
+          );
+        }
         if (suppressBoundsRef.current) {
           suppressBoundsRef.current = false; // programmatic fly — keep the list still
           return;
