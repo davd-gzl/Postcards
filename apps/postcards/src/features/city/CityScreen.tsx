@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useStories } from "../../lib/store/useStories";
@@ -15,6 +15,44 @@ import { CityLine } from "../../ui/CityLine";
 /** Wikipedia article URL for a title (link only — nothing is fetched). */
 function wikipediaUrl(title: string): string {
   return `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/\s+/g, "_"))}`;
+}
+
+/** When did you go, and what do you remember? (FR-002 — both optional.)
+ *  The note saves on blur so IndexedDB isn't rewritten per keystroke. */
+function VisitDetails({ visitId, date, note }: { visitId: string; date: string | null; note: string | null }) {
+  const setDetails = useVisits((s) => s.setDetails);
+  const [draft, setDraft] = useState(note ?? "");
+  // A different visit (or an import) swapped in under the same mount.
+  const lastVisit = useRef(visitId);
+  if (lastVisit.current !== visitId) {
+    lastVisit.current = visitId;
+    setDraft(note ?? "");
+  }
+  return (
+    <div className="visit-details">
+      <label className="visit-field">
+        <span className="muted small">Visited on</span>
+        <input
+          type="date"
+          className="select"
+          value={date ?? ""}
+          onChange={(e) => void setDetails(visitId, { date: e.target.value || null })}
+        />
+      </label>
+      <label className="visit-field visit-note">
+        <span className="muted small">Note</span>
+        <input
+          type="text"
+          className="select"
+          placeholder="A memory, a tip, who you were with…"
+          maxLength={2000}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => void setDetails(visitId, { note: draft })}
+        />
+      </label>
+    </div>
+  );
 }
 
 /**
@@ -157,8 +195,10 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
           <h3>Your postcard</h3>
           <div className="city-gallery-row">
             <PhotoGallery visitId={visit.visitId} photos={visit.photos ?? []} placeName={name} />
-            {visit.note && <p className="muted">{visit.note}</p>}
           </div>
+          {visit.status === "visited" && (
+            <VisitDetails visitId={visit.visitId} date={visit.date} note={visit.note} />
+          )}
         </section>
       )}
 
