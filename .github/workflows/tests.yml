@@ -1,0 +1,38 @@
+# Quality gates (Constitution: Development Workflow): typecheck, unit tests,
+# and the Playwright e2e suite (accessibility, keyboard, privacy, offline,
+# import-security) on every push and pull request.
+name: Tests
+
+on:
+  push:
+    branches:
+      - claude/repo-setup-speckit-3magw3
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm --filter postcards typecheck
+      - name: Unit tests
+        run: pnpm --filter postcards test
+      - name: Install Playwright Chromium
+        run: pnpm --filter postcards exec playwright install --with-deps chromium
+      - name: E2E tests (incl. a11y gate)
+        run: pnpm --filter postcards test:e2e
