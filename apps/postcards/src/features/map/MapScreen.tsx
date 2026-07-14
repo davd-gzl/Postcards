@@ -19,7 +19,13 @@ import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import type { City } from "../../lib/reference/types";
 import { CityLine } from "../../ui/CityLine";
 
-const PAGE = 100;
+// Fewer rows, faster everything: the list pages in small steps, and the
+// in-view working set is capped (population-presorted, so it's always the
+// most relevant cities) — reactions to a toggle stay instant even at world
+// zoom instead of recounting 135k rows.
+const PAGE = 30;
+const IN_VIEW_CAP = 2000;
+const POI_LIST_CAP = 50;
 const collator = new Intl.Collator(); // hoisted: per-pair localeCompare over 135k rows janks pans
 type CityFilter = "all" | "unvisited" | "visited";
 const BASEMAP_KEY = "postcards-basemap";
@@ -228,9 +234,10 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   }
 
   const inView = useMemo(
-    () => citiesInView(allCities, bounds, Infinity, true),
+    () => citiesInView(allCities, bounds, IN_VIEW_CAP, true),
     [allCities, bounds],
   );
+  const inViewCapped = inView.length === IN_VIEW_CAP;
   const visitedCityIds = useMemo(
     () => new Set(visits.filter((v) => v.place.kind === "city").map((v) => v.place.id)),
     [visits],
@@ -293,7 +300,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
       return {
         total: all.length,
         visited: all.reduce((n, h) => n + (seen.has(h.id) ? 1 : 0), 0),
-        items: all.slice(0, 100).map((h) => ({
+        items: all.slice(0, POI_LIST_CAP).map((h) => ({
           key: h.id,
           flag: countryFlag(h.countryIso2),
           name: h.name,
@@ -312,7 +319,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
       return {
         total: all.length,
         visited: all.reduce((n, a) => n + (seen.has(a.id) ? 1 : 0), 0),
-        items: all.slice(0, 100).map((a) => ({
+        items: all.slice(0, POI_LIST_CAP).map((a) => ({
           key: a.id,
           flag: "✈️",
           name: `${a.name} (${a.id})`,
@@ -569,7 +576,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             ⠿
           </button>
           <span className="list-head-meta muted">
-            <span>{poi ? poi.total : inView.length} in view</span>
+            <span>
+              {poi ? poi.total : formatInt(inView.length) + (inViewCapped ? "+" : "")} in view
+            </span>
             {(poi ? poi.visited : visitedInView) > 0 && (
               <span>· {poi ? poi.visited : visitedInView} visited</span>
             )}
@@ -709,7 +718,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
         {snapshot.length > shown && (
           <div className="list-pager">
             <span className="muted small">
-              Showing the {shown} most populous of {formatInt(snapshot.length)}
+              Showing the {shown} most populous of {formatInt(snapshot.length)}{inViewCapped ? "+" : ""}
             </span>
             <button className="mini-btn" type="button" onClick={() => setShown((n) => n + PAGE)}>
               Show {Math.min(PAGE, snapshot.length - shown)} more
