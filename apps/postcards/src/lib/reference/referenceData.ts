@@ -108,11 +108,15 @@ class ReferenceDataImpl implements ReferenceData {
   private languages: Record<string, Language[]>;
   private articleNames: Record<string, string>;
 
-  /** Swap in a bigger city set in place (same instance every consumer holds). */
-  replaceCities(cities: City[]): void {
-    this.cities = cities
-      .map((c) => ({ ...c, search: normalize(c.name) }))
-      .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
+  /** Swap in a bigger city set in place (same instance every consumer holds).
+   *  `prepared` rows arrive from the gazetteer worker already folded + sorted —
+   *  re-doing that here would stall the main thread for ~135k rows. */
+  replaceCities(cities: City[], prepared = false): void {
+    this.cities = prepared
+      ? (cities as IndexedCity[])
+      : cities
+          .map((c) => ({ ...c, search: normalize(c.name) }))
+          .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
     this.cityIndex.clear();
     for (const c of this.cities) this.cityIndex.set(c.id, c);
     // Refresh the per-country "known cities" denominators the stats show.
@@ -311,23 +315,65 @@ export async function initReferenceData(): Promise<ReferenceData> {
   }
 }
 
-/**
- * Background upgrade to the full world gazetteer. Never blocks startup; on
- * success every live consumer of the singleton sees the bigger set, and a
- * window event lets screens holding memoized snapshots refresh.
- */
-async function upgradeToFullGazetteer(impl: ReferenceDataImpl): Promise<void> {
+/** Wait for a calm moment — the 17 MB gazetteer must never race first paint,
+ *  the map spinning up, or the service worker's install for bandwidth/CPU. */
+function whenIdle(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(() => resolve(), { timeout: 4000 });
+    } else {
+      setTimeout(resolve, 1500);
+    }
+  });
+}
+
+/** Fetch + parse + fold + sort the full gazetteer, off-thread when possible. */
+async function loadFullGazetteer(): Promise<IndexedCity[] | null> {
+  if (typeof Worker !== "undefined") {
+    try {
+      return await new Promise<IndexedCity[] | null>((resolve) => {
+        const w = new Worker(new URL("./gazetteerWorker.ts", import.meta.url), {
+          type: "module",
+        });
+        w.onmessage = (e: MessageEvent<IndexedCity[] | null>) => {
+          resolve(e.data);
+          w.terminate();
+        };
+        w.onerror = () => {
+          resolve(null);
+          w.terminate();
+        };
+        w.postMessage(CITIES_ALL_URL);
+      });
+    } catch {
+      /* worker unavailable (old browser): fall through to the inline path */
+    }
+  }
   try {
     const res = await fetch(CITIES_ALL_URL);
-    if (!res.ok) return; // core set keeps working offline
+    if (!res.ok) return null;
     const cities = (await res.json()) as City[];
-    if (cities.length > impl.allCities().length) {
-      impl.replaceCities(cities);
-      generation++;
-      window.dispatchEvent(new Event(GAZETTEER_UPGRADED_EVENT));
-    }
+    return cities
+      .map((c) => ({ ...c, search: normalize(c.name) }))
+      .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
   } catch {
-    /* offline / interrupted: the core gazetteer keeps working */
+    return null;
+  }
+}
+
+/**
+ * Background upgrade to the full world gazetteer. Never blocks startup — it
+ * waits for idle and does the heavy JSON work in a Web Worker; on success
+ * every live consumer of the singleton sees the bigger set, and a window
+ * event lets screens holding memoized snapshots refresh.
+ */
+async function upgradeToFullGazetteer(impl: ReferenceDataImpl): Promise<void> {
+  await whenIdle();
+  const cities = await loadFullGazetteer();
+  if (cities && cities.length > impl.allCities().length) {
+    impl.replaceCities(cities, true);
+    generation++;
+    window.dispatchEvent(new Event(GAZETTEER_UPGRADED_EVENT));
   }
 }
 
