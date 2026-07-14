@@ -13,7 +13,9 @@ const MAX_MARKERS_KEY = "postcards-max-markers";
 // How many airport / monument markers to draw at most in the current view, so a
 // dense area doesn't blanket the map. Clamped to a sane range.
 export const MARKER_CAP_CHOICES = [100, 250, 500, 1000] as const;
-const DEFAULT_MAX_MARKERS = 250;
+// Default lean: fewer markers means every pan and every visit-toggle redraw
+// stays instant on phones; Settings offers more for people who want density.
+const DEFAULT_MAX_MARKERS = 100;
 
 function loadMaxMarkers(): number {
   try {
