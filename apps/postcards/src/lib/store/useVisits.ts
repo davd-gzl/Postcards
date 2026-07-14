@@ -29,6 +29,14 @@ export function findByPlace(list: Visit[], place: Pick<PlaceRef, "kind" | "id">)
   return list.find((v) => placeKey(v.place) === key);
 }
 
+/** Today as a local YYYY-MM-DD — the default "visited on" for a new visit. */
+function todayISO(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 function uuid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   // Fallback (non-secure) — only used where crypto is unavailable.
@@ -83,7 +91,9 @@ export const useVisits = create<VisitsState>((set, get) => ({
       place,
       status,
       favorite: existing?.favorite ?? favorite,
-      date: date ?? existing?.date ?? null,
+      // A place marked visited defaults to visited TODAY — usually true, one
+      // less thing to fill in, and editable on the place page.
+      date: date ?? existing?.date ?? (status === "visited" ? todayISO() : null),
       note: note ?? existing?.note ?? null,
       photos: existing?.photos ?? [], // keep the gallery across re-logs/status changes
       addedAt: existing?.addedAt ?? new Date().toISOString(),
