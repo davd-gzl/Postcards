@@ -120,11 +120,12 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // The phone Back gesture used to quit the whole app. Trap it: Back now unwinds
-  // the app itself — close an open dialog, then a city/country page, then return
-  // to the Map tab — instead of leaving. In an installed (standalone) app Back
-  // never exits (use the home gesture); in a browser tab a Back at the Map root
-  // is allowed through so the tab can still navigate away normally.
+  // The phone Back gesture used to quit the whole app. Trap it: Back retraces
+  // YOUR actual steps — close an open dialog, then return to the previous
+  // screen you were on (tab or page, via the app's own history), one step per
+  // press. In an installed (standalone) app Back never exits (use the home
+  // gesture); in a browser tab a Back with no app history left is allowed
+  // through so the tab can still navigate away normally.
   useEffect(() => {
     const standalone =
       (typeof matchMedia !== "undefined" && matchMedia("(display-mode: standalone)").matches) ||
@@ -143,17 +144,12 @@ export function App() {
         arm();
         return;
       }
-      if (ui.cityPageId || ui.countryPageId) {
-        ui.closePages();
+      // Always the LAST screen: pop the app's own navigation history.
+      if (ui.goBack()) {
         arm();
         return;
       }
-      if (ui.tab !== "map") {
-        ui.setTab("map");
-        arm();
-        return;
-      }
-      // At the Map root: keep a standalone app open (re-arm); let a browser tab go.
+      // Nothing left to go back to: keep a standalone app open; let a browser tab go.
       if (standalone) arm();
     }
     window.addEventListener("popstate", onPop);

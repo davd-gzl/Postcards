@@ -304,9 +304,8 @@ h1.brand {
   background: var(--bg-sub);
 }
 
-/* The list docks beside/under the map and is never hidden — `.list-first`
-   moves it above the map (mobile) or to its left (desktop, see the grid).
-   The divider always sits between the two panes. */
+/* Map on top (mobile) / left (desktop), then the slider, then the list — the
+   divider between the panes is the one control for how much room each gets. */
 .map-screen .map-top {
   order: 0;
 }
@@ -317,12 +316,6 @@ h1.brand {
   order: 2;
 }
 .map-screen .view-list {
-  order: 3;
-}
-.map-screen.list-first .view-list {
-  order: 1;
-}
-.map-screen.list-first .map-box {
   order: 3;
 }
 
@@ -524,6 +517,21 @@ h1.brand {
   min-height: 0;
   overflow-y: auto;
   padding: 10px 14px 18px;
+  /* Height-aware: when the slider leaves it only a sliver, the list compresses
+     to its essentials (see the @container rule below). */
+  container: viewlist / size;
+}
+/* Slid nearly shut: drop the filter chrome and tighten up — what little room
+   is left goes to the header count and the first rows, not to controls. */
+@container viewlist (max-height: 200px) {
+  .list-filter,
+  .list-pager,
+  .cap-note {
+    display: none;
+  }
+  .section-head {
+    margin-bottom: 2px;
+  }
 }
 .list-head-meta {
   display: flex;
@@ -545,30 +553,6 @@ h1.brand {
 .visit-field.visit-note {
   flex: 1;
   min-width: 220px;
-}
-
-/* The list's grab handle: drag it across the screen midline to re-dock the
-   panel (tap/Enter flips it — see MapScreen). touch-action:none keeps a touch
-   drag from scrolling the list instead. */
-.list-grab {
-  border: 1px solid var(--border);
-  background: var(--bg-sub);
-  border-radius: 7px;
-  padding: 2px 8px;
-  font-size: 13px;
-  line-height: 1.3;
-  color: var(--muted);
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-}
-.list-grab:active {
-  cursor: grabbing;
-}
-.list-grab:hover,
-.list-grab:focus-visible {
-  color: var(--accent);
-  border-color: var(--accent);
 }
 .cap-note {
   padding: 6px 2px 0;
@@ -1736,20 +1720,6 @@ button.stat-tile:hover .num {
     grid-column: 3;
     grid-row: 2;
     min-height: 0;
-  }
-  /* Docked left: mirror the panes (the divider keeps the middle track). */
-  .map-screen.list-first {
-    grid-template-columns: var(--list-w, minmax(320px, 400px)) 12px minmax(0, 1fr);
-  }
-  .map-screen.list-first .map-box {
-    grid-column: 3;
-  }
-  .map-screen.list-first .pane-divider {
-    border-left: none;
-    border-right: 1px solid var(--border);
-  }
-  .map-screen.list-first .view-list {
-    grid-column: 1;
   }
 }
 
