@@ -70,8 +70,10 @@ export function App() {
       if (e.key === "Escape") {
         // A modal/lightbox/open composer on screen consumes Escape (its own
         // handler closes it) — only an unobstructed Escape navigates back.
+        // A DIRTY composer counts as an open layer; the always-open blank
+        // Journal form must not swallow the Escape that navigates away.
         const dialogOpen = !!document.querySelector(
-          ".modal-backdrop, .lightbox, .maplibregl-popup, .journal-composer",
+          ".modal-backdrop, .lightbox, .maplibregl-popup, .journal-composer-busy",
         );
         setShowHelp(false);
         setShowAbout(false);
@@ -136,7 +138,7 @@ export function App() {
     function onPop() {
       const ui = useUi.getState();
       const dialogOpen = !!document.querySelector(
-        ".modal-backdrop, .lightbox, .maplibregl-popup, .journal-composer",
+        ".modal-backdrop, .lightbox, .maplibregl-popup, .journal-composer-busy",
       );
       if (dialogOpen) {
         // Let the open layer close via its own Escape handler.
