@@ -683,6 +683,13 @@ export function MapView({
     }
   }
 
+  // Change-keys for the expensive layers: rebuilding the viewport POI pipeline
+  // (a scan over every airport + monument) and the country fill on EVERY visit
+  // change made a simple city remove feel sluggish — they now refresh only
+  // when the state they actually draw has changed.
+  // Sentinel start values: the FIRST applyVisited must always draw both.
+  const lastPoiKey = useRef("<init>");
+  const lastCountryKey = useRef("<init>");
   function applyVisited(map: MlMap) {
     (map.getSource("cities") as GeoJSONSource | undefined)?.setData(
       visitedCityPoints(visitsRef.current, ref),
@@ -693,10 +700,22 @@ export function MapView({
     (map.getSource("airports") as GeoJSONSource | undefined)?.setData(
       airportPoints(visitsRef.current, ref),
     );
-    // Monuments (and browsable airports) are viewport-capped, and their "seen"
-    // state depends on visits, so they refresh here too.
-    applyViewportPoi(map);
-    applyCountryFill(map);
+    // Monuments (and browsable airports) are viewport-capped and depend on
+    // visits only through their heritage/airport "seen" state.
+    const poiKey = visitsRef.current
+      .filter((v) => v.place.kind === "heritage" || v.place.kind === "airport")
+      .map((v) => `${v.place.kind}:${v.place.id}:${v.status}`)
+      .sort()
+      .join("|");
+    if (poiKey !== lastPoiKey.current) {
+      lastPoiKey.current = poiKey;
+      applyViewportPoi(map);
+    }
+    const countryKey = [...visitedCountryIds(visitsRef.current)].sort().join(",");
+    if (countryKey !== lastCountryKey.current) {
+      lastCountryKey.current = countryKey;
+      applyCountryFill(map);
+    }
   }
 
   // Shade the countries you've visited: set the fill layer's filter to their
@@ -960,13 +979,42 @@ export function MapView({
         const m = map; // narrow once — closures below can't re-null it
         const layers = tappable.filter((l) => m.getLayer(l));
         if (!layers.length) return;
-        const feats = m.queryRenderedFeatures(e.point, { layers });
+        // A fingertip, not a pixel: query a padded box around the tap so the
+        // small markers (the white city dots especially) are easy to hit.
+        const coarse =
+          typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches;
+        const pad = coarse ? 20 : 8;
+        const feats = m.queryRenderedFeatures(
+          [
+            [e.point.x - pad, e.point.y - pad],
+            [e.point.x + pad, e.point.y + pad],
+          ],
+          { layers },
+        );
         if (!feats.length) return;
-        // Cities outrank airports outrank monuments when they overlap; among
-        // cities the most populous wins.
+        // Nearest marker to the finger wins; among near-ties (the fingertip
+        // blur) cities outrank airports outrank monuments, and among cities
+        // the most populous wins.
         const score = (f: maplibregl.MapGeoJSONFeature) =>
           f.layer.id === "poi-monuments" ? -1 : f.layer.id === "airports-all" ? -0.5 : Number(f.properties?.pop ?? 0);
-        const f = feats.reduce((best, cur) => (score(cur) > score(best) ? cur : best));
+        const dist = (f: maplibregl.MapGeoJSONFeature) => {
+          if (f.geometry.type !== "Point") return 0;
+          const [lon, lat] = f.geometry.coordinates as [number, number];
+          const pt = m.project([lon, lat]);
+          return Math.hypot(pt.x - e.point.x, pt.y - e.point.y);
+        };
+        const withD = feats.map((f) => ({ f, d: dist(f) }));
+        const dMin = Math.min(...withD.map((x) => x.d));
+        const near = withD.filter((x) => x.d <= dMin + 8).map((x) => x.f);
+        const f = near.reduce((best, cur) => (score(cur) > score(best) ? cur : best));
+        // Anchor everything on the MARKER, not the (possibly offset) tap point.
+        const anchor =
+          f.geometry.type === "Point"
+            ? new maplibregl.LngLat(
+                (f.geometry.coordinates as [number, number])[0],
+                (f.geometry.coordinates as [number, number])[1],
+              )
+            : e.lngLat;
         const p = f.properties ?? {};
         const isMonument = f.layer.id === "poi-monuments";
         const isAirport = f.layer.id === "airports-all";
@@ -985,7 +1033,7 @@ export function MapView({
         // Airports are stored with the code in the name (matching the list/search),
         // so toggling from the map records the same place.
         const displayName = isAirport && iata ? `${String(p.name ?? "")} (${iata})` : String(p.name ?? "");
-        openPlacePopup(map, e.lngLat, {
+        openPlacePopup(map, anchor, {
           name: displayName,
           sub,
           place: {
@@ -998,7 +1046,7 @@ export function MapView({
         });
         suppressBoundsRef.current = true;
         map.easeTo({
-          center: e.lngLat,
+          center: anchor,
           zoom: Math.max(map.getZoom(), 6.5),
           duration: reducedRef.current ? 0 : 550,
         });
