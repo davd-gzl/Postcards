@@ -1,4 +1,7 @@
 import { useMemo, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 import { useVisits } from "../../lib/store/useVisits";
 import { useTrips } from "../../lib/store/useTrips";
 import { sortStories, useStories } from "../../lib/store/useStories";
@@ -20,6 +23,27 @@ function download(filename: string, text: string, type: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/**
+ * Get the file to the user. On the web that's a download; inside the native
+ * wrap (iOS/Android) an <a download> does nothing useful, so the file is
+ * written to the app cache and handed to the system share sheet — Files,
+ * AirDrop, mail, drive, wherever the user points it. Still strictly explicit:
+ * this only ever runs from the Export buttons.
+ */
+async function deliver(filename: string, text: string, type: string): Promise<void> {
+  if (Capacitor.isNativePlatform()) {
+    const { uri } = await Filesystem.writeFile({
+      path: filename,
+      data: text,
+      directory: Directory.Cache,
+      encoding: Encoding.UTF8,
+    });
+    await Share.share({ title: filename, url: uri });
+    return;
+  }
+  download(filename, text, type);
+}
+
 export function Backup() {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
@@ -28,16 +52,16 @@ export function Backup() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
-  function exportJson() {
+  async function exportJson() {
     try {
-      download(EXPORT_FILENAME, serializeFile(visits, trips, stories), "application/json");
+      await deliver(EXPORT_FILENAME, serializeFile(visits, trips, stories), "application/json");
     } catch {
       setMessage({ kind: "err", text: "Couldn't build the export file. Your data is unchanged." });
     }
   }
-  function exportMd() {
+  async function exportMd() {
     try {
-      download("places.md", toMarkdown(visits, trips, ref), "text/markdown");
+      await deliver("places.md", toMarkdown(visits, trips, ref), "text/markdown");
     } catch {
       setMessage({ kind: "err", text: "Couldn't build the summary file. Your data is unchanged." });
     }
@@ -94,10 +118,10 @@ export function Backup() {
       </p>
 
       <div className="btn-row">
-        <button className="btn" type="button" onClick={exportJson}>
+        <button className="btn" type="button" onClick={() => void exportJson()}>
           Export data
         </button>
-        <button className="btn-ghost" type="button" onClick={exportMd}>
+        <button className="btn-ghost" type="button" onClick={() => void exportMd()}>
           Export summary (.md)
         </button>
         <button className="btn-ghost" type="button" onClick={() => fileInput.current?.click()}>

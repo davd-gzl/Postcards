@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "schema": "UPDATE_SCHEMA=1 vitest run tests/unit/schemaArtifact.spec.ts",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "reference": "node scripts/build-reference.mjs",
@@ -26,7 +27,9 @@
   "dependencies": {
     "@capacitor/android": "^6.2.1",
     "@capacitor/core": "^6.2.1",
+    "@capacitor/filesystem": "^6.0.4",
     "@capacitor/ios": "^6.2.1",
+    "@capacitor/share": "^6.0.4",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/space-grotesk": "^5.2.10",
     "i18n-iso-countries": "^7.14.0",

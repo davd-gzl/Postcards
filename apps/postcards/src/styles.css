@@ -501,6 +501,23 @@ h1.brand {
   gap: 8px;
   align-items: baseline;
 }
+/* Visit date & note editor on the place page (FR-002). */
+.visit-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.visit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.visit-field.visit-note {
+  flex: 1;
+  min-width: 220px;
+}
+
 /* The list's grab handle: drag it across the screen midline to re-dock the
    panel (tap/Enter flips it — see MapScreen). touch-action:none keeps a touch
    drag from scrolling the list instead. */
