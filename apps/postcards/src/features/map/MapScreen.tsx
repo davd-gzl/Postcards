@@ -97,8 +97,11 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const [showTrips, setShowTrips] = useState(true);
   const [globe, setGlobe] = useState(() => loadPref(GLOBE_KEY, (v) => v === "1"));
   const [showTowns, setShowTowns] = useState(() => loadPref("postcards-towns", (v) => v === "1"));
+  // ON by default: "visited countries visually distinguished" is a core map
+  // promise (US2-AC2) — the layer only paints countries you've actually visited,
+  // so a fresh map stays clean anyway. The Layers toggle still turns it off.
   const [showCountries, setShowCountries] = useState(() =>
-    loadPref("postcards-countries", (v) => v === "1"),
+    loadPref("postcards-countries", (v) => v !== "0"),
   );
   const [listTall, setListTall] = useState(false);
   // Where the list docks relative to the map: "end" = right (desktop) / below

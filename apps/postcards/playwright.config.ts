@@ -1,7 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
+import { existsSync } from "node:fs";
 
-// Uses the preinstalled Chromium in this environment.
+// Uses the preinstalled Chromium in this environment when present; elsewhere
+// (CI) Playwright's own installed browser is used.
 // Run with: pnpm --filter postcards test:e2e
+const LOCAL_CHROMIUM = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -22,7 +26,9 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         // Use the environment's preinstalled Chromium instead of downloading.
-        launchOptions: { executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" },
+        ...(existsSync(LOCAL_CHROMIUM)
+          ? { launchOptions: { executablePath: LOCAL_CHROMIUM } }
+          : {}),
       },
     },
   ],

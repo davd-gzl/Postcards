@@ -7,6 +7,7 @@ import {
   type PlaceRef,
   type Visit,
 } from "../schema/models";
+import { sanitizeText } from "../schema/sanitize";
 import * as db from "../db/visitsDb";
 
 /**
@@ -62,6 +63,8 @@ interface VisitsState {
   removePhoto: (visitId: string, index: number) => Promise<void>;
   /** Set (or clear, with null) the caption on the photo at `index`. */
   setPhotoCaption: (visitId: string, index: number, caption: string | null) => Promise<void>;
+  /** Set or clear the visit's own date and/or note (FR-002). */
+  setDetails: (visitId: string, details: { date?: string | null; note?: string | null }) => Promise<void>;
   setAll: (visits: Visit[]) => Promise<void>;
 }
 
@@ -138,6 +141,21 @@ export const useVisits = create<VisitsState>((set, get) => ({
       i === index ? { ...p, caption: caption?.trim() ? caption.trim() : null } : p,
     );
     const updated: Visit = { ...existing, photos };
+    set({ visits: get().visits.map((v) => (v.visitId === visitId ? updated : v)) });
+    await db.putVisit(updated);
+  },
+  async setDetails(visitId, details) {
+    const existing = get().visits.find((v) => v.visitId === visitId);
+    if (!existing) return;
+    const updated: Visit = {
+      ...existing,
+      // Only the fields the caller passed change; text is sanitized like the
+      // portable file would on import (inert data, same caps).
+      ...(details.date !== undefined ? { date: details.date || null } : {}),
+      ...(details.note !== undefined
+        ? { note: details.note?.trim() ? sanitizeText(details.note, 2000) : null }
+        : {}),
+    };
     set({ visits: get().visits.map((v) => (v.visitId === visitId ? updated : v)) });
     await db.putVisit(updated);
   },

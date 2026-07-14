@@ -136,3 +136,22 @@ change is needed when the device-global Offline Map Store package lands.
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | — | — | — |
+
+## Addendum — bundled basemap decision (2026-07-12, ratified)
+
+The plan above called for a bundled world-overview **PMTiles** basemap (T033). What
+shipped instead, and is hereby ratified as the design:
+
+- The **default** basemap is the detailed OpenStreetMap raster map (online; a
+  Settings switch turns all online maps off for a fully offline app).
+- The **offline guarantee** (FR-005 / SC-007) is met by a bundled Natural Earth
+  vector outline world map (`public/basemap/countries-50m.json`, world-atlas,
+  public domain) that renders automatically whenever tiles are unavailable — a
+  fresh install in airplane mode still gets a usable world overview with zero
+  downloads (verified by `tests/e2e/offline.spec.ts`).
+- Detailed offline street maps remain available through the same `MapSource`
+  seam via a device-global PMTiles pack (the Offline Map Store follow-up),
+  exactly as the ecosystem constraint requires.
+
+Bundling an overview `.pmtiles` stays open as a possible quality upgrade, but it
+is no longer a requirement of this feature.
