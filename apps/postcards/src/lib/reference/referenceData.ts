@@ -119,6 +119,7 @@ class ReferenceDataImpl implements ReferenceData {
           .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
     this.cityIndex.clear();
     for (const c of this.cities) this.cityIndex.set(c.id, c);
+    this.citiesByCountry.clear(); // per-country slices rebuild from the new set
     // Refresh the per-country "known cities" denominators the stats show.
     const counts = new Map<string, number>();
     for (const c of cities) counts.set(c.countryIso2, (counts.get(c.countryIso2) ?? 0) + 1);
@@ -184,8 +185,16 @@ class ReferenceDataImpl implements ReferenceData {
   subdivisionById(id: string): Subdivision | undefined {
     return this.subIndex.get(id);
   }
+  // Lazily-built per-country slices: opening a country page used to re-scan
+  // all ~135k rows every time. Filled on first ask, dropped when the full
+  // gazetteer swaps in (replaceCities). Population order is preserved.
+  private citiesByCountry = new Map<string, City[]>();
   citiesOf(countryIso2: string): City[] {
-    return this.cities.filter((c) => c.countryIso2 === countryIso2);
+    const cached = this.citiesByCountry.get(countryIso2);
+    if (cached) return cached;
+    const list = this.cities.filter((c) => c.countryIso2 === countryIso2);
+    this.citiesByCountry.set(countryIso2, list);
+    return list;
   }
   allCities(): City[] {
     return this.cities;
