@@ -80,7 +80,10 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 ## i18n
 
-- [ ] Add languages: **French** and **Korean** (introduce an i18n layer; translate UI strings) — large
+- [x] Add languages: **French** and **Korean** — DONE. Zero-dep i18n layer (428 keys, typed
+      en/fr/ko with compile-time key parity), useT hook, language switcher, locale-aware Intl
+      formatting. ~80% of user-facing strings translated (detail pages / publish-sync flows / a few
+      modals flagged for follow-up). +14 tests.
 
 ## Investigations / answers
 
