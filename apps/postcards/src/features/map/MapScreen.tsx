@@ -7,6 +7,7 @@ import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
 import { useSettings } from "../../lib/store/useSettings";
 import { usePrefersReducedMotion } from "../../lib/hooks/usePrefersReducedMotion";
+import { useOnlineStatus } from "../../lib/hooks/useOnlineStatus";
 import { countryFlag, formatInt } from "../../lib/format/format";
 import { StateToggles } from "../visits/StateToggles";
 import { GuideButton } from "../guides/GuideButton";
@@ -97,6 +98,10 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [basemap, setBasemap] = useState<Basemap>(loadBasemap);
   const [hasDetail, setHasDetail] = useState(false);
+  const online = useOnlineStatus();
+  // The online base fell back to the offline base (offline / blocked tiles). Set
+  // when it happens; drives the manual "Reconnect" prompt — never auto-switches.
+  const [fellBackOffline, setFellBackOffline] = useState(false);
   const [cityFilter, setCityFilter] = useState<CityFilter>(() =>
     loadPref(FILTER_KEY, (v) => (v === "unvisited" || v === "visited" ? v : "all")),
   );
@@ -479,10 +484,27 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
               // not strand the user on the offline base forever; reconnecting (or
               // a reload) restores the online map with the saved preference intact.
               setBasemap("simple");
+              setFellBackOffline(true);
               showToast("Online map unavailable — showing the offline map.");
             }
           }}
         />
+        {online && fellBackOffline && onlineMap && (
+          <div className="map-reconnect" role="status">
+            <span className="small">Back online.</span>
+            <button
+              type="button"
+              className="mini-btn"
+              onClick={() => {
+                setBasemap("osm");
+                savePref(BASEMAP_KEY, "osm");
+                setFellBackOffline(false);
+              }}
+            >
+              Reconnect
+            </button>
+          </div>
+        )}
         <div className="map-ctl map-ctl-top segmented" role="group" aria-label="Map mode">
           {(["all", "cities", "monuments", "airports"] as MapMode[]).map((m) => (
             <button
