@@ -1126,6 +1126,73 @@ button.stat-tile:hover .num {
   color: var(--muted);
 }
 
+/* Danger zone: the one irreversible action, set apart from the safe buttons. */
+.danger-zone {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.danger-zone .muted.small {
+  margin-top: 6px;
+}
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 11px 16px;
+  font-weight: 600;
+  transition: transform 0.06s ease, filter 0.15s ease;
+}
+.btn-danger:hover {
+  filter: brightness(1.1);
+}
+.btn-danger:active {
+  transform: translateY(1px);
+}
+.btn-danger:disabled {
+  opacity: 0.45;
+  filter: none;
+  cursor: not-allowed;
+}
+.reset-confirm {
+  padding: 14px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: #fdeded;
+}
+@media (prefers-color-scheme: dark) {
+  .reset-confirm {
+    background: color-mix(in srgb, var(--danger) 14%, transparent);
+  }
+}
+.reset-warn {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.reset-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.reset-label code,
+.danger-zone code {
+  font-weight: 700;
+}
+.reset-input {
+  width: 100%;
+  max-width: 220px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
 /* Accessibility */
 :focus-visible {
   outline: 2px solid var(--accent);
