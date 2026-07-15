@@ -123,6 +123,51 @@ export function prefetchAroundBounds(
   for (let w = 0; w < 3; w++) void worker();
 }
 
+/**
+ * Warm the block of tiles around a DESTINATION the camera is about to fly to,
+ * in parallel with the animation — arriving somewhere far away used to mean
+ * watching its tiles load one by one. A 5×5 block at the target zoom covers a
+ * phone viewport plus a pan's worth of margin (≤25 tiles, session-deduped).
+ */
+export function prefetchAroundPoint(
+  lon: number,
+  lat: number,
+  zoom: number,
+  opts: { template?: string; fetchFn?: typeof fetch } = {},
+): void {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+  const z = clamp(Math.round(zoom), 1, MAX_ZOOM);
+  const n = 2 ** z;
+  const cx = lon2x(lon, z);
+  const cy = lat2y(lat, z);
+  const template = opts.template ?? OSM_TILE_TEMPLATE;
+  const doFetch = opts.fetchFn ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
+  const urls: string[] = [];
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dy = -2; dy <= 2; dy++) {
+      const x = (((cx + dx) % n) + n) % n; // wrap across the antimeridian
+      const y = cy + dy;
+      if (y < 0 || y >= n) continue;
+      const url = template.replace("{z}", String(z)).replace("{x}", String(x)).replace("{y}", String(y));
+      if (!prefetched.has(url)) urls.push(url);
+    }
+  }
+  if (prefetched.size > PREFETCH_SEEN_CAP) prefetched.clear();
+  for (const url of urls) prefetched.add(url);
+  let i = 0;
+  async function worker() {
+    while (i < urls.length) {
+      const url = urls[i++]!;
+      try {
+        await doFetch(url, { mode: "cors", referrerPolicy: "strict-origin-when-cross-origin" });
+      } catch {
+        prefetched.delete(url);
+      }
+    }
+  }
+  for (let w = 0; w < 4; w++) void worker();
+}
+
 export interface SaveProgress {
   done: number;
   total: number;
