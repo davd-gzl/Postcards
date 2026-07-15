@@ -65,7 +65,9 @@ export function PlacePicker({
           <span className="flag" aria-hidden>
             {countryFlag(value.countryId)}
           </span>
-          <span className="picker-chip-name">{value.name}</span>
+          <span className="picker-chip-name" title={value.name}>
+            {value.name}
+          </span>
           <button
             type="button"
             className="picker-clear"
