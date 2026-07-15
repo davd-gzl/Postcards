@@ -71,12 +71,11 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 ## Intra-city places (finer granularity)
 
-- [ ] Log **places within a city** — subway/metro stations, districts/neighbourhoods,
-      parks, etc. — **adapting per city to whatever real data exists**. STRICT: base
-      everything on real, openly-licensed datasets with provenance (OSM metro stations,
-      admin districts, Wikidata) — **invent nothing** (Constitution I: aggregator, never
-      an author). Missing data → a shareable dataset, not app-authored points.
-- [ ] Spec `specs/014-intra-city-places/spec.md` (place hierarchy: country → city → sub-place; per-city data availability drives what's offered)
+- [x] Spec `specs/014-intra-city-places/spec.md` + implementation `tasks.md` — DONE.
+- [ ] **DEFERRED (documented follow-up):** the actual per-city sub-place dataset (OSM metro
+      stations, admin districts, Wikidata) needs external data this environment's egress blocks;
+      inventing coordinates would violate Constitution I. The structure (spec + tasks.md runway)
+      is committed; the dataset + loading seam + UI are the follow-up. See `wiki/Roadmap.md`.
 
 ## i18n
 
@@ -101,9 +100,8 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 ## Documentation
 
-- [ ] Write a **full wiki** for the project (features, hosting, data/provenance,
-      architecture, how-to) once the batch is done → then **launch a workflow** to
-      make it perfect.
+- [x] Write a **full wiki** (9 pages under `wiki/`, written from the real code + a polish
+      pass for accuracy/consistency/cross-links) — DONE via workflow.
 
 ## Map data loading (structure + preprocessing)
 
