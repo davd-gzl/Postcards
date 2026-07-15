@@ -11,21 +11,25 @@ import { countryFlag, formatInt } from "../../lib/format/format";
 import { ScopeToggle } from "../../ui/ScopeToggle";
 import { renderPoster } from "./poster";
 import { ListPager } from "../../ui/ListPager";
+import { useT } from "../../lib/i18n";
 
 /** One flag in the passport grid — a button that opens its country's page. */
 function FlagCard({ c, locked }: { c: Country; locked?: boolean }) {
+  const t = useT();
   return (
     <li>
       <button
         type="button"
         className={"flag-card" + (locked ? " flag-locked" : "")}
-        title={`Open ${c.name}`}
+        title={t("stats.country.open", { name: c.name })}
         onClick={() => useUi.getState().openCountry(c.iso2)}
       >
         <span className="flag-big" aria-hidden>
           {countryFlag(c.iso2)}
         </span>
-        <span className="flag-name">{c.name}</span>
+        <span className="flag-name" title={c.name}>
+          {c.name}
+        </span>
       </button>
     </li>
   );
@@ -38,6 +42,7 @@ function FlagCard({ c, locked }: { c: Country; locked?: boolean }) {
  * Places screen (smaller heading under the Places one).
  */
 export function PassportScreen({ embedded }: { embedded?: boolean } = {}) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const scope = useSettings((s) => s.countryScope);
@@ -131,26 +136,26 @@ export function PassportScreen({ embedded }: { embedded?: boolean } = {}) {
       }, { anchors: fallbackAnchors });
       setPosterUrl(URL.createObjectURL(blob));
     } catch {
-      showToast("Couldn't render the poster (map geometry unavailable offline?).");
+      showToast(t("passport.toast.posterErr"));
     } finally {
       setRendering(false);
     }
   }
 
   return (
-    <section aria-label="Passport">
+    <section aria-label={t("passport.title")}>
       <div className="section-head">
-        {embedded ? <h3>Passport</h3> : <h2>Passport</h2>}
+        {embedded ? <h3>{t("passport.title")}</h3> : <h2>{t("passport.title")}</h2>}
         <ScopeToggle />
       </div>
 
       <div className="passport-head">
         <p className="muted">
-          <strong className="flags-count">{formatInt(collected.length)}</strong> of{" "}
-          {formatInt(collected.length + missing.length)} flags collected
+          <strong className="flags-count">{formatInt(collected.length)}</strong>{" "}
+          {t("passport.ofFlags", { total: formatInt(collected.length + missing.length) })}
         </p>
         <button className="btn" type="button" disabled={rendering} onClick={() => void exportPoster()}>
-          {rendering ? "Rendering…" : "🖼 World poster"}
+          {rendering ? t("passport.rendering") : `🖼 ${t("passport.worldPoster")}`}
         </button>
       </div>
 
@@ -159,13 +164,16 @@ export function PassportScreen({ embedded }: { embedded?: boolean } = {}) {
           <span className="empty-emoji" aria-hidden>
             🛂
           </span>
-          No stamps yet — visit a city and its country's flag lands here.
+          {t("passport.empty")}
         </p>
       ) : (
         continents.map((cont) => (
           <section key={cont.name} className="passport-continent">
             <h3>
-              {cont.name} <span className="muted small">{cont.done.length} of {cont.total}</span>
+              {cont.name}{" "}
+              <span className="muted small">
+                {t("passport.continentProgress", { done: cont.done.length, total: cont.total })}
+              </span>
             </h3>
             <ul className="flag-grid">
               {cont.done.map((c) => (
@@ -182,17 +190,19 @@ export function PassportScreen({ embedded }: { embedded?: boolean } = {}) {
         aria-expanded={showMissing}
         onClick={() => setShowMissing((s) => !s)}
       >
-        {showMissing ? "Hide" : "Show"} the {formatInt(missing.length)} still to collect
+        {showMissing
+          ? t("passport.hideToCollect", { count: formatInt(missing.length) })
+          : t("passport.showToCollect", { count: formatInt(missing.length) })}
       </button>
       {posterUrl && (
-        <div className="lightbox" role="dialog" aria-modal="true" aria-label="Your world poster" onClick={closePoster}>
-          <img className="lightbox-img" src={posterUrl} alt="World map poster with a flag on every visited country" />
+        <div className="lightbox" role="dialog" aria-modal="true" aria-label={t("passport.posterAria")} onClick={closePoster}>
+          <img className="lightbox-img" src={posterUrl} alt={t("passport.posterAlt")} />
           <div className="lightbox-actions" onClick={(e) => e.stopPropagation()}>
             <a className="mini-btn" href={posterUrl} download="postcards-world.png">
-              ⬇ Download PNG
+              ⬇ {t("passport.downloadPng")}
             </a>
             <button className="btn-ghost" type="button" autoFocus onClick={closePoster}>
-              Close
+              {t("common.close")}
             </button>
           </div>
         </div>

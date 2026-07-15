@@ -10,14 +10,21 @@ import {
   computeRecords,
   countryDetail,
   visitedCountriesList,
+  type CountryCoverage,
   type CountrySort,
 } from "./computeStats";
 import { travelTotals } from "../travel/distance";
 import { MODE_GLYPH } from "../travel/modes";
 import { useUi } from "../../lib/store/useUi";
 import { countryFlag, formatInt, formatKm, formatPercent } from "../../lib/format/format";
-import { CONTINENT_COLORS } from "../../lib/reference/continents";
+import { CONTINENT_COLORS, CONTINENT_ORDER } from "../../lib/reference/continents";
 import { ScopeToggle } from "../../ui/ScopeToggle";
+import { useT } from "../../lib/i18n";
+
+// Coverage-ring geometry: two concentric circles in a 120×120 viewBox. The
+// value arc's length is driven by stroke-dashoffset against this circumference.
+const RING_R = 52;
+const RING_C = 2 * Math.PI * RING_R;
 
 /** A row of tappable chips, capped so a huge country doesn't flood the card. */
 function ChipRow({
@@ -25,7 +32,7 @@ function ChipRow({
   names,
   done,
   onPick,
-  hint = "Open",
+  hint,
   max = 16,
 }: {
   label: string;
@@ -37,9 +44,11 @@ function ChipRow({
   hint?: string;
   max?: number;
 }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   if (names.length === 0) return null;
   const shown = expanded ? names : names.slice(0, max);
+  const hintText = hint ?? t("common.open");
   return (
     <div className="chip-row">
       <span className="chip-row-label">{label}</span>
@@ -51,14 +60,14 @@ function ChipRow({
             className={"place-chip" + (done ? " chip-done" : "")}
             onClick={onPick ? () => onPick(n) : undefined}
             disabled={!onPick}
-            title={onPick ? `${hint} ${n}` : undefined}
+            title={onPick ? `${hintText} ${n}` : undefined}
           >
             {n}
           </button>
         ))}
         {names.length > max && (
           <button type="button" className="place-chip chip-more" onClick={() => setExpanded((e) => !e)}>
-            {expanded ? "less" : `+${names.length - max} more`}
+            {expanded ? t("common.less") : t("common.moreCount", { count: names.length - max })}
           </button>
         )}
       </span>
@@ -68,78 +77,16 @@ function ChipRow({
 
 /** A record's city name — a button that flies the map to it. */
 function RecordCity({ name, onPick }: { name: string; onPick: (name: string) => void }) {
+  const t = useT();
   return (
     <button
       type="button"
       className="country-open"
-      title={`Show ${name} on the map`}
+      title={t("stats.records.showOnMap", { name })}
       onClick={() => onPick(name)}
     >
       {name}
     </button>
-  );
-}
-
-/** Per-country drill-down: the name lists are computed only once it's opened. */
-function CountryDrilldown({
-  iso2,
-  flyToRegion,
-}: {
-  iso2: string;
-  flyToRegion: (name: string) => void;
-}) {
-  const ref = useMemo(() => getReferenceData(), []);
-  const gazGen = useGazetteerGeneration(); // city lists grow when the full gazetteer lands
-  const visits = useVisits((s) => s.visits);
-  const [open, setOpen] = useState(false);
-  const detail = useMemo(
-    () => (open ? countryDetail(visits, ref, iso2) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [open, visits, ref, iso2, gazGen],
-  );
-  // Tapping a city or monument chip opens its detail page directly (you
-  // clicked the place, so show the place), never just a map fly-by.
-  const openByName = (list: { id: string; name: string }[]) => (name: string) => {
-    const hit = list.find((x) => x.name === name);
-    if (hit) useUi.getState().openCity(hit.id);
-  };
-  return (
-    <details className="country-detail" onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary>What you've seen · what's left</summary>
-      {detail && (
-        <>
-          <ChipRow
-            label="Cities"
-            names={detail.cities.map((c) => c.name)}
-            done
-            onPick={openByName(detail.cities)}
-          />
-          <ChipRow
-            label="Regions visited"
-            names={detail.regionsVisited}
-            done
-            hint="Show on the map:"
-            onPick={flyToRegion}
-          />
-          <ChipRow
-            label="Regions to visit"
-            names={detail.regionsRemainingNames}
-            onPick={flyToRegion}
-          />
-          <ChipRow
-            label="Monuments seen"
-            names={detail.monumentsVisited.map((m) => m.name)}
-            done
-            onPick={openByName(detail.monumentsVisited)}
-          />
-          <ChipRow
-            label="Monuments to see"
-            names={detail.monumentsRemaining.map((m) => m.name)}
-            onPick={openByName(detail.monumentsRemaining)}
-          />
-        </>
-      )}
-    </details>
   );
 }
 
@@ -158,7 +105,169 @@ function Bar({ value, label, color }: { value: number; label: string; color?: st
   );
 }
 
+/**
+ * One country as a native <details>: the collapsed <summary> is a scannable
+ * roster row (flag + name + tag pills + one slim cities meter); expanding reveals
+ * the three metrics and the place chips. The chip name-lists are computed only
+ * once the row is opened (lazy, keyed off onToggle), and recompute when the full
+ * gazetteer lands (gazGen).
+ */
+function CountryRow({
+  c,
+  flyToRegion,
+}: {
+  c: CountryCoverage;
+  flyToRegion: (name: string) => void;
+}) {
+  const t = useT();
+  const ref = useMemo(() => getReferenceData(), []);
+  const gazGen = useGazetteerGeneration(); // city lists grow when the full gazetteer lands
+  const visits = useVisits((s) => s.visits);
+  const [open, setOpen] = useState(false);
+  const detail = useMemo(
+    () => (open ? countryDetail(visits, ref, c.iso2) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [open, visits, ref, c.iso2, gazGen],
+  );
+  // Tapping a city or monument chip opens its detail page directly (you clicked
+  // the place, so show the place), never just a map fly-by.
+  const openByName = (list: { id: string; name: string }[]) => (name: string) => {
+    const hit = list.find((x) => x.name === name);
+    if (hit) useUi.getState().openCity(hit.id);
+  };
+  return (
+    <details className="country-card" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className="country-summary">
+        {/* Plain label so the whole row toggles the <details> — keeping an
+            interactive control out of <summary> (no nested-interactive). The
+            "open the country page" action lives as a real button on expand. */}
+        <span className="country-name">
+          <span className="flag" aria-hidden>
+            {countryFlag(c.iso2)}
+          </span>{" "}
+          {c.name}
+        </span>
+        <span className="country-tags">
+          <span className="country-tag">{t("stats.country.citiesTag", { count: formatInt(c.citiesVisited) })}</span>
+          <span className="country-tag">{t("stats.country.regionsTag", { count: formatInt(c.regionsVisited) })}</span>
+          {c.heritageTotal > 0 && (
+            <span className="country-tag">{t("stats.country.sitesTag", { count: formatInt(c.heritageVisited) })}</span>
+          )}
+        </span>
+        <span className="country-caret" aria-hidden>
+          ›
+        </span>
+        <Bar value={c.cityPct} label={t("stats.country.cityBarAria", { name: c.name })} />
+      </summary>
+
+      <div className="country-body">
+        <button
+          type="button"
+          className="country-open country-open-page"
+          title={t("stats.country.open", { name: c.name })}
+          onClick={() => useUi.getState().openCountry(c.iso2)}
+        >
+          <span className="flag" aria-hidden>
+            {countryFlag(c.iso2)}
+          </span>{" "}
+          {t("stats.country.open", { name: c.name })}{" "}
+          <span aria-hidden>↗</span>
+        </button>
+
+        <div className="metric">
+          <div className="metric-label">
+            <span>{t("stats.country.metricCities")}</span>
+            <span className="muted">
+              {c.citiesTotal > 0
+                ? t("stats.country.metricCitiesDetail", {
+                    pct: formatPercent(c.cityPct),
+                    visited: c.citiesVisited,
+                    total: c.citiesTotal,
+                  })
+                : t("stats.country.noCityData")}
+            </span>
+          </div>
+          {c.citiesTotal > 0 && <Bar value={c.cityPct} label={t("stats.country.cityBarAria", { name: c.name })} />}
+        </div>
+
+        <div className="metric">
+          <div className="metric-label">
+            <span>{t("stats.country.metricRegions")}</span>
+            <span className="muted">
+              {c.regionsTotal > 0
+                ? t("stats.country.metricRegionsDetail", {
+                    pct: formatPercent(c.regionPct),
+                    visited: c.regionsVisited,
+                    total: c.regionsTotal,
+                  })
+                : t("stats.country.datasetNotLoaded")}
+            </span>
+          </div>
+          {c.regionsTotal > 0 && (
+            <Bar value={c.regionPct} label={t("stats.country.regionBarAria", { name: c.name })} color="var(--accent)" />
+          )}
+        </div>
+
+        {c.heritageTotal > 0 && (
+          <div className="metric">
+            <div className="metric-label">
+              <span>{t("stats.country.metricSites")}</span>
+              <span className="muted">
+                {t("stats.country.metricSitesDetail", {
+                  pct: formatPercent(c.heritagePct),
+                  visited: c.heritageVisited,
+                  total: c.heritageTotal,
+                })}
+              </span>
+            </div>
+            <Bar
+              value={c.heritagePct}
+              label={t("stats.country.heritageBarAria", { name: c.name })}
+              color="var(--stat-want)"
+            />
+          </div>
+        )}
+
+        {detail && (
+          <>
+            <ChipRow
+              label={t("stats.country.chipCities")}
+              names={detail.cities.map((x) => x.name)}
+              done
+              onPick={openByName(detail.cities)}
+            />
+            <ChipRow
+              label={t("stats.country.chipRegionsVisited")}
+              names={detail.regionsVisited}
+              done
+              hint={t("stats.country.showOnMapHint")}
+              onPick={flyToRegion}
+            />
+            <ChipRow
+              label={t("stats.country.chipRegionsToVisit")}
+              names={detail.regionsRemainingNames}
+              onPick={flyToRegion}
+            />
+            <ChipRow
+              label={t("stats.country.chipMonumentsSeen")}
+              names={detail.monumentsVisited.map((m) => m.name)}
+              done
+              onPick={openByName(detail.monumentsVisited)}
+            />
+            <ChipRow
+              label={t("stats.country.chipMonumentsToSee")}
+              names={detail.monumentsRemaining.map((m) => m.name)}
+              onPick={openByName(detail.monumentsRemaining)}
+            />
+          </>
+        )}
+      </div>
+    </details>
+  );
+}
+
 export function StatsView() {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const gazGen = useGazetteerGeneration(); // denominators change when the full gazetteer lands
   const visits = useVisits((s) => s.visits);
@@ -199,167 +308,142 @@ export function StatsView() {
   );
   /* eslint-enable react-hooks/exhaustive-deps */
 
+  // World-coverage %, with a floor so a real visit that rounds to 0 still reads
+  // as progress rather than a discouraging "0%".
+  const worldPctText = formatPercent(coverage.worldPct);
+  const worldPctLabel =
+    coverage.worldPct > 0 && worldPctText === formatPercent(0) ? "<1%" : worldPctText;
+
+  // Continent constellation: a dot per continent, lit when it's been touched.
+  // Antarctica only earns a dot once visited (nobody's "missing" Antarctica).
+  const covByContinent = new Map(continentCov.map((c) => [c.continent, c] as const));
+  const antarcticVisited = (covByContinent.get("Antarctic")?.visited ?? 0) > 0;
+  const shownContinents = CONTINENT_ORDER.filter(
+    (name) => name !== "Antarctic" || antarcticVisited,
+  );
+  const continentsVisited = continentCov.length;
+  const totalContinents = shownContinents.length;
+
   return (
-    <section aria-label="Statistics">
-      <div className="section-head">
-        <h2>Statistics</h2>
+    <section aria-label={t("stats.title")}>
+      <div className="section-head stats-head">
+        <h2>{t("stats.title")}</h2>
         <ScopeToggle />
       </div>
 
-      {/* Each tile is a shortcut into the matching Places view. */}
-      <div className="stat-grid">
-        <button
-          type="button"
-          className="stat-tile"
-          title="See your countries checklist"
-          onClick={() => useUi.getState().openPlaces("countries")}
-        >
-          <span className="num">{formatInt(coverage.countriesVisited)}</span>
-          <span className="label">countries</span>
-        </button>
-        <button
-          type="button"
-          className="stat-tile"
-          title="See your countries checklist"
-          onClick={() => useUi.getState().openPlaces("countries")}
-        >
-          <span className="num">{formatPercent(coverage.worldPct)}</span>
-          <span className="label">
-            of {formatInt(coverage.worldCountryCount)}{" "}
-            {scope === "un" ? "UN member states" : "countries & territories"}
-          </span>
-        </button>
-        <button
-          type="button"
-          className="stat-tile"
-          title="See your visited places"
-          onClick={() => useUi.getState().openPlaces("visited")}
-        >
-          <span className="num">{formatInt(coverage.citiesVisited)}</span>
-          <span className="label">cities</span>
-        </button>
-        {coverage.airportsVisited > 0 && (
+      {/* Coverage hero: the "how much of the world?" headline, then the raw
+          counts demoted to a colored pill strip. Both open Places. */}
+      <section className="stats-section" aria-labelledby="stats-coverage-h">
+        <h3 id="stats-coverage-h">{t("stats.coverage.title")}</h3>
+        <div className="stats-hero">
           <button
             type="button"
-            className="stat-tile"
-            title="See your visited places"
+            className="hero-ring"
+            title={t("stats.hero.title")}
+            aria-label={t("stats.hero.aria", {
+              visited: formatInt(coverage.countriesVisited),
+              total: formatInt(coverage.worldCountryCount),
+              pct: worldPctLabel,
+            })}
+            onClick={() => useUi.getState().openPlaces("countries")}
+          >
+            <svg
+              className="hero-ring-svg"
+              viewBox="0 0 120 120"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <circle className="hero-ring-track" cx="60" cy="60" r={RING_R} />
+              <circle
+                className="hero-ring-value"
+                cx="60"
+                cy="60"
+                r={RING_R}
+                transform="rotate(-90 60 60)"
+                strokeDasharray={RING_C}
+                strokeDashoffset={RING_C * (1 - coverage.worldPct)}
+              />
+            </svg>
+            <span className="hero-center">
+              <span className="hero-num">{formatInt(coverage.countriesVisited)}</span>
+              <span className="hero-den">/ {formatInt(coverage.worldCountryCount)}</span>
+              <span className="hero-pct">{worldPctLabel}</span>
+            </span>
+          </button>
+
+          <div className="hero-body">
+            <p className="hero-caption">
+              {t("stats.hero.ofCount", {
+                count: formatInt(coverage.worldCountryCount),
+                label: scope === "un" ? t("stats.scope.un") : t("stats.scope.all"),
+              })}
+            </p>
+            <div className="continent-dots" aria-hidden="true">
+              {shownContinents.map((name) => {
+                const on = (covByContinent.get(name)?.visited ?? 0) > 0;
+                return (
+                  <span
+                    key={name}
+                    className={"cdot " + (on ? "on" : "off")}
+                    style={
+                      on
+                        ? { background: CONTINENT_COLORS[name], borderColor: CONTINENT_COLORS[name] }
+                        : undefined
+                    }
+                    title={name}
+                  >
+                    {on ? "✓" : ""}
+                  </span>
+                );
+              })}
+            </div>
+            <p className="continents-touched">
+              {t("stats.continents.count", {
+                visited: formatInt(continentsVisited),
+                total: formatInt(totalContinents),
+              })}
+            </p>
+          </div>
+        </div>
+
+        <div className="kpi-row" aria-label={t("stats.totalsAria")}>
+          <button
+            type="button"
+            className="kpi"
+            title={t("stats.kpi.visitedTitle")}
             onClick={() => useUi.getState().openPlaces("visited")}
           >
-            <span className="num">{formatInt(coverage.airportsVisited)}</span>
-            <span className="label">airports</span>
+            <span className="kpi-num kpi-been">{formatInt(coverage.citiesVisited)}</span>
+            <span className="kpi-label">{t("stats.kpi.cities")}</span>
           </button>
-        )}
-        {coverage.monumentsVisited > 0 && (
-          <button
-            type="button"
-            className="stat-tile"
-            title="See the monuments list"
-            onClick={() => useUi.getState().openPlaces("monuments")}
-          >
-            <span className="num">{formatInt(coverage.monumentsVisited)}</span>
-            <span className="label">monuments</span>
-          </button>
-        )}
-      </div>
-
-      {travel.trips > 0 && (
-        <>
-          <div className="section-head">
-            <h3>Travel</h3>
-          </div>
-          <div className="travel-totals" aria-label="Travel totals">
-            <span className="tt-main">
-              <strong>{formatInt(travel.trips)}</strong> {travel.trips === 1 ? "trip" : "trips"}
-            </span>
-            <span className="tt-sep" aria-hidden />
-            <span className="tt-main">
-              <strong>{formatKm(travel.totalKm)}</strong> travelled
-            </span>
-            {travel.byMode.length > 0 && (
-              <span className="tt-modes">
-                {travel.byMode.map((m) => (
-                  <span className="tt-mode" key={m.mode} title={`${m.trips} by ${m.mode}`}>
-                    {MODE_GLYPH[m.mode]} {m.trips}
-                  </span>
-                ))}
-              </span>
-            )}
-          </div>
-        </>
-      )}
-
-      {(records.northernmost || records.biggestCity || records.firstVisit) && (
-        <>
-          <div className="section-head">
-            <h3>Records</h3>
-          </div>
-          <div className="records-grid">
-            {records.northernmost && (
-              <div className="record">
-                <span className="record-emoji" aria-hidden>🧭</span>
-                <span>
-                  Northernmost:{" "}
-                  <RecordCity
-                    name={records.northernmost.name}
-                    onPick={flyToCity(records.northernmost.iso2)}
-                  />{" "}
-                  <span className="muted">({records.northernmost.lat.toFixed(1)}°)</span>
-                </span>
-              </div>
-            )}
-            {records.southernmost && records.southernmost.name !== records.northernmost?.name && (
-              <div className="record">
-                <span className="record-emoji" aria-hidden>🐧</span>
-                <span>
-                  Southernmost:{" "}
-                  <RecordCity
-                    name={records.southernmost.name}
-                    onPick={flyToCity(records.southernmost.iso2)}
-                  />{" "}
-                  <span className="muted">({records.southernmost.lat.toFixed(1)}°)</span>
-                </span>
-              </div>
-            )}
-            {records.biggestCity && (
-              <div className="record">
-                <span className="record-emoji" aria-hidden>🏙️</span>
-                <span>
-                  Biggest city:{" "}
-                  <RecordCity
-                    name={records.biggestCity.name}
-                    onPick={flyToCity(records.biggestCity.iso2)}
-                  />{" "}
-                  <span className="muted">({formatInt(records.biggestCity.population)} people)</span>
-                </span>
-              </div>
-            )}
-            {records.firstVisit && (
-              <div className="record">
-                <span className="record-emoji" aria-hidden>🌱</span>
-                <span>
-                  First dated visit: <strong>{records.firstVisit.name}</strong>{" "}
-                  <span className="muted">({records.firstVisit.date})</span>
-                </span>
-              </div>
-            )}
-            {records.latestVisit && records.latestVisit.date !== records.firstVisit?.date && (
-              <div className="record">
-                <span className="record-emoji" aria-hidden>🆕</span>
-                <span>
-                  Latest: <strong>{records.latestVisit.name}</strong>{" "}
-                  <span className="muted">({records.latestVisit.date})</span>
-                </span>
-              </div>
-            )}
-          </div>
-        </>
-      )}
+          {coverage.airportsVisited > 0 && (
+            <button
+              type="button"
+              className="kpi"
+              title={t("stats.kpi.visitedTitle")}
+              onClick={() => useUi.getState().openPlaces("visited")}
+            >
+              <span className="kpi-num kpi-air">{formatInt(coverage.airportsVisited)}</span>
+              <span className="kpi-label">{t("stats.kpi.airports")}</span>
+            </button>
+          )}
+          {coverage.monumentsVisited > 0 && (
+            <button
+              type="button"
+              className="kpi"
+              title={t("stats.kpi.monumentsTitle")}
+              onClick={() => useUi.getState().openPlaces("monuments")}
+            >
+              <span className="kpi-num kpi-want">{formatInt(coverage.monumentsVisited)}</span>
+              <span className="kpi-label">{t("stats.kpi.monuments")}</span>
+            </button>
+          )}
+        </div>
+      </section>
 
       {continentCov.length > 0 && (
-        <>
-          <div className="section-head">
-            <h3>By continent</h3>
-          </div>
+        <section className="stats-section" aria-labelledby="stats-continents-h">
+          <h3 id="stats-continents-h">{t("stats.byContinent.title")}</h3>
           <div className="continent-grid">
             {continentCov.map((c) => (
               <div key={c.continent} className="metric">
@@ -377,108 +461,137 @@ export function StatsView() {
                     {c.continent}
                   </span>
                   <span className="muted">
-                    {c.visited}/{c.total} countries
+                    {c.visited}/{c.total} · {formatPercent(c.pct)}
                   </span>
                 </div>
                 <Bar
                   value={c.pct}
-                  label={`${c.continent}: countries visited`}
+                  label={t("stats.continentBarAria", { continent: c.continent })}
                   color={CONTINENT_COLORS[c.continent]}
                 />
               </div>
             ))}
           </div>
-        </>
+        </section>
+      )}
+
+      {(records.northernmost || records.biggestCity || records.firstVisit) && (
+        <section className="stats-section" aria-labelledby="stats-records-h">
+          <h3 id="stats-records-h">{t("stats.records.title")}</h3>
+          <div className="records-grid">
+            {records.northernmost && (
+              <div className="record">
+                <span className="record-emoji" aria-hidden>🧭</span>
+                <span>
+                  {t("stats.records.northernmost")}{" "}
+                  <RecordCity
+                    name={records.northernmost.name}
+                    onPick={flyToCity(records.northernmost.iso2)}
+                  />{" "}
+                  <span className="muted">({records.northernmost.lat.toFixed(1)}°)</span>
+                </span>
+              </div>
+            )}
+            {records.southernmost && records.southernmost.name !== records.northernmost?.name && (
+              <div className="record">
+                <span className="record-emoji" aria-hidden>🐧</span>
+                <span>
+                  {t("stats.records.southernmost")}{" "}
+                  <RecordCity
+                    name={records.southernmost.name}
+                    onPick={flyToCity(records.southernmost.iso2)}
+                  />{" "}
+                  <span className="muted">({records.southernmost.lat.toFixed(1)}°)</span>
+                </span>
+              </div>
+            )}
+            {records.biggestCity && (
+              <div className="record">
+                <span className="record-emoji" aria-hidden>🏙️</span>
+                <span>
+                  {t("stats.records.biggestCity")}{" "}
+                  <RecordCity
+                    name={records.biggestCity.name}
+                    onPick={flyToCity(records.biggestCity.iso2)}
+                  />{" "}
+                  <span className="muted">
+                    {t("stats.records.people", { count: formatInt(records.biggestCity.population) })}
+                  </span>
+                </span>
+              </div>
+            )}
+            {records.firstVisit && (
+              <div className="record">
+                <span className="record-emoji" aria-hidden>🌱</span>
+                <span>
+                  {t("stats.records.firstVisit")} <strong>{records.firstVisit.name}</strong>{" "}
+                  <span className="muted">({records.firstVisit.date})</span>
+                </span>
+              </div>
+            )}
+            {records.latestVisit && records.latestVisit.date !== records.firstVisit?.date && (
+              <div className="record">
+                <span className="record-emoji" aria-hidden>🆕</span>
+                <span>
+                  {t("stats.records.latest")} <strong>{records.latestVisit.name}</strong>{" "}
+                  <span className="muted">({records.latestVisit.date})</span>
+                </span>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {travel.trips > 0 && (
+        <section className="stats-section" aria-labelledby="stats-travel-h">
+          <h3 id="stats-travel-h">{t("stats.travel.title")}</h3>
+          <div className="travel-totals" aria-label={t("stats.travel.totalsAria")}>
+            <span className="tt-main">
+              <strong>{formatInt(travel.trips)}</strong>{" "}
+              {t.plural("stats.travel.trips", travel.trips)}
+            </span>
+            <span className="tt-sep" aria-hidden />
+            <span className="tt-main">
+              <strong>{formatKm(travel.totalKm)}</strong> {t("stats.travel.travelled")}
+            </span>
+            {travel.byMode.length > 0 && (
+              <span className="tt-modes">
+                {travel.byMode.map((m) => (
+                  <span
+                    className="tt-mode"
+                    key={m.mode}
+                    title={t("stats.travel.modeTitle", { count: m.trips, mode: m.mode })}
+                  >
+                    {MODE_GLYPH[m.mode]} {m.trips}
+                  </span>
+                ))}
+              </span>
+            )}
+          </div>
+        </section>
       )}
 
       <div className="section-head">
-        <h3>By country</h3>
+        <h3>{t("stats.byCountry.title")}</h3>
         <label className="sort-label">
-          <span className="sr-only">Sort countries</span>
+          <span className="sr-only">{t("stats.byCountry.sortAria")}</span>
           <select
             className="sort-select"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as CountrySort)}
           >
-            <option value="cities">Most cities</option>
-            <option value="regions">Most regions</option>
-            <option value="name">Name</option>
+            <option value="cities">{t("stats.byCountry.sortCities")}</option>
+            <option value="regions">{t("stats.byCountry.sortRegions")}</option>
+            <option value="name">{t("stats.byCountry.sortName")}</option>
           </select>
         </label>
       </div>
 
-      {countries.length === 0 && <p className="muted empty">No countries yet — add a place.</p>}
+      {countries.length === 0 && <p className="muted empty">{t("stats.byCountry.empty")}</p>}
 
-      {countries.map((c) => {
-        return (
-          <div key={c.iso2} className="country-card">
-            <div className="country-head">
-              <button
-                type="button"
-                className="country-open"
-                title={`Open ${c.name}`}
-                onClick={() => useUi.getState().openCountry(c.iso2)}
-              >
-                <span className="flag" aria-hidden>
-                  {countryFlag(c.iso2)}
-                </span>{" "}
-                {c.name}
-              </button>
-              <span className="muted">
-                {formatInt(c.citiesVisited)} cities · {formatInt(c.regionsVisited)} regions
-              </span>
-            </div>
-
-            <div className="metric">
-              <div className="metric-label">
-                <span>Cities</span>
-                <span className="muted">
-                  {c.citiesTotal > 0
-                    ? `${formatPercent(c.cityPct)} · ${c.citiesVisited}/${c.citiesTotal} known cities`
-                    : "no city data"}
-                </span>
-              </div>
-              {c.citiesTotal > 0 && <Bar value={c.cityPct} label={`${c.name}: cities visited`} />}
-            </div>
-
-            <div className="metric">
-              <div className="metric-label">
-                <span>Regions</span>
-                <span className="muted">
-                  {c.regionsTotal > 0
-                    ? `${formatPercent(c.regionPct)} · ${c.regionsVisited}/${c.regionsTotal}`
-                    : "dataset not loaded"}
-                </span>
-              </div>
-              {c.regionsTotal > 0 && (
-                <Bar value={c.regionPct} label={`${c.name}: regions visited`} />
-              )}
-            </div>
-
-            {c.heritageTotal > 0 && (
-              <div className="metric">
-                <div className="metric-label">
-                  <span>Sites & landmarks</span>
-                  <span className="muted">
-                    {formatPercent(c.heritagePct)} · {c.heritageVisited}/{c.heritageTotal} sites
-                  </span>
-                </div>
-                <Bar value={c.heritagePct} label={`${c.name}: heritage sites visited`} color="#b45309" />
-              </div>
-            )}
-
-            {(c.citiesVisited > 0 ||
-              c.regionsVisited > 0 ||
-              c.regionsVisited < c.regionsTotal ||
-              c.heritageVisited > 0) && (
-              <CountryDrilldown
-                iso2={c.iso2}
-                flyToRegion={flyToRegion(c.iso2)}
-              />
-            )}
-          </div>
-        );
-      })}
+      {countries.map((c) => (
+        <CountryRow key={c.iso2} c={c} flyToRegion={flyToRegion(c.iso2)} />
+      ))}
 
       <p className="muted small">
         Computed against the loaded reference datasets: all countries &amp; territories (ISO

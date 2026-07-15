@@ -14,9 +14,11 @@ import { PlaceSearch } from "../features/visits/PlaceSearch";
 import { ShortcutsHelp } from "../ui/ShortcutsHelp";
 import { AboutModal } from "../ui/AboutModal";
 import { Toast } from "../ui/Toast";
+import { ConnectionStatus } from "../ui/ConnectionStatus";
 import { MapIcon, ChartIcon, ListIcon, RouteIcon, BookIcon, GearIcon, InfoIcon } from "../ui/icons";
 import { useState } from "react";
 import { useInstallPrompt } from "../lib/hooks/useInstallPrompt";
+import { useT, type MessageKey } from "../lib/i18n";
 
 // Code-split MapLibre so it loads only when the map is shown.
 const MapScreen = lazy(() =>
@@ -25,12 +27,12 @@ const MapScreen = lazy(() =>
 
 // Five sections, all visible — no overflow menu. Passport and Moments are views
 // inside Places now (they're collections of places, not destinations of their own).
-const TABS: { id: Tab; label: string; keys: string[]; Icon: () => JSX.Element }[] = [
-  { id: "map", label: "Map", keys: ["1", "m"], Icon: MapIcon },
-  { id: "places", label: "Places", keys: ["2", "p"], Icon: ListIcon },
-  { id: "trips", label: "Trips", keys: ["3", "t"], Icon: RouteIcon },
-  { id: "journal", label: "Journal", keys: ["4", "j"], Icon: BookIcon },
-  { id: "stats", label: "Stats", keys: ["5", "s"], Icon: ChartIcon },
+const TABS: { id: Tab; label: MessageKey; keys: string[]; Icon: () => JSX.Element }[] = [
+  { id: "map", label: "nav.map", keys: ["1", "m"], Icon: MapIcon },
+  { id: "places", label: "nav.places", keys: ["2", "p"], Icon: ListIcon },
+  { id: "trips", label: "nav.trips", keys: ["3", "t"], Icon: RouteIcon },
+  { id: "journal", label: "nav.journal", keys: ["4", "j"], Icon: BookIcon },
+  { id: "stats", label: "nav.stats", keys: ["5", "s"], Icon: ChartIcon },
 ];
 
 // An open modal/lightbox/popup/dirty-composer consumes Escape and the Back
@@ -39,6 +41,7 @@ const DIALOG_LAYER_SELECTOR =
   ".modal-backdrop, .lightbox, .maplibregl-popup, .journal-composer-busy";
 
 export function App() {
+  const t = useT();
   const tab = useUi((s) => s.tab);
   const setTab = useUi((s) => s.setTab);
   const cityPageId = useUi((s) => s.cityPageId);
@@ -160,12 +163,13 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const currentLabel = TABS.find((x) => x.id === tab)?.label ?? "";
+  const currentTab = TABS.find((x) => x.id === tab);
+  const currentLabel = currentTab ? t(currentTab.label) : "";
 
   return (
     <div className="app">
       <a className="skip-link" href="#main">
-        Skip to content
+        {t("app.skipToContent")}
       </a>
 
       <header className="topbar">
@@ -173,7 +177,7 @@ export function App() {
               <button
                 type="button"
                 className="brand"
-                title="Go to the map"
+                title={t("topbar.goToMap")}
                 onClick={() => setTab("map")}
               >
                 Postcards
@@ -187,15 +191,16 @@ export function App() {
               />
             </div>
             <span className="topbar-actions">
+              <ConnectionStatus />
               {canInstall && (
                 <button
                   type="button"
                   className="topbar-about topbar-install"
-                  aria-label="Install the app"
-                  title="Install the app"
+                  aria-label={t("topbar.installAria")}
+                  title={t("topbar.installAria")}
                   onClick={() => void install()}
                 >
-                  ⬇ <span aria-hidden>Install app</span>
+                  ⬇ <span aria-hidden>{t("topbar.install")}</span>
                 </button>
               )}
               <a
@@ -203,30 +208,30 @@ export function App() {
                 href="https://github.com/davd-gzl/Postcards"
                 target="_blank"
                 rel="noopener noreferrer"
-                title="Star Postcards on GitHub"
-                aria-label="Star Postcards on GitHub"
+                title={t("topbar.githubStar")}
+                aria-label={t("topbar.githubStar")}
               >
                 <span className="star-glyph" aria-hidden>
                   ⭐
                 </span>
-                <span>GitHub</span>
+                <span>{t("topbar.github")}</span>
               </a>
               <button
                 type="button"
                 className="topbar-about"
                 aria-haspopup="dialog"
-                aria-label="How it works"
-                title="How it works"
+                aria-label={t("topbar.howItWorks")}
+                title={t("topbar.howItWorks")}
                 onClick={() => setShowAbout(true)}
               >
                 <InfoIcon />
-                <span aria-hidden>How it works</span>
+                <span aria-hidden>{t("topbar.howItWorks")}</span>
               </button>
               <button
                 type="button"
                 className={"topbar-about topbar-gear" + (tab === "settings" ? " on" : "")}
-                aria-label="Settings"
-                title="Settings"
+                aria-label={t("topbar.settings")}
+                title={t("topbar.settings")}
                 onClick={() => setTab("settings")}
               >
                 <GearIcon />
@@ -235,22 +240,22 @@ export function App() {
           </header>
 
       <p className="sr-only" role="status" aria-live="polite">
-        {currentLabel} section
+        {t("nav.sectionStatus", { section: currentLabel })}
       </p>
 
-      <nav className="bottom-nav" aria-label="Sections">
+      <nav className="bottom-nav" aria-label={t("nav.sectionsAria")}>
         {TABS.map(({ id, label, Icon }) => (
           <button
             key={id}
             type="button"
             className={"nav-item" + (tab === id ? " active" : "")}
             aria-current={tab === id ? "page" : undefined}
-            aria-label={label}
-            title={label}
+            aria-label={t(label)}
+            title={t(label)}
             onClick={() => setTab(id)}
           >
             <Icon />
-            <span aria-hidden>{label}</span>
+            <span aria-hidden>{t(label)}</span>
           </button>
         ))}
       </nav>
@@ -266,7 +271,7 @@ export function App() {
                 reloaded the whole map. Hidden it keeps its camera and tiles. */}
             {(mapShown.current || tab === "map") && (
               <div className={"map-keep" + (mapVisible ? "" : " map-keep-hidden")}>
-                <Suspense fallback={<p className="muted empty">Loading map…</p>}>
+                <Suspense fallback={<p className="muted empty">{t("map.loading")}</p>}>
                   <MapScreen active={mapVisible} />
                 </Suspense>
               </div>

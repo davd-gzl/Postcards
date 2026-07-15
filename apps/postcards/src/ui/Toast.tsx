@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useToast } from "../lib/store/useToast";
+import { useT } from "../lib/i18n";
 
 /** Single restrained toast with an optional focusable Undo. Auto-dismisses after
  *  6s, but the timer pauses while the toast is hovered or keyboard-focused so an
  *  Undo is never yanked away mid-reach (WCAG 2.2.1). */
 export function Toast() {
+  const t = useT();
   const toast = useToast((s) => s.toast);
   const dismiss = useToast((s) => s.dismiss);
   const [paused, setPaused] = useState(false);
@@ -36,10 +38,10 @@ export function Toast() {
             dismiss();
           }}
         >
-          Undo
+          {t("common.undo")}
         </button>
       )}
-      <button className="toast-close" type="button" aria-label="Dismiss" onClick={dismiss}>
+      <button className="toast-close" type="button" aria-label={t("toast.dismiss")} onClick={dismiss}>
         ×
       </button>
     </div>

@@ -3,6 +3,7 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { sanitizeText } from "../../lib/schema/sanitize";
+import { useT } from "../../lib/i18n";
 
 /**
  * Create a place the datasets don't know (a hamlet, a viewpoint, grandma's
@@ -10,12 +11,27 @@ import { sanitizeText } from "../../lib/schema/sanitize";
  * clearly marked "your own place" (Constitution I: the app never invents
  * reference facts; users may record their own).
  */
-export function AddPlaceForm({ initialName, onDone }: { initialName: string; onDone: () => void }) {
+export function AddPlaceForm({
+  initialName,
+  initialCoords,
+  initialCountry,
+  onDone,
+}: {
+  initialName: string;
+  /** Prefill the coordinates (e.g. from a map long-press) so nothing is typed. */
+  initialCoords?: { lat: number; lon: number };
+  /** Prefill the country select. */
+  initialCountry?: string;
+  onDone: () => void;
+}) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const addVisit = useVisits((s) => s.addVisit);
   const [name, setName] = useState(initialName);
-  const [cc, setCc] = useState("");
-  const [coords, setCoords] = useState("");
+  const [cc, setCc] = useState(initialCountry ?? "");
+  const [coords, setCoords] = useState(
+    initialCoords ? `${initialCoords.lat.toFixed(5)}, ${initialCoords.lon.toFixed(5)}` : "",
+  );
 
   const parsed = useMemo(() => {
     const m = /^\s*(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(coords);
@@ -59,8 +75,9 @@ export function AddPlaceForm({ initialName, onDone }: { initialName: string; onD
   return (
     <div className="add-place" onKeyDown={onKeyDown}>
       <p className="muted small">
-        Add it yourself — saved as <em>your own place</em> in your file, shown on the map if you
-        give coordinates.
+        {t("addPlace.descPre")}
+        <em>{t("addPlace.descEm")}</em>
+        {t("addPlace.descPost")}
       </p>
       <div className="add-place-row">
         <input
@@ -68,19 +85,19 @@ export function AddPlaceForm({ initialName, onDone }: { initialName: string; onD
           type="text"
           value={name}
           maxLength={200}
-          placeholder="Place name"
-          aria-label="Place name"
+          placeholder={t("addPlace.namePlaceholder")}
+          aria-label={t("addPlace.namePlaceholder")}
           autoFocus
           onChange={(e) => setName(e.target.value)}
         />
         <select
           className="select"
           value={cc}
-          aria-label="Country"
+          aria-label={t("addPlace.country")}
           onChange={(e) => setCc(e.target.value)}
         >
-          <option value="">Country…</option>
-          <option value="ZZ">🌊 No country (open ocean, anywhere)</option>
+          <option value="">{t("addPlace.countryOption")}</option>
+          <option value="ZZ">🌊 {t("addPlace.noCountry")}</option>
           {ref.countries.map((c) => (
             <option key={c.iso2} value={c.iso2}>
               {c.name}
@@ -93,16 +110,16 @@ export function AddPlaceForm({ initialName, onDone }: { initialName: string; onD
           className="search-input"
           type="text"
           value={coords}
-          placeholder="Coordinates (lat, lon) — optional"
-          aria-label="Coordinates, latitude comma longitude, optional"
+          placeholder={t("addPlace.coordsPlaceholder")}
+          aria-label={t("addPlace.coordsAria")}
           onChange={(e) => setCoords(e.target.value)}
         />
         <button className="btn" type="button" disabled={!canSave} onClick={() => void save()}>
-          Add place
+          {t("addPlace.addButton")}
         </button>
       </div>
       {coords.trim() !== "" && !parsed && (
-        <p className="muted small">Coordinates must look like “48.85, 2.35”.</p>
+        <p className="muted small">{t("addPlace.coordsHint")}</p>
       )}
     </div>
   );

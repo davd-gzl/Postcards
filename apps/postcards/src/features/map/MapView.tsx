@@ -13,9 +13,10 @@ import { useGazetteerGeneration } from "../../lib/reference/useGazetteer";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
+import { useT } from "../../lib/i18n";
 import { visitedCountryIds } from "../stats/computeStats";
 import { airportPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
-import { prefetchAroundBounds, prefetchAroundPoint } from "../../lib/offline/tiles";
+import { prefetchAroundBounds, prefetchAroundPoint, OSM_TILE_TEMPLATE } from "../../lib/offline/tiles";
 import type { Bounds } from "./viewport";
 import type { City } from "../../lib/reference/types";
 import type { PlaceRef, Visit } from "../../lib/schema/models";
@@ -552,6 +553,7 @@ export function MapView({
   showCountries = false,
   maxMarkers = 250,
   onBaseUnavailable,
+  onAddHere,
 }: {
   /** Which marker categories are shown (a "mode" switcher over the map). */
   mode?: MapMode;
@@ -574,7 +576,11 @@ export function MapView({
   /** Called once when the online (OSM) base can't load its tiles, so the caller
    *  can fall back to the always-available offline base. */
   onBaseUnavailable?: () => void;
+  /** Right-click / long-press a blank spot on the map → add your own place there
+   *  (the caller opens the add form seeded with these coordinates). */
+  onAddHere?: (c: { lon: number; lat: number }) => void;
 }) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const gazGen = useGazetteerGeneration();
   // The map does NOT subscribe to `visits` for rendering — it repaints the
@@ -596,6 +602,8 @@ export function MapView({
   reducedRef.current = reducedMotion;
   const onBaseUnavailableRef = useRef(onBaseUnavailable);
   onBaseUnavailableRef.current = onBaseUnavailable;
+  const onAddHereRef = useRef(onAddHere);
+  onAddHereRef.current = onAddHere;
   // True while a programmatic camera move is in flight — its moveend must NOT
   // refresh the cities list (the list only follows the user's own map moves).
   const suppressBoundsRef = useRef(false);
@@ -859,9 +867,18 @@ export function MapView({
   }
 
   function applyViewCities(map: MlMap) {
-    (map.getSource("cities-inview") as GeoJSONSource | undefined)?.setData(
-      inViewPoints(viewCitiesRef.current ?? []),
-    );
+    // Render markers for the full in-view set (not the list's paged/sorted
+    // slice — that made only ~30 dots ever show and flicker on every pan). Bound
+    // marker count with the same zoom-aware cap as the POI layers, keeping the
+    // most populous cities so the cap never hides a major place; sort only when
+    // we're actually over the cap.
+    const cities = viewCitiesRef.current ?? [];
+    const cap = Math.max(1, maxMarkersRef.current);
+    const capped =
+      cities.length > cap
+        ? [...cities].sort((a, b) => (b.population ?? 0) - (a.population ?? 0)).slice(0, cap)
+        : cities;
+    (map.getSource("cities-inview") as GeoJSONSource | undefined)?.setData(inViewPoints(capped));
   }
 
   function applyTripArcs(map: MlMap) {
@@ -930,7 +947,14 @@ export function MapView({
     if (!containerRef.current) return;
     let cancelled = false;
     let map: MlMap | null = null;
+    // Torn down in cleanup (below): the online self-heal listener for the OSM base.
+    let removeOsmHeal: (() => void) | null = null;
     ensurePmtilesProtocol();
+    // Prime the country-geometry fetch NOW (idempotent, memoised) so its
+    // download + parse overlaps style resolution and WebGL init, instead of only
+    // starting at the map "load" event — the offline base is this land shape, so
+    // an earlier fetch means a filled map sooner.
+    void getCountries();
 
     (async () => {
       const pack =
@@ -971,6 +995,10 @@ export function MapView({
           center: lastCamera?.center ?? [6, 32],
           zoom: lastCamera?.zoom ?? 1.1,
           style: fullStyle,
+          // Default cache is viewport-derived (~60 tiles on a phone) → panning
+          // back re-flashes blanks as evicted tiles refetch. Hold more so a
+          // pan-away/pan-back repaints instantly (memory cost is modest).
+          maxTileCacheSize: 512,
         });
       } catch {
         setFailed(true);
@@ -1035,20 +1063,29 @@ export function MapView({
         if (!loadedRef.current) return;
         // The in-view POI cap follows every camera move (even programmatic ones).
         applyViewportPoi(map);
-        // Warm the ring of tiles just outside the view, so the next pan shows
-        // ready tiles instead of blanks (online OSM basemap only).
-        if (basemap === "osm") {
-          const b = map.getBounds();
-          prefetchAroundBounds(
-            { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() },
-            Math.round(map.getZoom()),
-          );
-        }
-        if (suppressBoundsRef.current) {
+        const wasProgrammatic = suppressBoundsRef.current;
+        if (wasProgrammatic) {
           suppressBoundsRef.current = false; // programmatic fly — keep the list still
-          return;
+        } else {
+          emitBounds(map);
         }
-        emitBounds(map);
+        // Warm the ring of tiles JUST OUTSIDE the view so the next pan reveals
+        // ready tiles (online OSM base only). Only for real gestures — a
+        // programmatic fly already point-prefetches its destination — and only
+        // once the visible tiles are in, at idle, so the ring never competes
+        // with the tiles actually on screen.
+        if (basemap === "osm" && !wasProgrammatic) {
+          const warm = () => {
+            if (!map || !map.areTilesLoaded()) return;
+            const b = map.getBounds();
+            prefetchAroundBounds(
+              { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() },
+              map.getZoom(),
+            );
+          };
+          if (typeof requestIdleCallback === "function") requestIdleCallback(warm, { timeout: 2000 });
+          else setTimeout(warm, 400);
+        }
       });
       // The list follows the map LIVE while panning/zooming (throttled — the
       // in-view set is capped, so each refresh is cheap); moveend above still
@@ -1068,20 +1105,107 @@ export function MapView({
         });
       }
 
-      // If the online (OSM) base can't fetch its tiles (offline, or blocked), fall
-      // back to the always-available offline base rather than showing a bare canvas.
+      // Online (OSM) base resilience. Two failure modes to handle WITHOUT nuking
+      // the map: (a) a few transient tile errors on a flaky link must NOT
+      // permanently downgrade to the bland offline base; (b) a tile that errors
+      // while it's on screen leaves a grey hole MapLibre never re-requests on its
+      // own. So: only fall back on *consecutive* errors with no success in
+      // between (reset on any good tile), and re-issue the tiles when connection
+      // returns or shortly after an error, backfilling the holes from cache.
       if (basemap === "osm") {
         let osmErrors = 0;
         let fellBack = false;
+        let healTimer: ReturnType<typeof setTimeout> | undefined;
+        const reloadOsm = () => {
+          const src = map?.getSource("osm") as maplibregl.RasterTileSource | undefined;
+          // setTiles re-requests only the tiles it lacks; loaded / SW-cached ones
+          // serve from cache, so this is a cheap way to fill on-screen holes.
+          src?.setTiles([OSM_TILE_TEMPLATE]);
+        };
+        const healSoon = () => {
+          if (healTimer) return;
+          healTimer = setTimeout(() => {
+            healTimer = undefined;
+            if (!cancelled && map && loadedRef.current) reloadOsm();
+          }, 4000);
+        };
+        const onOnline = () => {
+          osmErrors = 0;
+          fellBack = false;
+          if (!cancelled && map && loadedRef.current) reloadOsm();
+        };
+        window.addEventListener("online", onOnline);
+        removeOsmHeal = () => {
+          window.removeEventListener("online", onOnline);
+          if (healTimer) clearTimeout(healTimer);
+        };
+        // Any successful OSM tile clears the strike count — only a genuine run of
+        // failures (offline / blocked) should ever trip the fallback.
+        map.on("data", (e) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const ev = e as any;
+          if (ev?.sourceId === "osm" && ev?.tile) osmErrors = 0;
+        });
         map.on("error", (e) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if ((e as any)?.sourceId !== "osm") return;
-          if (!fellBack && ++osmErrors >= 4) {
+          osmErrors++;
+          // Genuinely offline, or a sustained run of failures → fall back once.
+          const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+          if (!fellBack && (offline || osmErrors >= 6)) {
             fellBack = true;
             onBaseUnavailableRef.current?.();
+          } else if (!fellBack) {
+            healSoon(); // transient — try to backfill the on-screen holes
           }
         });
       }
+
+      // Right-click (desktop) or long-press (touch) a blank spot → offer to add
+      // your own place there. A tiny popup confirms first, so an accidental
+      // press does nothing; the button only lifts the coordinate to the caller,
+      // which opens the add form (the map never authors a place itself).
+      const openAddHerePopup = (lngLat: maplibregl.LngLat) => {
+        if (!map || !onAddHereRef.current) return;
+        const el = document.createElement("div");
+        el.className = "map-popup map-addhere";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "mini-btn";
+        btn.textContent = "＋ Add a place here";
+        el.appendChild(btn);
+        const pop = new maplibregl.Popup({ closeButton: true, offset: 12, maxWidth: "220px" })
+          .setLngLat(lngLat)
+          .setDOMContent(el)
+          .addTo(map);
+        btn.onclick = () => {
+          onAddHereRef.current?.({ lon: lngLat.lng, lat: lngLat.lat });
+          pop.remove();
+        };
+      };
+      map.on("contextmenu", (e) => {
+        if (!loadedRef.current) return;
+        openAddHerePopup(e.lngLat);
+      });
+      // Touch long-press: a single stationary finger held ~550ms with no drag.
+      let pressTimer: ReturnType<typeof setTimeout> | undefined;
+      const clearPress = () => {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = undefined;
+        }
+      };
+      map.on("touchstart", (e) => {
+        if (e.points.length !== 1) return clearPress();
+        const at = e.lngLat;
+        clearPress();
+        pressTimer = setTimeout(() => {
+          if (!cancelled && map && loadedRef.current) openAddHerePopup(at);
+        }, 550);
+      });
+      map.on("touchend", clearPress);
+      map.on("touchmove", clearPress);
+      map.on("dragstart", clearPress);
 
       // Tap any place marker → ONE popup (a single dispatcher across all
       // tappable layers — per-layer handlers would fire together when a city
@@ -1196,6 +1320,7 @@ export function MapView({
       cancelled = true;
       loadedRef.current = false;
       unsub();
+      removeOsmHeal?.();
       map?.remove();
       mapRef.current = null;
     };
@@ -1317,21 +1442,21 @@ export function MapView({
         ref={containerRef}
         className="map-canvas"
         role="application"
-        aria-label="Map of visited places"
+        aria-label={t("map.canvasAria")}
       />
       {dataState !== "ready" && (
         <div className="map-status" role="status">
           {dataState === "loading" ? (
-            <span className="muted small">Loading map…</span>
+            <span className="muted small">{t("map.loading")}</span>
           ) : (
             <span className="small">
-              Map data didn’t load.{" "}
+              {t("map.dataFailed")}{" "}
               <button
                 type="button"
                 className="link"
                 onClick={() => mapRef.current && loadGeometry(mapRef.current, true)}
               >
-                Retry
+                {t("common.retry")}
               </button>
             </span>
           )}

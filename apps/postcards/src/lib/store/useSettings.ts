@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { DEFAULT_SCOPE, type CountryScope } from "../reference/scope";
+import { detectLocale, applyLangAttr, isLocale, type Locale } from "../i18n/core";
+import { setFormatLocale } from "../format/format";
 
 // Lasting, cross-screen preferences (persisted to localStorage): the "what
 // counts as a country" scope (honoured by stats, the map's counter strip and the
@@ -9,6 +11,14 @@ const SCOPE_KEY = "postcards-country-scope";
 const AUTO_GUIDES_KEY = "postcards-auto-guides";
 const ONLINE_MAP_KEY = "postcards-online-map";
 const MAX_MARKERS_KEY = "postcards-max-markers";
+const THEME_KEY = "postcards-theme";
+const LOCALE_KEY = "postcards-locale";
+
+// Explicit colour theme. "system" follows the device (prefers-color-scheme);
+// "light"/"dark" force a palette. The choice is applied by toggling a data-theme
+// attribute on <html> (see applyThemeAttr + styles.css); the same key is read by
+// a tiny inline script in index.html to avoid a flash of the wrong palette.
+export type ThemeMode = "system" | "light" | "dark";
 
 // How many airport / monument markers to draw at most in the current view, so a
 // dense area doesn't blanket the map. Clamped to a sane range.
@@ -45,6 +55,37 @@ function loadScope(): CountryScope {
   return v === "un" || v === "all" ? v : DEFAULT_SCOPE;
 }
 
+function loadTheme(): ThemeMode {
+  const v = readLocal(THEME_KEY);
+  return v === "light" || v === "dark" || v === "system" ? v : "system";
+}
+
+// UI language. A saved choice wins; otherwise follow the device language when it
+// is one Postcards ships (fr/ko), else English (see detectLocale).
+function loadLocale(): Locale {
+  const v = readLocal(LOCALE_KEY);
+  return isLocale(v) ? v : detectLocale();
+}
+
+// Mirror the theme's applyThemeAttr: reflect the language onto <html lang> for
+// assistive tech, and thread it into the Intl formatters (numbers/dates/percent).
+export function applyLocale(locale: Locale): void {
+  applyLangAttr(locale);
+  setFormatLocale(locale);
+}
+
+// Drive the palette by toggling <html data-theme>. "system" removes the
+// attribute (CSS then follows prefers-color-scheme); "light"/"dark" force it.
+// Guarded so it's safe under SSR / non-DOM test environments.
+export function applyThemeAttr(theme: ThemeMode): void {
+  if (typeof document === "undefined") return;
+  if (theme === "system") {
+    delete document.documentElement.dataset.theme;
+  } else {
+    document.documentElement.dataset.theme = theme;
+  }
+}
+
 // Default ON: opening a place is itself an explicit action, so loading its public
 // Wikivoyage/Wikipedia overview is expected. The toggle lets privacy-minded users
 // require a tap instead. Only "0" disables it (so a first run defaults to on).
@@ -68,6 +109,10 @@ interface SettingsState {
   setOnlineMap: (value: boolean) => void;
   maxMarkers: number;
   setMaxMarkers: (value: number) => void;
+  theme: ThemeMode;
+  setTheme: (theme: ThemeMode) => void;
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
 }
 
 export const useSettings = create<SettingsState>((set) => ({
@@ -91,4 +136,25 @@ export const useSettings = create<SettingsState>((set) => ({
     writeLocal(MAX_MARKERS_KEY, String(maxMarkers));
     set({ maxMarkers });
   },
+  theme: loadTheme(),
+  setTheme: (theme) => {
+    writeLocal(THEME_KEY, theme);
+    applyThemeAttr(theme);
+    set({ theme });
+  },
+  locale: loadLocale(),
+  setLocale: (locale) => {
+    writeLocal(LOCALE_KEY, locale);
+    applyLocale(locale);
+    set({ locale });
+  },
 }));
+
+// Apply the saved theme once at module load, so the palette matches the stored
+// choice even on the app's very first render (the index.html inline script
+// already handles the pre-paint case for explicit light/dark).
+applyThemeAttr(loadTheme());
+
+// Likewise apply the saved (or device-detected) language on load, so <html lang>
+// and the Intl formatters match the chosen locale from the very first render.
+applyLocale(loadLocale());

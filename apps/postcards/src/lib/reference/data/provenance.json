@@ -58,5 +58,17 @@
     "license": "CC BY-SA 3.0 IGO — © UNESCO World Heritage Centre",
     "version": "2025 list, retrieved 2026-07-11",
     "url": "https://whc.unesco.org/en/list/"
+  },
+  {
+    "dataset": "UNESCO Intangible Cultural Heritage — Representative List (Moments concepts)",
+    "license": "CC BY-SA 3.0 IGO — © UNESCO",
+    "version": "retrieved 2026-07-15",
+    "url": "https://ich.unesco.org/en/lists"
+  },
+  {
+    "dataset": "Wikivoyage travel topics & itineraries (Moments concepts, opt-in)",
+    "license": "CC BY-SA 3.0",
+    "version": "live",
+    "url": "https://en.wikivoyage.org"
   }
 ]

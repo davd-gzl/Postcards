@@ -21,13 +21,32 @@
   --shadow: 0 1px 2px rgba(30, 24, 16, 0.05), 0 6px 18px -6px rgba(30, 24, 16, 0.12);
   --shadow-sm: 0 1px 2px rgba(30, 24, 16, 0.06);
   --display: "Space Grotesk Variable", "Inter Variable", system-ui, sans-serif;
+  /* Semantic colours that used to be hardcoded twice (light rule + a dark-only
+     override). Now they're tokens so a single unconditional component rule works
+     under system-dark, explicit-dark and light alike. Light values here. */
+  --stat-been: #15803d;
+  --stat-air: #0369a1;
+  --stat-want: #b45309;
+  --stat-fav: #be185d;
+  --notice-err-border: #f3c6c6;
+  --notice-err-bg: #fdeded;
+  --notice-ok-fg: #0f7a34;
+  --notice-ok-border: #bfe6cd;
+  --reset-confirm-bg: #fdeded;
   color-scheme: light;
 }
 
-/* Dark mode follows the device automatically (no toggle). Tuned by hand for
-   WCAG AA contrast on the dark surfaces. */
+/* Dark palette. Tuned by hand for WCAG AA contrast on the dark surfaces.
+   The explicit System / Light / Dark toggle (Settings → Appearance) writes a
+   data-theme attribute on <html>; the light defaults live in :root above, so
+   the dark palette must apply in TWO cases:
+     1. system prefers dark AND no explicit choice was made, and
+     2. the user explicitly chose Dark.
+   CSS has no mixins, so the identical token block is duplicated for those two
+   selectors below (accepted). Every component rule stays unconditional and
+   simply reads these tokens — this is the only dark-conditioned CSS left. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
     --bg: #131419;
     --bg-sub: #1e2027;
     --surface: #1a1c22;
@@ -44,33 +63,47 @@
     --danger: #f2915a;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 22px -8px rgba(0, 0, 0, 0.55);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    /* Semantic tokens, brightened so they read on dark surfaces. */
+    --stat-been: #4ade80;
+    --stat-air: #56b6f0;
+    --stat-want: #f0a35a;
+    --stat-fav: #f472b6;
+    --notice-err-border: #4a2418;
+    --notice-err-bg: #2a1712;
+    --notice-ok-fg: #4ade80;
+    --notice-ok-border: #1f3a29;
+    --reset-confirm-bg: color-mix(in srgb, var(--danger) 14%, transparent);
     color-scheme: dark;
   }
-  /* Semantic accent colours, brightened so they read on dark surfaces.
-     Doubled-up class so these beat the later light-mode .ss-* rules. */
-  .ss-num.ss-been {
-    color: #4ade80;
-  }
-  .ss-num.ss-air {
-    color: #56b6f0;
-  }
-  .ss-num.ss-want {
-    color: #f0a35a;
-  }
-  .ss-num.ss-fav {
-    color: #f472b6;
-  }
-  /* Import/scan notices: dark surfaces with legible text (WCAG AA). */
-  .notice-err {
-    color: #f2915a;
-    border-color: #4a2418;
-    background: #2a1712;
-  }
-  .notice-ok {
-    color: #4ade80;
-    border-color: #1f3a29;
-    background: var(--visited-soft);
-  }
+}
+:root[data-theme="dark"] {
+  --bg: #131419;
+  --bg-sub: #1e2027;
+  --surface: #1a1c22;
+  --border: #2c2f38;
+  --border-strong: #3c404b;
+  --text: #eceef3;
+  --muted: #a2a6b2;
+  --primary: #eceef3;
+  --primary-ink: #17181c;
+  --accent: #a5b4fc;
+  --accent-soft: #262a45;
+  --visited: #4ade80;
+  --visited-soft: #16261c;
+  --danger: #f2915a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 22px -8px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  /* Semantic tokens, brightened so they read on dark surfaces. */
+  --stat-been: #4ade80;
+  --stat-air: #56b6f0;
+  --stat-want: #f0a35a;
+  --stat-fav: #f472b6;
+  --notice-err-border: #4a2418;
+  --notice-err-bg: #2a1712;
+  --notice-ok-fg: #4ade80;
+  --notice-ok-border: #1f3a29;
+  --reset-confirm-bg: color-mix(in srgb, var(--danger) 14%, transparent);
+  color-scheme: dark;
 }
 
 * {
@@ -107,7 +140,8 @@ body {
 .section-head h2,
 .ss-num,
 .tt-main strong,
-.stat-tile .num {
+.stats-hero .hero-num,
+.kpi-num {
   font-family: var(--display);
   font-optical-sizing: auto;
 }
@@ -370,6 +404,76 @@ h1.brand {
   box-shadow: var(--shadow-sm);
   pointer-events: auto;
 }
+/* "Back online" prompt on the map — only shown after a fallback, never auto-acts. */
+.map-reconnect {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 8px 5px 14px;
+  box-shadow: var(--shadow-sm);
+}
+/* "Add your own place" dialog opened from the map. */
+.map-add-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.map-add-dialog {
+  width: min(440px, 100%);
+  max-height: 90%;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px 16px;
+}
+.map-addhere {
+  padding: 2px;
+}
+/* Online/Offline chip in the topbar (non-interactive status). */
+.conn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.conn-status .dot {
+  font-size: 9px;
+  line-height: 1;
+}
+.conn-online .dot {
+  color: #16a34a;
+}
+.conn-offline {
+  color: var(--muted);
+}
+.conn-offline .dot {
+  color: #d97706;
+}
+@media (max-width: 560px) {
+  .conn-status .conn-label {
+    display: none;
+  }
+}
 /* City tap popup (MapLibre) — themed to match the app. */
 .maplibregl-popup-content {
   background: var(--surface);
@@ -493,6 +597,15 @@ h1.brand {
   margin: 10px 4px 4px;
   color: var(--muted);
   font-size: 14px;
+}
+.search-addown {
+  margin: 6px 4px 4px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.search-addown-btn {
+  font-size: 13px;
+  color: var(--muted);
 }
 
 /* Chips / toggles */
@@ -688,17 +801,23 @@ h1.brand {
   color: var(--muted);
   font-size: 13px;
 }
+.ss-pct {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 13px;
+  margin-left: 5px;
+}
 .ss-been {
-  color: #15803d;
+  color: var(--stat-been);
 }
 .ss-air {
-  color: #0369a1;
+  color: var(--stat-air);
 }
 .ss-want {
-  color: #b45309;
+  color: var(--stat-want);
 }
 .ss-fav {
-  color: #be185d;
+  color: var(--stat-fav);
 }
 .ss-label {
   font-size: 12px;
@@ -732,7 +851,7 @@ h1.brand {
   padding: 2px 4px;
 }
 .star-btn.star-on {
-  color: #f59e0b;
+  color: #e11d48;
 }
 
 /* Your "postcard" photo: a small thumbnail on a visited row + a tap-to-view lightbox. */
@@ -941,45 +1060,207 @@ h1.brand {
 }
 
 /* Stats */
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
-  gap: 10px;
-  margin-bottom: 20px;
+/* Scope drives every number below, so its head stays reachable through a long
+   scroll (.content is the scroll container). */
+.stats-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg);
+  padding-block: 6px;
 }
-.stat-tile {
+/* One card grammar for every grouped section (hero, continents, records,
+   travel): surface + border + a real <h3> head so heading navigation works. */
+.stats-section,
+.dash-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 13px 12px;
   box-shadow: var(--shadow-sm);
+  padding: 14px;
+  margin-bottom: 12px;
 }
-.stat-tile .num {
-  font-size: 27px;
+.stats-section > h3,
+.dash-card > h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.stats-section > .continent-grid,
+.stats-section > .records-grid,
+.stats-section > .travel-totals {
+  margin-bottom: 0;
+}
+
+/* Coverage hero: ring (tier 1) beside the caption + continent constellation.
+   Stacks on phones, sits side-by-side from the continent-grid breakpoint up. */
+.stats-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+@media (min-width: 560px) {
+  .stats-hero {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+    text-align: left;
+  }
+}
+.hero-ring {
+  position: relative;
+  flex: none;
+  width: 120px;
+  height: 120px;
+  background: none;
+  border: none;
+  padding: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.hero-ring-svg {
+  width: 120px;
+  height: 120px;
+  display: block;
+}
+.hero-ring-track {
+  fill: none;
+  stroke: var(--bg-sub);
+  stroke-width: 10;
+}
+.hero-ring-value {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease;
+}
+.hero-ring:hover .hero-ring-value {
+  stroke: var(--accent);
+  filter: brightness(1.08);
+}
+.hero-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.hero-num {
+  font-size: clamp(2rem, 10vw, 3rem);
   font-weight: 600;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
-.stat-tile .label {
+.hero-den {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+.hero-pct {
   font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
   margin-top: 3px;
-  line-height: 1.3;
 }
-/* Tiles are buttons — tappable shortcuts into the matching Places view. */
-button.stat-tile {
+.hero-ring:hover .hero-num {
+  color: var(--accent);
+}
+.hero-body {
+  flex: 1;
+  min-width: 0;
+}
+.hero-caption {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+.continent-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: center;
+}
+@media (min-width: 560px) {
+  .continent-dots {
+    justify-content: flex-start;
+  }
+}
+.cdot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  line-height: 1;
+  color: #fff;
+  border: 1.5px solid var(--border-strong);
+}
+.cdot.off {
+  background: transparent;
+  opacity: 0.5;
+}
+.continents-touched {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Counts strip (tier 2): the raw totals, demoted to colored pills that match
+   the map's StatStrip --stat-* language. Each pill opens its Places view. */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+.kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-height: 44px;
+  padding: 8px 11px;
   text-align: left;
+  background: var(--bg-sub);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
 }
-button.stat-tile .num,
-button.stat-tile .label {
-  display: block;
-}
-button.stat-tile:hover {
+.kpi:hover {
   border-color: var(--accent);
 }
-button.stat-tile:hover .num {
-  color: var(--accent);
+.kpi-num {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.4rem, 6vw, 1.6rem);
+  line-height: 1.05;
+}
+.kpi-been {
+  color: var(--stat-been);
+}
+.kpi-air {
+  color: var(--stat-air);
+}
+.kpi-want {
+  color: var(--stat-want);
+}
+.kpi-label {
+  font-size: 12px;
+  color: var(--muted);
 }
 .country-card {
   background: var(--surface);
@@ -989,15 +1270,92 @@ button.stat-tile:hover .num {
   margin-bottom: 8px;
   box-shadow: var(--shadow-sm);
 }
-.country-head {
+/* Country roster row: a native <details>. The collapsed <summary> is a
+   one-line, scannable row (flag + name + tag pills + a slim cities meter);
+   expanding reveals the metrics + place chips (progressive disclosure). */
+.country-card > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.country-card > summary::-webkit-details-marker {
+  display: none;
+}
+.country-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "name tags caret"
+    "meter meter meter";
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 44px;
+}
+.country-summary .country-name {
+  grid-area: name;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--text);
+}
+/* The real "open this country's page" action, surfaced when the row expands
+   (kept out of <summary> so no interactive control nests in the toggle).
+   Scoped under .country-body so it wins over the later, plainer .country-open. */
+.country-body .country-open-page {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  margin-bottom: 4px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.country-body .country-open-page:hover {
+  text-decoration: underline;
+  color: var(--accent);
+}
+.country-tags {
+  grid-area: tags;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.country-tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--bg-sub);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.country-caret {
+  grid-area: caret;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.country-card[open] .country-caret {
+  transform: rotate(90deg);
+}
+.country-summary > .bar {
+  grid-area: meter;
+  height: 5px;
+  margin-top: 2px;
+}
+.country-body {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 .metric {
   margin-top: 8px;
+}
+.country-body > .metric:first-child {
+  margin-top: 0;
 }
 .metric-label {
   display: flex;
@@ -1089,12 +1447,12 @@ button.stat-tile:hover .num {
 }
 .notice-err {
   color: var(--danger);
-  border-color: #f3c6c6;
-  background: #fdeded;
+  border-color: var(--notice-err-border);
+  background: var(--notice-err-bg);
 }
 .notice-ok {
-  color: #0f7a34;
-  border-color: #bfe6cd;
+  color: var(--notice-ok-fg);
+  border-color: var(--notice-ok-border);
   background: var(--visited-soft);
 }
 /* Backup reminder: a gentle, dismissible nudge at the top of Your data. */
@@ -1124,6 +1482,68 @@ button.stat-tile:hover .num {
   margin-top: 22px;
   font-size: 12px;
   color: var(--muted);
+}
+
+/* Danger zone: the one irreversible action, set apart from the safe buttons. */
+.danger-zone {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.danger-zone .muted.small {
+  margin-top: 6px;
+}
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 11px 16px;
+  font-weight: 600;
+  transition: transform 0.06s ease, filter 0.15s ease;
+}
+.btn-danger:hover {
+  filter: brightness(1.1);
+}
+.btn-danger:active {
+  transform: translateY(1px);
+}
+.btn-danger:disabled {
+  opacity: 0.45;
+  filter: none;
+  cursor: not-allowed;
+}
+.reset-confirm {
+  padding: 14px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--reset-confirm-bg);
+}
+.reset-warn {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.reset-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.reset-label code,
+.danger-zone code {
+  font-weight: 700;
+}
+.reset-input {
+  width: 100%;
+  max-width: 220px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
 }
 
 /* Accessibility */
@@ -1738,9 +2158,6 @@ button.stat-tile:hover .num {
 .screen {
   padding-top: 10px;
 }
-.stat-grid {
-  margin-bottom: 14px;
-}
 .country-card {
   padding: 9px 11px;
   margin-bottom: 6px;
@@ -1919,6 +2336,13 @@ button.stat-tile:hover .num {
   margin: 0 0 4px;
   font-size: 15px;
 }
+/* Device sync (spec 013): keep the button and the last-synced note on one baseline. */
+.sync-actions {
+  align-items: center;
+}
+.sync-last {
+  align-self: center;
+}
 .region-list {
   list-style: none;
   margin: 8px 0;
@@ -2059,9 +2483,8 @@ button.stat-tile:hover .num {
 .map-popup-actions .mini-btn { font-size: 11.5px; padding: 3px 9px; }
 .map-ctl-top { top: 10px; left: 50%; transform: translateX(-50%); bottom: auto; flex-direction: row; box-shadow: var(--shadow); }
 .map-ctl-top button { font-size: 12px; padding: 4px 10px; }
-.stat-tile { padding: 8px 10px; }
-.stat-tile .num { font-size: 21px; }
-.stat-grid { gap: 7px; margin-bottom: 10px; }
+.stats-section { padding: 12px; }
+.kpi { min-height: 42px; }
 .country-card { padding: 8px 10px; }
 .metric { margin-top: 5px; }
 .brand { font-size: 19px; }
@@ -2316,6 +2739,10 @@ textarea.select {
   }
   .ss-den {
     font-size: 11px;
+  }
+  .ss-pct {
+    font-size: 11px;
+    margin-left: 3px;
   }
   .ss-label {
     font-size: 10.5px;
@@ -2679,6 +3106,31 @@ button.brand:focus-visible {
   color: var(--accent);
 }
 
+/* Moments grouped by home: a continent section, then a flag'd country sub-header,
+   then the ordinary moment rows. Headings are quiet so the rows stay the focus. */
+.moment-continent {
+  margin-top: 14px;
+}
+.moment-continent-head {
+  margin: 0 0 2px;
+  font-size: 15px;
+}
+.moment-country-group {
+  margin-top: 6px;
+}
+.moment-country {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.moment-country .flag {
+  font-size: 15px;
+}
+
 /* Settings: a simple checkbox row. */
 .toggle-row {
   display: flex;
@@ -2714,19 +3166,12 @@ button.brand:focus-visible {
 }
 
 /* Stats density: half the air, same information. */
-.stat-grid {
-  gap: 6px;
+.stats-section {
+  padding: 12px;
   margin-bottom: 10px;
 }
-.stat-tile {
-  padding: 8px 11px;
-}
-.stat-tile .num {
-  font-size: 21px;
-}
-.stat-tile .label {
-  margin-top: 1px;
-  font-size: 12px;
+.kpi {
+  min-height: 42px;
 }
 .country-card {
   padding: 6px 10px;
@@ -2749,6 +3194,24 @@ button.brand:focus-visible {
 }
 .section-head + .muted.small {
   margin-top: 0;
+}
+
+/* Phone density pass: tighter stats cards and smaller tier-1/tier-2 figures so
+   the hero and KPI pills shrink consistently on small screens (mirrors the
+   stats density block above). */
+@media (max-width: 899.98px) {
+  .stats-section {
+    padding: 11px;
+  }
+  .hero-num {
+    font-size: clamp(1.9rem, 9vw, 2.6rem);
+  }
+  .kpi-num {
+    font-size: clamp(1.3rem, 5.5vw, 1.5rem);
+  }
+  .kpi {
+    padding: 7px 10px;
+  }
 }
 
 /* While a map popup is open, step the floating controls (mode bar, zoom, Layers)
@@ -2803,6 +3266,13 @@ button.brand:focus-visible {
   .city-row.compact {
     padding: 5px 0;
   }
+  /* Stats: give the chips and the record-city fly-to links comfortable targets. */
+  .place-chip {
+    min-height: 34px;
+  }
+  .record .country-open {
+    min-height: 34px;
+  }
 }
 
 /* Phones: a visited row's trailing controls (Guide, Photos, ★, Remove) add up
@@ -2816,4 +3286,113 @@ button.brand:focus-visible {
   .city-row .mini-btn {
     padding: 4px 8px;
   }
+}
+
+/* ---- Publish mode (shareable travel-blog site) ---- */
+/* Token-only styling so the modal follows the app's light/dark themes. */
+.publish-modal {
+  max-width: 580px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  text-align: left;
+}
+.publish-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.publish-head h2 {
+  margin: 0;
+}
+.publish-fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px 14px;
+  margin: 14px 0 0;
+}
+.publish-fieldset legend {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 0 6px;
+}
+.publish-fieldset .picker-label {
+  margin-top: 10px;
+}
+.publish-fieldset .btn-row {
+  margin-bottom: 4px;
+}
+.publish-modal .mini-btn.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.publish-summary {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  background: var(--bg-sub);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.publish-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 14px;
+}
+.publish-total strong {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+.publish-total-dates {
+  color: var(--muted);
+}
+.publish-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+.publish-chip {
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  color: var(--text);
+}
+.publish-chip-more {
+  color: var(--muted);
+}
+.publish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+.publish-preview {
+  margin: 14px 0 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
+}
+.publish-preview-frame {
+  display: block;
+  width: 100%;
+  height: 460px;
+  border: 0;
+}
+.publish-github {
+  margin: 18px 0 0;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.publish-github-body {
+  margin-top: 10px;
 }

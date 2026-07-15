@@ -28,5 +28,5 @@ test("core actions work with no network: offline map renders, visits persist", a
   // Stats work offline too.
   await page.getByRole("button", { name: "Stats", exact: true }).click();
   await expect(page.getByText("Statistics")).toBeVisible();
-  await expect(page.locator(".country-head", { hasText: "Portugal" })).toBeVisible();
+  await expect(page.locator(".country-summary", { hasText: "Portugal" })).toBeVisible();
 });

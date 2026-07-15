@@ -26,6 +26,16 @@
     <meta name="theme-color" content="#4338ca" />
     <meta name="description" content="Remember the places you've been — private, offline, in a file you own." />
     <title>Postcards</title>
+    <!-- Apply the saved colour-theme choice before first paint, so an explicit
+         Light/Dark selection never flashes the wrong palette while the app
+         bundle loads. First-party, inert: it only reads our own localStorage key
+         and sets a data attribute. "system" (or no choice) is left to CSS. -->
+    <script>
+      try {
+        var t = localStorage.getItem("postcards-theme");
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
