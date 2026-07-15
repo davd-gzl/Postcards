@@ -97,6 +97,14 @@ mode, so it's high-value and not much extra surface. Recommendation:
       architecture, how-to) once the batch is done → then **launch a workflow** to
       make it perfect.
 
+## Map data loading (structure + preprocessing)
+
+- [ ] Speed up the MAP's data load with better data structures + preprocessing:
+      spatial index for the 135k-row gazetteer viewport query (replace the linear
+      scan), memoise/low-res-seed the 756KB country geometry + kill the first-load
+      double-fetch, consider a compact/binary preprocessed format at build time.
+      (viewport.ts, lib/reference/*, MapView.tsx geometry, a build preprocess step)
+
 ## Workflows
 
 - [x] **Tile loading** workflow — desktop & mobile; tiles sometimes not loaded though on-screen (DONE: audit + fixes #1–6 shipped; #7 no-remount-on-toggle and #8 robust-offline-base deferred as follow-ups)
