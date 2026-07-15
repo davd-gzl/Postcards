@@ -5,6 +5,7 @@ import { useSettings, MARKER_CAP_CHOICES } from "../../lib/store/useSettings";
 import { saveAreaOffline } from "../map/offlineTiles";
 import { OFFLINE_REGIONS, REGION_MAX_TILES, estimateRegion, type OfflineRegion } from "./regions";
 import { ScopeToggle } from "../../ui/ScopeToggle";
+import { ThemeToggle } from "../../ui/ThemeToggle";
 import { Backup } from "../backup/Backup";
 import { Attribution } from "../../ui/Attribution";
 import { formatInt } from "../../lib/format/format";
@@ -110,6 +111,14 @@ export function SettingsScreen() {
       <div className="section-head">
         <h2>Settings</h2>
       </div>
+
+      <section className="settings-section">
+        <h3>Appearance</h3>
+        <p className="muted small">
+          Follow your device, or force light or dark. Your choice is saved on this device only.
+        </p>
+        <ThemeToggle />
+      </section>
 
       <section className="settings-section">
         <h3>What counts as a country</h3>
