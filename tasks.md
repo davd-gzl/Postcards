@@ -45,8 +45,8 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 - [x] Spec `specs/013-device-sync/spec.md` (git mode first, P2P as phase 2)
 - [x] Record-level convergent merge core (`lib/sync/merge.ts`, newest-wins + tombstones, tested — deterministic/commutative/idempotent)
-- [ ] Sync engine wiring (git pull→merge→push) + Sync button/UI, shared git connector with Publish mode
-- [ ] `updatedAt` on records (schema) for the merge timestamp
+- [x] Sync engine wiring (git pull→merge→push, conditional-push retry) + Sync UI, shared connector — DONE
+- [x] `updatedAt` on records + tombstones (schema v6, DB v4, backfilled) — DONE
 
 ## UX / behaviour batch
 
