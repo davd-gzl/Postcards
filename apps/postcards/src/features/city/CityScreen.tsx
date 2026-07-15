@@ -293,11 +293,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
                 <button className="city-focus" type="button" onClick={() => flyTo(a.lon, a.lat)}>
                   <CityLine
                     flag="✈️"
-                    name={
-                      <>
-                        {a.name} ({a.id})
-                      </>
-                    }
+                    name={`${a.name} (${a.id})`}
                     sub={<>· {formatKm(a.km)} away</>}
                   />
                 </button>

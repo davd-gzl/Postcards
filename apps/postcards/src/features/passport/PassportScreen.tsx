@@ -25,7 +25,9 @@ function FlagCard({ c, locked }: { c: Country; locked?: boolean }) {
         <span className="flag-big" aria-hidden>
           {countryFlag(c.iso2)}
         </span>
-        <span className="flag-name">{c.name}</span>
+        <span className="flag-name" title={c.name}>
+          {c.name}
+        </span>
       </button>
     </li>
   );
