@@ -36,7 +36,7 @@ function pct(part: number, total: number): number {
 }
 
 /** Coverage counts only places actually visited — never the wishlist. */
-export function onlyVisited(visits: Visit[]): Visit[] {
+function onlyVisited(visits: Visit[]): Visit[] {
   return visits.filter((v) => v.status !== "wishlist");
 }
 

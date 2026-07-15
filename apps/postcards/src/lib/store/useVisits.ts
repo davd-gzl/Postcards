@@ -3,6 +3,7 @@ import { MAX_PHOTOS_PER_VISIT, normalizeVisitPhotos, placeKey } from "../schema/
 import type { Photo, PlaceRef, Visit } from "../schema/models";
 import { sanitizeText } from "../schema/sanitize";
 import * as db from "../db/visitsDb";
+import { uuid } from "./uuid";
 
 /**
  * Pure dedupe/upsert: at most one visit per (kind, id) (FR-015).
@@ -49,16 +50,6 @@ function todayISO(): string {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
-function uuid(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  // Fallback (non-secure) — only used where crypto is unavailable.
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = Math.floor(Math.random() * 16);
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
 interface VisitsState {
   visits: Visit[];
   loaded: boolean;
@@ -91,6 +82,13 @@ interface VisitsState {
   /** Put ONE visit back (single-record undo): upsert by visitId, one write —
    *  setAll would clear and rewrite the entire visits table. */
   restoreVisit: (visit: Visit) => Promise<void>;
+  /** Merge imported places into the existing visits, upserting by (kind,id):
+   *  a NON-destructive add (trips, stories, and any place not in the file are
+   *  untouched; an existing place keeps its photos/note/addedAt). Returns how
+   *  many were added vs updated. */
+  mergeVisits: (
+    incoming: { place: PlaceRef; status: Visit["status"]; favorite?: boolean; date?: string | null }[],
+  ) => Promise<{ added: number; updated: number }>;
   setAll: (visits: Visit[]) => Promise<void>;
 }
 
@@ -199,6 +197,41 @@ export const useVisits = create<VisitsState>((set, get) => ({
         : [...get().visits, visit],
     });
     await db.putVisit(visit);
+  },
+  async mergeVisits(incoming) {
+    const byKey = new Map(get().visits.map((v) => [placeKey(v.place), v]));
+    let added = 0;
+    let updated = 0;
+    for (const item of incoming) {
+      const key = placeKey(item.place);
+      const existing = byKey.get(key);
+      if (existing) {
+        byKey.set(key, {
+          ...existing,
+          place: item.place, // refresh coords/name if the import carries better
+          status: item.status,
+          favorite: item.favorite ?? existing.favorite,
+          date: item.date ?? existing.date,
+        });
+        updated++;
+      } else {
+        byKey.set(key, {
+          visitId: uuid(),
+          place: item.place,
+          status: item.status,
+          favorite: item.favorite ?? false,
+          date: item.date ?? null,
+          note: null,
+          photos: [],
+          addedAt: new Date().toISOString(),
+        });
+        added++;
+      }
+    }
+    const merged = [...byKey.values()];
+    set({ visits: merged });
+    await db.replaceAllVisits(merged);
+    return { added, updated };
   },
   async setAll(visits) {
     const normalized = visits.map(normalizeVisitPhotos);

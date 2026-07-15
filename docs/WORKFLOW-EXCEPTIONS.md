@@ -23,6 +23,22 @@ provenance, local-first, privacy by default, inert data, keyboard-first):
 - Airports & UNESCO monuments place kinds (+ datasets under `public/reference/`)
 - Custom user-authored places ("add it yourself")
 
+## Update (2026-07-15): retro-specified
+
+The shipped features listed above are now **retro-specified** (convergence task
+T068 of `specs/001-cities-countries/tasks.md` addressed). Trips, place types
+(airports), the offline-map seam, native packaging, and boarding-pass import
+already had retro-specs (`specs/002-006`); the remaining features were added:
+
+- `specs/007-journal/` — journal (mini travel blog with photos)
+- `specs/008-moments/` — moments (once-in-a-lifetime world experiences)
+- `specs/009-passport-poster/` — passport flag collection + world poster export
+- `specs/010-guides-wikivoyage/` — Wikivoyage/Wikipedia guides seam
+- `specs/011-photo-gallery/` — per-place photo galleries, custom places, monument place type
+
+Each is a `spec.md` describing shipped behavior (no `plan.md`/`tasks.md` by design).
+See `specs/README.md` for the full index. The exception above remains recorded as history.
+
 ## Policy going forward
 
 New feature-sized work SHOULD return to the spec-first workflow

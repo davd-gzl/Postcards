@@ -1,5 +1,6 @@
 import type { PlaceRef, TravelMode, Trip } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
+import { MODE_ORDER } from "./modes";
 
 /** Resolve a place reference to coordinates, if it has any (cities, airports, heritage sites do). */
 export function coordsOf(place: PlaceRef, ref: ReferenceData): { lon: number; lat: number } | null {
@@ -50,8 +51,6 @@ export interface TravelTotals {
   /** Per-mode { trips, km }, in a stable display order. */
   byMode: { mode: TravelMode; trips: number; km: number }[];
 }
-
-const MODE_ORDER: TravelMode[] = ["flight", "train", "bus", "ferry", "car", "other"];
 
 /** Aggregate totals across trips; distance sums only trips with two resolvable endpoints. */
 export function travelTotals(trips: Trip[], ref: ReferenceData): TravelTotals {

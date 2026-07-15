@@ -15,7 +15,7 @@ import { StateToggles } from "./StateToggles";
 import { GuideButton } from "../guides/GuideButton";
 import { PassportScreen } from "../passport/PassportScreen";
 import { ExperiencesScreen } from "../experiences/ExperiencesScreen";
-import { MoreButton } from "../../ui/MoreButton";
+import { ListPager } from "../../ui/ListPager";
 
 // Everything place-shaped lives here, one view each — including Favorites (its
 // own view, not a mode that repaints "Visited"), Moments and the Passport.
@@ -378,14 +378,12 @@ export function PlacesScreen() {
             ))}
           </ul>
           {visitedShown.length > shown && (
-            <div className="list-pager">
-              <span className="muted small">
-                Showing {shown} of {visitedShown.length}
-              </span>
-              <MoreButton onMore={() => setShown((n) => n + 100)}>
-                Show 100 more
-              </MoreButton>
-            </div>
+            <ListPager
+              shown={shown}
+              total={visitedShown.length}
+              step={100}
+              onMore={() => setShown((n) => n + 100)}
+            />
           )}
         </>
       )}
@@ -406,14 +404,12 @@ export function PlacesScreen() {
             ))}
           </ul>
           {favoritesShown.length > shown && (
-            <div className="list-pager">
-              <span className="muted small">
-                Showing {shown} of {favoritesShown.length}
-              </span>
-              <MoreButton onMore={() => setShown((n) => n + 100)}>
-                Show 100 more
-              </MoreButton>
-            </div>
+            <ListPager
+              shown={shown}
+              total={favoritesShown.length}
+              step={100}
+              onMore={() => setShown((n) => n + 100)}
+            />
           )}
         </>
       )}
@@ -434,14 +430,12 @@ export function PlacesScreen() {
             ))}
           </ul>
           {wishlistShown.length > shown && (
-            <div className="list-pager">
-              <span className="muted small">
-                Showing {shown} of {wishlistShown.length}
-              </span>
-              <MoreButton onMore={() => setShown((n) => n + 100)}>
-                Show 100 more
-              </MoreButton>
-            </div>
+            <ListPager
+              shown={shown}
+              total={wishlistShown.length}
+              step={100}
+              onMore={() => setShown((n) => n + 100)}
+            />
           )}
         </>
       )}
@@ -498,14 +492,12 @@ export function PlacesScreen() {
                 })}
               </ul>
               {monuments.length > shown && (
-                <div className="list-pager">
-                  <span className="muted small">
-                    Showing {shown} of {monuments.length}
-                  </span>
-                  <MoreButton onMore={() => setShown((n) => n + 100)}>
-                    Show 100 more
-                  </MoreButton>
-                </div>
+                <ListPager
+                  shown={shown}
+                  total={monuments.length}
+                  step={100}
+                  onMore={() => setShown((n) => n + 100)}
+                />
               )}
             </>
           )}
@@ -572,14 +564,12 @@ export function PlacesScreen() {
             })}
           </ul>
           {countryRows.length > shown && (
-            <div className="list-pager">
-              <span className="muted small">
-                Showing {shown} of {countryRows.length}
-              </span>
-              <MoreButton onMore={() => setShown((n) => n + 100)}>
-                Show 100 more
-              </MoreButton>
-            </div>
+            <ListPager
+              shown={shown}
+              total={countryRows.length}
+              step={100}
+              onMore={() => setShown((n) => n + 100)}
+            />
           )}
         </>
       )}

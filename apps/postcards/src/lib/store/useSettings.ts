@@ -17,44 +17,46 @@ export const MARKER_CAP_CHOICES = [100, 250, 500, 1000] as const;
 // stays instant on phones; Settings offers more for people who want density.
 const DEFAULT_MAX_MARKERS = 100;
 
-function loadMaxMarkers(): number {
+// localStorage is unavailable in private mode / restricted contexts; reads fall
+// back to null and writes are silently swallowed (settings just don't persist).
+function readLocal(key: string): string | null {
   try {
-    const n = Number(localStorage.getItem(MAX_MARKERS_KEY));
-    return (MARKER_CAP_CHOICES as readonly number[]).includes(n) ? n : DEFAULT_MAX_MARKERS;
+    return localStorage.getItem(key);
   } catch {
-    return DEFAULT_MAX_MARKERS;
+    return null;
   }
 }
 
-function loadScope(): CountryScope {
+function writeLocal(key: string, value: string): void {
   try {
-    const v = localStorage.getItem(SCOPE_KEY);
-    return v === "un" || v === "all" ? v : DEFAULT_SCOPE;
+    localStorage.setItem(key, value);
   } catch {
-    return DEFAULT_SCOPE;
+    /* private mode: not persisted */
   }
+}
+
+function loadMaxMarkers(): number {
+  const n = Number(readLocal(MAX_MARKERS_KEY));
+  return (MARKER_CAP_CHOICES as readonly number[]).includes(n) ? n : DEFAULT_MAX_MARKERS;
+}
+
+function loadScope(): CountryScope {
+  const v = readLocal(SCOPE_KEY);
+  return v === "un" || v === "all" ? v : DEFAULT_SCOPE;
 }
 
 // Default ON: opening a place is itself an explicit action, so loading its public
 // Wikivoyage/Wikipedia overview is expected. The toggle lets privacy-minded users
 // require a tap instead. Only "0" disables it (so a first run defaults to on).
 function loadAutoGuides(): boolean {
-  try {
-    return localStorage.getItem(AUTO_GUIDES_KEY) !== "0";
-  } catch {
-    return true;
-  }
+  return readLocal(AUTO_GUIDES_KEY) !== "0";
 }
 
 // The detailed OpenStreetMap map is on by default (it fetches map tiles from
 // OpenStreetMap). Turning this off makes the app use the no-network offline map
 // only, restoring the zero-outbound-request posture. Only "0" disables it.
 function loadOnlineMap(): boolean {
-  try {
-    return localStorage.getItem(ONLINE_MAP_KEY) !== "0";
-  } catch {
-    return true;
-  }
+  return readLocal(ONLINE_MAP_KEY) !== "0";
 }
 
 interface SettingsState {
@@ -71,38 +73,22 @@ interface SettingsState {
 export const useSettings = create<SettingsState>((set) => ({
   countryScope: loadScope(),
   setCountryScope: (countryScope) => {
-    try {
-      localStorage.setItem(SCOPE_KEY, countryScope);
-    } catch {
-      /* private mode: not persisted */
-    }
+    writeLocal(SCOPE_KEY, countryScope);
     set({ countryScope });
   },
   autoLoadGuides: loadAutoGuides(),
   setAutoLoadGuides: (autoLoadGuides) => {
-    try {
-      localStorage.setItem(AUTO_GUIDES_KEY, autoLoadGuides ? "1" : "0");
-    } catch {
-      /* private mode: not persisted */
-    }
+    writeLocal(AUTO_GUIDES_KEY, autoLoadGuides ? "1" : "0");
     set({ autoLoadGuides });
   },
   onlineMap: loadOnlineMap(),
   setOnlineMap: (onlineMap) => {
-    try {
-      localStorage.setItem(ONLINE_MAP_KEY, onlineMap ? "1" : "0");
-    } catch {
-      /* private mode: not persisted */
-    }
+    writeLocal(ONLINE_MAP_KEY, onlineMap ? "1" : "0");
     set({ onlineMap });
   },
   maxMarkers: loadMaxMarkers(),
   setMaxMarkers: (maxMarkers) => {
-    try {
-      localStorage.setItem(MAX_MARKERS_KEY, String(maxMarkers));
-    } catch {
-      /* private mode: not persisted */
-    }
+    writeLocal(MAX_MARKERS_KEY, String(maxMarkers));
     set({ maxMarkers });
   },
 }));
