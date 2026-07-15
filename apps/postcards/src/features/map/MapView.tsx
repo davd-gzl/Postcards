@@ -559,12 +559,15 @@ export function MapView({
 }) {
   const ref = useMemo(() => getReferenceData(), []);
   const gazGen = useGazetteerGeneration();
-  const visits = useVisits((s) => s.visits);
+  // The map does NOT subscribe to `visits` for rendering — it repaints the
+  // visited flags imperatively from a store subscription (see the map-init
+  // effect), so a mark-visited paints the flag the instant the store changes,
+  // synchronously, WITHOUT waiting for MapScreen's React re-render to commit.
+  // That is what makes tapping a place feel instant on a phone.
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const loadedRef = useRef(false);
-  const visitsRef = useRef(visits);
-  visitsRef.current = visits;
+  const visitsRef = useRef(useVisits.getState().visits);
   const onBoundsRef = useRef(onBounds);
   onBoundsRef.current = onBounds;
   const viewCitiesRef = useRef(viewCities);
@@ -1137,20 +1140,25 @@ export function MapView({
       });
     })();
 
+    // Repaint the visited flags straight off the store — synchronously, the
+    // moment a visit is added/removed — so the flag lands without waiting for
+    // any React render. applyVisited is fully key-guarded, so an unrelated
+    // change (a note, a trip) is a cheap no-op.
+    const unsub = useVisits.subscribe((state) => {
+      visitsRef.current = state.visits;
+      const m = mapRef.current;
+      if (m && loadedRef.current) applyVisited(m);
+    });
+
     return () => {
       cancelled = true;
       loadedRef.current = false;
+      unsub();
       map?.remove();
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (map && loadedRef.current) applyVisited(map);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visits]);
 
   // The background full-gazetteer upgrade landed after the map was built:
   // rebuild the city dot field (only if the Towns toggle has it visible), and
