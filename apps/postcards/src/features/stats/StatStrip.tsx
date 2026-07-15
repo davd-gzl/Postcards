@@ -5,10 +5,12 @@ import { useUi, type PlacesView } from "../../lib/store/useUi";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { computeCoverage } from "./computeStats";
 import { formatInt, formatPercent } from "../../lib/format/format";
+import { useT } from "../../lib/i18n";
 
 /** Compact counter strip. Every counter is a shortcut: tap it to open the
  *  matching Places view (been → visited, want → wishlist, fav → favourites…). */
 export function StatStrip() {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const scope = useSettings((s) => s.countryScope);
@@ -43,14 +45,19 @@ export function StatStrip() {
   }) {
     const aria =
       pct != null
-        ? `${formatInt(num)} of ${formatInt(den ?? num)} ${label} visited (${formatPercent(pct)}) — open your ${label}`
-        : `Open your ${label}`;
+        ? t("statStrip.visitedAria", {
+            num: formatInt(num),
+            den: formatInt(den ?? num),
+            label,
+            pct: formatPercent(pct),
+          })
+        : t("statStrip.openAria", { label });
     return (
       <button
         type="button"
         className="ss-item"
         onClick={() => openPlaces(view)}
-        title={`Open your ${label}`}
+        title={t("statStrip.openAria", { label })}
         aria-label={aria}
       >
         <span className={"ss-num" + (cls ? ` ${cls}` : "")}>
@@ -64,21 +71,21 @@ export function StatStrip() {
   }
 
   return (
-    <div className="stat-strip" aria-label="Your totals">
+    <div className="stat-strip" aria-label={t("statStrip.totalsAria")}>
       <Counter
         num={stats.cov.countriesVisited}
         den={stats.cov.worldCountryCount}
         pct={stats.cov.worldPct}
-        label="countries"
+        label={t("statStrip.countries")}
         view="countries"
       />
       <span className="ss-sep" aria-hidden />
-      <Counter num={stats.cov.citiesVisited} label="been" cls="ss-been" view="visited" />
+      <Counter num={stats.cov.citiesVisited} label={t("statStrip.been")} cls="ss-been" view="visited" />
       {stats.cov.airportsVisited > 0 && (
-        <Counter num={stats.cov.airportsVisited} label="airports" cls="ss-air" view="visited" />
+        <Counter num={stats.cov.airportsVisited} label={t("statStrip.airports")} cls="ss-air" view="visited" />
       )}
-      <Counter num={stats.want} label="want" cls="ss-want" view="wishlist" />
-      <Counter num={stats.fav} label="fav" cls="ss-fav" view="favorites" />
+      <Counter num={stats.want} label={t("statStrip.want")} cls="ss-want" view="wishlist" />
+      <Counter num={stats.fav} label={t("statStrip.fav")} cls="ss-fav" view="favorites" />
     </div>
   );
 }

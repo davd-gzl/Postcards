@@ -1,4 +1,5 @@
 import { MoreButton } from "./MoreButton";
+import { useT } from "../lib/i18n";
 
 /**
  * The "Showing X of Y / Show N more" footer shared by every paged list. The
@@ -16,12 +17,11 @@ export function ListPager({
   step: number;
   onMore: () => void;
 }) {
+  const t = useT();
   return (
     <div className="list-pager">
-      <span className="muted small">
-        Showing {shown} of {total}
-      </span>
-      <MoreButton onMore={onMore}>Show {step} more</MoreButton>
+      <span className="muted small">{t("journal.showingCount", { shown, total })}</span>
+      <MoreButton onMore={onMore}>{t("journal.showMore", { count: step })}</MoreButton>
     </div>
   );
 }

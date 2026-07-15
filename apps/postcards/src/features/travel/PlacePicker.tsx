@@ -3,6 +3,7 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { searchPlaces } from "../visits/search";
 import { countryFlag } from "../../lib/format/format";
 import type { PlaceRef } from "../../lib/schema/models";
+import { useT } from "../../lib/i18n";
 
 /**
  * Keyboard-operable autocomplete that resolves to a single PlaceRef (a city,
@@ -18,6 +19,7 @@ export function PlacePicker({
   value: PlaceRef | null;
   onPick: (place: PlaceRef | null) => void;
 }) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const [q, setQ] = useState("");
   const [active, setActive] = useState(-1);
@@ -71,7 +73,7 @@ export function PlacePicker({
           <button
             type="button"
             className="picker-clear"
-            aria-label={`Clear ${label}`}
+            aria-label={t("placePicker.clearAria", { label })}
             onClick={() => {
               onPick(null);
               setTimeout(() => inputRef.current?.focus(), 0);
@@ -95,7 +97,7 @@ export function PlacePicker({
           ref={inputRef}
           type="search"
           className="search-input"
-          placeholder="City, airport, or country…"
+          placeholder={t("placePicker.placeholder")}
           role="combobox"
           aria-expanded={open}
           aria-controls={open ? listId : undefined}

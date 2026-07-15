@@ -16,6 +16,7 @@ import type { Photo, PlaceRef, Story } from "../../lib/schema/models";
 import { sanitizeText } from "../../lib/schema/sanitize";
 import { journalToMarkdown, JOURNAL_EXPORT_FILENAME } from "./exportJournalMd";
 import { download } from "../../lib/download";
+import { useT, type MessageKey } from "../../lib/i18n";
 
 // Publish mode pulls in the site renderer + encryption + connector; load it
 // only when the user opens it, so the Journal's own path stays lean.
@@ -41,12 +42,12 @@ function today(): string {
  * be today or the day just starting; small hours it's usually yesterday. Returns
  * the two candidate days to choose between, or null when the day is unambiguous.
  */
-function boundaryDays(): { iso: string; hint: string }[] | null {
+function boundaryDays(): { iso: string; hint: "today" | "newDay" | "yesterday" }[] | null {
   const h = new Date().getHours();
   if (h >= 21) {
     return [
       { iso: dayISO(0), hint: "today" },
-      { iso: dayISO(1), hint: "the new day" },
+      { iso: dayISO(1), hint: "newDay" },
     ];
   }
   if (h < 5) {
@@ -149,6 +150,7 @@ function nearestCities(
  * as PhotoGallery: Escape closes, arrows page, focus returns to the thumbnail.
  */
 function StoryPhotos({ photos, title }: { photos: Photo[]; title: string }) {
+  const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
@@ -192,7 +194,7 @@ function StoryPhotos({ photos, title }: { photos: Photo[]; title: string }) {
             key={i}
             type="button"
             className="journal-thumb"
-            aria-label={`View photo ${i + 1} of ${count} — ${title}`}
+            aria-label={t("journal.viewPhotoAria", { n: i + 1, count, title })}
             onClick={(e) => {
               triggerRef.current = e.currentTarget;
               setIndex(i);
@@ -210,7 +212,7 @@ function StoryPhotos({ photos, title }: { photos: Photo[]; title: string }) {
           ref={dialogRef}
           role="dialog"
           aria-modal="true"
-          aria-label={`Photos — ${title}`}
+          aria-label={t("journal.photosAria", { title })}
           onClick={() => setOpen(false)}
         >
           <div className="lightbox-stage" onClick={(e) => e.stopPropagation()}>
@@ -218,7 +220,7 @@ function StoryPhotos({ photos, title }: { photos: Photo[]; title: string }) {
               <button
                 type="button"
                 className="lightbox-nav prev"
-                aria-label="Previous photo"
+                aria-label={t("journal.prevPhoto")}
                 onClick={() => setIndex((i) => (i - 1 + count) % count)}
               >
                 ‹
@@ -227,13 +229,13 @@ function StoryPhotos({ photos, title }: { photos: Photo[]; title: string }) {
             <img
               className="lightbox-img"
               src={current.src}
-              alt={current.caption ?? `Photo — ${title}`}
+              alt={current.caption ?? t("journal.photoAlt", { title })}
             />
             {count > 1 && (
               <button
                 type="button"
                 className="lightbox-nav next"
-                aria-label="Next photo"
+                aria-label={t("journal.nextPhoto")}
                 onClick={() => setIndex((i) => (i + 1) % count)}
               >
                 ›
@@ -257,7 +259,7 @@ function StoryPhotos({ photos, title }: { photos: Photo[]; title: string }) {
                 className="btn-ghost"
                 onClick={() => setOpen(false)}
               >
-                Close
+                {t("common.close")}
               </button>
             </div>
           </div>
@@ -274,6 +276,7 @@ function StoryPhotos({ photos, title }: { photos: Photo[]; title: string }) {
  * writes about a place from YOUR visited list.
  */
 export function JournalScreen() {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const stories = useStories((s) => s.stories);
   const addStory = useStories((s) => s.addStory);
@@ -480,8 +483,8 @@ export function JournalScreen() {
     if (!composerOpen) return;
     if (!title.trim() && !text.trim() && !place && !editingId) return;
     pendingDraft.current = { editingId, place, date, title, text };
-    const t = setTimeout(flushDraft, 400);
-    return () => clearTimeout(t);
+    const timer = setTimeout(flushDraft, 400);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [composerOpen, editingId, place, date, title, text]);
 
@@ -510,7 +513,7 @@ export function JournalScreen() {
     setGeoMsg(null);
     setNearby(null);
     if (!navigator.geolocation) {
-      setGeoMsg("Location is not available on this device.");
+      setGeoMsg(t("journal.geo.unavailableDevice"));
       return;
     }
     setLocating(true);
@@ -522,11 +525,11 @@ export function JournalScreen() {
           ref.allCities(),
         );
         if (found.length) setNearby(found);
-        else setGeoMsg("No cities found nearby.");
+        else setGeoMsg(t("journal.geo.noCities"));
       },
       () => {
         setLocating(false);
-        setGeoMsg("Location unavailable. Check the browser permission and try again.");
+        setGeoMsg(t("journal.geo.unavailable"));
       },
       { timeout: 10_000, maximumAge: 60_000 },
     );
@@ -559,7 +562,7 @@ export function JournalScreen() {
     if (!picked.length) return;
     const room = MAX_PHOTOS_PER_STORY - photos.length;
     if (room <= 0) {
-      showToast(`This story is full (${MAX_PHOTOS_PER_STORY} photos).`);
+      showToast(t("journal.toast.storyFull", { max: MAX_PHOTOS_PER_STORY }));
       return;
     }
     const files = picked.slice(0, room);
@@ -570,9 +573,9 @@ export function JournalScreen() {
         added.push({ src: await fileToPostcard(file), caption: null });
       }
       setPhotos((prev) => [...prev, ...added]);
-      if (picked.length > room) showToast(`Added ${room} — the story is now full.`);
+      if (picked.length > room) showToast(t("journal.toast.addedRoom", { count: room }));
     } catch {
-      showToast("Couldn't read that image.");
+      showToast(t("journal.toast.readImgErr"));
     } finally {
       setBusy(false);
     }
@@ -600,10 +603,10 @@ export function JournalScreen() {
     };
     if (editingId) {
       await updateStory(editingId, fields);
-      showToast(`Updated "${fields.title}"`, () => setAll(prev));
+      showToast(t("journal.toast.updated", { title: fields.title }), () => setAll(prev));
     } else {
       await addStory(fields);
-      showToast(`Added "${fields.title}"`, () => setAll(prev));
+      showToast(t("journal.toast.added", { title: fields.title }), () => setAll(prev));
     }
     resetForm();
     // The writing is stored; the crash-recovery cache has done its job.
@@ -613,40 +616,40 @@ export function JournalScreen() {
   function removeWithUndo(s: Story) {
     const prev = useStories.getState().stories;
     void removeStory(s.storyId);
-    showToast(`Removed "${s.title}"`, () => setAll(prev));
+    showToast(t("journal.toast.removed", { title: s.title }), () => setAll(prev));
   }
 
   function exportMd() {
     try {
       download(JOURNAL_EXPORT_FILENAME, journalToMarkdown(stories, ref), "text/markdown");
     } catch {
-      showToast("Couldn't build the journal file. Your data is unchanged.");
+      showToast(t("journal.toast.exportErr"));
     }
   }
 
   return (
-    <section aria-label="Journal">
+    <section aria-label={t("journal.title")}>
       <div className="section-head">
-        <h2>Journal</h2>
+        <h2>{t("journal.title")}</h2>
       </div>
 
       <div className="btn-row journal-toolbar">
         <button className="btn" type="button" onClick={startDailyStory}>
-          📔 Today's story
+          📔 {t("journal.todayStory")}
         </button>
         {!composerOpen && (
           <button className="btn-ghost" type="button" onClick={() => openComposer()}>
-            ＋ New story
+            ＋ {t("journal.newStory")}
           </button>
         )}
         {stories.length > 0 && (
           <button className="btn-ghost" type="button" onClick={exportMd}>
-            Export journal (.md)
+            {t("journal.exportMd")}
           </button>
         )}
         {(stories.length > 0 || trips.length > 0) && (
           <button className="btn-ghost" type="button" onClick={() => setPublishOpen(true)}>
-            🌍 Publish site
+            🌍 {t("journal.publishSite")}
           </button>
         )}
       </div>
@@ -657,15 +660,15 @@ export function JournalScreen() {
         </Suspense>
       )}
       {dayChoice && (
-        <div className="day-choice" role="group" aria-label="Which day is this story for?">
-          <span className="muted small">Which day is this for?</span>
+        <div className="day-choice" role="group" aria-label={t("journal.dayChoiceAria")}>
+          <span className="muted small">{t("journal.whichDay")}</span>
           {boundaryDays()?.map(({ iso, hint }) => (
             <button key={iso} className="mini-btn" type="button" onClick={() => pickDay(iso)}>
-              {formatDate(iso)} · {hint}
+              {formatDate(iso)} · {t(`journal.day.${hint}` as MessageKey)}
             </button>
           ))}
           <button className="link" type="button" onClick={() => setDayChoice(false)}>
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       )}
@@ -674,10 +677,10 @@ export function JournalScreen() {
           className={"trip-form journal-composer" + (dirty || editingId ? " journal-composer-busy" : "")}
           onSubmit={onSubmit}
         >
-          {editingId && <p className="editing-note">Editing a story</p>}
+          {editingId && <p className="editing-note">{t("journal.editingNote")}</p>}
           <div className="trip-form-row">
             <label className="picker-label" htmlFor="story-place">
-              Place
+              {t("journal.place")}
               <select
                 id="story-place"
                 className="select"
@@ -688,7 +691,7 @@ export function JournalScreen() {
                 }}
               >
                 <option value="" disabled>
-                  {visitedPlaces.length ? "Pick a place you've been…" : "No visited places yet"}
+                  {visitedPlaces.length ? t("journal.pickPlace") : t("journal.noVisited")}
                 </option>
                 {placeOptions.map((p) => (
                   <option key={placeKey(p)} value={placeKey(p)}>
@@ -698,7 +701,7 @@ export function JournalScreen() {
               </select>
             </label>
             <label className="picker-label" htmlFor="story-date">
-              Date
+              {t("journal.date")}
               <input
                 id="story-date"
                 className="select"
@@ -711,20 +714,20 @@ export function JournalScreen() {
           </div>
           <div>
             <button className="mini-btn" type="button" disabled={locating} onClick={findNearby}>
-              {locating ? "📍 Locating…" : "📍 Near me"}
+              📍 {locating ? t("journal.locating") : t("journal.nearMe")}
             </button>{" "}
             <span className="muted small" role="status">
               {geoMsg}
             </span>
           </div>
           {nearby && (
-            <div className="btn-row" role="group" aria-label="Cities near you">
+            <div className="btn-row" role="group" aria-label={t("journal.nearYouAria")}>
               {nearby.map(({ city, km }) => (
                 <button
                   key={city.id}
                   className="mini-btn"
                   type="button"
-                  aria-label={`Write about ${city.name}, ${formatKm(km)} away`}
+                  aria-label={t("journal.writeAboutAria", { city: city.name, km: formatKm(km) })}
                   onClick={() => {
                     // Only fills the Place field — nothing gets marked as visited.
                     setPlace({
@@ -743,25 +746,25 @@ export function JournalScreen() {
             </div>
           )}
           <label className="picker-label" htmlFor="story-title">
-            Title
+            {t("journal.titleField")}
             <input
               id="story-title"
               className="select"
               type="text"
               maxLength={200}
-              placeholder="Three days in the old town…"
+              placeholder={t("journal.titlePlaceholder")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </label>
           <label className="picker-label" htmlFor="story-text">
-            Story
+            {t("journal.story")}
             <textarea
               id="story-text"
               className="select journal-textarea"
               rows={6}
               maxLength={8000}
-              placeholder="What happened, what you ate, who you met…"
+              placeholder={t("journal.storyPlaceholder")}
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
@@ -786,8 +789,8 @@ export function JournalScreen() {
                     className="caption-input"
                     type="text"
                     maxLength={300}
-                    placeholder="Caption (optional)"
-                    aria-label={`Caption for photo ${i + 1}`}
+                    placeholder={t("journal.captionPlaceholder")}
+                    aria-label={t("journal.captionAria", { n: i + 1 })}
                     value={p.caption ?? ""}
                     onChange={(e) =>
                       setPhotos((prev) =>
@@ -800,10 +803,10 @@ export function JournalScreen() {
                   <button
                     className="link-danger"
                     type="button"
-                    aria-label={`Remove photo ${i + 1}`}
+                    aria-label={t("journal.removePhotoAria", { n: i + 1 })}
                     onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))}
                   >
-                    Remove
+                    {t("common.remove")}
                   </button>
                 </li>
               ))}
@@ -816,12 +819,12 @@ export function JournalScreen() {
               disabled={busy || photos.length >= MAX_PHOTOS_PER_STORY}
               title={
                 photos.length >= MAX_PHOTOS_PER_STORY
-                  ? `Story is full (${MAX_PHOTOS_PER_STORY})`
+                  ? t("journal.storyFullTitle", { max: MAX_PHOTOS_PER_STORY })
                   : undefined
               }
               onClick={() => photoInput.current?.click()}
             >
-              {busy ? "…" : "📷 Add photos"}
+              {busy ? "…" : `📷 ${t("journal.addPhotos")}`}
             </button>
           </div>
 
@@ -831,36 +834,30 @@ export function JournalScreen() {
               type="submit"
               disabled={!place || !date || !sanitizeText(title, 200)}
             >
-              {editingId ? "Save changes" : "Save story"}
+              {editingId ? t("journal.saveChanges") : t("journal.saveStory")}
             </button>
             <button className="btn-ghost" type="button" onClick={resetForm}>
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </form>
       )}
 
-      {stories.length > 0 && (
-        <p className="muted small">
-          The Markdown export shares dates, places, titles and text — no photos. A shareable website
-          export is planned.
-        </p>
-      )}
+      {stories.length > 0 && <p className="muted small">{t("journal.exportNote")}</p>}
 
       {stories.length === 0 ? (
         <p className="muted empty">
           <span className="empty-emoji" aria-hidden>
             ✍️
           </span>
-          Your travel journal starts here. Pick a place you've been, give the day a title, and tell
-          the story — photos welcome.
+          {t("journal.empty")}
         </p>
       ) : (
         <>
           {stories.length > 1 && (
             <div className="journal-filters">
               <label className="picker-label">
-                Show
+                {t("journal.show")}
                 <select
                   className="select"
                   value={filterSel}
@@ -869,9 +866,9 @@ export function JournalScreen() {
                     setFeedShown(FEED_PAGE);
                   }}
                 >
-                  <option value="all">All destinations</option>
+                  <option value="all">{t("journal.allDestinations")}</option>
                   {storyCountries.length > 0 && (
-                    <optgroup label="By country">
+                    <optgroup label={t("journal.byCountry")}>
                       {storyCountries.map(([iso2, name]) => (
                         <option key={iso2} value={`c:${iso2}`}>
                           {countryFlag(iso2)} {name}
@@ -880,7 +877,7 @@ export function JournalScreen() {
                     </optgroup>
                   )}
                   {storyPlaces.length > 1 && (
-                    <optgroup label="By destination">
+                    <optgroup label={t("journal.byDestination")}>
                       {storyPlaces.map((p) => (
                         <option key={placeKey(p)} value={`p:${placeKey(p)}`}>
                           {countryFlag(p.countryId)} {p.name}
@@ -892,7 +889,7 @@ export function JournalScreen() {
               </label>
               {storyYears.length > 0 && (
                 <label className="picker-label">
-                  When
+                  {t("journal.when")}
                   <select
                     className="select"
                     value={yearSel}
@@ -901,13 +898,13 @@ export function JournalScreen() {
                       setFeedShown(FEED_PAGE);
                     }}
                   >
-                    <option value="all">Any year</option>
+                    <option value="all">{t("journal.anyYear")}</option>
                     {storyYears.map((y) => (
                       <option key={y} value={y}>
                         {y}
                       </option>
                     ))}
-                    <option value="none">No date</option>
+                    <option value="none">{t("journal.noDate")}</option>
                   </select>
                 </label>
               )}
@@ -915,7 +912,7 @@ export function JournalScreen() {
           )}
           {filtered.length === 0 ? (
             <p className="muted empty">
-              No stories match this filter.{" "}
+              {t("journal.noMatch")}{" "}
               <button
                 className="link"
                 type="button"
@@ -924,7 +921,7 @@ export function JournalScreen() {
                   setYearSel("all");
                 }}
               >
-                Clear filters
+                {t("journal.clearFilters")}
               </button>
             </p>
           ) : (
@@ -957,17 +954,17 @@ export function JournalScreen() {
                     className="link"
                     type="button"
                     onClick={() => startEdit(s)}
-                    aria-label={`Edit story ${s.title}`}
+                    aria-label={t("journal.editAria", { title: s.title })}
                   >
-                    Edit
+                    {t("common.edit")}
                   </button>
                   <button
                     className="link-danger"
                     type="button"
                     onClick={() => removeWithUndo(s)}
-                    aria-label={`Remove story ${s.title}`}
+                    aria-label={t("journal.removeAria", { title: s.title })}
                   >
-                    Remove
+                    {t("common.remove")}
                   </button>
                 </footer>
               </article>
@@ -976,14 +973,14 @@ export function JournalScreen() {
           {filtered.length > feedShown && (
             <div className="list-pager">
               <span className="muted small">
-                Showing {feedShown} of {filtered.length}
+                {t("journal.showingCount", { shown: feedShown, total: filtered.length })}
               </span>
               <button
                 className="mini-btn"
                 type="button"
                 onClick={() => setFeedShown((n) => n + FEED_PAGE)}
               >
-                Show {Math.min(FEED_PAGE, filtered.length - feedShown)} more
+                {t("journal.showMore", { count: Math.min(FEED_PAGE, filtered.length - feedShown) })}
               </button>
             </div>
           )}
