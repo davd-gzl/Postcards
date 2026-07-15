@@ -25,6 +25,12 @@ import { countryFlag, formatInt } from "../../lib/format/format";
 // offline). Fetched ONCE and cached at module scope so remounts (basemap change,
 // tab switch) never re-download or re-parse it.
 const GEOMETRY_URL = `${import.meta.env.BASE_URL}basemap/countries-50m.json`;
+// Natural Earth physical geometry (public domain) enriching the OFFLINE overview
+// only — real lakes and rivers instead of a flat land silhouette. Tiny (110m,
+// geometry-only), bundled and SW-cached like the country outlines; rich online
+// bases already draw their own water, so these are never fetched there.
+const LAKES_URL = `${import.meta.env.BASE_URL}basemap/lakes-110m.json`;
+const RIVERS_URL = `${import.meta.env.BASE_URL}basemap/rivers-110m.json`;
 
 const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -348,13 +354,28 @@ function themeColors(dark: boolean) {
     ocean: dark ? "#0d1016" : "#eaf0f6",
     land: dark ? "#1b1f29" : "#f4f6f9",
     landLine: dark ? "#2b313d" : "#d6dce4",
+    river: dark ? "#38506b" : "#a9c2dc",
   };
 }
 
 /** Overlay layers added on top of whichever base style is in use. */
 function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["layers"] {
   const richBase = basemap !== "simple";
-  const { land, landLine } = themeColors(dark);
+  const { land, landLine, ocean, river } = themeColors(dark);
+  // Physical water, drawn ONLY on the offline overview (rich bases have their
+  // own): lakes as ocean-coloured fills over the land, rivers as thin lines.
+  const water: StyleSpecification["layers"] = richBase
+    ? []
+    : [
+        { id: "lakes", type: "fill", source: "lakes", paint: { "fill-color": ocean } },
+        {
+          id: "rivers",
+          type: "line",
+          source: "rivers",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": river, "line-width": 0.8, "line-opacity": 0.9 },
+        },
+      ];
   return [
     // Country fill — the land silhouette on "simple", and a transparent hit-test
     // surface over rich bases. NOT coloured by visited-ness (no country highlight).
@@ -392,6 +413,8 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
         "line-opacity": richBase ? 0.6 : 0.9,
       },
     },
+    // Water on the offline base, above the land silhouette and its outline.
+    ...water,
     {
       id: "trip-arcs",
       type: "line",
@@ -882,6 +905,27 @@ export function MapView({
     });
   }
 
+  // Lakes & rivers for the OFFLINE overview only — the rich online bases draw
+  // their own water, so this never runs (and never fetches) for them.
+  function loadPhysicalWater(map: MlMap) {
+    if (basemap !== "simple") return;
+    for (const [url, id] of [
+      [LAKES_URL, "lakes"],
+      [RIVERS_URL, "rivers"],
+    ] as const) {
+      void fetch(url)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((fc: FeatureCollection | null) => {
+          if (fc && mapRef.current === map) {
+            (map.getSource(id) as GeoJSONSource | undefined)?.setData(fc);
+          }
+        })
+        .catch(() => {
+          /* offline first-run before caching: the base still renders without water */
+        });
+    }
+  }
+
   useEffect(() => {
     if (!containerRef.current) return;
     let cancelled = false;
@@ -906,6 +950,8 @@ export function MapView({
           // simplification of the huge Arctic multipolygons produces degenerate
           // triangles that render as ghostly land-coloured streaks over the ocean.
           countries: { type: "geojson", data: EMPTY_FC, attribution, tolerance: 0 },
+          lakes: { type: "geojson", data: EMPTY_FC },
+          rivers: { type: "geojson", data: EMPTY_FC },
           "cities-all": { type: "geojson", data: EMPTY_FC },
           "airports-all": { type: "geojson", data: EMPTY_FC },
           "trip-arcs": { type: "geojson", data: EMPTY_FC },
@@ -967,6 +1013,7 @@ export function MapView({
         applyViewCities(map);
         applyTripArcs(map);
         loadGeometry(map);
+        loadPhysicalWater(map);
         applyMode(map, mode);
         // The full-gazetteer dot field: built only if the Towns toggle is
         // already on (applyAllCityDots self-gates — it's off by default, so
