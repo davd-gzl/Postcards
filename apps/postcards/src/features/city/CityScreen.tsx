@@ -3,7 +3,7 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useStories } from "../../lib/store/useStories";
 import { useUi } from "../../lib/store/useUi";
-import { placeKey } from "../../lib/schema/models";
+import { placeKey } from "../../lib/schema/helpers";
 import { countryFlag, formatDate, formatInt, formatKm } from "../../lib/format/format";
 import { haversineKm } from "../travel/distance";
 import { articleUrl } from "../../lib/wikivoyage";

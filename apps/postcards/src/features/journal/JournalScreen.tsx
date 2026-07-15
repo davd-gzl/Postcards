@@ -9,13 +9,8 @@ import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { fileToPostcard } from "../../lib/image/downscale";
 import { countryFlag, formatDate, formatKm } from "../../lib/format/format";
 import { haversineKm } from "../travel/distance";
-import {
-  MAX_PHOTOS_PER_STORY,
-  placeKey,
-  type Photo,
-  type PlaceRef,
-  type Story,
-} from "../../lib/schema/models";
+import { MAX_PHOTOS_PER_STORY, placeKey } from "../../lib/schema/helpers";
+import type { Photo, PlaceRef, Story } from "../../lib/schema/models";
 import { sanitizeText } from "../../lib/schema/sanitize";
 import { journalToMarkdown, JOURNAL_EXPORT_FILENAME } from "./exportJournalMd";
 
@@ -364,8 +359,10 @@ export function JournalScreen() {
   }, [stories, filterSel, yearSel]);
 
   // Closes the composer without touching the draft cache: Escape/Cancel must
-  // not lose writing — the draft comes back on the next visit.
+  // not lose writing — the draft comes back on the next visit. Keystrokes
+  // still inside the debounce window are flushed first, same guarantee.
   function resetForm() {
+    flushDraft();
     setComposerOpen(false);
     setEditingId(null);
     setPlace(null);
@@ -461,19 +458,53 @@ export function JournalScreen() {
     else setEditingId(null);
   }, [storiesLoaded]);
 
-  // Mirror the draft to localStorage on every change while the composer is
-  // open. A blank composer is skipped so opening "New story" doesn't clobber a
-  // kept draft before any writing happens.
-  useEffect(() => {
-    if (!composerOpen) return;
-    if (!title.trim() && !text.trim() && !place && !editingId) return;
-    const draft: ComposerDraft = { editingId, place, date, title, text };
+  // Latest draft not yet written to localStorage (see the mirror effect below).
+  const pendingDraft = useRef<ComposerDraft | null>(null);
+
+  /** Write the pending draft now — the debounce timer's callback, also called
+   *  on every path that could otherwise lose the last keystrokes. */
+  function flushDraft() {
+    const draft = pendingDraft.current;
+    if (!draft) return;
+    pendingDraft.current = null;
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       /* private mode: not cached */
     }
+  }
+
+  // Mirror the draft to localStorage while the composer is open. A blank
+  // composer is skipped so opening "New story" doesn't clobber a kept draft
+  // before any writing happens. The write is debounced: a synchronous
+  // storage write on every keystroke stalls typing on slow devices, and the
+  // flush paths below make sure quitting mid-burst still keeps everything.
+  useEffect(() => {
+    if (!composerOpen) return;
+    if (!title.trim() && !text.trim() && !place && !editingId) return;
+    pendingDraft.current = { editingId, place, date, title, text };
+    const t = setTimeout(flushDraft, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [composerOpen, editingId, place, date, title, text]);
+
+  // Flush the pending draft whenever the writing could otherwise be lost:
+  // app backgrounded or closed (visibilitychange/pagehide), or this screen
+  // unmounting on a tab switch. flushDraft only touches refs, so the mount
+  // -time closure stays correct.
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flushDraft();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", flushDraft);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flushDraft);
+      flushDraft();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Geolocation runs ONLY on this tap (privacy: the position is requested on an
   // explicit action, used once to rank suggestions, and never stored). Picking

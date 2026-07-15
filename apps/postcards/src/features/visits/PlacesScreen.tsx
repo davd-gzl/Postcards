@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
@@ -60,21 +60,24 @@ function placeMeta(ref: ReferenceData, v: Visit): { coord: { lon: number; lat: n
   return { coord: null, sub: v.place.kind === "custom" ? "Your place" : "Country" };
 }
 
-/** One visited or wishlist row — visited adds details, photos and the favorite star. */
-function VisitRow({ v, wishlist }: { v: Visit; wishlist?: boolean }) {
+/** One visited or wishlist row — visited adds details, photos and the favorite star.
+ *  Memoized: store updates replace only the changed visit object, so after a
+ *  toggle the other (up to 100) rows — photo thumbnails included — skip re-render. */
+const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: boolean }) {
   const ref = useMemo(() => getReferenceData(), []);
   const removeVisit = useVisits((s) => s.removeVisit);
   const toggleVisit = useVisits((s) => s.toggleVisit);
   const toggleFavorite = useVisits((s) => s.toggleFavorite);
-  const setAll = useVisits((s) => s.setAll);
+  const restoreVisit = useVisits((s) => s.restoreVisit);
   const showToast = useToast((s) => s.show);
   const flyTo = useUi((s) => s.flyTo);
   const { coord, sub } = placeMeta(ref, v);
 
   function removeWithUndo() {
-    const prev = useVisits.getState().visits;
+    // Only this row's record goes away — undo puts that one record back
+    // instead of rewriting the whole visits table.
     void removeVisit(v.visitId);
-    showToast(`Removed ${v.place.name}`, () => setAll(prev));
+    showToast(`Removed ${v.place.name}`, () => restoreVisit(v));
   }
 
   return (
@@ -142,7 +145,7 @@ function VisitRow({ v, wishlist }: { v: Visit; wishlist?: boolean }) {
       </button>
     </li>
   );
-}
+});
 
 /** Your visited places, your wish-to-go list, monuments, + a checklist of every country. */
 export function PlacesScreen() {
@@ -207,12 +210,20 @@ export function PlacesScreen() {
     return { sub, explicit };
   }, [visits]);
 
-  const filterVisits = (list: Visit[]) => {
-    const byName = !q ? list : list.filter((v) => v.place.name.toLowerCase().includes(q));
-    if (!year) return byName;
-    if (year === "undated") return byName.filter((v) => !v.date);
-    return byName.filter((v) => v.date?.startsWith(year));
-  };
+  const filterVisits = useCallback(
+    (list: Visit[]) => {
+      const byName = !q ? list : list.filter((v) => v.place.name.toLowerCase().includes(q));
+      if (!year) return byName;
+      if (year === "undated") return byName.filter((v) => !v.date);
+      return byName.filter((v) => v.date?.startsWith(year));
+    },
+    [q, year],
+  );
+  // Each list view reads its filtered rows three times per render (the slice
+  // and two length checks) — filter once, and only when the inputs change.
+  const visitedShown = useMemo(() => filterVisits(visited), [filterVisits, visited]);
+  const favoritesShown = useMemo(() => filterVisits(favorites), [filterVisits, favorites]);
+  const wishlistShown = useMemo(() => filterVisits(wishlist), [filterVisits, wishlist]);
 
   // The years your visits span, newest first, for the date filter chips.
   const years = useMemo(() => {
@@ -362,16 +373,14 @@ export function PlacesScreen() {
             </p>
           )}
           <ul className="city-list">
-            {filterVisits(visited)
-              .slice(0, shown)
-              .map((v) => (
-                <VisitRow key={v.visitId} v={v} />
-              ))}
+            {visitedShown.slice(0, shown).map((v) => (
+              <VisitRow key={v.visitId} v={v} />
+            ))}
           </ul>
-          {filterVisits(visited).length > shown && (
+          {visitedShown.length > shown && (
             <div className="list-pager">
               <span className="muted small">
-                Showing {shown} of {filterVisits(visited).length}
+                Showing {shown} of {visitedShown.length}
               </span>
               <MoreButton onMore={() => setShown((n) => n + 100)}>
                 Show 100 more
@@ -392,16 +401,14 @@ export function PlacesScreen() {
             </p>
           )}
           <ul className="city-list">
-            {filterVisits(favorites)
-              .slice(0, shown)
-              .map((v) => (
-                <VisitRow key={v.visitId} v={v} />
-              ))}
+            {favoritesShown.slice(0, shown).map((v) => (
+              <VisitRow key={v.visitId} v={v} />
+            ))}
           </ul>
-          {filterVisits(favorites).length > shown && (
+          {favoritesShown.length > shown && (
             <div className="list-pager">
               <span className="muted small">
-                Showing {shown} of {filterVisits(favorites).length}
+                Showing {shown} of {favoritesShown.length}
               </span>
               <MoreButton onMore={() => setShown((n) => n + 100)}>
                 Show 100 more
@@ -422,16 +429,14 @@ export function PlacesScreen() {
             </p>
           )}
           <ul className="city-list">
-            {filterVisits(wishlist)
-              .slice(0, shown)
-              .map((v) => (
-                <VisitRow key={v.visitId} v={v} wishlist />
-              ))}
+            {wishlistShown.slice(0, shown).map((v) => (
+              <VisitRow key={v.visitId} v={v} wishlist />
+            ))}
           </ul>
-          {filterVisits(wishlist).length > shown && (
+          {wishlistShown.length > shown && (
             <div className="list-pager">
               <span className="muted small">
-                Showing {shown} of {filterVisits(wishlist).length}
+                Showing {shown} of {wishlistShown.length}
               </span>
               <MoreButton onMore={() => setShown((n) => n + 100)}>
                 Show 100 more
@@ -511,7 +516,7 @@ export function PlacesScreen() {
         <>
           <div className="countries-head">
             <ScopeToggle />
-            <span className="muted small">{countryRows.length} shown</span>
+            <span className="muted small">{countryRows.length} countries</span>
           </div>
           <p className="muted small" style={{ margin: "0 0 6px" }}>
             A country lights up when you've visited a place inside it — there's nothing to check
@@ -526,7 +531,10 @@ export function PlacesScreen() {
             onChange={(e) => setFilter(e.target.value)}
           />
           <ul className="city-list" style={{ marginTop: 8 }}>
-            {countryRows.map((c) => {
+            {/* Paged like every other long list here — 250 country rows (each
+                with its toggles) re-reconciled per keystroke janked filtering.
+                Visited countries sort first, so they always sit on page one. */}
+            {countryRows.slice(0, shown).map((c) => {
               const subCount = countryVisited.sub.get(c.iso2) ?? 0;
               const explicit = countryVisited.explicit.has(c.iso2);
               const isVisited = subCount > 0 || explicit;
@@ -563,6 +571,16 @@ export function PlacesScreen() {
               );
             })}
           </ul>
+          {countryRows.length > shown && (
+            <div className="list-pager">
+              <span className="muted small">
+                Showing {shown} of {countryRows.length}
+              </span>
+              <MoreButton onMore={() => setShown((n) => n + 100)}>
+                Show 100 more
+              </MoreButton>
+            </div>
+          )}
         </>
       )}
 

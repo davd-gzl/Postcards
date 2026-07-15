@@ -19,3 +19,9 @@ void initReferenceData().then(() => {
     </StrictMode>,
   );
 });
+
+// Warm the code-split MapScreen chunk (~1 MB, mostly MapLibre) while the
+// reference data downloads — the map is the default tab, so it's always needed
+// next. Vite dedupes dynamic imports by URL: App's React.lazy resolves from
+// this same in-flight request, and the code split stays intact.
+void import("./features/map/MapScreen");

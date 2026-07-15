@@ -249,8 +249,10 @@ class ReferenceDataImpl implements ReferenceData {
     const contains: City[] = [];
     for (const c of this.cities) {
       if (c.search.startsWith(q)) {
-        if (starts.push(c) >= limit && contains.length >= limit) break;
-      } else if (c.search.includes(q)) {
+        // Population-descending order means the first `limit` prefix hits ARE
+        // the result — no contains row can ever displace them, so stop here.
+        if (starts.push(c) >= limit) break;
+      } else if (contains.length < limit && c.search.includes(q)) {
         contains.push(c);
       }
     }
@@ -268,8 +270,13 @@ class ReferenceDataImpl implements ReferenceData {
     for (const a of this.airports) {
       if (a.id === code) codeExact.push(a);
       else if (code.length >= 2 && a.id.startsWith(code)) codePrefix.push(a);
-      else if (a.search.startsWith(q)) nameStarts.push(a);
-      else if (a.search.includes(q)) nameContains.push(a);
+      // Only a 2-3 char query can ever hit a 3-letter code, so once the prefix
+      // bucket is full a longer query's result is already decided — stop here.
+      // Rows past `limit` in a name bucket can never render either (the slice
+      // below caps the concat), so both buckets stop growing at `limit`.
+      else if (nameStarts.length >= limit && code.length !== 2 && code.length !== 3) break;
+      else if (nameStarts.length < limit && a.search.startsWith(q)) nameStarts.push(a);
+      else if (nameContains.length < limit && a.search.includes(q)) nameContains.push(a);
     }
     return [...codeExact, ...codePrefix, ...nameStarts, ...nameContains].slice(0, limit);
   }
