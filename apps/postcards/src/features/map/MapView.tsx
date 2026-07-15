@@ -15,7 +15,7 @@ import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { visitedCountryIds } from "../stats/computeStats";
 import { airportPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
-import { prefetchAroundBounds, prefetchAroundPoint } from "../../lib/offline/tiles";
+import { prefetchAroundBounds, prefetchAroundPoint, OSM_TILE_TEMPLATE } from "../../lib/offline/tiles";
 import type { Bounds } from "./viewport";
 import type { City } from "../../lib/reference/types";
 import type { PlaceRef, Visit } from "../../lib/schema/models";
@@ -859,9 +859,18 @@ export function MapView({
   }
 
   function applyViewCities(map: MlMap) {
-    (map.getSource("cities-inview") as GeoJSONSource | undefined)?.setData(
-      inViewPoints(viewCitiesRef.current ?? []),
-    );
+    // Render markers for the full in-view set (not the list's paged/sorted
+    // slice — that made only ~30 dots ever show and flicker on every pan). Bound
+    // marker count with the same zoom-aware cap as the POI layers, keeping the
+    // most populous cities so the cap never hides a major place; sort only when
+    // we're actually over the cap.
+    const cities = viewCitiesRef.current ?? [];
+    const cap = Math.max(1, maxMarkersRef.current);
+    const capped =
+      cities.length > cap
+        ? [...cities].sort((a, b) => (b.population ?? 0) - (a.population ?? 0)).slice(0, cap)
+        : cities;
+    (map.getSource("cities-inview") as GeoJSONSource | undefined)?.setData(inViewPoints(capped));
   }
 
   function applyTripArcs(map: MlMap) {
@@ -930,6 +939,8 @@ export function MapView({
     if (!containerRef.current) return;
     let cancelled = false;
     let map: MlMap | null = null;
+    // Torn down in cleanup (below): the online self-heal listener for the OSM base.
+    let removeOsmHeal: (() => void) | null = null;
     ensurePmtilesProtocol();
 
     (async () => {
@@ -971,6 +982,10 @@ export function MapView({
           center: lastCamera?.center ?? [6, 32],
           zoom: lastCamera?.zoom ?? 1.1,
           style: fullStyle,
+          // Default cache is viewport-derived (~60 tiles on a phone) → panning
+          // back re-flashes blanks as evicted tiles refetch. Hold more so a
+          // pan-away/pan-back repaints instantly (memory cost is modest).
+          maxTileCacheSize: 512,
         });
       } catch {
         setFailed(true);
@@ -1035,20 +1050,29 @@ export function MapView({
         if (!loadedRef.current) return;
         // The in-view POI cap follows every camera move (even programmatic ones).
         applyViewportPoi(map);
-        // Warm the ring of tiles just outside the view, so the next pan shows
-        // ready tiles instead of blanks (online OSM basemap only).
-        if (basemap === "osm") {
-          const b = map.getBounds();
-          prefetchAroundBounds(
-            { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() },
-            Math.round(map.getZoom()),
-          );
-        }
-        if (suppressBoundsRef.current) {
+        const wasProgrammatic = suppressBoundsRef.current;
+        if (wasProgrammatic) {
           suppressBoundsRef.current = false; // programmatic fly — keep the list still
-          return;
+        } else {
+          emitBounds(map);
         }
-        emitBounds(map);
+        // Warm the ring of tiles JUST OUTSIDE the view so the next pan reveals
+        // ready tiles (online OSM base only). Only for real gestures — a
+        // programmatic fly already point-prefetches its destination — and only
+        // once the visible tiles are in, at idle, so the ring never competes
+        // with the tiles actually on screen.
+        if (basemap === "osm" && !wasProgrammatic) {
+          const warm = () => {
+            if (!map || !map.areTilesLoaded()) return;
+            const b = map.getBounds();
+            prefetchAroundBounds(
+              { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() },
+              map.getZoom(),
+            );
+          };
+          if (typeof requestIdleCallback === "function") requestIdleCallback(warm, { timeout: 2000 });
+          else setTimeout(warm, 400);
+        }
       });
       // The list follows the map LIVE while panning/zooming (throttled — the
       // in-view set is capped, so each refresh is cheap); moveend above still
@@ -1068,17 +1092,58 @@ export function MapView({
         });
       }
 
-      // If the online (OSM) base can't fetch its tiles (offline, or blocked), fall
-      // back to the always-available offline base rather than showing a bare canvas.
+      // Online (OSM) base resilience. Two failure modes to handle WITHOUT nuking
+      // the map: (a) a few transient tile errors on a flaky link must NOT
+      // permanently downgrade to the bland offline base; (b) a tile that errors
+      // while it's on screen leaves a grey hole MapLibre never re-requests on its
+      // own. So: only fall back on *consecutive* errors with no success in
+      // between (reset on any good tile), and re-issue the tiles when connection
+      // returns or shortly after an error, backfilling the holes from cache.
       if (basemap === "osm") {
         let osmErrors = 0;
         let fellBack = false;
+        let healTimer: ReturnType<typeof setTimeout> | undefined;
+        const reloadOsm = () => {
+          const src = map?.getSource("osm") as maplibregl.RasterTileSource | undefined;
+          // setTiles re-requests only the tiles it lacks; loaded / SW-cached ones
+          // serve from cache, so this is a cheap way to fill on-screen holes.
+          src?.setTiles([OSM_TILE_TEMPLATE]);
+        };
+        const healSoon = () => {
+          if (healTimer) return;
+          healTimer = setTimeout(() => {
+            healTimer = undefined;
+            if (!cancelled && map && loadedRef.current) reloadOsm();
+          }, 4000);
+        };
+        const onOnline = () => {
+          osmErrors = 0;
+          fellBack = false;
+          if (!cancelled && map && loadedRef.current) reloadOsm();
+        };
+        window.addEventListener("online", onOnline);
+        removeOsmHeal = () => {
+          window.removeEventListener("online", onOnline);
+          if (healTimer) clearTimeout(healTimer);
+        };
+        // Any successful OSM tile clears the strike count — only a genuine run of
+        // failures (offline / blocked) should ever trip the fallback.
+        map.on("data", (e) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const ev = e as any;
+          if (ev?.sourceId === "osm" && ev?.tile) osmErrors = 0;
+        });
         map.on("error", (e) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if ((e as any)?.sourceId !== "osm") return;
-          if (!fellBack && ++osmErrors >= 4) {
+          osmErrors++;
+          // Genuinely offline, or a sustained run of failures → fall back once.
+          const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+          if (!fellBack && (offline || osmErrors >= 6)) {
             fellBack = true;
             onBaseUnavailableRef.current?.();
+          } else if (!fellBack) {
+            healSoon(); // transient — try to backfill the on-screen holes
           }
         });
       }
@@ -1196,6 +1261,7 @@ export function MapView({
       cancelled = true;
       loadedRef.current = false;
       unsub();
+      removeOsmHeal?.();
       map?.remove();
       mapRef.current = null;
     };

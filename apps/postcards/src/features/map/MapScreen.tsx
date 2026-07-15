@@ -465,7 +465,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           onBounds={setBounds}
           focus={focus}
           fit={fit}
-          viewCities={visible}
+          viewCities={snapshot}
           tripArcs={showTrips ? arcs : null}
           globe={globe}
           mode={mode}
@@ -475,8 +475,10 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           reducedMotion={reducedMotion}
           onBaseUnavailable={() => {
             if (basemap === "osm") {
+              // Session-only fallback — do NOT persist. A transient outage must
+              // not strand the user on the offline base forever; reconnecting (or
+              // a reload) restores the online map with the saved preference intact.
               setBasemap("simple");
-              savePref(BASEMAP_KEY, "simple");
               showToast("Online map unavailable — showing the offline map.");
             }
           }}
