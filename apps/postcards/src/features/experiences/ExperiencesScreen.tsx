@@ -7,6 +7,7 @@ import { CityLine } from "../../ui/CityLine";
 import { countryFlag } from "../../lib/format/format";
 import type { Experience } from "./grouping";
 import { groupExperiences, placeOf } from "./grouping";
+import { useT } from "../../lib/i18n";
 
 /**
  * Moments: world experiences you can live once and remember forever (see the
@@ -54,19 +55,20 @@ async function loadExperiences(): Promise<Experience[]> {
 
 /** One moment row — unchanged whether standalone or grouped. */
 function MomentRow({ e }: { e: Experience }) {
+  const t = useT();
   return (
     <li className="city-row compact moment-row">
       <div className="moment-main">
         <CityLine flag={e.emoji} name={e.name} sub={<>· {e.hint}</>} />
         {e.where && e.where.length > 0 && (
           <div className="moment-spots">
-            <span className="sr-only">Places for {e.name}:</span>
+            <span className="sr-only">{t("moments.placesFor", { name: e.name })}</span>
             {e.where.map((s) => (
               <button
                 key={`${s.name}:${s.lat}:${s.lon}`}
                 type="button"
                 className="chip moment-spot"
-                title={`Show ${s.name} on the map`}
+                title={t("stats.records.showOnMap", { name: s.name })}
                 onClick={() => useUi.getState().flyTo(s.lon, s.lat)}
               >
                 <span aria-hidden>{s.cc ? countryFlag(s.cc) : "📍"}</span> {s.name}
@@ -81,6 +83,7 @@ function MomentRow({ e }: { e: Experience }) {
 }
 
 export function ExperiencesScreen({ embedded }: { embedded?: boolean } = {}) {
+  const t = useT();
   // Safe in a useMemo: reference data is initialized before first render.
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
@@ -104,19 +107,14 @@ export function ExperiencesScreen({ embedded }: { embedded?: boolean } = {}) {
   const CountryHeading = (embedded ? "h5" : "h4") as "h4" | "h5";
 
   return (
-    <section aria-label="Moments">
+    <section aria-label={t("moments.title")}>
       <div className="section-head">
-        {embedded ? <h3>Moments</h3> : <h2>Moments</h2>}
+        {embedded ? <h3>{t("moments.title")}</h3> : <h2>{t("moments.title")}</h2>}
         <span className="list-head-meta muted">
-          {lived} of {list.length} lived
+          {t("moments.lived", { lived, total: list.length })}
         </span>
       </div>
-      <p className="muted small">
-        World moments, not places: things you can only live somewhere. Check the ones you have
-        lived; flag the ones you dream of. Each links to a few places where it happens; tap one to
-        see it on the map. Grouped by home continent and country; borderless ones sit under "Across
-        the world".
-      </p>
+      <p className="muted small">{t("moments.desc")}</p>
       {groups.map((cont) => (
         <section key={cont.continent} className="moment-continent">
           <ContinentHeading className="moment-continent-head">{cont.continent}</ContinentHeading>

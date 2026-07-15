@@ -19,6 +19,7 @@ import { useUi } from "../../lib/store/useUi";
 import { countryFlag, formatInt, formatKm, formatPercent } from "../../lib/format/format";
 import { CONTINENT_COLORS, CONTINENT_ORDER } from "../../lib/reference/continents";
 import { ScopeToggle } from "../../ui/ScopeToggle";
+import { useT } from "../../lib/i18n";
 
 // Coverage-ring geometry: two concentric circles in a 120×120 viewBox. The
 // value arc's length is driven by stroke-dashoffset against this circumference.
@@ -31,7 +32,7 @@ function ChipRow({
   names,
   done,
   onPick,
-  hint = "Open",
+  hint,
   max = 16,
 }: {
   label: string;
@@ -43,9 +44,11 @@ function ChipRow({
   hint?: string;
   max?: number;
 }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   if (names.length === 0) return null;
   const shown = expanded ? names : names.slice(0, max);
+  const hintText = hint ?? t("common.open");
   return (
     <div className="chip-row">
       <span className="chip-row-label">{label}</span>
@@ -57,14 +60,14 @@ function ChipRow({
             className={"place-chip" + (done ? " chip-done" : "")}
             onClick={onPick ? () => onPick(n) : undefined}
             disabled={!onPick}
-            title={onPick ? `${hint} ${n}` : undefined}
+            title={onPick ? `${hintText} ${n}` : undefined}
           >
             {n}
           </button>
         ))}
         {names.length > max && (
           <button type="button" className="place-chip chip-more" onClick={() => setExpanded((e) => !e)}>
-            {expanded ? "less" : `+${names.length - max} more`}
+            {expanded ? t("common.less") : t("common.moreCount", { count: names.length - max })}
           </button>
         )}
       </span>
@@ -74,11 +77,12 @@ function ChipRow({
 
 /** A record's city name — a button that flies the map to it. */
 function RecordCity({ name, onPick }: { name: string; onPick: (name: string) => void }) {
+  const t = useT();
   return (
     <button
       type="button"
       className="country-open"
-      title={`Show ${name} on the map`}
+      title={t("stats.records.showOnMap", { name })}
       onClick={() => onPick(name)}
     >
       {name}
@@ -115,6 +119,7 @@ function CountryRow({
   c: CountryCoverage;
   flyToRegion: (name: string) => void;
 }) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const gazGen = useGazetteerGeneration(); // city lists grow when the full gazetteer lands
   const visits = useVisits((s) => s.visits);
@@ -143,69 +148,81 @@ function CountryRow({
           {c.name}
         </span>
         <span className="country-tags">
-          <span className="country-tag">{formatInt(c.citiesVisited)} cities</span>
-          <span className="country-tag">{formatInt(c.regionsVisited)} regions</span>
+          <span className="country-tag">{t("stats.country.citiesTag", { count: formatInt(c.citiesVisited) })}</span>
+          <span className="country-tag">{t("stats.country.regionsTag", { count: formatInt(c.regionsVisited) })}</span>
           {c.heritageTotal > 0 && (
-            <span className="country-tag">{formatInt(c.heritageVisited)} sites</span>
+            <span className="country-tag">{t("stats.country.sitesTag", { count: formatInt(c.heritageVisited) })}</span>
           )}
         </span>
         <span className="country-caret" aria-hidden>
           ›
         </span>
-        <Bar value={c.cityPct} label={`${c.name}: cities visited`} />
+        <Bar value={c.cityPct} label={t("stats.country.cityBarAria", { name: c.name })} />
       </summary>
 
       <div className="country-body">
         <button
           type="button"
           className="country-open country-open-page"
-          title={`Open ${c.name}`}
+          title={t("stats.country.open", { name: c.name })}
           onClick={() => useUi.getState().openCountry(c.iso2)}
         >
           <span className="flag" aria-hidden>
             {countryFlag(c.iso2)}
           </span>{" "}
-          Open {c.name}{" "}
+          {t("stats.country.open", { name: c.name })}{" "}
           <span aria-hidden>↗</span>
         </button>
 
         <div className="metric">
           <div className="metric-label">
-            <span>Cities</span>
+            <span>{t("stats.country.metricCities")}</span>
             <span className="muted">
               {c.citiesTotal > 0
-                ? `${formatPercent(c.cityPct)} · ${c.citiesVisited}/${c.citiesTotal} cities`
-                : "no city data"}
+                ? t("stats.country.metricCitiesDetail", {
+                    pct: formatPercent(c.cityPct),
+                    visited: c.citiesVisited,
+                    total: c.citiesTotal,
+                  })
+                : t("stats.country.noCityData")}
             </span>
           </div>
-          {c.citiesTotal > 0 && <Bar value={c.cityPct} label={`${c.name}: cities visited`} />}
+          {c.citiesTotal > 0 && <Bar value={c.cityPct} label={t("stats.country.cityBarAria", { name: c.name })} />}
         </div>
 
         <div className="metric">
           <div className="metric-label">
-            <span>Regions</span>
+            <span>{t("stats.country.metricRegions")}</span>
             <span className="muted">
               {c.regionsTotal > 0
-                ? `${formatPercent(c.regionPct)} · ${c.regionsVisited}/${c.regionsTotal} regions`
-                : "dataset not loaded"}
+                ? t("stats.country.metricRegionsDetail", {
+                    pct: formatPercent(c.regionPct),
+                    visited: c.regionsVisited,
+                    total: c.regionsTotal,
+                  })
+                : t("stats.country.datasetNotLoaded")}
             </span>
           </div>
           {c.regionsTotal > 0 && (
-            <Bar value={c.regionPct} label={`${c.name}: regions visited`} color="var(--accent)" />
+            <Bar value={c.regionPct} label={t("stats.country.regionBarAria", { name: c.name })} color="var(--accent)" />
           )}
         </div>
 
         {c.heritageTotal > 0 && (
           <div className="metric">
             <div className="metric-label">
-              <span>Sites &amp; landmarks</span>
+              <span>{t("stats.country.metricSites")}</span>
               <span className="muted">
-                {formatPercent(c.heritagePct)} · {c.heritageVisited}/{c.heritageTotal} sites
+                {t("stats.country.metricSitesDetail", {
+                  pct: formatPercent(c.heritagePct),
+                  visited: c.heritageVisited,
+                  total: c.heritageTotal,
+                })}
               </span>
             </div>
             <Bar
               value={c.heritagePct}
-              label={`${c.name}: heritage sites visited`}
+              label={t("stats.country.heritageBarAria", { name: c.name })}
               color="var(--stat-want)"
             />
           </div>
@@ -214,31 +231,31 @@ function CountryRow({
         {detail && (
           <>
             <ChipRow
-              label="Cities"
+              label={t("stats.country.chipCities")}
               names={detail.cities.map((x) => x.name)}
               done
               onPick={openByName(detail.cities)}
             />
             <ChipRow
-              label="Regions visited"
+              label={t("stats.country.chipRegionsVisited")}
               names={detail.regionsVisited}
               done
-              hint="Show on the map:"
+              hint={t("stats.country.showOnMapHint")}
               onPick={flyToRegion}
             />
             <ChipRow
-              label="Regions to visit"
+              label={t("stats.country.chipRegionsToVisit")}
               names={detail.regionsRemainingNames}
               onPick={flyToRegion}
             />
             <ChipRow
-              label="Monuments seen"
+              label={t("stats.country.chipMonumentsSeen")}
               names={detail.monumentsVisited.map((m) => m.name)}
               done
               onPick={openByName(detail.monumentsVisited)}
             />
             <ChipRow
-              label="Monuments to see"
+              label={t("stats.country.chipMonumentsToSee")}
               names={detail.monumentsRemaining.map((m) => m.name)}
               onPick={openByName(detail.monumentsRemaining)}
             />
@@ -250,6 +267,7 @@ function CountryRow({
 }
 
 export function StatsView() {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const gazGen = useGazetteerGeneration(); // denominators change when the full gazetteer lands
   const visits = useVisits((s) => s.visits);
@@ -307,24 +325,26 @@ export function StatsView() {
   const totalContinents = shownContinents.length;
 
   return (
-    <section aria-label="Statistics">
+    <section aria-label={t("stats.title")}>
       <div className="section-head stats-head">
-        <h2>Statistics</h2>
+        <h2>{t("stats.title")}</h2>
         <ScopeToggle />
       </div>
 
       {/* Coverage hero: the "how much of the world?" headline, then the raw
           counts demoted to a colored pill strip. Both open Places. */}
       <section className="stats-section" aria-labelledby="stats-coverage-h">
-        <h3 id="stats-coverage-h">Coverage</h3>
+        <h3 id="stats-coverage-h">{t("stats.coverage.title")}</h3>
         <div className="stats-hero">
           <button
             type="button"
             className="hero-ring"
-            title="See your countries checklist"
-            aria-label={`${formatInt(coverage.countriesVisited)} of ${formatInt(
-              coverage.worldCountryCount,
-            )} countries visited, ${worldPctLabel} — open your countries checklist`}
+            title={t("stats.hero.title")}
+            aria-label={t("stats.hero.aria", {
+              visited: formatInt(coverage.countriesVisited),
+              total: formatInt(coverage.worldCountryCount),
+              pct: worldPctLabel,
+            })}
             onClick={() => useUi.getState().openPlaces("countries")}
           >
             <svg
@@ -353,8 +373,10 @@ export function StatsView() {
 
           <div className="hero-body">
             <p className="hero-caption">
-              of {formatInt(coverage.worldCountryCount)}{" "}
-              {scope === "un" ? "UN member states" : "countries & territories"}
+              {t("stats.hero.ofCount", {
+                count: formatInt(coverage.worldCountryCount),
+                label: scope === "un" ? t("stats.scope.un") : t("stats.scope.all"),
+              })}
             </p>
             <div className="continent-dots" aria-hidden="true">
               {shownContinents.map((name) => {
@@ -376,41 +398,44 @@ export function StatsView() {
               })}
             </div>
             <p className="continents-touched">
-              {formatInt(continentsVisited)} of {formatInt(totalContinents)} continents
+              {t("stats.continents.count", {
+                visited: formatInt(continentsVisited),
+                total: formatInt(totalContinents),
+              })}
             </p>
           </div>
         </div>
 
-        <div className="kpi-row" aria-label="Your totals">
+        <div className="kpi-row" aria-label={t("stats.totalsAria")}>
           <button
             type="button"
             className="kpi"
-            title="See your visited places"
+            title={t("stats.kpi.visitedTitle")}
             onClick={() => useUi.getState().openPlaces("visited")}
           >
             <span className="kpi-num kpi-been">{formatInt(coverage.citiesVisited)}</span>
-            <span className="kpi-label">cities</span>
+            <span className="kpi-label">{t("stats.kpi.cities")}</span>
           </button>
           {coverage.airportsVisited > 0 && (
             <button
               type="button"
               className="kpi"
-              title="See your visited places"
+              title={t("stats.kpi.visitedTitle")}
               onClick={() => useUi.getState().openPlaces("visited")}
             >
               <span className="kpi-num kpi-air">{formatInt(coverage.airportsVisited)}</span>
-              <span className="kpi-label">airports</span>
+              <span className="kpi-label">{t("stats.kpi.airports")}</span>
             </button>
           )}
           {coverage.monumentsVisited > 0 && (
             <button
               type="button"
               className="kpi"
-              title="See the monuments list"
+              title={t("stats.kpi.monumentsTitle")}
               onClick={() => useUi.getState().openPlaces("monuments")}
             >
               <span className="kpi-num kpi-want">{formatInt(coverage.monumentsVisited)}</span>
-              <span className="kpi-label">monuments</span>
+              <span className="kpi-label">{t("stats.kpi.monuments")}</span>
             </button>
           )}
         </div>
@@ -418,7 +443,7 @@ export function StatsView() {
 
       {continentCov.length > 0 && (
         <section className="stats-section" aria-labelledby="stats-continents-h">
-          <h3 id="stats-continents-h">By continent</h3>
+          <h3 id="stats-continents-h">{t("stats.byContinent.title")}</h3>
           <div className="continent-grid">
             {continentCov.map((c) => (
               <div key={c.continent} className="metric">
@@ -441,7 +466,7 @@ export function StatsView() {
                 </div>
                 <Bar
                   value={c.pct}
-                  label={`${c.continent}: countries visited`}
+                  label={t("stats.continentBarAria", { continent: c.continent })}
                   color={CONTINENT_COLORS[c.continent]}
                 />
               </div>
@@ -452,13 +477,13 @@ export function StatsView() {
 
       {(records.northernmost || records.biggestCity || records.firstVisit) && (
         <section className="stats-section" aria-labelledby="stats-records-h">
-          <h3 id="stats-records-h">Records</h3>
+          <h3 id="stats-records-h">{t("stats.records.title")}</h3>
           <div className="records-grid">
             {records.northernmost && (
               <div className="record">
                 <span className="record-emoji" aria-hidden>🧭</span>
                 <span>
-                  Northernmost:{" "}
+                  {t("stats.records.northernmost")}{" "}
                   <RecordCity
                     name={records.northernmost.name}
                     onPick={flyToCity(records.northernmost.iso2)}
@@ -471,7 +496,7 @@ export function StatsView() {
               <div className="record">
                 <span className="record-emoji" aria-hidden>🐧</span>
                 <span>
-                  Southernmost:{" "}
+                  {t("stats.records.southernmost")}{" "}
                   <RecordCity
                     name={records.southernmost.name}
                     onPick={flyToCity(records.southernmost.iso2)}
@@ -484,12 +509,14 @@ export function StatsView() {
               <div className="record">
                 <span className="record-emoji" aria-hidden>🏙️</span>
                 <span>
-                  Biggest city:{" "}
+                  {t("stats.records.biggestCity")}{" "}
                   <RecordCity
                     name={records.biggestCity.name}
                     onPick={flyToCity(records.biggestCity.iso2)}
                   />{" "}
-                  <span className="muted">({formatInt(records.biggestCity.population)} people)</span>
+                  <span className="muted">
+                    {t("stats.records.people", { count: formatInt(records.biggestCity.population) })}
+                  </span>
                 </span>
               </div>
             )}
@@ -497,7 +524,7 @@ export function StatsView() {
               <div className="record">
                 <span className="record-emoji" aria-hidden>🌱</span>
                 <span>
-                  First dated visit: <strong>{records.firstVisit.name}</strong>{" "}
+                  {t("stats.records.firstVisit")} <strong>{records.firstVisit.name}</strong>{" "}
                   <span className="muted">({records.firstVisit.date})</span>
                 </span>
               </div>
@@ -506,7 +533,7 @@ export function StatsView() {
               <div className="record">
                 <span className="record-emoji" aria-hidden>🆕</span>
                 <span>
-                  Latest: <strong>{records.latestVisit.name}</strong>{" "}
+                  {t("stats.records.latest")} <strong>{records.latestVisit.name}</strong>{" "}
                   <span className="muted">({records.latestVisit.date})</span>
                 </span>
               </div>
@@ -517,19 +544,24 @@ export function StatsView() {
 
       {travel.trips > 0 && (
         <section className="stats-section" aria-labelledby="stats-travel-h">
-          <h3 id="stats-travel-h">Travel</h3>
-          <div className="travel-totals" aria-label="Travel totals">
+          <h3 id="stats-travel-h">{t("stats.travel.title")}</h3>
+          <div className="travel-totals" aria-label={t("stats.travel.totalsAria")}>
             <span className="tt-main">
-              <strong>{formatInt(travel.trips)}</strong> {travel.trips === 1 ? "trip" : "trips"}
+              <strong>{formatInt(travel.trips)}</strong>{" "}
+              {t.plural("stats.travel.trips", travel.trips)}
             </span>
             <span className="tt-sep" aria-hidden />
             <span className="tt-main">
-              <strong>{formatKm(travel.totalKm)}</strong> travelled
+              <strong>{formatKm(travel.totalKm)}</strong> {t("stats.travel.travelled")}
             </span>
             {travel.byMode.length > 0 && (
               <span className="tt-modes">
                 {travel.byMode.map((m) => (
-                  <span className="tt-mode" key={m.mode} title={`${m.trips} by ${m.mode}`}>
+                  <span
+                    className="tt-mode"
+                    key={m.mode}
+                    title={t("stats.travel.modeTitle", { count: m.trips, mode: m.mode })}
+                  >
                     {MODE_GLYPH[m.mode]} {m.trips}
                   </span>
                 ))}
@@ -540,22 +572,22 @@ export function StatsView() {
       )}
 
       <div className="section-head">
-        <h3>By country</h3>
+        <h3>{t("stats.byCountry.title")}</h3>
         <label className="sort-label">
-          <span className="sr-only">Sort countries</span>
+          <span className="sr-only">{t("stats.byCountry.sortAria")}</span>
           <select
             className="sort-select"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as CountrySort)}
           >
-            <option value="cities">Most cities</option>
-            <option value="regions">Most regions</option>
-            <option value="name">Name</option>
+            <option value="cities">{t("stats.byCountry.sortCities")}</option>
+            <option value="regions">{t("stats.byCountry.sortRegions")}</option>
+            <option value="name">{t("stats.byCountry.sortName")}</option>
           </select>
         </label>
       </div>
 
-      {countries.length === 0 && <p className="muted empty">No countries yet — add a place.</p>}
+      {countries.length === 0 && <p className="muted empty">{t("stats.byCountry.empty")}</p>}
 
       {countries.map((c) => (
         <CountryRow key={c.iso2} c={c} flyToRegion={flyToRegion(c.iso2)} />

@@ -21,6 +21,7 @@ import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import type { City } from "../../lib/reference/types";
 import { CityLine } from "../../ui/CityLine";
 import { MoreButton } from "../../ui/MoreButton";
+import { useT, type MessageKey } from "../../lib/i18n";
 
 // Fewer rows, faster everything: the list pages in small steps, and the
 // in-view working set is capped (population-presorted, so it's always the
@@ -35,10 +36,11 @@ const BASEMAP_KEY = "postcards-basemap";
 const GLOBE_KEY = "postcards-globe";
 const FILTER_KEY = "postcards-city-filter";
 
-const BASEMAP_LABEL: Record<Basemap, string> = {
-  simple: "Simple map (offline)",
-  osm: "Detailed map",
-  detail: "Offline streets",
+// i18n key for each basemap's label (translated at the call site).
+const BASEMAP_LABEL_KEY: Record<Basemap, MessageKey> = {
+  simple: "map.basemap.simple",
+  osm: "map.basemap.osm",
+  detail: "map.basemap.detail",
 };
 
 // Resolve the effective dark boolean for the basemap from the explicit theme
@@ -84,6 +86,7 @@ function loadBasemap(): Basemap {
  * shadows the visible screen for screen readers or tests.
  */
 export function MapScreen({ active = true }: { active?: boolean } = {}) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const showToast = useToast((s) => s.show);
@@ -505,7 +508,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
               // a reload) restores the online map with the saved preference intact.
               setBasemap("simple");
               setFellBackOffline(true);
-              showToast("Online map unavailable — showing the offline map.");
+              showToast(t("map.toast.offlineFallback"));
             }
           }}
           onAddHere={(c) => {
@@ -515,7 +518,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
         />
         {online && fellBackOffline && onlineMap && (
           <div className="map-reconnect" role="status">
-            <span className="small">Back online.</span>
+            <span className="small">{t("map.reconnect.back")}</span>
             <button
               type="button"
               className="mini-btn"
@@ -525,11 +528,11 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                 setFellBackOffline(false);
               }}
             >
-              Reconnect
+              {t("map.reconnect.button")}
             </button>
           </div>
         )}
-        <div className="map-ctl map-ctl-top segmented" role="group" aria-label="Map mode">
+        <div className="map-ctl map-ctl-top segmented" role="group" aria-label={t("map.modeAria")}>
           {(["all", "cities", "monuments", "airports"] as MapMode[]).map((m) => (
             <button
               key={m}
@@ -541,7 +544,13 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                 savePref("postcards-map-mode", m);
               }}
             >
-              {m === "all" ? "All" : m === "cities" ? "Cities" : m === "monuments" ? "🏛 Monuments" : "✈ Airports"}
+              {m === "all"
+                ? t("map.mode.all")
+                : m === "cities"
+                  ? t("map.mode.cities")
+                  : m === "monuments"
+                    ? `🏛 ${t("map.mode.monuments")}`
+                    : `✈ ${t("map.mode.airports")}`}
             </button>
           ))}
         </div>
@@ -549,7 +558,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           <button
             className="map-btn"
             type="button"
-            title="Add a place the maps don't have — right-click or long-press the map, or use this"
+            title={t("map.addPlaceTitle")}
             onClick={() => {
               setAddPlaceAt(
                 bounds ? { lon: (bounds.west + bounds.east) / 2, lat: (bounds.south + bounds.north) / 2 } : null,
@@ -557,11 +566,11 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
               setAddPlaceOpen(true);
             }}
           >
-            ＋ Add place
+            ＋ {t("map.addPlace")}
           </button>
           {myPlaceCoords.length > 0 && (
             <button className="map-btn" type="button" onClick={() => fitToMyPlaces()}>
-              Fit to my places
+              {t("map.fitToMyPlaces")}
             </button>
           )}
         </div>
@@ -570,19 +579,19 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             className="map-add-overlay"
             role="dialog"
             aria-modal="true"
-            aria-label="Add your own place"
+            aria-label={t("map.addDialogAria")}
             onClick={() => setAddPlaceOpen(false)}
           >
             <div className="map-add-dialog" onClick={(e) => e.stopPropagation()}>
               <div className="section-head">
-                <h3>Add a place</h3>
+                <h3>{t("map.addDialogTitle")}</h3>
                 <button
                   className="link"
                   type="button"
                   onClick={() => setAddPlaceOpen(false)}
-                  aria-label="Close"
+                  aria-label={t("common.close")}
                 >
-                  Close
+                  {t("common.close")}
                 </button>
               </div>
               <AddPlaceForm
@@ -599,20 +608,20 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             type="button"
             aria-expanded={layersOpen}
             aria-haspopup="true"
-            title="Map layers & view options"
+            title={t("map.layersTitle")}
             onClick={() => setLayersOpen((v) => !v)}
           >
-            ≡ Layers
+            ≡ {t("map.layersButton")}
           </button>
           {layersOpen && (
-            <div className="layers-panel" role="group" aria-label="Map layers">
+            <div className="layers-panel" role="group" aria-label={t("map.layersAria")}>
               <button
                 className={"map-btn" + (globe ? " on" : "")}
                 type="button"
                 aria-pressed={globe}
                 onClick={toggleGlobe}
               >
-                🌐 Globe
+                🌐 {t("map.layer.globe")}
               </button>
               {hasArcs && (
                 <button
@@ -620,16 +629,16 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                   type="button"
                   aria-pressed={showTrips}
                   onClick={() => setShowTrips((s) => !s)}
-                  title={periodTag ? `Showing ${periodTag}; change on the Trips tab` : undefined}
+                  title={periodTag ? t("map.layer.tripsTitle", { period: periodTag }) : undefined}
                 >
-                  🧵 Trips{showTrips && periodTag ? ` · ${periodTag}` : ""}
+                  🧵 {t("map.layer.trips")}{showTrips && periodTag ? ` · ${periodTag}` : ""}
                 </button>
               )}
               <button
                 className={"map-btn" + (showTowns ? " on" : "")}
                 type="button"
                 aria-pressed={showTowns}
-                title="A dot for every town on earth"
+                title={t("map.layer.townsTitle")}
                 onClick={() => {
                   setShowTowns((v) => {
                     savePref("postcards-towns", !v ? "1" : "0");
@@ -637,13 +646,13 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                   });
                 }}
               >
-                ∴ Towns
+                ∴ {t("map.layer.towns")}
               </button>
               <button
                 className={"map-btn" + (showCountries ? " on" : "")}
                 type="button"
                 aria-pressed={showCountries}
-                title="Shade the countries you've visited"
+                title={t("map.layer.myCountriesTitle")}
                 onClick={() => {
                   setShowCountries((v) => {
                     savePref("postcards-countries", !v ? "1" : "0");
@@ -651,11 +660,11 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                   });
                 }}
               >
-                🗺 My countries
+                🗺 {t("map.layer.myCountries")}
               </button>
               {onlineMap && basemapCycle.length > 1 && (
                 <button className="map-btn" type="button" onClick={switchBasemap}>
-                  ⤳ {BASEMAP_LABEL[nextBasemap]}
+                  ⤳ {t(BASEMAP_LABEL_KEY[nextBasemap])}
                 </button>
               )}
             </div>
@@ -672,8 +681,8 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           aria-valuenow={dividerValue}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label="Resize the list (drag, or use the arrow keys)"
-          title="Slide to resize the list"
+          aria-label={t("map.dividerAria")}
+          title={t("map.dividerTitle")}
           onPointerDown={onDivDown}
           onPointerMove={onDivMove}
           onPointerUp={onDivUp}
@@ -682,34 +691,36 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
         />
       )}
       {active && (
-      <section className="view-list" aria-label="Cities in view">
+      <section className="view-list" aria-label={t("map.list.aria")}>
         <div className="section-head">
-          <h2>{mode === "monuments" ? "Monuments in view" : mode === "airports" ? "Airports in view" : "Cities in view"}</h2>
+          <h2>{mode === "monuments" ? t("map.list.headingMonuments") : mode === "airports" ? t("map.list.headingAirports") : t("map.list.headingCities")}</h2>
           <button
             className="mini-btn list-expand"
             type="button"
             aria-pressed={listTall}
-            title={listTall ? "Show the map again" : "Expand the list over the map"}
+            title={listTall ? t("map.list.expandTitleCollapse") : t("map.list.expandTitleExpand")}
             onClick={() => setListTall((v) => !v)}
           >
-            {listTall ? "▼ Map" : "▲ List"}
+            {listTall ? `▼ ${t("map.list.showMap")}` : `▲ ${t("map.list.showList")}`}
           </button>
           <span className="list-head-meta muted">
             <span>
-              {poi ? poi.total : formatInt(inView.length) + (inViewCapped ? "+" : "")} in view
+              {t("map.list.inView", {
+                count: poi ? poi.total : formatInt(inView.length) + (inViewCapped ? "+" : ""),
+              })}
             </span>
             {(poi ? poi.visited : visitedInView) > 0 && (
-              <span>· {poi ? poi.visited : visitedInView} visited</span>
+              <span>{t("map.list.visited", { count: poi ? poi.visited : visitedInView })}</span>
             )}
           </span>
         </div>
 
         {poi ? (
           poi.items.length === 0 ? (
-            <p className="muted empty">Nothing in this view — pan or zoom the map.</p>
+            <p className="muted empty">{t("map.list.poiEmpty")}</p>
           ) : (
             <>
-            <div className="segmented list-filter" role="group" aria-label="Filter">
+            <div className="segmented list-filter" role="group" aria-label={t("map.filterAria")}>
               {(["all", "unvisited", "visited"] as CityFilter[]).map((f) => (
                 <button
                   key={f}
@@ -718,7 +729,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                   className={cityFilter === f ? "seg-on" : ""}
                   onClick={() => changeFilter(f)}
                 >
-                  {f === "all" ? "All" : f === "unvisited" ? "Hide visited" : "Visited"}
+                  {f === "all" ? t("map.filter.all") : f === "unvisited" ? t("map.filter.hideVisited") : t("map.filter.visited")}
                 </button>
               ))}
             </div>
@@ -732,7 +743,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                   <button
                     className="city-focus"
                     type="button"
-                    title={`Show ${x.name} on the map`}
+                    title={t("stats.records.showOnMap", { name: x.name })}
                     onClick={() => focusCity({ lon: x.lon, lat: x.lat })}
                   >
                     <CityLine flag={x.flag} name={x.name} sub={<>· {x.sub}</>} />
@@ -745,14 +756,14 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             </ul>
             {poi.total > poi.items.length && (
               <p className="muted small">
-                Showing {poi.items.length} of {poi.total} — zoom in to narrow the list.
+                {t("map.poiShowing", { shown: poi.items.length, total: poi.total })}
               </p>
             )}
             </>
           )
         ) : (
         <>
-        <div className="segmented list-filter" role="group" aria-label="Filter cities">
+        <div className="segmented list-filter" role="group" aria-label={t("map.filterCitiesAria")}>
           {(["all", "unvisited", "visited"] as CityFilter[]).map((f) => (
             <button
               key={f}
@@ -761,17 +772,17 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
               className={cityFilter === f ? "seg-on" : ""}
               onClick={() => changeFilter(f)}
             >
-              {f === "all" ? "All" : f === "unvisited" ? "Hide visited" : "Visited"}
+              {f === "all" ? t("map.filter.all") : f === "unvisited" ? t("map.filter.hideVisited") : t("map.filter.visited")}
             </button>
           ))}
           <button
             type="button"
             aria-pressed={sortAZ}
             className={sortAZ ? "seg-on" : ""}
-            title={sortAZ ? "Sorted A to Z; tap for most people first" : "Sorted by most people; tap for A to Z"}
+            title={sortAZ ? t("map.sortAZTitleOn") : t("map.sortAZTitleOff")}
             onClick={() => setSortAZ((v) => !v)}
           >
-            A–Z
+            {t("map.sortAZ")}
           </button>
         </div>
 
@@ -780,14 +791,11 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             <span className="empty-emoji" aria-hidden>
               🗺️
             </span>
-            No cities or towns in this view. Pan or zoom the map, search above, or add a missing
-            place from the search box.
+            {t("map.emptyNoCities")}
           </p>
         ) : snapshot.length === 0 ? (
           <p className="muted empty">
-            {cityFilter === "unvisited"
-              ? "You've been to every city in view. Pan somewhere new, or switch to “All”."
-              : "No visited cities in this view yet. Switch to “All”, or check off a city to see it here."}
+            {cityFilter === "unvisited" ? t("map.emptyAllVisited") : t("map.emptyNoVisited")}
           </p>
         ) : (
           <ul className="city-list">
@@ -802,7 +810,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                     className="city-focus"
                     type="button"
                     aria-expanded={selected}
-                    title={`Show ${c.name} on the map`}
+                    title={t("stats.records.showOnMap", { name: c.name })}
                     onClick={() => {
                       // A row click ZOOMS, always — it never yanks you off to
                       // the detail page (that's the 📖 button on the selected
@@ -823,7 +831,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                     />
                     {selected && (
                       <span className="city-detail">
-                        {c.population != null ? `${formatInt(c.population)} people` : "population unknown"}
+                        {c.population != null
+                          ? t("map.cityPeople", { count: formatInt(c.population) })
+                          : t("map.populationUnknown")}
                       </span>
                     )}
                   </button>
@@ -837,10 +847,13 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
         {snapshot.length > shown && (
           <div className="list-pager">
             <span className="muted small">
-              Showing the {shown} most populous of {formatInt(snapshot.length)}{inViewCapped ? "+" : ""}
+              {t("map.pagerMostPopulous", {
+                shown,
+                total: formatInt(snapshot.length) + (inViewCapped ? "+" : ""),
+              })}
             </span>
             <MoreButton onMore={() => setShown((n) => n + PAGE)}>
-              Show {Math.min(PAGE, snapshot.length - shown)} more
+              {t("journal.showMore", { count: Math.min(PAGE, snapshot.length - shown) })}
             </MoreButton>
           </div>
         )}

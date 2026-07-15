@@ -13,6 +13,7 @@ import { useGazetteerGeneration } from "../../lib/reference/useGazetteer";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
+import { useT } from "../../lib/i18n";
 import { visitedCountryIds } from "../stats/computeStats";
 import { airportPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
 import { prefetchAroundBounds, prefetchAroundPoint, OSM_TILE_TEMPLATE } from "../../lib/offline/tiles";
@@ -579,6 +580,7 @@ export function MapView({
    *  (the caller opens the add form seeded with these coordinates). */
   onAddHere?: (c: { lon: number; lat: number }) => void;
 }) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const gazGen = useGazetteerGeneration();
   // The map does NOT subscribe to `visits` for rendering — it repaints the
@@ -1440,21 +1442,21 @@ export function MapView({
         ref={containerRef}
         className="map-canvas"
         role="application"
-        aria-label="Map of visited places"
+        aria-label={t("map.canvasAria")}
       />
       {dataState !== "ready" && (
         <div className="map-status" role="status">
           {dataState === "loading" ? (
-            <span className="muted small">Loading map…</span>
+            <span className="muted small">{t("map.loading")}</span>
           ) : (
             <span className="small">
-              Map data didn’t load.{" "}
+              {t("map.dataFailed")}{" "}
               <button
                 type="button"
                 className="link"
                 onClick={() => mapRef.current && loadGeometry(mapRef.current, true)}
               >
-                Retry
+                {t("common.retry")}
               </button>
             </span>
           )}

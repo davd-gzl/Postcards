@@ -1,10 +1,11 @@
 import { useSettings, type ThemeMode } from "../lib/store/useSettings";
+import { useT, type MessageKey } from "../lib/i18n";
 
 // System / Light / Dark, as a three-option segmented control (mirrors ScopeToggle).
-const OPTIONS: { value: ThemeMode; label: string; title: string }[] = [
-  { value: "system", label: "System", title: "Follow your device's light/dark setting" },
-  { value: "light", label: "Light", title: "Always use the light palette" },
-  { value: "dark", label: "Dark", title: "Always use the dark palette" },
+const OPTIONS: { value: ThemeMode; label: MessageKey; title: MessageKey }[] = [
+  { value: "system", label: "theme.system", title: "theme.systemTitle" },
+  { value: "light", label: "theme.light", title: "theme.lightTitle" },
+  { value: "dark", label: "theme.dark", title: "theme.darkTitle" },
 ];
 
 /**
@@ -13,10 +14,11 @@ const OPTIONS: { value: ThemeMode; label: string; title: string }[] = [
  * data-theme attribute on <html>.
  */
 export function ThemeToggle() {
+  const t = useT();
   const theme = useSettings((s) => s.theme);
   const setTheme = useSettings((s) => s.setTheme);
   return (
-    <div className="segmented" role="group" aria-label="Colour theme">
+    <div className="segmented" role="group" aria-label={t("theme.aria")}>
       {OPTIONS.map((o) => (
         <button
           key={o.value}
@@ -24,9 +26,9 @@ export function ThemeToggle() {
           aria-pressed={theme === o.value}
           className={theme === o.value ? "seg-on" : ""}
           onClick={() => setTheme(o.value)}
-          title={o.title}
+          title={t(o.title)}
         >
-          {o.label}
+          {t(o.label)}
         </button>
       ))}
     </div>
