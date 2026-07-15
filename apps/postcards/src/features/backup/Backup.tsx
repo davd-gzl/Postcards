@@ -62,7 +62,19 @@ export function Backup() {
     e.target.value = "";
     if (!file) return;
     const text = await file.text();
-    // Lazy for the same reason as exportJson — the validator is the other Zod user.
+    // A JSON backup ({…}) is a FULL RESTORE (replaces everything); anything else
+    // is treated as a places table (CSV/TSV) and MERGED in. The format is picked
+    // from the content, not the extension, so a mislabelled file still works.
+    if (text.trimStart().startsWith("{")) {
+      await restoreFromJson(text);
+    } else {
+      await mergeFromCsv(text);
+    }
+  }
+
+  /** Full restore from a Postcards JSON backup — this REPLACES all of your data,
+   *  so it asks first (the one destructive path). */
+  async function restoreFromJson(text: string) {
     const { importFile } = await import("./importJson");
     const result = importFile(text);
     if (!result.ok) {
@@ -71,13 +83,13 @@ export function Backup() {
     }
     if (visits.length > 0 || trips.length > 0 || stories.length > 0) {
       const ok = window.confirm(
-        `Replace your ${visits.length} place${visits.length === 1 ? "" : "s"}, ` +
-          `${trips.length} trip${trips.length === 1 ? "" : "s"} and ` +
-          `${stories.length} stor${stories.length === 1 ? "y" : "ies"} with the ` +
+        `⚠ This replaces everything on this device — your ${visits.length} place` +
+          `${visits.length === 1 ? "" : "s"}, ${trips.length} trip${trips.length === 1 ? "" : "s"} and ` +
+          `${stories.length} stor${stories.length === 1 ? "y" : "ies"} — with the ` +
           `${result.visits.length} place${result.visits.length === 1 ? "" : "s"}, ` +
           `${result.trips.length} trip${result.trips.length === 1 ? "" : "s"} and ` +
-          `${result.stories.length} stor${result.stories.length === 1 ? "y" : "ies"} in this file? ` +
-          `This can't be undone.`,
+          `${result.stories.length} stor${result.stories.length === 1 ? "y" : "ies"} in this file. ` +
+          `It can't be undone. Continue?`,
       );
       if (!ok) return;
     }
@@ -95,8 +107,32 @@ export function Backup() {
     useStories.setState({ stories: sortStories(result.stories) });
     setMessage({
       kind: "ok",
-      text: `Imported ${result.visits.length} places, ${result.trips.length} trips and ${result.stories.length} stories.`,
+      text: `Restored ${result.visits.length} places, ${result.trips.length} trips and ${result.stories.length} stories.`,
     });
+  }
+
+  /** Merge a places CSV/TSV — NON-destructive: it adds places and updates ones
+   *  you already have; trips, stories and untouched places stay put. */
+  async function mergeFromCsv(text: string) {
+    const { parsePlacesCsv } = await import("./importCsv");
+    const { places, total, skipped } = parsePlacesCsv(text, ref);
+    if (places.length === 0) {
+      setMessage({
+        kind: "err",
+        text: total === 0 ? "This file has no places to import." : "Couldn't read any places from this file — expected columns like lat, lon, country, city.",
+      });
+      return;
+    }
+    try {
+      const { added, updated } = await useVisits.getState().mergeVisits(places);
+      const skip = skipped ? `, ${skipped} skipped` : "";
+      setMessage({
+        kind: "ok",
+        text: `Added ${added} place${added === 1 ? "" : "s"}, updated ${updated}${skip}. Your trips and stories are untouched.`,
+      });
+    } catch {
+      setMessage({ kind: "err", text: "Import failed while saving; your data is unchanged." });
+    }
   }
 
   return (
@@ -122,7 +158,7 @@ export function Backup() {
         <input
           ref={fileInput}
           type="file"
-          accept="application/json,.json"
+          accept="application/json,.json,text/csv,.csv,.tsv,text/plain"
           onChange={onImport}
           style={{ display: "none" }}
           aria-hidden="true"
@@ -140,8 +176,12 @@ export function Backup() {
         </p>
       )}
       <p className="muted small">
-        Importing replaces your current data. Files are validated and sanitized on import — never
-        executed.
+        Import understands two things. A <strong>.json backup</strong> is a full restore — it{" "}
+        <strong>⚠ replaces everything on this device</strong> (you'll be asked to confirm). A{" "}
+        <strong>.csv places list</strong> (columns like <code>lat, lon, country, city, been</code>,
+        where <code>been</code> tags are <code>been</code> / <code>want</code> / <code>fave</code>){" "}
+        is merged in — it only adds and updates places, never erasing your trips or stories. Files
+        are validated and sanitized on import — never executed.
       </p>
     </section>
   );
