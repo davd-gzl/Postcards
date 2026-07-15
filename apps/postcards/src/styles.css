@@ -3280,3 +3280,112 @@ button.brand:focus-visible {
     padding: 4px 8px;
   }
 }
+
+/* ---- Publish mode (shareable travel-blog site) ---- */
+/* Token-only styling so the modal follows the app's light/dark themes. */
+.publish-modal {
+  max-width: 580px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  text-align: left;
+}
+.publish-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.publish-head h2 {
+  margin: 0;
+}
+.publish-fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px 14px;
+  margin: 14px 0 0;
+}
+.publish-fieldset legend {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 0 6px;
+}
+.publish-fieldset .picker-label {
+  margin-top: 10px;
+}
+.publish-fieldset .btn-row {
+  margin-bottom: 4px;
+}
+.publish-modal .mini-btn.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.publish-summary {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  background: var(--bg-sub);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.publish-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 14px;
+}
+.publish-total strong {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+.publish-total-dates {
+  color: var(--muted);
+}
+.publish-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+.publish-chip {
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  color: var(--text);
+}
+.publish-chip-more {
+  color: var(--muted);
+}
+.publish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+.publish-preview {
+  margin: 14px 0 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
+}
+.publish-preview-frame {
+  display: block;
+  width: 100%;
+  height: 460px;
+  border: 0;
+}
+.publish-github {
+  margin: 18px 0 0;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.publish-github-body {
+  margin-top: 10px;
+}

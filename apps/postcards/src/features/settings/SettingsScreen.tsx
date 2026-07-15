@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useMemo, useRef, useState } from "react";
 import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { useToast } from "../../lib/store/useToast";
 import { useSettings, MARKER_CAP_CHOICES } from "../../lib/store/useSettings";
@@ -9,6 +9,11 @@ import { ThemeToggle } from "../../ui/ThemeToggle";
 import { Backup } from "../backup/Backup";
 import { Attribution } from "../../ui/Attribution";
 import { formatInt } from "../../lib/format/format";
+
+// Publish mode is loaded on demand (it pulls in the site renderer + crypto).
+const PublishScreen = lazy(() =>
+  import("../publish/PublishScreen").then((m) => ({ default: m.PublishScreen })),
+);
 
 /**
  * Settings: what counts as a country, offline map packs (with honest tile counts
@@ -43,6 +48,7 @@ export function SettingsScreen() {
     [],
   );
   const [confirmReset, setConfirmReset] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const resetRef = useRef<HTMLDivElement>(null);
   useModalKeys(resetRef, () => setConfirmReset(false), { enabled: confirmReset });
 
@@ -265,6 +271,18 @@ export function SettingsScreen() {
       </section>
 
       <section className="settings-section">
+        <h3>Publish a shareable site</h3>
+        <p className="muted small">
+          Turn a trip, a date range, or everything into a self-contained, read-only travel-blog
+          website you can host anywhere — a folder, a USB stick, GitHub Pages, Netlify, Nextcloud.
+          It runs offline from one file, strips photo GPS, and can be locked with a passphrase.
+        </p>
+        <button className="btn" type="button" onClick={() => setPublishOpen(true)}>
+          🌍 Publish mode
+        </button>
+      </section>
+
+      <section className="settings-section">
         <Backup />
         <p className="muted small">
           Cloud sync (Nextcloud, Google Drive, …) is planned; for now, export the file and drop it
@@ -273,6 +291,12 @@ export function SettingsScreen() {
       </section>
 
       <Attribution />
+
+      {publishOpen && (
+        <Suspense fallback={null}>
+          <PublishScreen onClose={() => setPublishOpen(false)} />
+        </Suspense>
+      )}
     </section>
   );
 }

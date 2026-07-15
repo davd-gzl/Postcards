@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import type { City } from "../../lib/reference/types";
 import { useStories } from "../../lib/store/useStories";
+import { useTrips } from "../../lib/store/useTrips";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
@@ -15,6 +16,12 @@ import type { Photo, PlaceRef, Story } from "../../lib/schema/models";
 import { sanitizeText } from "../../lib/schema/sanitize";
 import { journalToMarkdown, JOURNAL_EXPORT_FILENAME } from "./exportJournalMd";
 import { download } from "../../lib/download";
+
+// Publish mode pulls in the site renderer + encryption + connector; load it
+// only when the user opens it, so the Journal's own path stays lean.
+const PublishScreen = lazy(() =>
+  import("../publish/PublishScreen").then((m) => ({ default: m.PublishScreen })),
+);
 
 /** A local YYYY-MM-DD, `offset` days from today (0 = today, -1 = yesterday). */
 function dayISO(offset = 0): string {
@@ -275,8 +282,12 @@ export function JournalScreen() {
   const setAll = useStories((s) => s.setAll);
   const storiesLoaded = useStories((s) => s.loaded);
   const visits = useVisits((s) => s.visits);
+  const trips = useTrips((s) => s.trips);
   const showToast = useToast((s) => s.show);
   const draftRequest = useUi((s) => s.journalDraftRequest);
+
+  // Publish mode (shareable travel-blog site) — opened from the toolbar.
+  const [publishOpen, setPublishOpen] = useState(false);
 
   // Open by default: Journal greets you ready to write — no button first.
   const [composerOpen, setComposerOpen] = useState(true);
@@ -633,7 +644,18 @@ export function JournalScreen() {
             Export journal (.md)
           </button>
         )}
+        {(stories.length > 0 || trips.length > 0) && (
+          <button className="btn-ghost" type="button" onClick={() => setPublishOpen(true)}>
+            🌍 Publish site
+          </button>
+        )}
       </div>
+
+      {publishOpen && (
+        <Suspense fallback={null}>
+          <PublishScreen onClose={() => setPublishOpen(false)} />
+        </Suspense>
+      )}
       {dayChoice && (
         <div className="day-choice" role="group" aria-label="Which day is this story for?">
           <span className="muted small">Which day is this for?</span>
