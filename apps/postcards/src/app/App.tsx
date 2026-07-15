@@ -33,6 +33,11 @@ const TABS: { id: Tab; label: string; keys: string[]; Icon: () => JSX.Element }[
   { id: "stats", label: "Stats", keys: ["5", "s"], Icon: ChartIcon },
 ];
 
+// An open modal/lightbox/popup/dirty-composer consumes Escape and the Back
+// gesture; these selectors detect one so an unobstructed press navigates.
+const DIALOG_LAYER_SELECTOR =
+  ".modal-backdrop, .lightbox, .maplibregl-popup, .journal-composer-busy";
+
 export function App() {
   const tab = useUi((s) => s.tab);
   const setTab = useUi((s) => s.setTab);
@@ -72,9 +77,7 @@ export function App() {
         // handler closes it) — only an unobstructed Escape navigates back.
         // A DIRTY composer counts as an open layer; the always-open blank
         // Journal form must not swallow the Escape that navigates away.
-        const dialogOpen = !!document.querySelector(
-          ".modal-backdrop, .lightbox, .maplibregl-popup, .journal-composer-busy",
-        );
+        const dialogOpen = !!document.querySelector(DIALOG_LAYER_SELECTOR);
         setShowHelp(false);
         setShowAbout(false);
         if (!dialogOpen) {
@@ -137,9 +140,7 @@ export function App() {
     arm();
     function onPop() {
       const ui = useUi.getState();
-      const dialogOpen = !!document.querySelector(
-        ".modal-backdrop, .lightbox, .maplibregl-popup, .journal-composer-busy",
-      );
+      const dialogOpen = !!document.querySelector(DIALOG_LAYER_SELECTOR);
       if (dialogOpen) {
         // Let the open layer close via its own Escape handler.
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));

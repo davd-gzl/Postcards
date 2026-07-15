@@ -9,22 +9,12 @@ import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { fileToPostcard } from "../../lib/image/downscale";
 import { countryFlag, formatDate, formatKm } from "../../lib/format/format";
 import { haversineKm } from "../travel/distance";
+import { distinctYearsDesc } from "../travel/period";
 import { MAX_PHOTOS_PER_STORY, placeKey } from "../../lib/schema/helpers";
 import type { Photo, PlaceRef, Story } from "../../lib/schema/models";
 import { sanitizeText } from "../../lib/schema/sanitize";
 import { journalToMarkdown, JOURNAL_EXPORT_FILENAME } from "./exportJournalMd";
-
-function download(filename: string, text: string, type: string) {
-  const blob = new Blob([text], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  // Revoke after the click has a chance to start the download (revoking
-  // synchronously can cancel it in some browsers).
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
+import { download } from "../../lib/download";
 
 /** A local YYYY-MM-DD, `offset` days from today (0 = today, -1 = yesterday). */
 function dayISO(offset = 0): string {
@@ -343,11 +333,7 @@ export function JournalScreen() {
     for (const s of stories) if (!m.has(placeKey(s.place))) m.set(placeKey(s.place), s.place);
     return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [stories]);
-  const storyYears = useMemo(() => {
-    const set = new Set<string>();
-    for (const s of stories) if (s.date) set.add(s.date.slice(0, 4));
-    return [...set].sort((a, b) => b.localeCompare(a));
-  }, [stories]);
+  const storyYears = useMemo(() => distinctYearsDesc(stories), [stories]);
   const filtered = useMemo(() => {
     return stories.filter((s) => {
       if (yearSel === "none" && s.date) return false;

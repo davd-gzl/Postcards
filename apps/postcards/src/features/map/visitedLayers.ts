@@ -58,30 +58,6 @@ export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureC
   return { type: "FeatureCollection", features };
 }
 
-/** ALL monuments (UNESCO heritage sites) as a browsable map layer; `seen` marks visited ones. */
-export function monumentPoints(visits: Visit[], ref: ReferenceData): FeatureCollection<Point> {
-  const seen = new Set(
-    visits.filter((v) => isVisited(v) && v.place.kind === "heritage").map((v) => v.place.id),
-  );
-  const features: Feature<Point>[] = [];
-  for (const h of ref.allHeritage()) {
-    if (h.lat === 0 && h.lon === 0) continue; // no coordinates in the dataset — never guess
-    features.push({
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [h.lon, h.lat] },
-      properties: {
-        id: h.id,
-        name: h.name,
-        cc: h.countryIso2,
-        // The UNESCO kind picks the marker emoji (cultural / natural / mixed).
-        cat: h.category ?? "cultural",
-        seen: seen.has(h.id) ? 1 : 0,
-      },
-    });
-  }
-  return { type: "FeatureCollection", features };
-}
-
 /** Point features for wish-to-go cities (drawn as distinct wish markers). */
 export function wishlistCityPoints(visits: Visit[], ref: ReferenceData): FeatureCollection<Point> {
   const features: Feature<Point>[] = [];

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import type { Country } from "../../lib/reference/types";
 import { useVisits } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { useSettings } from "../../lib/store/useSettings";
@@ -9,7 +10,26 @@ import { inScope } from "../../lib/reference/scope";
 import { countryFlag, formatInt } from "../../lib/format/format";
 import { ScopeToggle } from "../../ui/ScopeToggle";
 import { renderPoster } from "./poster";
-import { MoreButton } from "../../ui/MoreButton";
+import { ListPager } from "../../ui/ListPager";
+
+/** One flag in the passport grid — a button that opens its country's page. */
+function FlagCard({ c, locked }: { c: Country; locked?: boolean }) {
+  return (
+    <li>
+      <button
+        type="button"
+        className={"flag-card" + (locked ? " flag-locked" : "")}
+        title={`Open ${c.name}`}
+        onClick={() => useUi.getState().openCountry(c.iso2)}
+      >
+        <span className="flag-big" aria-hidden>
+          {countryFlag(c.iso2)}
+        </span>
+        <span className="flag-name">{c.name}</span>
+      </button>
+    </li>
+  );
+}
 
 /**
  * Your passport: the flags you've collected (one per visited country — a city
@@ -149,19 +169,7 @@ export function PassportScreen({ embedded }: { embedded?: boolean } = {}) {
             </h3>
             <ul className="flag-grid">
               {cont.done.map((c) => (
-                <li key={c.iso2}>
-                  <button
-                    type="button"
-                    className="flag-card"
-                    title={`Open ${c.name}`}
-                    onClick={() => useUi.getState().openCountry(c.iso2)}
-                  >
-                    <span className="flag-big" aria-hidden>
-                      {countryFlag(c.iso2)}
-                    </span>
-                    <span className="flag-name">{c.name}</span>
-                  </button>
-                </li>
+                <FlagCard key={c.iso2} c={c} />
               ))}
             </ul>
           </section>
@@ -194,30 +202,16 @@ export function PassportScreen({ embedded }: { embedded?: boolean } = {}) {
         <>
         <ul className="flag-grid">
           {missing.slice(0, shownMissing).map((c) => (
-            <li key={c.iso2}>
-              <button
-                type="button"
-                className="flag-card flag-locked"
-                title={`Open ${c.name}`}
-                onClick={() => useUi.getState().openCountry(c.iso2)}
-              >
-                <span className="flag-big" aria-hidden>
-                  {countryFlag(c.iso2)}
-                </span>
-                <span className="flag-name">{c.name}</span>
-              </button>
-            </li>
+            <FlagCard key={c.iso2} c={c} locked />
           ))}
         </ul>
         {missing.length > shownMissing && (
-          <div className="list-pager">
-            <span className="muted small">
-              Showing {shownMissing} of {missing.length}
-            </span>
-            <MoreButton onMore={() => setShownMissing((n) => n + 60)}>
-              Show 60 more
-            </MoreButton>
-          </div>
+          <ListPager
+            shown={shownMissing}
+            total={missing.length}
+            step={60}
+            onMore={() => setShownMissing((n) => n + 60)}
+          />
         )}
         </>
       )}
