@@ -5,9 +5,8 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { StateToggles } from "../visits/StateToggles";
 import { CityLine } from "../../ui/CityLine";
 import { countryFlag } from "../../lib/format/format";
-import type { PlaceRef } from "../../lib/schema/models";
 import type { Experience } from "./grouping";
-import { groupExperiences } from "./grouping";
+import { groupExperiences, placeOf } from "./grouping";
 
 /**
  * Moments: world experiences you can live once and remember forever (see the
@@ -22,13 +21,6 @@ import { groupExperiences } from "./grouping";
  * country code, not the stored ZZ); borderless ones sit under "Across the world".
  * Tapping a spot flies the map there.
  */
-interface Spot {
-  name: string;
-  lat: number;
-  lon: number;
-  cc?: string;
-}
-
 const EXPERIENCES_URL = `${import.meta.env.BASE_URL}reference/experiences.json`;
 
 // Module cache: the list is tiny and static per build.
@@ -60,11 +52,6 @@ async function loadExperiences(): Promise<Experience[]> {
   }
 }
 
-/** A moment's stable PlaceRef: kind custom, neutral country (not a real place). */
-function placeOf(e: Experience): PlaceRef {
-  return { kind: "custom", id: e.id, name: e.name, countryId: "ZZ" };
-}
-
 /** One moment row — unchanged whether standalone or grouped. */
 function MomentRow({ e }: { e: Experience }) {
   return (
@@ -74,7 +61,7 @@ function MomentRow({ e }: { e: Experience }) {
         {e.where && e.where.length > 0 && (
           <div className="moment-spots">
             <span className="sr-only">Places for {e.name}:</span>
-            {e.where.map((s: Spot) => (
+            {e.where.map((s) => (
               <button
                 key={`${s.name}:${s.lat}:${s.lon}`}
                 type="button"
