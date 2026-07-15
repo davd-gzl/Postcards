@@ -8,7 +8,7 @@ import maplibregl, {
 import { Protocol } from "pmtiles";
 import { feature } from "topojson-client";
 import type { FeatureCollection, Polygon, MultiPolygon, Point, Feature, LineString } from "geojson";
-import { getReferenceData } from "../../lib/reference/referenceData";
+import { getReferenceData, gazetteerGeneration } from "../../lib/reference/referenceData";
 import { useGazetteerGeneration } from "../../lib/reference/useGazetteer";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import { useVisits, findByPlace } from "../../lib/store/useVisits";
@@ -18,7 +18,7 @@ import { airportPoints, visitedCityPoints, wishlistCityPoints } from "./visitedL
 import { prefetchAroundBounds, prefetchAroundPoint } from "../../lib/offline/tiles";
 import type { Bounds } from "./viewport";
 import type { City } from "../../lib/reference/types";
-import type { PlaceRef } from "../../lib/schema/models";
+import type { PlaceRef, Visit } from "../../lib/schema/models";
 import { countryFlag, formatInt } from "../../lib/format/format";
 
 // Natural Earth 50m country geometry, served as a static asset (SW-cached for
@@ -600,8 +600,21 @@ export function MapView({
     });
   }
 
+  // Which gazetteer generation the cities-all dot field was built at; -1 =
+  // never. Building it means allocating one Point per city (~135k once the
+  // full gazetteer lands) and serializing the collection to MapLibre's worker
+  // — far too expensive to pay while the layer is hidden.
+  const dotsGenRef = useRef(-1);
   function applyAllCityDots(map: MlMap) {
-    (map.getSource("cities-all") as GeoJSONSource | undefined)?.setData({
+    // The Towns toggle is off by default: don't build the dot field until it
+    // can actually be seen (first toggle-on), and never rebuild one that is
+    // already current. A field built at an older generation is refreshed
+    // lazily by the next toggle-on rather than while hidden.
+    const gen = gazetteerGeneration();
+    if (!showTownsRef.current || dotsGenRef.current === gen) return;
+    const src = map.getSource("cities-all") as GeoJSONSource | undefined;
+    if (!src) return;
+    src.setData({
       type: "FeatureCollection",
       features: ref.allCities().map((c) => ({
         type: "Feature",
@@ -609,6 +622,7 @@ export function MapView({
         properties: {},
       })),
     });
+    dotsGenRef.current = gen;
   }
 
   // Airports & monuments are drawn like cities: only what's in the current view,
@@ -621,24 +635,38 @@ export function MapView({
     return w <= e ? lon >= w && lon <= e : lon >= w || lon <= e;
   }
 
+  // Whether each capped POI source was last set to EMPTY — a branch that is
+  // hidden (wrong mode, or below its "all"-mode zoom gate) must not re-post an
+  // empty collection to the worker on every camera stop.
+  const monEmptyRef = useRef(false);
+  const airEmptyRef = useRef(false);
+
   function applyViewportPoi(map: MlMap) {
     const b = map.getBounds();
     const cap = Math.max(1, maxMarkersRef.current);
     const m = modeRef.current;
+    const z = map.getZoom();
 
-    // Monuments: in Monuments mode always, in All mode as the zoom-gate allows.
+    // Monuments: in Monuments mode always, in All mode past applyMode's zoom
+    // gate — below it the layer renders nothing, so skip the whole rebuild.
     const monSrc = map.getSource("monuments") as GeoJSONSource | undefined;
     if (monSrc) {
-      if (m === "monuments" || m === "all") {
+      if (m === "monuments" || (m === "all" && z >= 4.5)) {
         const seen = new Set(
           visitsRef.current
             .filter((v) => v.status !== "wishlist" && v.place.kind === "heritage")
             .map((v) => v.place.id),
         );
-        const inView = ref
-          .allHeritage()
-          .filter((h) => (h.lat !== 0 || h.lon !== 0) && inViewport(b, h.lat, h.lon));
-        inView.sort((x, y) => (seen.has(y.id) ? 1 : 0) - (seen.has(x.id) ? 1 : 0));
+        // Seen-first via a single stable partition (no full sort), so the cap
+        // never hides a place you've marked.
+        const all = ref.allHeritage();
+        const seenFirst: typeof all = [];
+        const rest: typeof all = [];
+        for (const h of all) {
+          if ((h.lat === 0 && h.lon === 0) || !inViewport(b, h.lat, h.lon)) continue;
+          (seen.has(h.id) ? seenFirst : rest).push(h);
+        }
+        const inView = seenFirst.concat(rest);
         monSrc.setData({
           type: "FeatureCollection",
           features: inView.slice(0, cap).map((h) => ({
@@ -653,22 +681,30 @@ export function MapView({
             },
           })),
         });
-      } else {
+        monEmptyRef.current = false;
+      } else if (!monEmptyRef.current) {
         monSrc.setData(EMPTY_FC);
+        monEmptyRef.current = true;
       }
     }
 
     // Browsable airports: in Airports mode always, in All mode past the zoom-gate.
     const airSrc = map.getSource("airports-all") as GeoJSONSource | undefined;
     if (airSrc) {
-      if (m === "airports" || m === "all") {
+      if (m === "airports" || (m === "all" && z >= 5)) {
         const seen = new Set(
           visitsRef.current
             .filter((v) => v.status !== "wishlist" && v.place.kind === "airport")
             .map((v) => v.place.id),
         );
-        const inView = ref.allAirports().filter((a) => inViewport(b, a.lat, a.lon));
-        inView.sort((x, y) => (seen.has(y.id) ? 1 : 0) - (seen.has(x.id) ? 1 : 0));
+        const all = ref.allAirports();
+        const seenFirst: typeof all = [];
+        const rest: typeof all = [];
+        for (const a of all) {
+          if (!inViewport(b, a.lat, a.lon)) continue;
+          (seen.has(a.id) ? seenFirst : rest).push(a);
+        }
+        const inView = seenFirst.concat(rest);
         airSrc.setData({
           type: "FeatureCollection",
           features: inView.slice(0, cap).map((a) => ({
@@ -677,8 +713,10 @@ export function MapView({
             properties: { id: a.id, iata: a.id, name: a.name, cc: a.countryIso2 },
           })),
         });
-      } else {
+        airEmptyRef.current = false;
+      } else if (!airEmptyRef.current) {
         airSrc.setData(EMPTY_FC);
+        airEmptyRef.current = true;
       }
     }
   }
@@ -690,16 +728,53 @@ export function MapView({
   // Sentinel start values: the FIRST applyVisited must always draw both.
   const lastPoiKey = useRef("<init>");
   const lastCountryKey = useRef("<init>");
+  // Same guard for the three personal marker sources: their builders read only
+  // kind/id/status/favorite, so a note, photo, caption or date edit must not
+  // re-tile (worker message + re-index + repaint) three GeoJSON sources — the
+  // map stays mounted for the app's life and would pay that even while hidden.
+  // Reset to the sentinel when the full gazetteer lands (gazGen effect below)
+  // so markers whose cities only resolve in the full set get re-drawn.
+  const lastCitiesKey = useRef("<init>");
+  const lastWishKey = useRef("<init>");
+  const lastAirKey = useRef("<init>");
   function applyVisited(map: MlMap) {
-    (map.getSource("cities") as GeoJSONSource | undefined)?.setData(
-      visitedCityPoints(visitsRef.current, ref),
-    );
-    (map.getSource("wishlist") as GeoJSONSource | undefined)?.setData(
-      wishlistCityPoints(visitsRef.current, ref),
-    );
-    (map.getSource("airports") as GeoJSONSource | undefined)?.setData(
-      airportPoints(visitsRef.current, ref),
-    );
+    const markerKey = (v: Visit) =>
+      `${v.place.kind}:${v.place.id}:${v.status}:${v.favorite ? 1 : 0}`;
+    const citiesKey = visitsRef.current
+      .filter(
+        (v) => v.status !== "wishlist" && (v.place.kind === "city" || v.place.kind === "custom"),
+      )
+      .map(markerKey)
+      .sort()
+      .join("|");
+    if (citiesKey !== lastCitiesKey.current) {
+      lastCitiesKey.current = citiesKey;
+      (map.getSource("cities") as GeoJSONSource | undefined)?.setData(
+        visitedCityPoints(visitsRef.current, ref),
+      );
+    }
+    const wishKey = visitsRef.current
+      .filter((v) => v.status === "wishlist" && v.place.kind === "city")
+      .map((v) => v.place.id)
+      .sort()
+      .join("|");
+    if (wishKey !== lastWishKey.current) {
+      lastWishKey.current = wishKey;
+      (map.getSource("wishlist") as GeoJSONSource | undefined)?.setData(
+        wishlistCityPoints(visitsRef.current, ref),
+      );
+    }
+    const airKey = visitsRef.current
+      .filter((v) => v.place.kind === "airport")
+      .map(markerKey)
+      .sort()
+      .join("|");
+    if (airKey !== lastAirKey.current) {
+      lastAirKey.current = airKey;
+      (map.getSource("airports") as GeoJSONSource | undefined)?.setData(
+        airportPoints(visitsRef.current, ref),
+      );
+    }
     // Monuments (and browsable airports) are viewport-capped and depend on
     // visits only through their heritage/airport "seen" state.
     const poiKey = visitsRef.current
@@ -895,10 +970,10 @@ export function MapView({
         applyTripArcs(map);
         loadGeometry(map);
         applyMode(map, mode);
-        // The full-gazetteer dot field: static per gazetteer generation (it
-        // refreshes only when the background 135k-city upgrade lands). Built at
-        // idle — YOUR flags and wishlist markers paint first, the town dots can
-        // wait a beat (they're off by default anyway).
+        // The full-gazetteer dot field: built only if the Towns toggle is
+        // already on (applyAllCityDots self-gates — it's off by default, so
+        // most sessions never pay for it), and even then at idle — YOUR flags
+        // and wishlist markers paint first, the town dots can wait a beat.
         const idle: (cb: () => void) => void =
           typeof requestIdleCallback === "function"
             ? (cb) => requestIdleCallback(cb, { timeout: 1500 })
@@ -1078,13 +1153,19 @@ export function MapView({
   }, [visits]);
 
   // The background full-gazetteer upgrade landed after the map was built:
-  // rebuild the city dot field, and re-resolve visited/wishlist markers whose
-  // cities only exist in the full set (e.g. restored visits to small towns).
+  // rebuild the city dot field (only if the Towns toggle has it visible), and
+  // re-resolve visited/wishlist markers whose cities only exist in the full
+  // set (e.g. restored visits to small towns).
   useEffect(() => {
     if (gazGen === 0) return;
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
     applyAllCityDots(map);
+    // The marker keys can't see a gazetteer swap (same visits, new cities) —
+    // reset them so applyVisited re-resolves markers against the full set.
+    lastCitiesKey.current = "<init>";
+    lastWishKey.current = "<init>";
+    lastAirKey.current = "<init>";
     applyVisited(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gazGen]);
@@ -1111,6 +1192,7 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
     applyMode(map, mode);
+    applyAllCityDots(map); // build the towns dot field on toggle-on (no-op otherwise)
     applyViewportPoi(map); // repopulate/clear the capped POI for the new mode/cap
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, showTowns, maxMarkers]);

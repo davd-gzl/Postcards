@@ -1,5 +1,6 @@
-import { useVisits, findByPlace } from "../../lib/store/useVisits";
+import { useVisits, findByPlace, visitIndex } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
+import { placeKey } from "../../lib/schema/helpers";
 import type { PlaceRef } from "../../lib/schema/models";
 
 /**
@@ -11,12 +12,15 @@ import type { PlaceRef } from "../../lib/schema/models";
 export function StateToggles({ place }: { place: PlaceRef }) {
   // Subscribe to this place's record only — record identities are stable across
   // unrelated updates, so untouched rows don't re-render on every store change.
-  const rec = useVisits((s) => findByPlace(s.visits, place));
+  // O(1) via the shared index: with hundreds of rows mounted, per-row linear
+  // scans on every store change added up to real jank on a phone.
+  const key = placeKey(place);
+  const rec = useVisits((s) => visitIndex(s.visits).get(key));
   const toggleVisit = useVisits((s) => s.toggleVisit);
   const toggleWish = useVisits((s) => s.toggleWish);
   const toggleFavorite = useVisits((s) => s.toggleFavorite);
   const addVisit = useVisits((s) => s.addVisit);
-  const setAll = useVisits((s) => s.setAll);
+  const restoreVisit = useVisits((s) => s.restoreVisit);
   const show = useToast((s) => s.show);
 
   const been = rec?.status === "visited";
@@ -24,11 +28,12 @@ export function StateToggles({ place }: { place: PlaceRef }) {
   const fav = !!rec?.favorite;
 
   function onBeen() {
-    const prev = useVisits.getState().visits;
-    const wasVisited = findByPlace(prev, place)?.status === "visited";
+    // Only this place's record changes — snapshot it alone, so undo puts one
+    // record back instead of rewriting the whole visits table.
+    const prev = findByPlace(useVisits.getState().visits, place);
     void toggleVisit(place);
     // Silent on add; a removal (which can delete photos/notes) gets an undoable toast.
-    if (wasVisited) show(`Removed ${place.name}`, () => setAll(prev));
+    if (prev?.status === "visited") show(`Removed ${place.name}`, () => restoreVisit(prev));
   }
   function onWant() {
     void toggleWish(place);
