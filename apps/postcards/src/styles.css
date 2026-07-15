@@ -1097,6 +1097,29 @@ button.stat-tile:hover .num {
   border-color: #bfe6cd;
   background: var(--visited-soft);
 }
+/* Backup reminder: a gentle, dismissible nudge at the top of Your data. */
+.backup-reminder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  margin: 4px 0 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+.backup-reminder-text {
+  flex: 1;
+  min-width: 200px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.backup-reminder-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
 .attribution {
   margin-top: 22px;
   font-size: 12px;

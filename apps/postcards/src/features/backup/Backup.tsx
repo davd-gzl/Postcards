@@ -9,13 +9,21 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { replaceAllPortable } from "../../lib/db/visitsDb";
 import { toMarkdown } from "./exportMarkdown";
 import { download } from "../../lib/download";
+import {
+  markBackedUp,
+  isBackupDue,
+  daysSinceBackup,
+  snoozeReminder,
+} from "../../lib/backupReminder";
 
 /**
- * Get the file to the user. On the web that's a download; inside the native
- * wrap (iOS/Android) an <a download> does nothing useful, so the file is
- * written to the app cache and handed to the system share sheet — Files,
- * AirDrop, mail, drive, wherever the user points it. Still strictly explicit:
- * this only ever runs from the Export buttons.
+ * Get the file to the user, wherever they want it. Inside the native wrap
+ * (iOS/Android) the file is written to the app cache and handed to the system
+ * share sheet — Files, Drive, Nextcloud, AirDrop, mail, whatever is installed.
+ * On the web we try the same OS share sheet via the Web Share API (mobile
+ * browsers), falling back to a plain download on desktop. No proprietary cloud
+ * SDK: the OS routes the file to the destination the user picks (zero lock-in).
+ * Still strictly explicit — this only ever runs from an Export button.
  */
 async function deliver(filename: string, text: string, type: string): Promise<void> {
   if (Capacitor.isNativePlatform()) {
@@ -28,6 +36,19 @@ async function deliver(filename: string, text: string, type: string): Promise<vo
     await Share.share({ title: filename, url: uri });
     return;
   }
+  if (typeof navigator !== "undefined" && typeof navigator.canShare === "function") {
+    const file = new File([text], filename, { type });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: filename });
+        return;
+      } catch (err) {
+        // The user cancelled the share sheet — done, don't also download.
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        // Anything else (share not really supported): fall through to download.
+      }
+    }
+  }
   download(filename, text, type);
 }
 
@@ -38,6 +59,11 @@ export function Backup() {
   const stories = useStories((s) => s.stories);
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const hasData = visits.length > 0 || trips.length > 0 || stories.length > 0;
+  // Whether to nudge a backup right now (computed once on open, editable by the
+  // export/snooze actions). daysSince is for the wording ("N days" vs "never").
+  const [reminderDue, setReminderDue] = useState(() => isBackupDue(hasData, Date.now()));
+  const daysSince = daysSinceBackup(Date.now());
 
   async function exportJson() {
     try {
@@ -45,6 +71,9 @@ export function Backup() {
       // nothing on the startup path needs — keep them out of the boot chunk.
       const { serializeFile, EXPORT_FILENAME } = await import("./exportJson");
       await deliver(EXPORT_FILENAME, serializeFile(visits, trips, stories), "application/json");
+      // A full .json export is a real backup — reset the reminder clock.
+      markBackedUp(Date.now());
+      setReminderDue(false);
     } catch {
       setMessage({ kind: "err", text: "Couldn't build the export file. Your data is unchanged." });
     }
@@ -54,6 +83,14 @@ export function Backup() {
       await deliver("places.md", toMarkdown(visits, trips, ref), "text/markdown");
     } catch {
       setMessage({ kind: "err", text: "Couldn't build the summary file. Your data is unchanged." });
+    }
+  }
+  async function exportCsv() {
+    try {
+      const { serializePlacesCsv, PLACES_CSV_FILENAME } = await import("./exportCsv");
+      await deliver(PLACES_CSV_FILENAME, serializePlacesCsv(visits, ref), "text/csv");
+    } catch {
+      setMessage({ kind: "err", text: "Couldn't build the places file. Your data is unchanged." });
     }
   }
 
@@ -140,14 +177,46 @@ export function Backup() {
       <div className="section-head">
         <h2>Your data</h2>
       </div>
+
+      {reminderDue && (
+        <div className="backup-reminder" role="status">
+          <span aria-hidden>🛟</span>
+          <span className="backup-reminder-text">
+            {daysSince == null
+              ? "You haven't backed up yet — a lost phone loses your travels."
+              : `It's been ${daysSince} day${daysSince === 1 ? "" : "s"} since your last backup.`}{" "}
+            Export it and keep the file somewhere safe.
+          </span>
+          <span className="backup-reminder-actions">
+            <button className="btn" type="button" onClick={() => void exportJson()}>
+              Back up now
+            </button>
+            <button
+              className="link"
+              type="button"
+              onClick={() => {
+                snoozeReminder(Date.now());
+                setReminderDue(false);
+              }}
+            >
+              Later
+            </button>
+          </span>
+        </div>
+      )}
+
       <p className="muted">
-        Everything lives in one portable file on your device. Export it to a drive or git; import it
-        anywhere. Nothing leaves your device unless you export it.
+        Everything lives in one portable file on your device. Export it to a drive or git, or share
+        it straight to your cloud (Drive, Nextcloud, Files…). Nothing leaves your device unless you
+        export it.
       </p>
 
       <div className="btn-row">
         <button className="btn" type="button" onClick={() => void exportJson()}>
           Export data
+        </button>
+        <button className="btn-ghost" type="button" onClick={() => void exportCsv()}>
+          Export places (.csv)
         </button>
         <button className="btn-ghost" type="button" onClick={() => void exportMd()}>
           Export summary (.md)
