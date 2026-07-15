@@ -818,6 +818,13 @@ export function JournalScreen() {
         </form>
       )}
 
+      {stories.length > 0 && (
+        <p className="muted small">
+          The Markdown export shares dates, places, titles and text — no photos. A shareable website
+          export is planned.
+        </p>
+      )}
+
       {stories.length === 0 ? (
         <p className="muted empty">
           <span className="empty-emoji" aria-hidden>
