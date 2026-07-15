@@ -1,25 +1,23 @@
 import { z } from "zod";
 import { sanitizeText } from "./sanitize";
+import { FORMAT, MAX_PHOTOS_PER_STORY, MAX_PHOTOS_PER_VISIT } from "./helpers";
 
 // Canonical, versioned schema for the portable data file.
 // Single source of truth: these Zod models generate TS types AND the published
 // JSON Schema (see tests/unit/schema.spec.ts). Contract: contracts/portable-data-file.md
-export const FORMAT = "postcards" as const;
-// v2 adds the optional top-level `trips` array (travel log). Files stay
-// structurally back-compatible (v1 files import unchanged), but the bump means an
-// older build opening a v2 file shows the graceful "update the app" prompt rather
-// than a cryptic strict-parse error on the unknown `trips` key.
-// v3 turns a visit's single `photo` into a `photos` gallery (each with an optional
-// caption). Both fields validate, so v1/v2 files import unchanged; new exports write
-// `photos`. Older builds opening a v3 file get the same graceful "update" prompt.
-// v4 adds the "custom" place kind — a USER-authored point (name + coordinates) for
-// places missing from the reference datasets. Reference data stays aggregated;
-// custom points are personal data and live only in the user's own file.
-// v5 adds the optional top-level `stories` array (Journal — a mini travel blog).
-// Files stay structurally back-compatible (v4 files import unchanged), but the bump
-// means an older build opening a v5 file shows the graceful "update the app" prompt
-// rather than a cryptic strict-parse error on the unknown `stories` key.
-export const SCHEMA_VERSION = 5;
+//
+// Zod-free constants & helpers (FORMAT, SCHEMA_VERSION, placeKey, …) live in
+// ./helpers so the always-loaded stores and screens can use them without pulling
+// zod into the boot chunk; they are re-exported here so codec code and tests keep
+// importing everything schema-shaped from one module.
+export {
+  FORMAT,
+  MAX_PHOTOS_PER_STORY,
+  MAX_PHOTOS_PER_VISIT,
+  SCHEMA_VERSION,
+  normalizeVisitPhotos,
+  placeKey,
+} from "./helpers";
 
 const isoCountryId = z
   .string()
@@ -51,9 +49,6 @@ export const PlaceRefSchema = z
 // file is meant to be hand- and tool-writable (AI-friendly), so we don't demand
 // strict RFC-4122 form (Zod 4 tightened .uuid()); just a bounded non-empty id.
 const idString = z.string().min(1).max(100);
-
-/** Most photos one place's gallery may hold (bounds the inline portable file). */
-export const MAX_PHOTOS_PER_VISIT = 48;
 
 /** A bounded, inert inline image data URL (never an external link). */
 const photoDataUrl = z
@@ -147,9 +142,6 @@ export const TripSchema = z
   })
   .strict();
 
-/** Most photos one journal story may hold (bounds the inline portable file). */
-export const MAX_PHOTOS_PER_STORY = 24;
-
 /**
  * One journal story (Journal — a mini travel blog): a dated, titled entry about a
  * place you've been, with free text and its own small photo gallery. Personal data
@@ -205,29 +197,8 @@ export type PlaceKind = z.infer<typeof PlaceRefSchema>["kind"];
 export type PlaceRef = z.infer<typeof PlaceRefSchema>;
 export type Photo = z.infer<typeof PhotoSchema>;
 export type Visit = z.infer<typeof VisitSchema>;
-
-/**
- * Migrate a visit's legacy single `photo` into the `photos` gallery and drop the
- * legacy field, so the rest of the app only ever reads `photos`. Idempotent —
- * safe to run on every load/import. Returns a new object (never mutates input).
- */
-export function normalizeVisitPhotos(v: Visit): Visit {
-  const photos: Photo[] = v.photos ? [...v.photos] : [];
-  if (v.photo && !photos.some((p) => p.src === v.photo)) {
-    photos.unshift({ src: v.photo, caption: null });
-  }
-  const { photo: _legacy, ...rest } = v;
-  // Only carry `photos` when there is at least one — keeps photo-less records and
-  // exports clean, and the rest of the app reads `v.photos ?? []`.
-  return photos.length ? { ...rest, photos } : rest;
-}
 export type TravelMode = z.infer<typeof TravelModeSchema>;
 export type Trip = z.infer<typeof TripSchema>;
 export type Story = z.infer<typeof StorySchema>;
 export type ReferenceSource = z.infer<typeof ReferenceSourceSchema>;
 export type PostcardsFile = z.infer<typeof PostcardsFileSchema>;
-
-/** Stable key used for dedupe: one visit per (kind, id). */
-export function placeKey(place: Pick<PlaceRef, "kind" | "id">): string {
-  return `${place.kind}:${place.id}`;
-}

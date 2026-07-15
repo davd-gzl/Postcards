@@ -1,12 +1,6 @@
 import { create } from "zustand";
-import {
-  MAX_PHOTOS_PER_VISIT,
-  normalizeVisitPhotos,
-  placeKey,
-  type Photo,
-  type PlaceRef,
-  type Visit,
-} from "../schema/models";
+import { MAX_PHOTOS_PER_VISIT, normalizeVisitPhotos, placeKey } from "../schema/helpers";
+import type { Photo, PlaceRef, Visit } from "../schema/models";
 import { sanitizeText } from "../schema/sanitize";
 import * as db from "../db/visitsDb";
 
@@ -27,6 +21,24 @@ export function dedupeUpsert(list: Visit[], visit: Visit): Visit[] {
 export function findByPlace(list: Visit[], place: Pick<PlaceRef, "kind" | "id">): Visit | undefined {
   const key = placeKey(place);
   return list.find((v) => placeKey(v.place) === key);
+}
+
+/**
+ * O(1) placeKey → Visit lookups for hot paths that would otherwise scan the
+ * whole list per row (Zustand re-runs every subscribed selector on every
+ * set(), so hundreds of mounted per-place selectors each paid a linear scan).
+ * Cached by array identity: the store replaces `visits` immutably on every
+ * set(), so the array reference is a valid cache key, and the WeakMap lets
+ * superseded indexes be collected with their arrays.
+ */
+const idxCache = new WeakMap<Visit[], Map<string, Visit>>();
+export function visitIndex(list: Visit[]): Map<string, Visit> {
+  let m = idxCache.get(list);
+  if (!m) {
+    m = new Map(list.map((v) => [placeKey(v.place), v]));
+    idxCache.set(list, m);
+  }
+  return m;
 }
 
 /** Today as a local YYYY-MM-DD — the default "visited on" for a new visit. */
@@ -67,12 +79,18 @@ interface VisitsState {
   toggleFavorite: (place: PlaceRef) => Promise<void>;
   /** Append a photo to a visit's gallery. */
   addPhoto: (visitId: string, photo: Photo) => Promise<void>;
+  /** Append several photos in ONE write — a multi-photo pick must not re-put
+   *  the whole (multi-MB) record once per photo. */
+  addPhotos: (visitId: string, photos: Photo[]) => Promise<void>;
   /** Remove the photo at `index` from a visit's gallery. */
   removePhoto: (visitId: string, index: number) => Promise<void>;
   /** Set (or clear, with null) the caption on the photo at `index`. */
   setPhotoCaption: (visitId: string, index: number, caption: string | null) => Promise<void>;
   /** Set or clear the visit's own date and/or note (FR-002). */
   setDetails: (visitId: string, details: { date?: string | null; note?: string | null }) => Promise<void>;
+  /** Put ONE visit back (single-record undo): upsert by visitId, one write —
+   *  setAll would clear and rewrite the entire visits table. */
+  restoreVisit: (visit: Visit) => Promise<void>;
   setAll: (visits: Visit[]) => Promise<void>;
 }
 
@@ -128,12 +146,16 @@ export const useVisits = create<VisitsState>((set, get) => ({
     await db.putVisit(updated);
   },
   async addPhoto(visitId, photo) {
+    await get().addPhotos(visitId, [photo]);
+  },
+  async addPhotos(visitId, photos) {
     const existing = get().visits.find((v) => v.visitId === visitId);
-    if (!existing) return;
+    if (!existing || photos.length === 0) return;
     // Bound the gallery so an export can never exceed the schema's photos cap (which
     // would make buildFile's self-validation throw and block backup entirely).
-    if ((existing.photos?.length ?? 0) >= MAX_PHOTOS_PER_VISIT) return;
-    const updated: Visit = { ...existing, photos: [...(existing.photos ?? []), photo] };
+    const room = MAX_PHOTOS_PER_VISIT - (existing.photos?.length ?? 0);
+    if (room <= 0) return;
+    const updated: Visit = { ...existing, photos: [...(existing.photos ?? []), ...photos.slice(0, room)] };
     set({ visits: get().visits.map((v) => (v.visitId === visitId ? updated : v)) });
     await db.putVisit(updated);
   },
@@ -168,6 +190,15 @@ export const useVisits = create<VisitsState>((set, get) => ({
     };
     set({ visits: get().visits.map((v) => (v.visitId === visitId ? updated : v)) });
     await db.putVisit(updated);
+  },
+  async restoreVisit(visit) {
+    const exists = get().visits.some((v) => v.visitId === visit.visitId);
+    set({
+      visits: exists
+        ? get().visits.map((v) => (v.visitId === visit.visitId ? visit : v))
+        : [...get().visits, visit],
+    });
+    await db.putVisit(visit);
   },
   async setAll(visits) {
     const normalized = visits.map(normalizeVisitPhotos);
