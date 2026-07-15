@@ -46,8 +46,8 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 ## UX / behaviour batch
 
-- [ ] City name never cropped; on hover show full name (tooltip) — where names truncate (list panel, popups, cards)
-- [ ] Favorites-only mode (a proper filter/view); make the favourite emoji a little different
+- [x] City name never cropped; on hover show full name (tooltip) — shared CityLine + picker/passport/airports
+- [x] Favorites-only mode — already a first-class view; unified the glyph on the heart (was amber star)
 - [ ] Back-online: show a small "Reconnect" button when connection returns — do NOT auto-reconnect
 - [ ] Show current mode (Offline / Online) explicitly somewhere
 - [ ] Make it obvious how to add a non-existent spot on the map (custom place discoverability)
@@ -55,7 +55,7 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 ## Stats
 
-- [ ] Show **percentage** of countries done, not only "3/50"
+- [x] Show **percentage** of countries done, not only "3/50" (added to the compact strip)
 - [ ] Make the Stats page much more ergonomic & UX-friendly → **launch a workflow** for this LAST (after everything above)
 
 ## Moments
@@ -80,8 +80,17 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 ## Investigations / answers
 
-- [ ] Why is "Gili Meno" (Indonesia) missing from the map? (gazetteer coverage) — answer + fix path
-- [ ] Answer: how to add a non-existing spot on the map (ties into the discoverability item above)
+- [x] Why is "Gili Meno" (Indonesia) missing? ANSWER: it's an **upstream GeoNames data gap**,
+      not a Postcards cutoff. The gazetteer (135,233 rows via all-the-cities 3.1.0) applies NO
+      population threshold and includes Gili Air (pop 1800) and Gili Trawangan (pop 1500) — but
+      GeoNames never emitted a record for Gili Meno, so there's nothing upstream to include. Fixes:
+      (a) add it as a custom place now (~ -8.349, 116.056, Indonesia); (b) durable = contribute it
+      to GeoNames / ship a provenance-tagged supplemental gazetteer — never bake a world fact into app code.
+- [x] Answer: how to add a non-existing spot today — only via AddPlaceForm, mounted ONLY in the
+      global search's "no results" branch (must type an exact zero-match name). Discoverability is poor →
+      see UX item below.
+- [ ] Improve add-a-spot discoverability: seed AddPlaceForm from the map (long-press/right-click "+ Add here"),
+      a keyboard "+ Add place" control, and an add-row on search near-misses. (AddPlaceForm, MapView, MapScreen, PlaceSearch)
 
 ## Documentation
 
@@ -91,7 +100,7 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 ## Workflows
 
-- [x] **Tile loading** workflow — desktop & mobile; tiles sometimes not loaded though on-screen (running: wf_89ffefad)
+- [x] **Tile loading** workflow — desktop & mobile; tiles sometimes not loaded though on-screen (DONE: audit + fixes #1–6 shipped; #7 no-remount-on-toggle and #8 robust-offline-base deferred as follow-ups)
 - [ ] **Discovery + specs** workflow — implementation maps for the UX/stats/i18n/moments batch + write specs 012/013 (running)
 - [ ] **Stats UX** workflow — run after all the above is finished
 - [ ] **Wiki** workflow — perfect the full project wiki (last)
