@@ -647,13 +647,6 @@ export function JournalScreen() {
           </button>
         </div>
       )}
-      {stories.length > 0 && (
-        <p className="muted small">
-          The Markdown export shares dates, places, titles and text — no photos. A shareable website
-          export is planned.
-        </p>
-      )}
-
       {composerOpen && (
         <form
           className={"trip-form journal-composer" + (dirty || editingId ? " journal-composer-busy" : "")}
