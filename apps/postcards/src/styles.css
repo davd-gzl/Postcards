@@ -21,13 +21,32 @@
   --shadow: 0 1px 2px rgba(30, 24, 16, 0.05), 0 6px 18px -6px rgba(30, 24, 16, 0.12);
   --shadow-sm: 0 1px 2px rgba(30, 24, 16, 0.06);
   --display: "Space Grotesk Variable", "Inter Variable", system-ui, sans-serif;
+  /* Semantic colours that used to be hardcoded twice (light rule + a dark-only
+     override). Now they're tokens so a single unconditional component rule works
+     under system-dark, explicit-dark and light alike. Light values here. */
+  --stat-been: #15803d;
+  --stat-air: #0369a1;
+  --stat-want: #b45309;
+  --stat-fav: #be185d;
+  --notice-err-border: #f3c6c6;
+  --notice-err-bg: #fdeded;
+  --notice-ok-fg: #0f7a34;
+  --notice-ok-border: #bfe6cd;
+  --reset-confirm-bg: #fdeded;
   color-scheme: light;
 }
 
-/* Dark mode follows the device automatically (no toggle). Tuned by hand for
-   WCAG AA contrast on the dark surfaces. */
+/* Dark palette. Tuned by hand for WCAG AA contrast on the dark surfaces.
+   The explicit System / Light / Dark toggle (Settings → Appearance) writes a
+   data-theme attribute on <html>; the light defaults live in :root above, so
+   the dark palette must apply in TWO cases:
+     1. system prefers dark AND no explicit choice was made, and
+     2. the user explicitly chose Dark.
+   CSS has no mixins, so the identical token block is duplicated for those two
+   selectors below (accepted). Every component rule stays unconditional and
+   simply reads these tokens — this is the only dark-conditioned CSS left. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
     --bg: #131419;
     --bg-sub: #1e2027;
     --surface: #1a1c22;
@@ -44,33 +63,47 @@
     --danger: #f2915a;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 22px -8px rgba(0, 0, 0, 0.55);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    /* Semantic tokens, brightened so they read on dark surfaces. */
+    --stat-been: #4ade80;
+    --stat-air: #56b6f0;
+    --stat-want: #f0a35a;
+    --stat-fav: #f472b6;
+    --notice-err-border: #4a2418;
+    --notice-err-bg: #2a1712;
+    --notice-ok-fg: #4ade80;
+    --notice-ok-border: #1f3a29;
+    --reset-confirm-bg: color-mix(in srgb, var(--danger) 14%, transparent);
     color-scheme: dark;
   }
-  /* Semantic accent colours, brightened so they read on dark surfaces.
-     Doubled-up class so these beat the later light-mode .ss-* rules. */
-  .ss-num.ss-been {
-    color: #4ade80;
-  }
-  .ss-num.ss-air {
-    color: #56b6f0;
-  }
-  .ss-num.ss-want {
-    color: #f0a35a;
-  }
-  .ss-num.ss-fav {
-    color: #f472b6;
-  }
-  /* Import/scan notices: dark surfaces with legible text (WCAG AA). */
-  .notice-err {
-    color: #f2915a;
-    border-color: #4a2418;
-    background: #2a1712;
-  }
-  .notice-ok {
-    color: #4ade80;
-    border-color: #1f3a29;
-    background: var(--visited-soft);
-  }
+}
+:root[data-theme="dark"] {
+  --bg: #131419;
+  --bg-sub: #1e2027;
+  --surface: #1a1c22;
+  --border: #2c2f38;
+  --border-strong: #3c404b;
+  --text: #eceef3;
+  --muted: #a2a6b2;
+  --primary: #eceef3;
+  --primary-ink: #17181c;
+  --accent: #a5b4fc;
+  --accent-soft: #262a45;
+  --visited: #4ade80;
+  --visited-soft: #16261c;
+  --danger: #f2915a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 22px -8px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  /* Semantic tokens, brightened so they read on dark surfaces. */
+  --stat-been: #4ade80;
+  --stat-air: #56b6f0;
+  --stat-want: #f0a35a;
+  --stat-fav: #f472b6;
+  --notice-err-border: #4a2418;
+  --notice-err-bg: #2a1712;
+  --notice-ok-fg: #4ade80;
+  --notice-ok-border: #1f3a29;
+  --reset-confirm-bg: color-mix(in srgb, var(--danger) 14%, transparent);
+  color-scheme: dark;
 }
 
 * {
@@ -741,16 +774,16 @@ h1.brand {
   margin-left: 5px;
 }
 .ss-been {
-  color: #15803d;
+  color: var(--stat-been);
 }
 .ss-air {
-  color: #0369a1;
+  color: var(--stat-air);
 }
 .ss-want {
-  color: #b45309;
+  color: var(--stat-want);
 }
 .ss-fav {
-  color: #be185d;
+  color: var(--stat-fav);
 }
 .ss-label {
   font-size: 12px;
@@ -1141,12 +1174,12 @@ button.stat-tile:hover .num {
 }
 .notice-err {
   color: var(--danger);
-  border-color: #f3c6c6;
-  background: #fdeded;
+  border-color: var(--notice-err-border);
+  background: var(--notice-err-bg);
 }
 .notice-ok {
-  color: #0f7a34;
-  border-color: #bfe6cd;
+  color: var(--notice-ok-fg);
+  border-color: var(--notice-ok-border);
   background: var(--visited-soft);
 }
 /* Backup reminder: a gentle, dismissible nudge at the top of Your data. */
@@ -1211,12 +1244,7 @@ button.stat-tile:hover .num {
   padding: 14px;
   border: 1px solid var(--danger);
   border-radius: var(--radius);
-  background: #fdeded;
-}
-@media (prefers-color-scheme: dark) {
-  .reset-confirm {
-    background: color-mix(in srgb, var(--danger) 14%, transparent);
-  }
+  background: var(--reset-confirm-bg);
 }
 .reset-warn {
   margin: 0 0 12px;

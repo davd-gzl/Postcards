@@ -5,7 +5,7 @@ import { useVisits } from "../../lib/store/useVisits";
 import { useTrips } from "../../lib/store/useTrips";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
-import { useSettings } from "../../lib/store/useSettings";
+import { useSettings, type ThemeMode } from "../../lib/store/useSettings";
 import { usePrefersReducedMotion } from "../../lib/hooks/usePrefersReducedMotion";
 import { useOnlineStatus } from "../../lib/hooks/useOnlineStatus";
 import { countryFlag, formatInt } from "../../lib/format/format";
@@ -39,6 +39,14 @@ const BASEMAP_LABEL: Record<Basemap, string> = {
   osm: "Detailed map",
   detail: "Offline streets",
 };
+
+// Resolve the effective dark boolean for the basemap from the explicit theme
+// choice: forced dark/light win outright; "system" follows the device query.
+function resolveDark(theme: ThemeMode): boolean {
+  if (theme === "dark") return true;
+  if (theme === "light") return false;
+  return typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches;
+}
 
 // localStorage may throw (private mode); loading then parses null → the default,
 // and saving is silently skipped.
@@ -86,6 +94,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // only (zero outbound requests), overriding whatever detailed basemap is saved.
   const onlineMap = useSettings((s) => s.onlineMap);
   const maxMarkers = useSettings((s) => s.maxMarkers);
+  // The explicit colour-theme choice (System / Light / Dark) drives the
+  // basemap's dark palette too, so it never desyncs from the UI.
+  const theme = useSettings((s) => s.theme);
 
   // gazGen invalidates city snapshots when the full 135k-city set streams in —
   // the singleton mutates in place, so `ref` alone never re-fires these memos.
@@ -218,9 +229,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
       v === "cities" || v === "monuments" || v === "airports" ? v : "all",
     ),
   );
-  const [dark, setDark] = useState(() =>
-    typeof matchMedia === "undefined" ? false : matchMedia("(prefers-color-scheme: dark)").matches,
-  );
+  const [dark, setDark] = useState(() => resolveDark(theme));
 
   // Offer the offline street basemap only when a PMTiles pack is actually
   // installed (via the device-global Offline Map Store). None is bundled.
@@ -239,14 +248,20 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     };
   }, []);
 
-  // Follow the device light/dark theme so the offline basemap matches the UI.
+  // Keep the offline basemap's palette in sync with the resolved theme. A forced
+  // Light/Dark choice ignores the device query; under "system" we follow
+  // prefers-color-scheme live. Re-resolves whenever the theme choice changes.
   useEffect(() => {
-    if (typeof matchMedia === "undefined") return;
+    setDark(resolveDark(theme));
+    if (typeof matchMedia === "undefined" || theme !== "system") return;
     const mq = matchMedia("(prefers-color-scheme: dark)");
-    const onChange = (e: MediaQueryListEvent) => setDark(e.matches);
+    const onChange = (e: MediaQueryListEvent) => {
+      if (theme !== "system") return; // forced themes ignore the device query
+      setDark(e.matches);
+    };
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, []);
+  }, [theme]);
 
   // Only the detailed map (and, if a device-global streets pack is installed, the
   // offline streets map) are user choices now — no bland outline map to cycle to.
