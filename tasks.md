@@ -56,7 +56,8 @@ mode, so it's high-value and not much extra surface. Recommendation:
 ## Stats
 
 - [x] Show **percentage** of countries done, not only "3/50" (added to the compact strip)
-- [ ] Make the Stats page much more ergonomic & UX-friendly → **launch a workflow** for this LAST (after everything above)
+- [x] Make the Stats page much more ergonomic & UX-friendly — DONE via workflow (coverage hero,
+      continent constellation, KPI strip, unified cards, by-country disclosure). 220 tests green.
 
 ## Moments
 
@@ -99,11 +100,13 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 ## Map data loading (structure + preprocessing)
 
-- [ ] Speed up the MAP's data load with better data structures + preprocessing:
-      spatial index for the 135k-row gazetteer viewport query (replace the linear
-      scan), memoise/low-res-seed the 756KB country geometry + kill the first-load
-      double-fetch, consider a compact/binary preprocessed format at build time.
-      (viewport.ts, lib/reference/*, MapView.tsx geometry, a build preprocess step)
+- [x] **P1 spatial grid index** for the gazetteer viewport query — replaces the per-pan
+      linear scan of 135k rows with a 1°×1° grid (city/region zoom now visits a few cells).
+- [x] **P2a prime geometry early** — getCountries() fetch starts at map mount, overlapping init.
+- [ ] Follow-ups from the audit (larger/build-step): P2b 110m land seed for instant coastline,
+      P2c geometry in a worker, P3 don't gate first paint on all reference JSON, P4 columnar
+      binary gazetteer (build step), P5 zero-copy worker handoff, P6 kill duplicate downloads,
+      P7 pre-simplify country geometry. (Full ranked plan captured from the audit.)
 
 ## Workflows
 
