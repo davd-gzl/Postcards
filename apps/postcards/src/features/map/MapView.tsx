@@ -79,11 +79,6 @@ const EMOJI_FONT = '"Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", s
 const PILL_FONT = '600 21px "Inter Variable", system-ui, sans-serif';
 
 /**
- * A compact city marker: just the country flag in a small pill — no population
- * label (that's shown on tap, in a popup). Favourites get a gold ring. Drawn at
- * 2× for crispness.
- */
-/**
  * Visited-city marker: the bare flag emoji — no box, no halo, just the flag.
  * Favourites get a small gold star at the corner.
  */

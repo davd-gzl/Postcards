@@ -3,6 +3,7 @@ import { MAX_PHOTOS_PER_VISIT, normalizeVisitPhotos, placeKey } from "../schema/
 import type { Photo, PlaceRef, Visit } from "../schema/models";
 import { sanitizeText } from "../schema/sanitize";
 import * as db from "../db/visitsDb";
+import { uuid } from "./uuid";
 
 /**
  * Pure dedupe/upsert: at most one visit per (kind, id) (FR-015).
@@ -47,16 +48,6 @@ function todayISO(): string {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
-function uuid(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  // Fallback (non-secure) — only used where crypto is unavailable.
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = Math.floor(Math.random() * 16);
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
 }
 
 interface VisitsState {

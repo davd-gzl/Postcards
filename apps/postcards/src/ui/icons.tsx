@@ -55,15 +55,6 @@ export function RouteIcon() {
   );
 }
 
-export function FlagIcon() {
-  return (
-    <svg {...common}>
-      <path d="M5 21V4" />
-      <path d="M5 4c4-2 8 2 14 0v9c-6 2-10-2-14 0" />
-    </svg>
-  );
-}
-
 export function BookIcon() {
   return (
     <svg {...common}>
@@ -89,27 +80,6 @@ export function InfoIcon() {
       <circle cx="12" cy="12" r="9" />
       <path d="M12 11v5" />
       <circle cx="12" cy="7.6" r="0.9" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-/** Overflow "More" navigation entry: three dots. */
-export function MoreIcon() {
-  return (
-    <svg {...common}>
-      <circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none" />
-      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
-      <circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-/** A four-point spark: the Experiences tab (world moments, not places). */
-export function SparkIcon() {
-  return (
-    <svg {...common}>
-      <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
-      <path d="M12 8.5 13.6 12 12 15.5 10.4 12 12 8.5Z" />
     </svg>
   );
 }

@@ -10,7 +10,7 @@ import { CityLine } from "../../ui/CityLine";
 import { PlacePicker } from "./PlacePicker";
 import { BoardingPassImport } from "./BoardingPassImport";
 import { travelTotals, tripDistanceKm } from "./distance";
-import { MODE_GLYPH } from "./modes";
+import { MODE_GLYPH, MODE_LABEL, MODE_ORDER } from "./modes";
 import {
   MONTH_NAMES,
   periodLabel,
@@ -21,14 +21,7 @@ import {
   type YearFilter,
 } from "./period";
 
-const MODES: { value: TravelMode; label: string }[] = [
-  { value: "flight", label: "Flight" },
-  { value: "train", label: "Train" },
-  { value: "bus", label: "Bus" },
-  { value: "ferry", label: "Ferry" },
-  { value: "car", label: "Car" },
-  { value: "other", label: "Other" },
-];
+const MODES = MODE_ORDER.map((value) => ({ value, label: MODE_LABEL[value] }));
 
 /** Compact endpoint label: the IATA code for airports (names are long), else the place name. */
 function endpointLabel(p: PlaceRef): string {
