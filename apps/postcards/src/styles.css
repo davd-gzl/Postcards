@@ -370,6 +370,52 @@ h1.brand {
   box-shadow: var(--shadow-sm);
   pointer-events: auto;
 }
+/* "Back online" prompt on the map — only shown after a fallback, never auto-acts. */
+.map-reconnect {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 8px 5px 14px;
+  box-shadow: var(--shadow-sm);
+}
+/* Online/Offline chip in the topbar (non-interactive status). */
+.conn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.conn-status .dot {
+  font-size: 9px;
+  line-height: 1;
+}
+.conn-online .dot {
+  color: #16a34a;
+}
+.conn-offline {
+  color: var(--muted);
+}
+.conn-offline .dot {
+  color: #d97706;
+}
+@media (max-width: 560px) {
+  .conn-status .conn-label {
+    display: none;
+  }
+}
 /* City tap popup (MapLibre) — themed to match the app. */
 .maplibregl-popup-content {
   background: var(--surface);
