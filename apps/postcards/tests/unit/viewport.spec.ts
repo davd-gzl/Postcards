@@ -54,4 +54,35 @@ describe("citiesInView", () => {
     const europe: Bounds = { west: -10, south: 40, east: 20, north: 60 };
     expect(citiesInView(presorted, europe, 1, true).map((c) => c.id)).toEqual(["london"]);
   });
+
+  it("the spatial-grid path matches a brute-force scan (many cities, zoomed in)", () => {
+    // A deterministic field of cities; no Math.random (unavailable in this env).
+    const many: City[] = [];
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+    for (let i = 0; i < 4000; i++) {
+      many.push(city(`c${i}`, rnd() * 170 - 85, rnd() * 360 - 180, Math.floor(rnd() * 1e6)));
+    }
+    const brute = (b: Bounds, limit: number) =>
+      many
+        .filter(
+          (c) =>
+            c.lat >= b.south &&
+            c.lat <= b.north &&
+            (b.west <= b.east
+              ? c.lon >= b.west && c.lon <= b.east
+              : c.lon >= b.west || c.lon <= b.east),
+        )
+        .sort((x, y) => (y.population ?? 0) - (x.population ?? 0))
+        .slice(0, limit)
+        .map((c) => c.id);
+    // A zoomed-in window (few cells → grid path) must agree with brute force.
+    for (const b of [
+      { west: 2, south: 40, east: 12, north: 50 } as Bounds,
+      { west: -100, south: 20, east: -80, north: 40 } as Bounds,
+      { west: 175, south: -10, east: -175, north: 10 } as Bounds, // antimeridian
+    ]) {
+      expect(new Set(citiesInView(many, b, 20).map((c) => c.id))).toEqual(new Set(brute(b, 20)));
+    }
+  });
 });
