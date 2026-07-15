@@ -22,7 +22,11 @@ export const FORMAT = "postcards" as const;
 // Files stay structurally back-compatible (v4 files import unchanged), but the bump
 // means an older build opening a v5 file shows the graceful "update the app" prompt
 // rather than a cryptic strict-parse error on the unknown `stories` key.
-export const SCHEMA_VERSION = 5;
+// v6 adds device sync (spec 013): an optional `updatedAt` stamp on every user
+// record (the newest-wins merge comparator) and an optional top-level `tombstones`
+// array (deletion markers). Both are additive & optional, so v1–v5 files import
+// unchanged; an older build opening a v6 sync file gets the graceful "update" prompt.
+export const SCHEMA_VERSION = 6;
 
 /** Most photos one place's gallery may hold (bounds the inline portable file). */
 export const MAX_PHOTOS_PER_VISIT = 48;
@@ -49,4 +53,14 @@ export function normalizeVisitPhotos(v: Visit): Visit {
   // Only carry `photos` when there is at least one — keeps photo-less records and
   // exports clean, and the rest of the app reads `v.photos ?? []`.
   return photos.length ? { ...rest, photos } : rest;
+}
+
+/**
+ * Backfill `updatedAt` from `addedAt` for records made before the field existed
+ * (spec 013 migration). Idempotent and non-mutating — a record that already has
+ * `updatedAt` is returned untouched. Run on load and on any bulk set, so the
+ * newest-wins merge always has a timestamp to compare while `addedAt` stays put.
+ */
+export function backfillUpdatedAt<T extends { addedAt: string; updatedAt?: string }>(r: T): T {
+  return r.updatedAt ? r : { ...r, updatedAt: r.addedAt };
 }

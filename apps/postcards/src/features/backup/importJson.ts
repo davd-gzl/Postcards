@@ -5,12 +5,21 @@ import {
   PostcardsFileSchema,
   SCHEMA_VERSION,
   type Story,
+  type SyncTombstone,
   type Trip,
   type Visit,
 } from "../../lib/schema/models";
 
 export type ImportResult =
-  | { ok: true; visits: Visit[]; trips: Trip[]; stories: Story[]; warnings: string[] }
+  | {
+      ok: true;
+      visits: Visit[];
+      trips: Trip[];
+      stories: Story[];
+      /** Deletion markers carried by a sync file (empty for a plain backup). */
+      tombstones: SyncTombstone[];
+      warnings: string[];
+    }
   | { ok: false; error: string };
 
 /** Reject absurdly large inputs before parsing (main-thread DoS guard). Generous
@@ -97,9 +106,18 @@ export function importFile(text: string): ImportResult {
   const storyById = new Map<string, Story>();
   for (const s of parsed.data.stories) storyById.set(s.storyId, s);
   const stories = [...storyById.values()];
+  // Deletion markers (device sync). Absent for a plain backup; when present, keep
+  // the newest deletedAt per (kind,id) so a hand-merged file can't hold stale ones.
+  const tombById = new Map<string, SyncTombstone>();
+  for (const t of parsed.data.tombstones ?? []) {
+    const key = `${t.kind}:${t.id}`;
+    const cur = tombById.get(key);
+    if (!cur || t.deletedAt > cur.deletedAt) tombById.set(key, t);
+  }
+  const tombstones = [...tombById.values()];
   const warnings: string[] = [];
   if (visits.length !== parsed.data.visits.length) warnings.push("Merged duplicate places in the file.");
   if (trips.length !== parsed.data.trips.length) warnings.push("Merged duplicate trips in the file.");
   if (stories.length !== parsed.data.stories.length) warnings.push("Merged duplicate stories in the file.");
-  return { ok: true, visits, trips, stories, warnings };
+  return { ok: true, visits, trips, stories, tombstones, warnings };
 }

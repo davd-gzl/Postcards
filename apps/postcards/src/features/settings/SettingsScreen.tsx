@@ -7,6 +7,7 @@ import { OFFLINE_REGIONS, REGION_MAX_TILES, estimateRegion, type OfflineRegion }
 import { ScopeToggle } from "../../ui/ScopeToggle";
 import { ThemeToggle } from "../../ui/ThemeToggle";
 import { Backup } from "../backup/Backup";
+import { SyncSection } from "./SyncSection";
 import { Attribution } from "../../ui/Attribution";
 import { formatInt } from "../../lib/format/format";
 
@@ -281,6 +282,8 @@ export function SettingsScreen() {
           🌍 Publish mode
         </button>
       </section>
+
+      <SyncSection />
 
       <section className="settings-section">
         <Backup />

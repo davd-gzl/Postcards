@@ -1,0 +1,221 @@
+import { describe, it, expect } from "vitest";
+import { importFile } from "../../src/features/backup/importJson";
+import { serializeFile } from "../../src/features/backup/exportJson";
+import { backfillUpdatedAt } from "../../src/lib/schema/helpers";
+import type { SyncTombstone, Visit } from "../../src/lib/schema/models";
+import {
+  syncOnce,
+  emptySnapshots,
+  SyncConflictError,
+  type StoreSnapshots,
+  type SyncRemote,
+} from "../../src/lib/sync/engine";
+
+// End-to-end device-sync tests through the REAL portable-file codec (export +
+// validated/sanitized import), against an in-memory git remote. This exercises the
+// pull → merge → push cycle, tombstones and the push-race retry — no network.
+
+/** A minimal git remote in memory: `version` is the opaque token, bumped per push;
+ *  a push whose expectedVersion is stale throws, exactly like a non-fast-forward. */
+class MemoryRemote implements SyncRemote {
+  readonly name = "memory";
+  content: string | null = null;
+  version = 0;
+  pushes = 0;
+
+  private token(): string | null {
+    return this.content == null ? null : String(this.version);
+  }
+
+  async pull() {
+    return { content: this.content, version: this.token() };
+  }
+
+  async push(content: string, _message: string, expectedVersion: string | null): Promise<void> {
+    if (this.token() !== expectedVersion) throw new SyncConflictError();
+    this.content = content;
+    this.version += 1;
+    this.pushes += 1;
+  }
+}
+
+const part = (tombs: SyncTombstone[], kind: SyncTombstone["kind"]) =>
+  tombs.filter((t) => t.kind === kind).map(({ id, deletedAt }) => ({ id, deletedAt }));
+
+function parse(text: string): StoreSnapshots {
+  const r = importFile(text);
+  if (!r.ok) throw new Error(r.error);
+  return {
+    visits: { records: r.visits.map(backfillUpdatedAt), tombstones: part(r.tombstones, "visit") },
+    trips: { records: r.trips.map(backfillUpdatedAt), tombstones: part(r.tombstones, "trip") },
+    stories: { records: r.stories.map(backfillUpdatedAt), tombstones: part(r.tombstones, "story") },
+  };
+}
+
+function serialize(m: StoreSnapshots): string {
+  const tombs: SyncTombstone[] = [
+    ...m.visits.tombstones.map((t) => ({ kind: "visit" as const, id: t.id, deletedAt: t.deletedAt })),
+    ...m.trips.tombstones.map((t) => ({ kind: "trip" as const, id: t.id, deletedAt: t.deletedAt })),
+    ...m.stories.tombstones.map((t) => ({ kind: "story" as const, id: t.id, deletedAt: t.deletedAt })),
+  ];
+  return serializeFile(m.visits.records, m.trips.records, m.stories.records, new Date(), tombs);
+}
+
+// A fixed "now" AFTER every fixture timestamp, so the 90-day tombstone-retirement
+// horizon is deterministic (independent of the wall clock the tests run on).
+const NOW = "2026-03-15T00:00:00.000Z";
+
+/** Run one sync for a device holding `local`, capturing what it persists. */
+async function sync(local: StoreSnapshots, remote: MemoryRemote) {
+  let persisted: StoreSnapshots = emptySnapshots();
+  const result = await syncOnce({
+    localSnapshots: local,
+    remote,
+    parse,
+    serialize,
+    persist: async (m) => {
+      persisted = m;
+    },
+    now: () => new Date(NOW),
+  });
+  return { result, persisted };
+}
+
+/** A distinct visit — distinct place so the import's one-per-place rule never merges two. */
+function visit(id: string, updatedAt: string, note: string | null = null): Visit {
+  return {
+    visitId: id,
+    place: { kind: "city", id: `${id}-place`, name: `Place ${id}`, countryId: "FR" },
+    status: "visited",
+    favorite: false,
+    date: null,
+    note,
+    addedAt: "2026-01-01T00:00:00.000Z",
+    updatedAt,
+  };
+}
+
+const visits = (...v: Visit[]): StoreSnapshots => ({
+  visits: { records: v, tombstones: [] },
+  trips: { records: [], tombstones: [] },
+  stories: { records: [], tombstones: [] },
+});
+
+/** Order-independent identity of a converged state (sorted records + tombstones). */
+function canonical(s: StoreSnapshots): string {
+  const ids = s.visits.records.map((v) => v.visitId).sort();
+  return JSON.stringify({
+    visitIds: ids,
+    records: [...s.visits.records].sort((a, b) => a.visitId.localeCompare(b.visitId)),
+    tombstones: [...s.visits.tombstones].sort((a, b) => a.id.localeCompare(b.id)),
+  });
+}
+
+describe("syncOnce (git-mode device sync)", () => {
+  it("two devices' divergent edits converge after a round-trip (SC-001/SC-002)", async () => {
+    const remote = new MemoryRemote();
+    const a1 = await sync(visits(visit("a", "2026-02-01T00:00:00.000Z")), remote); // seeds remote
+    expect(a1.result.createdRemote).toBe(true);
+
+    const b1 = await sync(visits(visit("b", "2026-02-02T00:00:00.000Z")), remote);
+    // B pulled A's record and added its own.
+    expect(b1.persisted.visits.records.map((v) => v.visitId).sort()).toEqual(["a", "b"]);
+
+    // A re-syncs (still only knows "a") and now sees "b" too.
+    const a2 = await sync(visits(visit("a", "2026-02-01T00:00:00.000Z")), remote);
+    expect(a2.persisted.visits.records.map((v) => v.visitId).sort()).toEqual(["a", "b"]);
+
+    // Both devices reached the identical converged state.
+    expect(canonical(a2.persisted)).toBe(canonical(b1.persisted));
+  });
+
+  it("keeps the newer edit when the same record changed on both devices (FR-005)", async () => {
+    const remote = new MemoryRemote();
+    await sync(visits(visit("c", "2026-01-01T00:00:00.000Z", "orig")), remote); // seed
+
+    // A edits at T1, B edits the same record at the later T2.
+    await sync(visits(visit("c", "2026-02-01T00:00:00.000Z", "from A")), remote);
+    const b = await sync(visits(visit("c", "2026-03-01T00:00:00.000Z", "from B")), remote);
+    // Re-sync A: it must converge to the newest (B's) version.
+    const a = await sync(visits(visit("c", "2026-02-01T00:00:00.000Z", "from A")), remote);
+
+    expect(a.persisted.visits.records[0]!.note).toBe("from B");
+    expect(b.persisted.visits.records[0]!.note).toBe("from B");
+  });
+
+  it("a deletion propagates and stays deleted across further syncs (SC-004)", async () => {
+    const remote = new MemoryRemote();
+    await sync(visits(visit("x", "2026-01-01T00:00:00.000Z")), remote); // seed the record
+    const b = await sync(visits(visit("x", "2026-01-01T00:00:00.000Z")), remote); // B has it
+    expect(b.persisted.visits.records.map((v) => v.visitId)).toEqual(["x"]);
+
+    // A deletes it (record gone + tombstone), then syncs.
+    const aDeleted: StoreSnapshots = {
+      visits: { records: [], tombstones: [{ id: "x", deletedAt: "2026-02-01T00:00:00.000Z" }] },
+      trips: { records: [], tombstones: [] },
+      stories: { records: [], tombstones: [] },
+    };
+    await sync(aDeleted, remote);
+
+    // B (still holding the record) syncs → the record is removed.
+    const b2 = await sync(visits(visit("x", "2026-01-01T00:00:00.000Z")), remote);
+    expect(b2.persisted.visits.records).toEqual([]);
+    expect(b2.result.visits.removed).toBe(1);
+
+    // And it does not come back on a second round.
+    const b3 = await sync(b2.persisted, remote);
+    expect(b3.persisted.visits.records).toEqual([]);
+  });
+
+  it("re-syncing already-converged data is a no-op (SC-005): 0 changes, no push", async () => {
+    const remote = new MemoryRemote();
+    const seeded = await sync(visits(visit("n", "2026-01-01T00:00:00.000Z")), remote);
+    const pushesAfterSeed = remote.pushes;
+
+    const again = await sync(seeded.persisted, remote);
+    expect(again.result.total).toEqual({ added: 0, updated: 0, removed: 0 });
+    expect(remote.pushes).toBe(pushesAfterSeed); // nothing to push
+  });
+
+  it("recovers from a push race by re-pulling and re-merging (FR-012)", async () => {
+    // A remote that lets a competitor land once, mid-push, forcing a non-fast-forward.
+    class RacingRemote extends MemoryRemote {
+      raceContent: string | null = null;
+      private raced = false;
+      override async push(content: string, message: string, expected: string | null): Promise<void> {
+        if (!this.raced && this.raceContent != null) {
+          this.raced = true;
+          // The competitor's write lands first...
+          this.content = this.raceContent;
+          this.version += 1;
+          throw new SyncConflictError();
+        }
+        return super.push(content, message, expected);
+      }
+    }
+    const remote = new RacingRemote();
+    await sync(visits(visit("seed", "2026-01-01T00:00:00.000Z")), remote); // seed
+    // Competitor has added record "comp"; it will land during our push.
+    remote.raceContent = serialize(
+      visits(visit("seed", "2026-01-01T00:00:00.000Z"), visit("comp", "2026-01-05T00:00:00.000Z")),
+    );
+
+    const mine = await sync(visits(visit("mine", "2026-01-06T00:00:00.000Z")), remote);
+    // After the retry, our merge includes the seed, the competitor's and our own record.
+    expect(mine.persisted.visits.records.map((v) => v.visitId).sort()).toEqual([
+      "comp",
+      "mine",
+      "seed",
+    ]);
+  });
+
+  it("rejects a malformed pulled file without touching local (SC-007)", async () => {
+    const remote = new MemoryRemote();
+    // Seed the remote with hostile, non-Postcards content.
+    remote.content = "{ not json";
+    remote.version = 1;
+    await expect(sync(visits(visit("safe", "2026-01-01T00:00:00.000Z")), remote)).rejects.toThrow();
+    // The remote was never overwritten (local push never happened).
+    expect(remote.content).toBe("{ not json");
+  });
+});

@@ -6,6 +6,7 @@ import { useVisits } from "../../lib/store/useVisits";
 import { useTrips } from "../../lib/store/useTrips";
 import { sortStories, useStories } from "../../lib/store/useStories";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import { backfillUpdatedAt } from "../../lib/schema/helpers";
 import { replaceAllPortable } from "../../lib/db/visitsDb";
 import { toMarkdown } from "./exportMarkdown";
 import { download } from "../../lib/download";
@@ -162,9 +163,11 @@ export function Backup() {
       setMessage({ kind: "err", text: "Import failed while saving; your data is unchanged." });
       return;
     }
-    useVisits.setState({ visits: result.visits });
-    useTrips.setState({ trips: result.trips });
-    useStories.setState({ stories: sortStories(result.stories) });
+    // Backfill `updatedAt` from `addedAt` for records that predate the field, so a
+    // freshly restored session can immediately take part in device sync (spec 013).
+    useVisits.setState({ visits: result.visits.map(backfillUpdatedAt) });
+    useTrips.setState({ trips: result.trips.map(backfillUpdatedAt) });
+    useStories.setState({ stories: sortStories(result.stories.map(backfillUpdatedAt)) });
     setMessage({
       kind: "ok",
       text: `Restored ${result.visits.length} places, ${result.trips.length} trips and ${result.stories.length} stories.`,
