@@ -89,8 +89,8 @@ mode, so it's high-value and not much extra surface. Recommendation:
 - [x] Answer: how to add a non-existing spot today — only via AddPlaceForm, mounted ONLY in the
       global search's "no results" branch (must type an exact zero-match name). Discoverability is poor →
       see UX item below.
-- [ ] Improve add-a-spot discoverability: seed AddPlaceForm from the map (long-press/right-click "+ Add here"),
-      a keyboard "+ Add place" control, and an add-row on search near-misses. (AddPlaceForm, MapView, MapScreen, PlaceSearch)
+- [x] Improve add-a-spot discoverability: map long-press/right-click "+ Add here" (seeds coords),
+      keyboard "+ Add place" control, search near-miss add-row. (AddPlaceForm, MapView, MapScreen, PlaceSearch)
 
 ## Documentation
 
