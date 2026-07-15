@@ -2863,6 +2863,31 @@ button.brand:focus-visible {
   color: var(--accent);
 }
 
+/* Moments grouped by home: a continent section, then a flag'd country sub-header,
+   then the ordinary moment rows. Headings are quiet so the rows stay the focus. */
+.moment-continent {
+  margin-top: 14px;
+}
+.moment-continent-head {
+  margin: 0 0 2px;
+  font-size: 15px;
+}
+.moment-country-group {
+  margin-top: 6px;
+}
+.moment-country {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.moment-country .flag {
+  font-size: 15px;
+}
+
 /* Settings: a simple checkbox row. */
 .toggle-row {
   display: flex;
