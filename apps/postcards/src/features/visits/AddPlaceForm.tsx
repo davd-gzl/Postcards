@@ -10,12 +10,26 @@ import { sanitizeText } from "../../lib/schema/sanitize";
  * clearly marked "your own place" (Constitution I: the app never invents
  * reference facts; users may record their own).
  */
-export function AddPlaceForm({ initialName, onDone }: { initialName: string; onDone: () => void }) {
+export function AddPlaceForm({
+  initialName,
+  initialCoords,
+  initialCountry,
+  onDone,
+}: {
+  initialName: string;
+  /** Prefill the coordinates (e.g. from a map long-press) so nothing is typed. */
+  initialCoords?: { lat: number; lon: number };
+  /** Prefill the country select. */
+  initialCountry?: string;
+  onDone: () => void;
+}) {
   const ref = useMemo(() => getReferenceData(), []);
   const addVisit = useVisits((s) => s.addVisit);
   const [name, setName] = useState(initialName);
-  const [cc, setCc] = useState("");
-  const [coords, setCoords] = useState("");
+  const [cc, setCc] = useState(initialCountry ?? "");
+  const [coords, setCoords] = useState(
+    initialCoords ? `${initialCoords.lat.toFixed(5)}, ${initialCoords.lon.toFixed(5)}` : "",
+  );
 
   const parsed = useMemo(() => {
     const m = /^\s*(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(coords);

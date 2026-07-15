@@ -552,6 +552,7 @@ export function MapView({
   showCountries = false,
   maxMarkers = 250,
   onBaseUnavailable,
+  onAddHere,
 }: {
   /** Which marker categories are shown (a "mode" switcher over the map). */
   mode?: MapMode;
@@ -574,6 +575,9 @@ export function MapView({
   /** Called once when the online (OSM) base can't load its tiles, so the caller
    *  can fall back to the always-available offline base. */
   onBaseUnavailable?: () => void;
+  /** Right-click / long-press a blank spot on the map → add your own place there
+   *  (the caller opens the add form seeded with these coordinates). */
+  onAddHere?: (c: { lon: number; lat: number }) => void;
 }) {
   const ref = useMemo(() => getReferenceData(), []);
   const gazGen = useGazetteerGeneration();
@@ -596,6 +600,8 @@ export function MapView({
   reducedRef.current = reducedMotion;
   const onBaseUnavailableRef = useRef(onBaseUnavailable);
   onBaseUnavailableRef.current = onBaseUnavailable;
+  const onAddHereRef = useRef(onAddHere);
+  onAddHereRef.current = onAddHere;
   // True while a programmatic camera move is in flight — its moveend must NOT
   // refresh the cities list (the list only follows the user's own map moves).
   const suppressBoundsRef = useRef(false);
@@ -1147,6 +1153,52 @@ export function MapView({
           }
         });
       }
+
+      // Right-click (desktop) or long-press (touch) a blank spot → offer to add
+      // your own place there. A tiny popup confirms first, so an accidental
+      // press does nothing; the button only lifts the coordinate to the caller,
+      // which opens the add form (the map never authors a place itself).
+      const openAddHerePopup = (lngLat: maplibregl.LngLat) => {
+        if (!map || !onAddHereRef.current) return;
+        const el = document.createElement("div");
+        el.className = "map-popup map-addhere";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "mini-btn";
+        btn.textContent = "＋ Add a place here";
+        el.appendChild(btn);
+        const pop = new maplibregl.Popup({ closeButton: true, offset: 12, maxWidth: "220px" })
+          .setLngLat(lngLat)
+          .setDOMContent(el)
+          .addTo(map);
+        btn.onclick = () => {
+          onAddHereRef.current?.({ lon: lngLat.lng, lat: lngLat.lat });
+          pop.remove();
+        };
+      };
+      map.on("contextmenu", (e) => {
+        if (!loadedRef.current) return;
+        openAddHerePopup(e.lngLat);
+      });
+      // Touch long-press: a single stationary finger held ~550ms with no drag.
+      let pressTimer: ReturnType<typeof setTimeout> | undefined;
+      const clearPress = () => {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = undefined;
+        }
+      };
+      map.on("touchstart", (e) => {
+        if (e.points.length !== 1) return clearPress();
+        const at = e.lngLat;
+        clearPress();
+        pressTimer = setTimeout(() => {
+          if (!cancelled && map && loadedRef.current) openAddHerePopup(at);
+        }, 550);
+      });
+      map.on("touchend", clearPress);
+      map.on("touchmove", clearPress);
+      map.on("dragstart", clearPress);
 
       // Tap any place marker → ONE popup (a single dispatcher across all
       // tappable layers — per-layer handlers would fire together when a city
