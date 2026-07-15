@@ -15,7 +15,7 @@ import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { visitedCountryIds } from "../stats/computeStats";
 import { airportPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
-import { prefetchAroundBounds } from "../../lib/offline/tiles";
+import { prefetchAroundBounds, prefetchAroundPoint } from "../../lib/offline/tiles";
 import type { Bounds } from "./viewport";
 import type { City } from "../../lib/reference/types";
 import type { PlaceRef } from "../../lib/schema/models";
@@ -1045,9 +1045,11 @@ export function MapView({
           hasPage: kind === "city" || kind === "heritage",
         });
         suppressBoundsRef.current = true;
+        const tapZoom = Math.max(map.getZoom(), 6.5);
+        if (basemap === "osm") prefetchAroundPoint(anchor.lng, anchor.lat, tapZoom);
         map.easeTo({
           center: anchor,
-          zoom: Math.max(map.getZoom(), 6.5),
+          zoom: tapZoom,
           duration: reducedRef.current ? 0 : 550,
         });
       });
@@ -1138,11 +1140,15 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !focus) return;
     suppressBoundsRef.current = true; // programmatic — the list must not move
+    const targetZoom = Math.max(map.getZoom(), 4.5);
+    // Fetch the destination's tiles DURING the flight — arriving somewhere far
+    // used to mean watching its tiles pop in one by one.
+    if (basemap === "osm") prefetchAroundPoint(focus.lon, focus.lat, targetZoom);
     // easeTo, not flyTo: fly's zoom-out-then-in arc reads as a jarring
     // "dezoom/rezoom" when hopping between nearby places (Lyon → its airport).
     map.easeTo({
       center: [focus.lon, focus.lat],
-      zoom: Math.max(map.getZoom(), 4.5),
+      zoom: targetZoom,
       duration: reducedRef.current ? 0 : 650,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
