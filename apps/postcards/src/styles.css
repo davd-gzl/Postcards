@@ -688,6 +688,12 @@ h1.brand {
   color: var(--muted);
   font-size: 13px;
 }
+.ss-pct {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 13px;
+  margin-left: 5px;
+}
 .ss-been {
   color: #15803d;
 }
@@ -732,7 +738,7 @@ h1.brand {
   padding: 2px 4px;
 }
 .star-btn.star-on {
-  color: #f59e0b;
+  color: #e11d48;
 }
 
 /* Your "postcard" photo: a small thumbnail on a visited row + a tap-to-view lightbox. */
@@ -2383,6 +2389,10 @@ textarea.select {
   }
   .ss-den {
     font-size: 11px;
+  }
+  .ss-pct {
+    font-size: 11px;
+    margin-left: 3px;
   }
   .ss-label {
     font-size: 10.5px;
