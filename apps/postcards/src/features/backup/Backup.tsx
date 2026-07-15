@@ -59,6 +59,10 @@ export function Backup() {
   const stories = useStories((s) => s.stories);
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  // The reset flow asks you to TYPE a word — a click alone can't wipe everything.
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetText, setResetText] = useState("");
+  const RESET_WORD = "RESET";
   const hasData = visits.length > 0 || trips.length > 0 || stories.length > 0;
   // Whether to nudge a backup right now (computed once on open, editable by the
   // export/snooze actions). daysSince is for the wording ("N days" vs "never").
@@ -92,6 +96,25 @@ export function Backup() {
     } catch {
       setMessage({ kind: "err", text: "Couldn't build the places file. Your data is unchanged." });
     }
+  }
+
+  /** Wipe everything on this device — places, trips, stories and their photos —
+   *  in one transaction, then clear it from memory. There is no undo, which is
+   *  why it takes a typed word to get here. */
+  async function resetAll() {
+    try {
+      await replaceAllPortable([], [], []);
+    } catch {
+      setMessage({ kind: "err", text: "Couldn't erase your data — nothing was changed." });
+      return;
+    }
+    useVisits.setState({ visits: [] });
+    useTrips.setState({ trips: [] });
+    useStories.setState({ stories: [] });
+    setResetOpen(false);
+    setResetText("");
+    setReminderDue(false);
+    setMessage({ kind: "ok", text: "All data erased. This device is a clean slate." });
   }
 
   async function onImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -252,6 +275,72 @@ export function Backup() {
         is merged in — it only adds and updates places, never erasing your trips or stories. Files
         are validated and sanitized on import — never executed.
       </p>
+
+      {hasData && (
+        <div className="danger-zone">
+          {!resetOpen ? (
+            <>
+              <button
+                className="btn-danger"
+                type="button"
+                onClick={() => {
+                  setResetText("");
+                  setResetOpen(true);
+                }}
+              >
+                Reset all data
+              </button>
+              <p className="muted small">
+                Erases everything on this device. Export a backup first if you might want it back.
+              </p>
+            </>
+          ) : (
+            <div className="reset-confirm" role="alertdialog" aria-label="Confirm reset all data">
+              <p className="reset-warn">
+                <strong>⚠ This erases everything on this device</strong> — your {visits.length} place
+                {visits.length === 1 ? "" : "s"}, {trips.length} trip{trips.length === 1 ? "" : "s"}{" "}
+                and {stories.length} stor{stories.length === 1 ? "y" : "ies"}, including photos. It
+                can't be undone.
+              </p>
+              <label className="reset-label" htmlFor="reset-confirm-input">
+                Type <code>{RESET_WORD}</code> to confirm.
+              </label>
+              <input
+                id="reset-confirm-input"
+                className="reset-input"
+                type="text"
+                value={resetText}
+                onChange={(e) => setResetText(e.target.value)}
+                autoComplete="off"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-label={`Type ${RESET_WORD} to confirm erasing all data`}
+              />
+              <div className="btn-row">
+                <button
+                  className="btn-danger"
+                  type="button"
+                  disabled={resetText.trim().toUpperCase() !== RESET_WORD}
+                  onClick={() => void resetAll()}
+                >
+                  Erase everything
+                </button>
+                <button
+                  className="btn-ghost"
+                  type="button"
+                  onClick={() => {
+                    setResetOpen(false);
+                    setResetText("");
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }
