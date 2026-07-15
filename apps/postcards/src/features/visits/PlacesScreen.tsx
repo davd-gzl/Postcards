@@ -122,7 +122,7 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
           aria-label={v.favorite ? `Unfavorite ${v.place.name}` : `Favorite ${v.place.name}`}
           onClick={() => void toggleFavorite(v.place)}
         >
-          {v.favorite ? "★" : "☆"}
+          {v.favorite ? "♥" : "♡"}
         </button>
       )}
       {wishlist && (
@@ -270,7 +270,7 @@ export function PlacesScreen() {
     // Favorites earns its spot once you've starred something (it never repaints
     // the Visited tab — that read as the section disappearing).
     ...(favorites.length > 0 || view === "favorites"
-      ? [{ id: "favorites" as const, label: `★ Favorites (${favorites.length})` }]
+      ? [{ id: "favorites" as const, label: `♥ Favorites (${favorites.length})` }]
       : []),
     { id: "wishlist", label: `Wishlist (${wishlist.length})` },
     { id: "monuments", label: "Monuments" },
@@ -393,9 +393,9 @@ export function PlacesScreen() {
           {favorites.length === 0 && (
             <p className="muted empty">
               <span className="empty-emoji" aria-hidden>
-                ★
+                ♥
               </span>
-              No favorites yet. Star a visited place and it lands here.
+              No favorites yet. Tap the heart on a visited place and it lands here.
             </p>
           )}
           <ul className="city-list">

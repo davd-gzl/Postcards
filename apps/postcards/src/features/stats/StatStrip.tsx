@@ -4,7 +4,7 @@ import { useSettings } from "../../lib/store/useSettings";
 import { useUi, type PlacesView } from "../../lib/store/useUi";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { computeCoverage } from "./computeStats";
-import { formatInt } from "../../lib/format/format";
+import { formatInt, formatPercent } from "../../lib/format/format";
 
 /** Compact counter strip. Every counter is a shortcut: tap it to open the
  *  matching Places view (been → visited, want → wishlist, fav → favourites…). */
@@ -28,26 +28,35 @@ export function StatStrip() {
   function Counter({
     num,
     den,
+    pct,
     label,
     cls,
     view,
   }: {
     num: number;
     den?: number;
+    /** Optional share (0..1) shown next to the fraction — e.g. "3/50 · 6%". */
+    pct?: number;
     label: string;
     cls?: string;
     view: PlacesView;
   }) {
+    const aria =
+      pct != null
+        ? `${formatInt(num)} of ${formatInt(den ?? num)} ${label} visited (${formatPercent(pct)}) — open your ${label}`
+        : `Open your ${label}`;
     return (
       <button
         type="button"
         className="ss-item"
         onClick={() => openPlaces(view)}
         title={`Open your ${label}`}
+        aria-label={aria}
       >
         <span className={"ss-num" + (cls ? ` ${cls}` : "")}>
           {formatInt(num)}
           {den != null && <span className="ss-den">/{formatInt(den)}</span>}
+          {pct != null && <span className="ss-pct">{formatPercent(pct)}</span>}
         </span>
         <span className="ss-label">{label}</span>
       </button>
@@ -59,6 +68,7 @@ export function StatStrip() {
       <Counter
         num={stats.cov.countriesVisited}
         den={stats.cov.worldCountryCount}
+        pct={stats.cov.worldPct}
         label="countries"
         view="countries"
       />
