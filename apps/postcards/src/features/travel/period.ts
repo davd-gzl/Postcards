@@ -21,11 +21,16 @@ export type YearFilter = "all" | string;
 /** "all" (whole year) or a 2-digit month string ("01".."12"). */
 export type MonthFilter = "all" | string;
 
+/** Distinct 4-digit years across dated items, newest first. Undated items are ignored. */
+export function distinctYearsDesc(items: { date: string | null }[]): string[] {
+  const set = new Set<string>();
+  for (const it of items) if (it.date) set.add(it.date.slice(0, 4));
+  return [...set].sort((a, b) => b.localeCompare(a));
+}
+
 /** Distinct years present across dated trips, newest first. Undated trips are ignored. */
 export function tripYears(trips: Trip[]): string[] {
-  const set = new Set<string>();
-  for (const t of trips) if (t.date) set.add(t.date.slice(0, 4));
-  return [...set].sort((a, b) => b.localeCompare(a));
+  return distinctYearsDesc(trips);
 }
 
 /** Distinct months ("01".."12") that have a dated trip in the given year, ascending. */

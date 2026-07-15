@@ -2,16 +2,8 @@ import type { Trip, Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
 import { computeCoverage } from "../stats/computeStats";
 import { travelTotals, tripDistanceKm } from "../travel/distance";
+import { MODE_LABEL } from "../travel/modes";
 import { formatDate, formatInt, formatKm, formatPercent } from "../../lib/format/format";
-
-const MODE_LABEL: Record<Trip["mode"], string> = {
-  flight: "Flight",
-  train: "Train",
-  bus: "Bus",
-  ferry: "Ferry",
-  car: "Car",
-  other: "Other",
-};
 
 /**
  * Escape a value for a Markdown table cell so it stays inert when shared:

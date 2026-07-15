@@ -7,11 +7,9 @@ import { useEffect, useRef, type ReactNode } from "react";
  */
 export function MoreButton({
   onMore,
-  className = "mini-btn",
   children,
 }: {
   onMore: () => void;
-  className?: string;
   children: ReactNode;
 }) {
   const timer = useRef<number | null>(null);
@@ -39,7 +37,7 @@ export function MoreButton({
   return (
     <button
       type="button"
-      className={className}
+      className="mini-btn"
       onPointerDown={start}
       onPointerUp={stop}
       onPointerLeave={stop}

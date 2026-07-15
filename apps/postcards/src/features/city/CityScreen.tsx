@@ -235,7 +235,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
           <div className="city-links">
             <a
               className="mini-btn"
-              href={wikipediaUrl(country ? `${name}` : name)}
+              href={wikipediaUrl(name)}
               target="_blank"
               rel="noopener noreferrer"
             >

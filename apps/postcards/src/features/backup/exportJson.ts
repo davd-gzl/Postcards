@@ -11,7 +11,7 @@ import {
 import { getReferenceData } from "../../lib/reference/referenceData";
 
 /** Build the canonical portable file object from the current visits + trips + stories. */
-export function buildFile(
+function buildFile(
   visits: Visit[],
   trips: Trip[] = [],
   stories: Story[] = [],

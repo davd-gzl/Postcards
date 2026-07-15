@@ -8,18 +8,7 @@ import { sortStories, useStories } from "../../lib/store/useStories";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { replaceAllPortable } from "../../lib/db/visitsDb";
 import { toMarkdown } from "./exportMarkdown";
-
-function download(filename: string, text: string, type: string) {
-  const blob = new Blob([text], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  // Revoke after the click has a chance to start the download (revoking
-  // synchronously can cancel it in some browsers).
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
+import { download } from "../../lib/download";
 
 /**
  * Get the file to the user. On the web that's a download; inside the native

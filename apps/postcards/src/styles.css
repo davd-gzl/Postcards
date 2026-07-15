@@ -525,8 +525,7 @@ h1.brand {
    is left goes to the header count and the first rows, not to controls. */
 @container viewlist (max-height: 200px) {
   .list-filter,
-  .list-pager,
-  .cap-note {
+  .list-pager {
     display: none;
   }
   .section-head {
@@ -554,10 +553,7 @@ h1.brand {
   flex: 1;
   min-width: 220px;
 }
-.cap-note {
-  padding: 6px 2px 0;
-  font-size: 12px;
-}.city-list {
+.city-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1338,7 +1334,6 @@ button.stat-tile:hover .num {
   width: 100%;
 }
 .about-foot a,
-.guide-summary a,
 .guide-search a {
   color: var(--accent);
   font-weight: 600;
@@ -1348,29 +1343,12 @@ button.stat-tile:hover .num {
 }
 
 /* Travel guides (Wikivoyage) modal */
-.guide-modal {
-  max-width: 460px;
-  max-height: 86vh;
-  overflow-y: auto;
-}
 .guide-source {
   margin: -6px 0 12px;
 }
 .guide-overview-btn {
   width: 100%;
   margin-bottom: 12px;
-}
-.guide-summary {
-  margin: 0 0 14px;
-  padding: 10px 12px;
-  border-left: 3px solid var(--accent);
-  background: var(--bg-sub);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-.guide-summary p {
-  margin: 0 0 6px;
-  font-size: 14px;
-  line-height: 1.5;
 }
 .guide-group {
   margin-bottom: 12px;
@@ -1410,11 +1388,6 @@ button.stat-tile:hover .num {
   font-weight: 600;
   font-size: 14px;
 }
-.guide-modal .btn {
-  width: 100%;
-  margin-top: 4px;
-}
-
 /* Shortcuts overlay */
 .modal-backdrop {
   position: fixed;
@@ -1776,19 +1749,6 @@ button.stat-tile:hover .num {
   color: var(--accent);
 }
 
-/* Globe↔flat crossfade ghost frame. */
-.map-ghost {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 4;
-  pointer-events: none;
-  opacity: 1;
-  transition: opacity 0.4s ease;
-}
-
 /* Subtle pop when a place flips to visited. */
 @keyframes visit-pop {
   0% { transform: scale(1); }
@@ -2087,9 +2047,6 @@ button.stat-tile:hover .num {
 /* Guide modal on desktop: a wide two-column sheet (overviews | guide links)
    instead of a phone-width box. */
 @media (min-width: 900px) {
-  .guide-modal {
-    max-width: 840px;
-  }
   .guide-body {
     display: grid;
     grid-template-columns: 1.05fr 1fr;
