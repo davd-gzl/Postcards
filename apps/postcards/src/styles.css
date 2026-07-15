@@ -2336,6 +2336,13 @@ h1.brand {
   margin: 0 0 4px;
   font-size: 15px;
 }
+/* Device sync (spec 013): keep the button and the last-synced note on one baseline. */
+.sync-actions {
+  align-items: center;
+}
+.sync-last {
+  align-self: center;
+}
 .region-list {
   list-style: none;
   margin: 8px 0;

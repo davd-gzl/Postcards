@@ -44,6 +44,27 @@ const encodeContent = (text: string): string => {
   return btoa(bin);
 };
 
+const decodeContent = (base64: string): string => {
+  // base64 (GitHub wraps it with newlines) → UTF-8. The reverse of encodeContent.
+  const bin = atob(base64.replace(/\s+/g, ""));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+};
+
+/**
+ * Thrown when a conditional write is rejected because the remote advanced since
+ * the caller last read it (a non-fast-forward). Device sync catches this to
+ * re-pull, re-merge and retry, so the user never resolves a git text conflict by
+ * hand (spec 013, FR-012). A distinct type keeps that "retry" branch unambiguous.
+ */
+export class GitPushConflictError extends Error {
+  constructor(message = "The remote advanced since the last pull.") {
+    super(message);
+    this.name = "GitPushConflictError";
+  }
+}
+
 /**
  * Push to a GitHub repo via the Contents API. Each file is upserted: we look up
  * its current blob SHA (needed to update), then PUT the new content. Sequential
@@ -112,6 +133,62 @@ export class GitHubTarget implements PublishTarget {
         const detail = res.status === 401 || res.status === 403 ? " (check the token's scope)" : "";
         throw new Error(`GitHub write failed for ${file.path} (${res.status})${detail}.`);
       }
+    }
+  }
+
+  /**
+   * PULL for device sync: read a file's current text and its blob SHA (the SHA is
+   * the version token a conditional write later checks). Returns null when the
+   * file doesn't exist yet — a fresh/empty repo, which sync treats as "seed me".
+   * The Contents API returns the content base64-encoded; we decode it here.
+   */
+  async getFile(path: string): Promise<{ content: string; version: string } | null> {
+    const res = await this.fetchFn(
+      `${this.contentsUrl(path)}?ref=${encodeURIComponent(this.cfg.branch)}`,
+      { headers: this.headers() },
+    );
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      const detail = res.status === 401 || res.status === 403 ? " (check the token's scope)" : "";
+      throw new Error(`GitHub read failed for ${path} (${res.status})${detail}.`);
+    }
+    const body = (await res.json()) as { content?: string; encoding?: string; sha?: string };
+    if (!body.sha) return null;
+    const content =
+      body.encoding === "base64" && body.content != null
+        ? decodeContent(body.content)
+        : (body.content ?? "");
+    return { content, version: body.sha };
+  }
+
+  /**
+   * Conditional PUSH for device sync: write `content`, asserting the remote is
+   * still at `expectedVersion` (the blob SHA from the matching getFile; null to
+   * create a new file). If the remote moved on, GitHub answers 409/422 and we
+   * throw GitPushConflictError so sync re-pulls and re-merges (FR-012).
+   */
+  async putFileConditional(
+    path: string,
+    content: string,
+    message: string,
+    expectedVersion: string | null,
+  ): Promise<void> {
+    const res = await this.fetchFn(this.contentsUrl(path), {
+      method: "PUT",
+      headers: { ...this.headers(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        content: encodeContent(content),
+        branch: this.cfg.branch,
+        ...(expectedVersion ? { sha: expectedVersion } : {}),
+      }),
+    });
+    if (res.status === 409 || res.status === 422) {
+      throw new GitPushConflictError(`GitHub rejected the write to ${path} (${res.status}).`);
+    }
+    if (!res.ok) {
+      const detail = res.status === 401 || res.status === 403 ? " (check the token's scope)" : "";
+      throw new Error(`GitHub write failed for ${path} (${res.status})${detail}.`);
     }
   }
 }

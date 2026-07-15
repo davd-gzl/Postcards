@@ -1,9 +1,12 @@
 import { create } from "zustand";
-import { MAX_PHOTOS_PER_VISIT, normalizeVisitPhotos, placeKey } from "../schema/helpers";
+import { backfillUpdatedAt, MAX_PHOTOS_PER_VISIT, normalizeVisitPhotos, placeKey } from "../schema/helpers";
 import type { Photo, PlaceRef, Visit } from "../schema/models";
 import { sanitizeText } from "../schema/sanitize";
 import * as db from "../db/visitsDb";
 import { uuid } from "./uuid";
+
+/** Now, as the ISO stamp written to `updatedAt` on every mutating path (spec 013). */
+const stampNow = () => new Date().toISOString();
 
 /**
  * Pure dedupe/upsert: at most one visit per (kind, id) (FR-015).
@@ -96,8 +99,9 @@ export const useVisits = create<VisitsState>((set, get) => ({
   visits: [],
   loaded: false,
   async load() {
-    // Migrate any legacy single-photo records into the `photos` gallery in memory.
-    const visits = (await db.getAllVisits()).map(normalizeVisitPhotos);
+    // Migrate any legacy single-photo records into the `photos` gallery, and
+    // backfill `updatedAt` from `addedAt` for records made before sync existed.
+    const visits = (await db.getAllVisits()).map(normalizeVisitPhotos).map(backfillUpdatedAt);
     set({ visits, loaded: true });
   },
   async addVisit({ place, date = null, note = null, status = "visited", favorite = false }) {
@@ -113,6 +117,7 @@ export const useVisits = create<VisitsState>((set, get) => ({
       note: note ?? existing?.note ?? null,
       photos: existing?.photos ?? [], // keep the gallery across re-logs/status changes
       addedAt: existing?.addedAt ?? new Date().toISOString(),
+      updatedAt: stampNow(), // addedAt is immutable; updatedAt moves on every write
     };
     set({ visits: dedupeUpsert(get().visits, visit) });
     await db.putVisit(visit);
@@ -121,6 +126,9 @@ export const useVisits = create<VisitsState>((set, get) => ({
   async removeVisit(visitId) {
     set({ visits: get().visits.filter((v) => v.visitId !== visitId) });
     await db.deleteVisit(visitId);
+    // Record a tombstone so the deletion propagates on sync instead of the record
+    // being re-added by a device that still holds it (spec 013, FR-009).
+    await db.putTombstone("visit", visitId, stampNow());
   },
   async toggleVisit(place) {
     const existing = findByPlace(get().visits, place);
@@ -139,7 +147,7 @@ export const useVisits = create<VisitsState>((set, get) => ({
   async toggleFavorite(place) {
     const existing = findByPlace(get().visits, place);
     if (!existing) return;
-    const updated: Visit = { ...existing, favorite: !existing.favorite };
+    const updated: Visit = { ...existing, favorite: !existing.favorite, updatedAt: stampNow() };
     set({ visits: get().visits.map((v) => (v.visitId === updated.visitId ? updated : v)) });
     await db.putVisit(updated);
   },
@@ -153,14 +161,22 @@ export const useVisits = create<VisitsState>((set, get) => ({
     // would make buildFile's self-validation throw and block backup entirely).
     const room = MAX_PHOTOS_PER_VISIT - (existing.photos?.length ?? 0);
     if (room <= 0) return;
-    const updated: Visit = { ...existing, photos: [...(existing.photos ?? []), ...photos.slice(0, room)] };
+    const updated: Visit = {
+      ...existing,
+      photos: [...(existing.photos ?? []), ...photos.slice(0, room)],
+      updatedAt: stampNow(),
+    };
     set({ visits: get().visits.map((v) => (v.visitId === visitId ? updated : v)) });
     await db.putVisit(updated);
   },
   async removePhoto(visitId, index) {
     const existing = get().visits.find((v) => v.visitId === visitId);
     if (!existing?.photos) return;
-    const updated: Visit = { ...existing, photos: existing.photos.filter((_, i) => i !== index) };
+    const updated: Visit = {
+      ...existing,
+      photos: existing.photos.filter((_, i) => i !== index),
+      updatedAt: stampNow(),
+    };
     set({ visits: get().visits.map((v) => (v.visitId === visitId ? updated : v)) });
     await db.putVisit(updated);
   },
@@ -170,7 +186,7 @@ export const useVisits = create<VisitsState>((set, get) => ({
     const photos = existing.photos.map((p, i) =>
       i === index ? { ...p, caption: caption?.trim() ? caption.trim() : null } : p,
     );
-    const updated: Visit = { ...existing, photos };
+    const updated: Visit = { ...existing, photos, updatedAt: stampNow() };
     set({ visits: get().visits.map((v) => (v.visitId === visitId ? updated : v)) });
     await db.putVisit(updated);
   },
@@ -185,18 +201,24 @@ export const useVisits = create<VisitsState>((set, get) => ({
       ...(details.note !== undefined
         ? { note: details.note?.trim() ? sanitizeText(details.note, 2000) : null }
         : {}),
+      updatedAt: stampNow(),
     };
     set({ visits: get().visits.map((v) => (v.visitId === visitId ? updated : v)) });
     await db.putVisit(updated);
   },
   async restoreVisit(visit) {
-    const exists = get().visits.some((v) => v.visitId === visit.visitId);
+    // Undo of a delete/photo-remove: bump `updatedAt` so the revived record wins
+    // over its own tombstone on the next merge (an edit newer than a delete
+    // revives), and clear that tombstone so the restore is clean.
+    const restored: Visit = { ...visit, updatedAt: stampNow() };
+    const exists = get().visits.some((v) => v.visitId === restored.visitId);
     set({
       visits: exists
-        ? get().visits.map((v) => (v.visitId === visit.visitId ? visit : v))
-        : [...get().visits, visit],
+        ? get().visits.map((v) => (v.visitId === restored.visitId ? restored : v))
+        : [...get().visits, restored],
     });
-    await db.putVisit(visit);
+    await db.putVisit(restored);
+    await db.deleteTombstone("visit", restored.visitId);
   },
   async mergeVisits(incoming) {
     const byKey = new Map(get().visits.map((v) => [placeKey(v.place), v]));
@@ -212,9 +234,11 @@ export const useVisits = create<VisitsState>((set, get) => ({
           status: item.status,
           favorite: item.favorite ?? existing.favorite,
           date: item.date ?? existing.date,
+          updatedAt: stampNow(),
         });
         updated++;
       } else {
+        const at = new Date().toISOString();
         byKey.set(key, {
           visitId: uuid(),
           place: item.place,
@@ -223,7 +247,8 @@ export const useVisits = create<VisitsState>((set, get) => ({
           date: item.date ?? null,
           note: null,
           photos: [],
-          addedAt: new Date().toISOString(),
+          addedAt: at,
+          updatedAt: at,
         });
         added++;
       }
@@ -234,7 +259,10 @@ export const useVisits = create<VisitsState>((set, get) => ({
     return { added, updated };
   },
   async setAll(visits) {
-    const normalized = visits.map(normalizeVisitPhotos);
+    // Bulk load (restore/import): normalize photos and backfill `updatedAt` from
+    // `addedAt` for records that predate the field; never stamp "now" here, so an
+    // imported old record keeps its real age for newest-wins.
+    const normalized = visits.map(normalizeVisitPhotos).map(backfillUpdatedAt);
     set({ visits: normalized });
     await db.replaceAllVisits(normalized);
   },

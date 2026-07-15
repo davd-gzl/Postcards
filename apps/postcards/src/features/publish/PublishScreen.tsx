@@ -9,6 +9,7 @@ import { buildJourney, type JourneyInput, type PublishedJourney } from "../../li
 import { renderReaderHtml } from "../../lib/publish/renderReader";
 import { encryptJson } from "../../lib/publish/encrypt";
 import { GitHubTarget } from "../../lib/publish/gitTarget";
+import { GitHubConnectorFields, type GitHubConnectorValue } from "../../ui/GitHubConnectorFields";
 import { HOSTING_README } from "../../lib/publish/hosting";
 import { coordsOf } from "../travel/distance";
 import { download } from "../../lib/download";
@@ -64,10 +65,12 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
   // GitHub connector — one optional target. Token is kept ONLY in memory here
   // (React state) and is never written into the exported bundle.
   const [ghOpen, setGhOpen] = useState(false);
-  const [ghOwner, setGhOwner] = useState("");
-  const [ghRepo, setGhRepo] = useState("");
-  const [ghBranch, setGhBranch] = useState("main");
-  const [ghToken, setGhToken] = useState("");
+  const [gh, setGh] = useState<GitHubConnectorValue>({
+    owner: "",
+    repo: "",
+    branch: "main",
+    token: "",
+  });
 
   // Ordered trips (newest first) for the "one trip" picker.
   const tripOptions = useMemo(
@@ -120,7 +123,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
 
   async function onPushGitHub() {
     if (!canExport) return;
-    if (!ghOwner.trim() || !ghRepo.trim() || !ghBranch.trim() || !ghToken.trim()) {
+    if (!gh.owner.trim() || !gh.repo.trim() || !gh.branch.trim() || !gh.token.trim()) {
       showToast("Fill in owner, repo, branch and a token to push to GitHub.");
       return;
     }
@@ -128,10 +131,10 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
     try {
       const html = await buildHtml();
       const target = new GitHubTarget({
-        owner: ghOwner.trim(),
-        repo: ghRepo.trim(),
-        branch: ghBranch.trim(),
-        token: ghToken.trim(),
+        owner: gh.owner.trim(),
+        repo: gh.repo.trim(),
+        branch: gh.branch.trim(),
+        token: gh.token.trim(),
       });
       await target.putFiles(
         [
@@ -141,7 +144,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
         ],
         `Publish "${title.trim()}" via Postcards`,
       );
-      showToast(`Pushed to ${ghOwner.trim()}/${ghRepo.trim()} — GitHub Pages will update shortly.`);
+      showToast(`Pushed to ${gh.owner.trim()}/${gh.repo.trim()} — GitHub Pages will update shortly.`);
     } catch (e) {
       showToast(e instanceof Error ? e.message : "GitHub push failed. Local download still works.");
     } finally {
@@ -396,53 +399,12 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
                 kept only in memory and never saved or bundled. Download above always works without
                 this.
               </p>
-              <div className="trip-form-row">
-                <label className="picker-label" htmlFor="gh-owner">
-                  Owner
-                  <input
-                    id="gh-owner"
-                    className="select"
-                    type="text"
-                    value={ghOwner}
-                    onChange={(e) => setGhOwner(e.target.value)}
-                    placeholder="your-username"
-                  />
-                </label>
-                <label className="picker-label" htmlFor="gh-repo">
-                  Repo
-                  <input
-                    id="gh-repo"
-                    className="select"
-                    type="text"
-                    value={ghRepo}
-                    onChange={(e) => setGhRepo(e.target.value)}
-                    placeholder="my-journey"
-                  />
-                </label>
-                <label className="picker-label" htmlFor="gh-branch">
-                  Branch
-                  <input
-                    id="gh-branch"
-                    className="select"
-                    type="text"
-                    value={ghBranch}
-                    onChange={(e) => setGhBranch(e.target.value)}
-                    placeholder="main"
-                  />
-                </label>
-              </div>
-              <label className="picker-label" htmlFor="gh-token">
-                Token
-                <input
-                  id="gh-token"
-                  className="select"
-                  type="password"
-                  autoComplete="off"
-                  value={ghToken}
-                  onChange={(e) => setGhToken(e.target.value)}
-                  placeholder="github_pat_…"
-                />
-              </label>
+              <GitHubConnectorFields
+                idPrefix="gh"
+                value={gh}
+                onChange={setGh}
+                repoPlaceholder="my-journey"
+              />
               <div className="publish-actions">
                 <button className="btn" type="button" disabled={!canExport} onClick={onPushGitHub}>
                   {busy ? "Pushing…" : "Push to GitHub"}

@@ -15,6 +15,7 @@ export {
   MAX_PHOTOS_PER_STORY,
   MAX_PHOTOS_PER_VISIT,
   SCHEMA_VERSION,
+  backfillUpdatedAt,
   normalizeVisitPhotos,
   placeKey,
 } from "./helpers";
@@ -104,6 +105,15 @@ export const VisitSchema = z.object({
    */
   photos: z.array(PhotoSchema).max(MAX_PHOTOS_PER_VISIT).optional(),
   addedAt: z.string().datetime({ offset: true }),
+  /**
+   * When this record was last mutated (device sync, spec 013). Optional so files
+   * that predate the field still validate; on load it is backfilled from `addedAt`
+   * (see backfillUpdatedAt) and every store mutation stamps it. It is the
+   * newest-wins comparator the record-level merge uses; `addedAt` stays immutable.
+   * NOT defaulted at the schema level on purpose — a default would inject the field
+   * on every parse and break the export→import equality guarantee for older files.
+   */
+  updatedAt: z.string().datetime({ offset: true }).optional(),
 }).strict();
 
 /** How a journey was made. Additive: unknown modes never occur (closed enum). */
@@ -139,6 +149,8 @@ export const TripSchema = z
       .optional()
       .transform((v) => (v == null ? null : sanitizeText(v, 2000))),
     addedAt: z.string().datetime({ offset: true }),
+    /** Last-mutated stamp for device sync (spec 013); see Visit.updatedAt. */
+    updatedAt: z.string().datetime({ offset: true }).optional(),
   })
   .strict();
 
@@ -167,6 +179,23 @@ export const StorySchema = z
       .transform((s) => sanitizeText(s, 8000)),
     photos: z.array(PhotoSchema).max(MAX_PHOTOS_PER_STORY).optional(),
     addedAt: z.string().datetime({ offset: true }),
+    /** Last-mutated stamp for device sync (spec 013); see Visit.updatedAt. */
+    updatedAt: z.string().datetime({ offset: true }).optional(),
+  })
+  .strict();
+
+/**
+ * A deletion marker carried inside the portable file so a delete on one device
+ * propagates to others instead of the record being re-added on the next sync
+ * (spec 013, FR-009). `kind` says which collection the `id` belongs to; the array
+ * is additive & optional, so a plain backup that predates sync still validates and
+ * a human can still read the file. Subject to a conservative retirement horizon.
+ */
+export const SyncTombstoneSchema = z
+  .object({
+    kind: z.enum(["visit", "trip", "story"]),
+    id: idString,
+    deletedAt: z.string().datetime({ offset: true }),
   })
   .strict();
 
@@ -189,6 +218,10 @@ export const PostcardsFileSchema = z
     trips: z.array(TripSchema).optional().default([]),
     // Additive & optional: files predating the journal import unchanged.
     stories: z.array(StorySchema).optional().default([]),
+    // Additive & optional: deletion markers for device sync (spec 013). A plain
+    // backup carries none; a sync file carries the current, un-retired set. Left
+    // undefaulted so a normal export stays free of an empty `tombstones` key.
+    tombstones: z.array(SyncTombstoneSchema).optional(),
     referenceSources: z.array(ReferenceSourceSchema).optional().default([]),
   })
   .strict();
@@ -200,5 +233,6 @@ export type Visit = z.infer<typeof VisitSchema>;
 export type TravelMode = z.infer<typeof TravelModeSchema>;
 export type Trip = z.infer<typeof TripSchema>;
 export type Story = z.infer<typeof StorySchema>;
+export type SyncTombstone = z.infer<typeof SyncTombstoneSchema>;
 export type ReferenceSource = z.infer<typeof ReferenceSourceSchema>;
 export type PostcardsFile = z.infer<typeof PostcardsFileSchema>;

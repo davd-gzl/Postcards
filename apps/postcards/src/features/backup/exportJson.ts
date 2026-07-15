@@ -5,17 +5,21 @@ import {
   type PostcardsFile,
   type ReferenceSource,
   type Story,
+  type SyncTombstone,
   type Trip,
   type Visit,
 } from "../../lib/schema/models";
 import { getReferenceData } from "../../lib/reference/referenceData";
 
-/** Build the canonical portable file object from the current visits + trips + stories. */
+/** Build the canonical portable file object from the current visits + trips + stories.
+ *  `tombstones` is written only for device sync; a plain backup passes none, so the
+ *  exported file stays free of an empty `tombstones` key. */
 function buildFile(
   visits: Visit[],
   trips: Trip[] = [],
   stories: Story[] = [],
   now = new Date(),
+  tombstones: SyncTombstone[] = [],
 ): PostcardsFile {
   const referenceSources: ReferenceSource[] = getReferenceData().provenance.map((p) => ({
     dataset: p.dataset,
@@ -31,6 +35,7 @@ function buildFile(
     visits: visits.map(({ photos, ...rest }) => (photos && photos.length ? { ...rest, photos } : rest)),
     trips,
     stories: stories.map(({ photos, ...rest }) => (photos && photos.length ? { ...rest, photos } : rest)),
+    ...(tombstones.length ? { tombstones } : {}),
     referenceSources,
   };
   // Validate our own output before handing it to the user.
@@ -43,8 +48,9 @@ export function serializeFile(
   trips: Trip[] = [],
   stories: Story[] = [],
   now = new Date(),
+  tombstones: SyncTombstone[] = [],
 ): string {
-  return JSON.stringify(buildFile(visits, trips, stories, now), null, 2);
+  return JSON.stringify(buildFile(visits, trips, stories, now, tombstones), null, 2);
 }
 
 export const EXPORT_FILENAME = "places.postcards.json";
