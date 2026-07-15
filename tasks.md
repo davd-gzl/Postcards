@@ -60,10 +60,9 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 ## Moments
 
-- [ ] Order Moments categories by **continent → country**; expand the curated list
-      with as many meaningful world experiences as make sense (aggregated, with
-      provenance; each links to a real place). (`public/reference/experiences.json`,
-      `features/experiences/ExperiencesScreen.tsx`)
+- [x] Order Moments by **continent → country** (grouping UI + grouping.ts) and expand
+      the curated list 75 → 105 with real, provenance-cited experiences (Wikidata/GeoNames
+      coords; UNESCO/Wikivoyage concepts). +15 tests. DONE.
 
 ## Intra-city places (finer granularity)
 
