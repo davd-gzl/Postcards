@@ -30,6 +30,23 @@ export function citiesInView(
   presorted = false,
 ): City[] {
   if (!bounds) return [];
+  if (presorted && Number.isFinite(limit)) {
+    // Population order means the FIRST `limit` matches are already the right
+    // ones — stop there. At world zoom that's ~limit iterations instead of a
+    // full pass over the 135k-row gazetteer on every map move.
+    const out: City[] = [];
+    for (const c of cities) {
+      if (
+        c.lat >= bounds.south &&
+        c.lat <= bounds.north &&
+        lonInRange(c.lon, bounds.west, bounds.east)
+      ) {
+        out.push(c);
+        if (out.length >= limit) break;
+      }
+    }
+    return out;
+  }
   const result = cities.filter(
     (c) =>
       c.lat >= bounds.south &&

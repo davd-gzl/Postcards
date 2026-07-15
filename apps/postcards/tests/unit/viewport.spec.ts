@@ -44,4 +44,14 @@ describe("citiesInView", () => {
     expect(names).toContain("nuku");
     expect(names).not.toContain("paris");
   });
+
+  it("presorted + finite limit: early-exits with the MOST populous matches", () => {
+    const presorted = [...cities].sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
+    const world: Bounds = { west: -180, south: -85, east: 180, north: 85 };
+    const top2 = citiesInView(presorted, world, 2, true).map((c) => c.id);
+    expect(top2).toEqual(["tokyo", "london"]);
+    // And a filtered viewport still respects the cap + order.
+    const europe: Bounds = { west: -10, south: 40, east: 20, north: 60 };
+    expect(citiesInView(presorted, europe, 1, true).map((c) => c.id)).toEqual(["london"]);
+  });
 });
