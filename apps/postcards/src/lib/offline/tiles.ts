@@ -71,6 +71,31 @@ export function tilesForBounds(
 const prefetched = new Set<string>();
 const PREFETCH_SEEN_CAP = 6000;
 
+// A 256px raster source (our OSM base) is DISPLAYED at covering-zoom
+// round(mapZoom + 1) — so prefetch must target one level deeper than the map
+// zoom, or it warms the blurry parent tiles the user never sees crisply while
+// the sharp display tiles stay cold. Callers pass the map zoom; we add this.
+const RASTER_ZOOM_OFFSET = 1;
+
+// RequestInit with the (widely shipped, not-yet-in-lib.dom) fetch priority hint,
+// so passive prefetch never elbows ahead of MapLibre's visible-tile requests.
+type PrefetchInit = RequestInit & { priority?: "high" | "low" | "auto" };
+
+/**
+ * Skip passive prefetch on data-saver / very slow links — it's a nicety, never
+ * worth spending a constrained user's bytes or contending on a 2g pipe.
+ */
+function connectionTooLimited(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const c = (navigator as unknown as { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (!c) return false;
+  return !!c.saveData || c.effectiveType === "2g" || c.effectiveType === "slow-2g";
+}
+
+// In-flight ring prefetch, aborted when the next pan starts so stale off-screen
+// requests never keep contending with the new viewport's visible tiles.
+let ringAbort: AbortController | null = null;
+
 /** Expand bounds by `factor` of their own span each side (lat clamped to the
  *  Web-Mercator limit, lon wrapped so antimeridian spans keep working). */
 function padBounds(b: Bounds, factor: number): Bounds {
@@ -101,26 +126,46 @@ export function prefetchAroundBounds(
   opts: { maxTiles?: number; template?: string; fetchFn?: typeof fetch } = {},
 ): void {
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
+  // The passive ring is a pure nicety — never spend a data-saver / 2g user's
+  // budget on off-screen tiles, and never let it contend on a slow pipe.
+  if (connectionTooLimited()) return;
   const maxTiles = opts.maxTiles ?? 40;
   const doFetch = opts.fetchFn ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
-  const inside = new Set(tilesForBounds(bounds, zoom, 1, 500, opts.template));
-  const ring = tilesForBounds(padBounds(bounds, 0.5), zoom, 1, 800, opts.template)
+  // Target the DISPLAY level (round(zoom + 1) for 256px tiles), not the coarser
+  // round(zoom) — otherwise we warm parent tiles and the crisp ones stay cold.
+  const z = zoom + RASTER_ZOOM_OFFSET;
+  const inside = new Set(tilesForBounds(bounds, z, 1, 500, opts.template));
+  const ring = tilesForBounds(padBounds(bounds, 0.5), z, 1, 800, opts.template)
     .filter((u) => !inside.has(u) && !prefetched.has(u))
     .slice(0, maxTiles);
+  if (ring.length === 0) return;
   if (prefetched.size > PREFETCH_SEEN_CAP) prefetched.clear();
   for (const url of ring) prefetched.add(url);
+  // Cancel any still-running ring from a previous pause so it stops competing
+  // with the new viewport's visible tiles.
+  ringAbort?.abort();
+  ringAbort = new AbortController();
+  const signal = ringAbort.signal;
   let i = 0;
   async function worker() {
     while (i < ring.length) {
+      if (signal.aborted) return;
       const url = ring[i++]!;
       try {
-        await doFetch(url, { mode: "cors", referrerPolicy: "strict-origin-when-cross-origin" });
+        await doFetch(url, {
+          mode: "cors",
+          referrerPolicy: "strict-origin-when-cross-origin",
+          priority: "low",
+          signal,
+        } as PrefetchInit);
       } catch {
-        prefetched.delete(url); // offline blip — let a later pause retry it
+        prefetched.delete(url); // offline blip / aborted — let a later pause retry it
       }
     }
   }
-  for (let w = 0; w < 3; w++) void worker();
+  // Low concurrency (2) so the ring never saturates the per-origin socket budget
+  // MapLibre needs for the tiles actually on screen.
+  for (let w = 0; w < 2; w++) void worker();
 }
 
 /**
@@ -136,7 +181,10 @@ export function prefetchAroundPoint(
   opts: { template?: string; fetchFn?: typeof fetch } = {},
 ): void {
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
-  const z = clamp(Math.round(zoom), 1, MAX_ZOOM);
+  if (connectionTooLimited()) return;
+  // Match the display level (round(zoom + 1) for 256px tiles) so the block we
+  // warm is the one the camera actually renders on arrival.
+  const z = clamp(Math.round(zoom + RASTER_ZOOM_OFFSET), 1, MAX_ZOOM);
   const n = 2 ** z;
   const cx = lon2x(lon, z);
   const cy = lat2y(lat, z);
@@ -152,6 +200,7 @@ export function prefetchAroundPoint(
       if (!prefetched.has(url)) urls.push(url);
     }
   }
+  if (urls.length === 0) return;
   if (prefetched.size > PREFETCH_SEEN_CAP) prefetched.clear();
   for (const url of urls) prefetched.add(url);
   let i = 0;
@@ -159,13 +208,19 @@ export function prefetchAroundPoint(
     while (i < urls.length) {
       const url = urls[i++]!;
       try {
-        await doFetch(url, { mode: "cors", referrerPolicy: "strict-origin-when-cross-origin" });
+        await doFetch(url, {
+          mode: "cors",
+          referrerPolicy: "strict-origin-when-cross-origin",
+          priority: "low",
+        } as PrefetchInit);
       } catch {
         prefetched.delete(url);
       }
     }
   }
-  for (let w = 0; w < 4; w++) void worker();
+  // Two workers, low priority: warm the destination without starving the
+  // visible tiles MapLibre is streaming for the current view mid-fly.
+  for (let w = 0; w < 2; w++) void worker();
 }
 
 export interface SaveProgress {

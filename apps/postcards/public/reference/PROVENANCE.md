@@ -16,7 +16,7 @@ mirrors it for people browsing the repository.
 | `landmarks.json` | Famous landmarks seed (full set via Wikidata build script) — <https://www.wikidata.org> | CC0 (facts) | seed |
 | `languages.json` | Per-country spoken languages (via world-countries) — <https://github.com/mledoze/countries> | ODbL 1.0 | 5.1.0 |
 | `article-names.json` | Common country names (Wikivoyage/Wikipedia article titles, via world-countries) — <https://github.com/mledoze/countries> | ODbL 1.0 | 5.1.0 |
-| `experiences.json` | Postcards "Moments" starter list (community dataset planned) | CC0 | V0 |
+| `experiences.json` | Postcards "Moments" — app-authored name/hint/emoji only; anchor coordinates aggregated from Wikidata (<https://www.wikidata.org>) / GeoNames (<https://www.geonames.org>); experience concepts attributed to UNESCO World Heritage (<https://whc.unesco.org/en/list/>), UNESCO Intangible Cultural Heritage (<https://ich.unesco.org/en/lists>) & Wikivoyage travel topics (<https://en.wikivoyage.org>). Per-item `sources` cite the specific record. | Mixed — name/hint/emoji CC0; Wikidata CC0; GeoNames CC BY 4.0; UNESCO CC BY-SA 3.0 IGO; Wikivoyage CC BY-SA 3.0 | V1 |
 
 Country codes, continents and UN-member/territory status come from
 `i18n-iso-countries` (MIT; ISO 3166-1 codes are public facts) and

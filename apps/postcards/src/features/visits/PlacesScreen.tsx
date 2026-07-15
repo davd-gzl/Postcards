@@ -16,6 +16,7 @@ import { GuideButton } from "../guides/GuideButton";
 import { PassportScreen } from "../passport/PassportScreen";
 import { ExperiencesScreen } from "../experiences/ExperiencesScreen";
 import { ListPager } from "../../ui/ListPager";
+import { useT, type TFunction } from "../../lib/i18n";
 
 // Everything place-shaped lives here, one view each — including Favorites (its
 // own view, not a mode that repaints "Visited"), Moments and the Passport.
@@ -42,7 +43,11 @@ function saveView(v: View): void {
 
 
 /** Map coordinate to fly to (if known) and the secondary "· type · place" label for a visit. */
-function placeMeta(ref: ReferenceData, v: Visit): { coord: { lon: number; lat: number } | null; sub: string } {
+function placeMeta(
+  ref: ReferenceData,
+  v: Visit,
+  t: TFunction,
+): { coord: { lon: number; lat: number } | null; sub: string } {
   const country = ref.countryByIso2(v.place.countryId)?.name ?? v.place.countryId;
   if (v.place.kind === "city") {
     const c = ref.cityById(v.place.id);
@@ -50,20 +55,24 @@ function placeMeta(ref: ReferenceData, v: Visit): { coord: { lon: number; lat: n
   }
   if (v.place.kind === "airport") {
     const a = ref.airportById(v.place.id);
-    return { coord: a ? { lon: a.lon, lat: a.lat } : null, sub: `Airport · ${country}` };
+    return { coord: a ? { lon: a.lon, lat: a.lat } : null, sub: `${t("places.meta.airport")} · ${country}` };
   }
   if (v.place.kind === "heritage") {
     const h = ref.heritageById(v.place.id);
     const coord = h && (h.lat !== 0 || h.lon !== 0) ? { lon: h.lon, lat: h.lat } : null;
-    return { coord, sub: `Monument · ${country}` };
+    return { coord, sub: `${t("places.meta.monument")} · ${country}` };
   }
-  return { coord: null, sub: v.place.kind === "custom" ? "Your place" : "Country" };
+  return {
+    coord: null,
+    sub: v.place.kind === "custom" ? t("places.meta.yourPlace") : t("places.meta.country"),
+  };
 }
 
 /** One visited or wishlist row — visited adds details, photos and the favorite star.
  *  Memoized: store updates replace only the changed visit object, so after a
  *  toggle the other (up to 100) rows — photo thumbnails included — skip re-render. */
 const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: boolean }) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const removeVisit = useVisits((s) => s.removeVisit);
   const toggleVisit = useVisits((s) => s.toggleVisit);
@@ -71,13 +80,13 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
   const restoreVisit = useVisits((s) => s.restoreVisit);
   const showToast = useToast((s) => s.show);
   const flyTo = useUi((s) => s.flyTo);
-  const { coord, sub } = placeMeta(ref, v);
+  const { coord, sub } = placeMeta(ref, v, t);
 
   function removeWithUndo() {
     // Only this row's record goes away — undo puts that one record back
     // instead of rewriting the whole visits table.
     void removeVisit(v.visitId);
-    showToast(`Removed ${v.place.name}`, () => restoreVisit(v));
+    showToast(t("places.row.removedToast", { name: v.place.name }), () => restoreVisit(v));
   }
 
   return (
@@ -92,7 +101,7 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
               ? coord && flyTo(coord.lon, coord.lat)
               : useUi.getState().openCity(v.place.id)
         }
-        aria-label={`Open ${v.place.name}`}
+        aria-label={t("places.row.openAria", { name: v.place.name })}
       >
         <CityLine
           flag={countryFlag(v.place.countryId)}
@@ -119,29 +128,33 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
           className={"star-btn" + (v.favorite ? " star-on" : "")}
           type="button"
           aria-pressed={!!v.favorite}
-          aria-label={v.favorite ? `Unfavorite ${v.place.name}` : `Favorite ${v.place.name}`}
+          aria-label={
+            v.favorite
+              ? t("places.row.unfavoriteAria", { name: v.place.name })
+              : t("places.row.favoriteAria", { name: v.place.name })
+          }
           onClick={() => void toggleFavorite(v.place)}
         >
-          {v.favorite ? "★" : "☆"}
+          {v.favorite ? "♥" : "♡"}
         </button>
       )}
       {wishlist && (
         <button
           className="mini-btn"
           type="button"
-          aria-label={`Mark ${v.place.name} visited`}
+          aria-label={t("places.row.markVisitedAria", { name: v.place.name })}
           onClick={() => void toggleVisit(v.place)}
         >
-          ✓ Been there
+          ✓ {t("places.row.beenThere")}
         </button>
       )}
       <button
         className="link-danger"
         type="button"
         onClick={removeWithUndo}
-        aria-label={`Remove ${v.place.name}`}
+        aria-label={t("places.row.removeAria", { name: v.place.name })}
       >
-        Remove
+        {t("common.remove")}
       </button>
     </li>
   );
@@ -149,6 +162,7 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
 
 /** Your visited places, your wish-to-go list, monuments, + a checklist of every country. */
 export function PlacesScreen() {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
 
@@ -266,22 +280,22 @@ export function PlacesScreen() {
   }, [ref, q, hideSeen, seenHeritage]);
 
   const TABS: { id: View; label: string }[] = [
-    { id: "visited", label: `Visited (${visited.length})` },
+    { id: "visited", label: t("places.tab.visited", { count: visited.length }) },
     // Favorites earns its spot once you've starred something (it never repaints
     // the Visited tab — that read as the section disappearing).
     ...(favorites.length > 0 || view === "favorites"
-      ? [{ id: "favorites" as const, label: `★ Favorites (${favorites.length})` }]
+      ? [{ id: "favorites" as const, label: t("places.tab.favorites", { count: favorites.length }) }]
       : []),
-    { id: "wishlist", label: `Wishlist (${wishlist.length})` },
-    { id: "monuments", label: "Monuments" },
-    { id: "countries", label: "Countries" },
+    { id: "wishlist", label: t("places.tab.wishlist", { count: wishlist.length }) },
+    { id: "monuments", label: t("places.tab.monuments") },
+    { id: "countries", label: t("places.tab.countries") },
   ];
   // Moments and the Passport aren't list views of your places — they're little
   // screens of their own. They get a separate cluster so they don't blend into
   // the view switcher above.
   const COLLECTIONS: { id: View; label: string; emoji: string }[] = [
-    { id: "moments", label: "Moments", emoji: "✨" },
-    { id: "passport", label: "Passport", emoji: "🛂" },
+    { id: "moments", label: t("places.collection.moments"), emoji: "✨" },
+    { id: "passport", label: t("places.collection.passport"), emoji: "🛂" },
   ];
 
   function switchView(id: View) {
@@ -293,10 +307,10 @@ export function PlacesScreen() {
   }
 
   return (
-    <section aria-label="Your places">
+    <section aria-label={t("places.aria")}>
       <div className="section-head">
-        <h2>Places</h2>
-        <div className="segmented wrap" role="group" aria-label="Places view">
+        <h2>{t("places.title")}</h2>
+        <div className="segmented wrap" role="group" aria-label={t("places.viewAria")}>
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -312,7 +326,7 @@ export function PlacesScreen() {
         <div
           className="segmented wrap places-collections"
           role="group"
-          aria-label="Moments and Passport"
+          aria-label={t("places.collectionsAria")}
         >
           {COLLECTIONS.map((c) => (
             <button
@@ -336,8 +350,16 @@ export function PlacesScreen() {
           <input
             type="search"
             className="search-input places-filter"
-            placeholder={view === "monuments" ? "Search monuments…" : "Filter your places…"}
-            aria-label={view === "monuments" ? "Search monuments" : "Filter your places"}
+            placeholder={
+              view === "monuments"
+                ? t("places.filter.monumentsPlaceholder")
+                : t("places.filter.placesPlaceholder")
+            }
+            aria-label={
+              view === "monuments"
+                ? t("places.filter.monumentsAria")
+                : t("places.filter.placesAria")
+            }
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
@@ -346,7 +368,7 @@ export function PlacesScreen() {
       {view === "visited" && (
         <>
           {(years.list.length > 1 || (years.list.length === 1 && years.undated)) && (
-            <div className="segmented wrap year-filter" role="group" aria-label="Filter by year">
+            <div className="segmented wrap year-filter" role="group" aria-label={t("places.yearFilterAria")}>
               {[null, ...years.list, ...(years.undated ? ["undated"] : [])].map((y) => (
                 <button
                   key={y ?? "all"}
@@ -358,7 +380,7 @@ export function PlacesScreen() {
                     setShown(100);
                   }}
                 >
-                  {y === null ? "All years" : y === "undated" ? "No date" : y}
+                  {y === null ? t("places.year.all") : y === "undated" ? t("places.year.noDate") : y}
                 </button>
               ))}
             </div>
@@ -368,8 +390,7 @@ export function PlacesScreen() {
               <span className="empty-emoji" aria-hidden>
                 🧳
               </span>
-              Nothing yet. Add places from the map or the search bar — visiting a city also
-              collects its country.
+              {t("places.visited.empty")}
             </p>
           )}
           <ul className="city-list">
@@ -393,9 +414,9 @@ export function PlacesScreen() {
           {favorites.length === 0 && (
             <p className="muted empty">
               <span className="empty-emoji" aria-hidden>
-                ★
+                ♥
               </span>
-              No favorites yet. Star a visited place and it lands here.
+              {t("places.favorites.empty")}
             </p>
           )}
           <ul className="city-list">
@@ -421,7 +442,7 @@ export function PlacesScreen() {
               <span className="empty-emoji" aria-hidden>
                 ⚑
               </span>
-              No wishes yet. Find a place and tap the ⚑ to add it to your someday list.
+              {t("places.wishlist.empty")}
             </p>
           )}
           <ul className="city-list">
@@ -447,15 +468,15 @@ export function PlacesScreen() {
               <span className="empty-emoji" aria-hidden>
                 🏛️
               </span>
-              The monuments dataset isn't loaded in this build. Run{" "}
-              <code>scripts/build-heritage-full.mjs</code> to add the full UNESCO World Heritage list.
+              {t("places.monuments.emptyBuildPre")}
+              <code>scripts/build-heritage-full.mjs</code>
+              {t("places.monuments.emptyBuildPost")}
             </p>
           ) : (
             <>
               <div className="countries-head">
                 <p className="muted small" style={{ margin: 0 }}>
-                  UNESCO World Heritage Sites; mark the ones you've seen. They count toward each
-                  country's coverage in Stats.
+                  {t("places.monuments.desc")}
                 </p>
                 <button
                   type="button"
@@ -463,7 +484,7 @@ export function PlacesScreen() {
                   aria-pressed={hideSeen}
                   onClick={() => setHideSeen((v) => !v)}
                 >
-                  Hide seen
+                  {t("places.monuments.hideSeen")}
                 </button>
               </div>
               <ul className="city-list">
@@ -481,7 +502,7 @@ export function PlacesScreen() {
                         className="city-focus"
                         type="button"
                         onClick={() => useUi.getState().openCity(h.id)}
-                        aria-label={`Open ${h.name}`}
+                        aria-label={t("places.row.openAria", { name: h.name })}
                       >
                         <CityLine flag={countryFlag(h.countryIso2)} name={h.name} sub={<>· {country}</>} />
                       </button>
@@ -508,17 +529,16 @@ export function PlacesScreen() {
         <>
           <div className="countries-head">
             <ScopeToggle />
-            <span className="muted small">{countryRows.length} countries</span>
+            <span className="muted small">{t("places.countries.count", { count: countryRows.length })}</span>
           </div>
           <p className="muted small" style={{ margin: "0 0 6px" }}>
-            A country lights up when you've visited a place inside it — there's nothing to check
-            off here. ⚑ marks the ones you dream of.
+            {t("places.countries.desc")}
           </p>
           <input
             type="search"
             className="search-input"
-            placeholder="Filter countries…"
-            aria-label="Filter countries"
+            placeholder={t("places.countries.filterPlaceholder")}
+            aria-label={t("places.countries.filterAria")}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
@@ -536,7 +556,7 @@ export function PlacesScreen() {
                   <button
                     className="city-focus"
                     type="button"
-                    title={`Open ${c.name}`}
+                    title={t("places.row.openAria", { name: c.name })}
                     onClick={() => useUi.getState().openCountry(c.iso2)}
                   >
                     <CityLine
@@ -544,9 +564,7 @@ export function PlacesScreen() {
                       name={c.name}
                       sub={
                         isVisited && subCount > 0 ? (
-                          <>
-                            · via {subCount} place{subCount === 1 ? "" : "s"}
-                          </>
+                          <>· {t.plural("places.country.via", subCount)}</>
                         ) : undefined
                       }
                     />
@@ -554,8 +572,8 @@ export function PlacesScreen() {
                   {isVisited && subCount > 0 && (
                     // Visited through its cities/monuments — already counted; the
                     // chip says so, and the toggles keep ⚑/★ reachable.
-                    <span className="chip chip-on" aria-label={`${c.name} visited`}>
-                      ✓ Visited
+                    <span className="chip chip-on" aria-label={t("places.country.visitedAria", { name: c.name })}>
+                      ✓ {t("places.country.visitedChip")}
                     </span>
                   )}
                   <StateToggles place={place} />

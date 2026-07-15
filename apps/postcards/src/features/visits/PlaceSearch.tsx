@@ -7,6 +7,7 @@ import { useToast } from "../../lib/store/useToast";
 import { AddPlaceForm } from "./AddPlaceForm";
 import { placeKey } from "../../lib/schema/helpers";
 import type { PlaceRef } from "../../lib/schema/models";
+import { useT } from "../../lib/i18n";
 
 /**
  * Global place search. Picking a result NAVIGATES — it flies the map to a
@@ -16,6 +17,7 @@ import type { PlaceRef } from "../../lib/schema/models";
  * Fully keyboard-operable: arrows move the active option, Escape clears.
  */
 export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; lat: number }) => void }) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const toggleVisit = useVisits((s) => s.toggleVisit);
@@ -23,6 +25,9 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
   const showToast = useToast((s) => s.show);
   const [q, setQ] = useState("");
   const [active, setActive] = useState(-1);
+  // Expand the "add your own place" form even when there ARE near-miss results
+  // (e.g. searching "Gili" finds Gili Air but not the missing Gili Meno).
+  const [showAddOwn, setShowAddOwn] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const focusNonce = useUi((s) => s.searchFocusNonce);
@@ -39,6 +44,10 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
   const dq = useDeferredValue(q);
   const results = useMemo(() => searchPlaces(ref, dq), [ref, dq]);
   const notFound = dq.trim().length >= 2 && results.length === 0;
+  // A fresh query collapses the inline add-your-own form.
+  useEffect(() => {
+    setShowAddOwn(false);
+  }, [dq]);
 
   // Keep the active option visible as arrows move it.
   useEffect(() => {
@@ -78,7 +87,8 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
     void toggleVisit(place);
     // Adds are silent (the chip flips to ✓ in place); only a removal — which
     // can drop photos/notes — gets a toast, and only so it can be undone.
-    if (prev?.status === "visited") showToast(`Removed ${place.name}`, () => restoreVisit(prev));
+    if (prev?.status === "visited")
+      showToast(t("places.row.removedToast", { name: place.name }), () => restoreVisit(prev));
     inputRef.current?.focus();
   }
 
@@ -116,8 +126,8 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
         ref={inputRef}
         type="search"
         className="search-input"
-        placeholder="Search a city or country…"
-        aria-label="Search a city or country"
+        placeholder={t("search.placeholder")}
+        aria-label={t("search.aria")}
         role="combobox"
         aria-expanded={results.length > 0}
         aria-controls="search-results"
@@ -132,9 +142,9 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
       />
       <p className="sr-only" role="status" aria-live="polite">
         {notFound
-          ? `No matches for ${dq.trim()}`
+          ? t("search.noMatches", { q: dq.trim() })
           : results.length > 0
-            ? `${results.length} result${results.length === 1 ? "" : "s"}`
+            ? t.plural("search.results", results.length)
             : ""}
       </p>
       {results.length > 0 && (
@@ -143,7 +153,7 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
           className="results results-split"
           id="search-results"
           role="listbox"
-          aria-label="Search results"
+          aria-label={t("search.resultsAria")}
         >
           {results.map((r, i) => {
             const visited = visitIndex(visits).get(placeKey(r.place))?.status === "visited";
@@ -160,8 +170,8 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
                   className={"result-open" + (i === active ? " opt-active" : "")}
                   title={
                     r.place.kind === "country"
-                      ? `Open ${r.place.name}`
-                      : `Show ${r.place.name} on the map`
+                      ? t("stats.country.open", { name: r.place.name })
+                      : t("stats.records.showOnMap", { name: r.place.name })
                   }
                   onClick={() => pick(r.place)}
                 >
@@ -179,12 +189,12 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
                     className={"chip result-add" + (visited ? " chip-on" : "")}
                     aria-label={
                       visited
-                        ? `Remove ${r.place.name} from visited`
-                        : `Mark ${r.place.name} visited`
+                        ? t("states.removeFromVisited", { name: r.place.name })
+                        : t("places.row.markVisitedAria", { name: r.place.name })
                     }
                     onClick={() => toggle(r.place)}
                   >
-                    {visited ? "✓ Visited" : "＋ Add"}
+                    {visited ? `✓ ${t("places.country.visitedChip")}` : `＋ ${t("search.addChip")}`}
                   </button>
                 )}
               </li>
@@ -192,9 +202,26 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
           })}
         </ul>
       )}
+      {!notFound && dq.trim().length >= 2 && results.length > 0 && (
+        <div className="search-addown">
+          {showAddOwn ? (
+            <AddPlaceForm
+              initialName={dq.trim()}
+              onDone={() => {
+                setShowAddOwn(false);
+                setQ("");
+              }}
+            />
+          ) : (
+            <button type="button" className="link search-addown-btn" onClick={() => setShowAddOwn(true)}>
+              ＋ {t("search.addOwn", { q: dq.trim() })}
+            </button>
+          )}
+        </div>
+      )}
       {notFound && (
         <div className="search-empty">
-          <p>“{dq.trim()}” isn’t in the loaded data.</p>
+          <p>{t("search.notInData", { q: dq.trim() })}</p>
           <AddPlaceForm initialName={dq.trim()} onDone={() => setQ("")} />
         </div>
       )}

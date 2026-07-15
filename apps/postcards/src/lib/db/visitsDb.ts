@@ -7,8 +7,28 @@ const LEGACY_DB_NAME = "placebeen"; // the pre-rename database — migrated once
 // v2 adds the "trips" store (Travel Log). Upgrades are additive & idempotent, so
 // existing v1 databases keep their visits.
 // v3 adds the "stories" store (Journal) — additive again; visits and trips are untouched.
-const DB_VERSION = 3;
+// v4 adds the "tombstones" store (device sync, spec 013): deletion markers so a
+// delete propagates instead of being resurrected. Additive & idempotent again.
+const DB_VERSION = 4;
 const STORE = "visits";
+const TOMBSTONES = "tombstones";
+
+/** Which user collection a tombstone's id belongs to (its merge namespace). */
+export type TombstoneKind = "visit" | "trip" | "story";
+
+/**
+ * A stored deletion marker. `key` (`${kind}:${id}`) is the object-store keyPath so
+ * a visit and a trip that happened to share an id can't collide; `kind` lets the
+ * sync engine route each tombstone to the right per-collection merge.
+ */
+export interface TombstoneRecord {
+  key: string;
+  kind: TombstoneKind;
+  id: string;
+  deletedAt: string;
+}
+
+const tombstoneKey = (kind: TombstoneKind, id: string): string => `${kind}:${id}`;
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
@@ -61,6 +81,9 @@ export function getDb(): Promise<IDBPDatabase> {
         if (!database.objectStoreNames.contains("stories")) {
           database.createObjectStore("stories", { keyPath: "storyId" });
         }
+        if (!database.objectStoreNames.contains(TOMBSTONES)) {
+          database.createObjectStore(TOMBSTONES, { keyPath: "key" });
+        }
       },
     }).then(async (database) => {
       await migrateLegacyDb(database);
@@ -108,10 +131,15 @@ export async function replaceAllPortable(
   visits: Visit[],
   trips: Trip[],
   stories?: Story[],
+  tombstones?: TombstoneRecord[],
 ): Promise<void> {
   if (!hasIndexedDB()) return;
   const database = await db();
-  const stores = stories ? [STORE, "trips", "stories"] : [STORE, "trips"];
+  const stores = [STORE, "trips"];
+  if (stories) stores.push("stories");
+  // Device sync lands records AND tombstones in ONE transaction, so a merged pull
+  // can never leave the device with the new records but the old tombstones.
+  if (tombstones) stores.push(TOMBSTONES);
   const tx = database.transaction(stores, "readwrite");
   const visitStore = tx.objectStore(STORE);
   const tripStore = tx.objectStore("trips");
@@ -124,5 +152,32 @@ export async function replaceAllPortable(
     await storyStore.clear();
     for (const s of stories) await storyStore.put(s);
   }
+  if (tombstones) {
+    const tombStore = tx.objectStore(TOMBSTONES);
+    await tombStore.clear();
+    for (const t of tombstones) await tombStore.put(t);
+  }
   await tx.done;
+}
+
+/** Record (or refresh) a deletion marker. Keyed by kind+id, so a re-delete just
+ *  updates the timestamp rather than duplicating (spec 013, FR-009). */
+export async function putTombstone(
+  kind: TombstoneKind,
+  id: string,
+  deletedAt: string,
+): Promise<void> {
+  if (!hasIndexedDB()) return;
+  await (await db()).put(TOMBSTONES, { key: tombstoneKey(kind, id), kind, id, deletedAt });
+}
+
+/** Drop a tombstone (e.g. when its record is explicitly restored/re-added). */
+export async function deleteTombstone(kind: TombstoneKind, id: string): Promise<void> {
+  if (!hasIndexedDB()) return;
+  await (await db()).delete(TOMBSTONES, tombstoneKey(kind, id));
+}
+
+export async function getAllTombstones(): Promise<TombstoneRecord[]> {
+  if (!hasIndexedDB()) return [];
+  return (await db()).getAll(TOMBSTONES) as Promise<TombstoneRecord[]>;
 }

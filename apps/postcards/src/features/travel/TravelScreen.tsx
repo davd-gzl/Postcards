@@ -10,7 +10,7 @@ import { CityLine } from "../../ui/CityLine";
 import { PlacePicker } from "./PlacePicker";
 import { BoardingPassImport } from "./BoardingPassImport";
 import { travelTotals, tripDistanceKm } from "./distance";
-import { MODE_GLYPH, MODE_LABEL, MODE_ORDER } from "./modes";
+import { MODE_GLYPH, MODE_ORDER } from "./modes";
 import {
   MONTH_NAMES,
   periodLabel,
@@ -20,8 +20,7 @@ import {
   type MonthFilter,
   type YearFilter,
 } from "./period";
-
-const MODES = MODE_ORDER.map((value) => ({ value, label: MODE_LABEL[value] }));
+import { useT, type MessageKey } from "../../lib/i18n";
 
 /** Compact endpoint label: the IATA code for airports (names are long), else the place name. */
 function endpointLabel(p: PlaceRef): string {
@@ -54,6 +53,7 @@ function TripForm({
   onSave: (fields: TripFields) => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const [from, setFrom] = useState<PlaceRef | null>(initial.from);
   const [to, setTo] = useState<PlaceRef | null>(initial.to);
   const [mode, setMode] = useState<TravelMode>(initial.mode);
@@ -68,27 +68,27 @@ function TripForm({
 
   return (
     <form className="trip-form" onSubmit={onSubmit}>
-      {editing && <p className="editing-note">Editing a trip</p>}
-      <PlacePicker label="From" value={from} onPick={setFrom} />
-      <PlacePicker label="To" value={to} onPick={setTo} />
+      {editing && <p className="editing-note">{t("travel.editingNote")}</p>}
+      <PlacePicker label={t("travel.from")} value={from} onPick={setFrom} />
+      <PlacePicker label={t("travel.to")} value={to} onPick={setTo} />
       <div className="trip-form-row">
         <label className="picker-label" htmlFor="trip-mode">
-          Mode
+          {t("travel.modeLabel")}
           <select
             id="trip-mode"
             className="select"
             value={mode}
             onChange={(e) => setMode(e.target.value as TravelMode)}
           >
-            {MODES.map((m) => (
-              <option key={m.value} value={m.value}>
-                {MODE_GLYPH[m.value]} {m.label}
+            {MODE_ORDER.map((value) => (
+              <option key={value} value={value}>
+                {MODE_GLYPH[value]} {t(`travel.mode.${value}` as MessageKey)}
               </option>
             ))}
           </select>
         </label>
         <label className="picker-label" htmlFor="trip-date">
-          Date (optional)
+          {t("travel.dateOptional")}
           <input
             id="trip-date"
             className="select"
@@ -99,24 +99,24 @@ function TripForm({
         </label>
       </div>
       <label className="picker-label" htmlFor="trip-note">
-        Note (optional)
+        {t("travel.noteOptional")}
         <input
           id="trip-note"
           className="select"
           type="text"
           maxLength={120}
-          placeholder="Flight AC834, seat 12A…"
+          placeholder={t("travel.notePlaceholder")}
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
       </label>
       <div className="trip-form-actions">
         <button className="btn" type="submit" disabled={!from || !to}>
-          {editing ? "Save changes" : "Add trip"}
+          {editing ? t("travel.saveChanges") : t("travel.addTrip")}
         </button>
         {editing && (
           <button className="btn-ghost" type="button" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
         )}
       </div>
@@ -126,6 +126,7 @@ function TripForm({
 
 /** Log of journeys you've taken: add a trip, see per-trip distance and totals. */
 export function TravelScreen() {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const trips = useTrips((s) => s.trips);
   const addTrip = useTrips((s) => s.addTrip);
@@ -196,10 +197,10 @@ export function TravelScreen() {
     const fields = { from, to, mode, date: date || null, note: note.trim() || null };
     if (editingId) {
       await updateTrip(editingId, fields);
-      showToast(`Updated ${endpointLabel(from)} → ${endpointLabel(to)}`, () => setAll(prev));
+      showToast(t("travel.toast.updated", { from: endpointLabel(from), to: endpointLabel(to) }), () => setAll(prev));
     } else {
       await addTrip(fields);
-      showToast(`Added ${endpointLabel(from)} → ${endpointLabel(to)}`, () => setAll(prev));
+      showToast(t("travel.toast.added", { from: endpointLabel(from), to: endpointLabel(to) }), () => setAll(prev));
     }
     resetForm();
   }
@@ -220,7 +221,7 @@ export function TravelScreen() {
   function removeWithUndo(tripId: string, label: string) {
     const prev = useTrips.getState().trips;
     void removeTrip(tripId);
-    showToast(`Removed ${label}`, () => setAll(prev));
+    showToast(t("travel.toast.removed", { label }), () => setAll(prev));
   }
 
   function airportRef(iata: string): PlaceRef | null {
@@ -254,8 +255,12 @@ export function TravelScreen() {
       const missing = [!leg.from && leg.codes[0], !leg.to && leg.codes[1]].filter(Boolean);
       showToast(
         missing.length
-          ? `Read ${leg.codes[0]}→${leg.codes[1]} — ${missing.join(", ")} isn't in the airport data; pick it manually.`
-          : `Read ${leg.codes[0]} → ${leg.codes[1]} — review the trip and save.`,
+          ? t("travel.toast.scanReadMissing", {
+              from: leg.codes[0],
+              to: leg.codes[1],
+              missing: missing.join(", "),
+            })
+          : t("travel.toast.scanReadOk", { from: leg.codes[0], to: leg.codes[1] }),
       );
       return;
     }
@@ -279,29 +284,31 @@ export function TravelScreen() {
       }
     }
     showToast(
-      `Added ${added} flight${added === 1 ? "" : "s"} from your pass` +
-        (skipped.length ? ` (skipped ${skipped.join(", ")})` : ""),
+      t("travel.toast.scanAdded", {
+        count: added,
+        skipped: skipped.length ? t("travel.toast.scanSkipped", { list: skipped.join(", ") }) : "",
+      }),
       () => setAll(prev),
     );
   }
 
   return (
-    <section aria-label="Travel log" onKeyDown={onEscape}>
+    <section aria-label={t("travel.title")} onKeyDown={onEscape}>
       <div className="section-head">
-        <h2>Travel log</h2>
+        <h2>{t("travel.title")}</h2>
       </div>
 
       {years.length > 0 && (
-        <div className="travel-filter trip-form-row" role="group" aria-label="Filter trips by time">
+        <div className="travel-filter trip-form-row" role="group" aria-label={t("travel.filterAria")}>
           <label className="picker-label" htmlFor="trip-filter-year">
-            Year
+            {t("travel.year")}
             <select
               id="trip-filter-year"
               className="select"
               value={year}
               onChange={(e) => pickYear(e.target.value as YearFilter)}
             >
-              <option value="all">All years</option>
+              <option value="all">{t("travel.allYears")}</option>
               {years.map((y) => (
                 <option key={y} value={y}>
                   {y}
@@ -311,14 +318,14 @@ export function TravelScreen() {
           </label>
           {year !== "all" && months.length > 0 && (
             <label className="picker-label" htmlFor="trip-filter-month">
-              Month
+              {t("travel.month")}
               <select
                 id="trip-filter-month"
                 className="select"
                 value={month}
                 onChange={(e) => pickMonth(e.target.value as MonthFilter)}
               >
-                <option value="all">All months</option>
+                <option value="all">{t("travel.allMonths")}</option>
                 {months.map((m) => (
                   <option key={m} value={m}>
                     {MONTH_NAMES[Number(m) - 1]}
@@ -334,21 +341,28 @@ export function TravelScreen() {
         className="travel-totals"
         aria-label={
           periodLabel(year, month)
-            ? `Travel totals for ${periodLabel(year, month)}`
-            : "Travel totals"
+            ? t("travel.totalsForAria", { period: periodLabel(year, month) })
+            : t("travel.totalsAria")
         }
       >
         <span className="tt-main">
-          <strong>{totals.trips}</strong> {totals.trips === 1 ? "trip" : "trips"}
+          <strong>{totals.trips}</strong> {t.plural("stats.travel.trips", totals.trips)}
         </span>
         <span className="tt-sep" aria-hidden />
         <span className="tt-main">
-          <strong>{formatKm(totals.totalKm)}</strong> travelled
+          <strong>{formatKm(totals.totalKm)}</strong> {t("stats.travel.travelled")}
         </span>
         {totals.byMode.length > 0 && (
           <span className="tt-modes">
             {totals.byMode.map((m) => (
-              <span className="tt-mode" key={m.mode} title={`${m.trips} by ${m.mode}`}>
+              <span
+                className="tt-mode"
+                key={m.mode}
+                title={t("stats.travel.modeTitle", {
+                  count: m.trips,
+                  mode: t(`travel.mode.${m.mode}` as MessageKey),
+                })}
+              >
                 {MODE_GLYPH[m.mode]} {m.trips}
               </span>
             ))}
@@ -373,37 +387,36 @@ export function TravelScreen() {
           <span className="empty-emoji" aria-hidden>
             🧭
           </span>
-          No journeys logged yet. Add one you've taken — or scan a boarding pass and it fills itself
-          in.
+          {t("travel.empty")}
         </p>
       ) : sorted.length === 0 ? (
         <p className="muted empty">
-          No trips in {periodLabel(year, month)}.{" "}
+          {t("travel.noTripsInPeriod", { period: periodLabel(year, month) })}{" "}
           <button className="link" type="button" onClick={() => pickYear("all")}>
-            Show all
+            {t("travel.showAll")}
           </button>
         </p>
       ) : (
         <ul className="city-list" style={{ marginTop: 12 }}>
-          {sorted.map((t) => {
-            const km = tripDistanceKm(t, ref);
-            const label = `${endpointLabel(t.from)} → ${endpointLabel(t.to)}`;
+          {sorted.map((trip) => {
+            const km = tripDistanceKm(trip, ref);
+            const label = `${endpointLabel(trip.from)} → ${endpointLabel(trip.to)}`;
             return (
-              <li key={t.tripId} className={"city-row compact" + (editingId === t.tripId ? " selected" : "")}>
+              <li key={trip.tripId} className={"city-row compact" + (editingId === trip.tripId ? " selected" : "")}>
                 <button
                   className="city-focus"
                   type="button"
-                  title={`Edit ${label}`}
-                  onClick={() => startEdit(t)}
+                  title={t("travel.editTitle", { label })}
+                  onClick={() => startEdit(trip)}
                 >
                   <CityLine
-                    flag={MODE_GLYPH[t.mode]}
+                    flag={MODE_GLYPH[trip.mode]}
                     name={label}
                     sub={
                       <>
                         {km == null ? "" : `· ${formatKm(km)}`}
-                        {t.date ? ` · ${formatDate(t.date)}` : ""}
-                        {t.note ? ` · ${t.note}` : ""}
+                        {trip.date ? ` · ${formatDate(trip.date)}` : ""}
+                        {trip.note ? ` · ${trip.note}` : ""}
                       </>
                     }
                   />
@@ -411,18 +424,18 @@ export function TravelScreen() {
                 <button
                   className="link"
                   type="button"
-                  onClick={() => startEdit(t)}
-                  aria-label={`Edit trip ${label}`}
+                  onClick={() => startEdit(trip)}
+                  aria-label={t("travel.editAria", { label })}
                 >
-                  Edit
+                  {t("common.edit")}
                 </button>
                 <button
                   className="link-danger"
                   type="button"
-                  onClick={() => removeWithUndo(t.tripId, label)}
-                  aria-label={`Remove trip ${label}`}
+                  onClick={() => removeWithUndo(trip.tripId, label)}
+                  aria-label={t("travel.removeAria", { label })}
                 >
-                  Remove
+                  {t("common.remove")}
                 </button>
               </li>
             );

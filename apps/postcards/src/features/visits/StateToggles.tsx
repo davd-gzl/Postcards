@@ -2,6 +2,7 @@ import { useVisits, findByPlace, visitIndex } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { placeKey } from "../../lib/schema/helpers";
 import type { PlaceRef } from "../../lib/schema/models";
+import { useT } from "../../lib/i18n";
 
 /**
  * Inline states: Been (✓) always; Want (⚑) only until you've been (a wishlist
@@ -10,6 +11,7 @@ import type { PlaceRef } from "../../lib/schema/models";
  * buttons — one tap each, no menus.
  */
 export function StateToggles({ place }: { place: PlaceRef }) {
+  const t = useT();
   // Subscribe to this place's record only — record identities are stable across
   // unrelated updates, so untouched rows don't re-render on every store change.
   // O(1) via the shared index: with hundreds of rows mounted, per-row linear
@@ -33,7 +35,8 @@ export function StateToggles({ place }: { place: PlaceRef }) {
     const prev = findByPlace(useVisits.getState().visits, place);
     void toggleVisit(place);
     // Silent on add; a removal (which can delete photos/notes) gets an undoable toast.
-    if (prev?.status === "visited") show(`Removed ${place.name}`, () => restoreVisit(prev));
+    if (prev?.status === "visited")
+      show(t("places.row.removedToast", { name: place.name }), () => restoreVisit(prev));
   }
   function onWant() {
     void toggleWish(place);
@@ -51,13 +54,17 @@ export function StateToggles({ place }: { place: PlaceRef }) {
   const countryCheck = place.kind === "country";
 
   return (
-    <div className="states" role="group" aria-label={`${place.name} status`}>
+    <div className="states" role="group" aria-label={t("states.statusAria", { name: place.name })}>
       {(!countryCheck || been) && (
         <button
           className={"state been" + (been ? " on" : "")}
           type="button"
           aria-pressed={been}
-          aria-label={been ? `Remove ${place.name} from visited` : `Mark ${place.name} visited`}
+          aria-label={
+            been
+              ? t("states.removeFromVisited", { name: place.name })
+              : t("places.row.markVisitedAria", { name: place.name })
+          }
           onClick={onBeen}
         >
           ✓
@@ -68,8 +75,12 @@ export function StateToggles({ place }: { place: PlaceRef }) {
           className={"state want" + (want ? " on" : "")}
           type="button"
           aria-pressed={want}
-          aria-label={want ? `Remove ${place.name} from wishlist` : `Add ${place.name} to wishlist`}
-          title={want ? "On your wishlist" : "Want to go"}
+          aria-label={
+            want
+              ? t("states.removeFromWishlist", { name: place.name })
+              : t("states.addToWishlist", { name: place.name })
+          }
+          title={want ? t("states.onWishlist") : t("states.wantToGo")}
           onClick={onWant}
         >
           ⚑
@@ -80,8 +91,12 @@ export function StateToggles({ place }: { place: PlaceRef }) {
           className={"state fav" + (fav ? " on" : "")}
           type="button"
           aria-pressed={fav}
-          aria-label={fav ? `Unfavorite ${place.name}` : `Favorite ${place.name}`}
-          title={fav ? "Favorite" : "Mark as a favorite"}
+          aria-label={
+            fav
+              ? t("places.row.unfavoriteAria", { name: place.name })
+              : t("places.row.favoriteAria", { name: place.name })
+          }
+          title={fav ? t("states.favoriteTitle") : t("states.markFavoriteTitle")}
           onClick={onFav}
         >
           ♥

@@ -6,6 +6,7 @@ import { useVisits } from "../../lib/store/useVisits";
 import { useTrips } from "../../lib/store/useTrips";
 import { sortStories, useStories } from "../../lib/store/useStories";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import { backfillUpdatedAt } from "../../lib/schema/helpers";
 import { replaceAllPortable } from "../../lib/db/visitsDb";
 import { toMarkdown } from "./exportMarkdown";
 import { download } from "../../lib/download";
@@ -15,6 +16,7 @@ import {
   daysSinceBackup,
   snoozeReminder,
 } from "../../lib/backupReminder";
+import { useT } from "../../lib/i18n";
 
 /**
  * Get the file to the user, wherever they want it. Inside the native wrap
@@ -53,12 +55,17 @@ async function deliver(filename: string, text: string, type: string): Promise<vo
 }
 
 export function Backup() {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const trips = useTrips((s) => s.trips);
   const stories = useStories((s) => s.stories);
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  // The reset flow asks you to TYPE a word — a click alone can't wipe everything.
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetText, setResetText] = useState("");
+  const RESET_WORD = "RESET";
   const hasData = visits.length > 0 || trips.length > 0 || stories.length > 0;
   // Whether to nudge a backup right now (computed once on open, editable by the
   // export/snooze actions). daysSince is for the wording ("N days" vs "never").
@@ -75,14 +82,14 @@ export function Backup() {
       markBackedUp(Date.now());
       setReminderDue(false);
     } catch {
-      setMessage({ kind: "err", text: "Couldn't build the export file. Your data is unchanged." });
+      setMessage({ kind: "err", text: t("backup.msg.exportJsonErr") });
     }
   }
   async function exportMd() {
     try {
       await deliver("places.md", toMarkdown(visits, trips, ref), "text/markdown");
     } catch {
-      setMessage({ kind: "err", text: "Couldn't build the summary file. Your data is unchanged." });
+      setMessage({ kind: "err", text: t("backup.msg.exportMdErr") });
     }
   }
   async function exportCsv() {
@@ -90,8 +97,27 @@ export function Backup() {
       const { serializePlacesCsv, PLACES_CSV_FILENAME } = await import("./exportCsv");
       await deliver(PLACES_CSV_FILENAME, serializePlacesCsv(visits, ref), "text/csv");
     } catch {
-      setMessage({ kind: "err", text: "Couldn't build the places file. Your data is unchanged." });
+      setMessage({ kind: "err", text: t("backup.msg.exportCsvErr") });
     }
+  }
+
+  /** Wipe everything on this device — places, trips, stories and their photos —
+   *  in one transaction, then clear it from memory. There is no undo, which is
+   *  why it takes a typed word to get here. */
+  async function resetAll() {
+    try {
+      await replaceAllPortable([], [], []);
+    } catch {
+      setMessage({ kind: "err", text: t("backup.msg.eraseErr") });
+      return;
+    }
+    useVisits.setState({ visits: [] });
+    useTrips.setState({ trips: [] });
+    useStories.setState({ stories: [] });
+    setResetOpen(false);
+    setResetText("");
+    setReminderDue(false);
+    setMessage({ kind: "ok", text: t("backup.msg.erased") });
   }
 
   async function onImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -120,13 +146,14 @@ export function Backup() {
     }
     if (visits.length > 0 || trips.length > 0 || stories.length > 0) {
       const ok = window.confirm(
-        `⚠ This replaces everything on this device — your ${visits.length} place` +
-          `${visits.length === 1 ? "" : "s"}, ${trips.length} trip${trips.length === 1 ? "" : "s"} and ` +
-          `${stories.length} stor${stories.length === 1 ? "y" : "ies"} — with the ` +
-          `${result.visits.length} place${result.visits.length === 1 ? "" : "s"}, ` +
-          `${result.trips.length} trip${result.trips.length === 1 ? "" : "s"} and ` +
-          `${result.stories.length} stor${result.stories.length === 1 ? "y" : "ies"} in this file. ` +
-          `It can't be undone. Continue?`,
+        t("backup.confirm.replace", {
+          curPlaces: visits.length,
+          curTrips: trips.length,
+          curStories: stories.length,
+          newPlaces: result.visits.length,
+          newTrips: result.trips.length,
+          newStories: result.stories.length,
+        }),
       );
       if (!ok) return;
     }
@@ -136,15 +163,21 @@ export function Backup() {
       // from the old.
       await replaceAllPortable(result.visits, result.trips, result.stories);
     } catch {
-      setMessage({ kind: "err", text: "Import failed while saving; your data is unchanged." });
+      setMessage({ kind: "err", text: t("backup.msg.saveErr") });
       return;
     }
-    useVisits.setState({ visits: result.visits });
-    useTrips.setState({ trips: result.trips });
-    useStories.setState({ stories: sortStories(result.stories) });
+    // Backfill `updatedAt` from `addedAt` for records that predate the field, so a
+    // freshly restored session can immediately take part in device sync (spec 013).
+    useVisits.setState({ visits: result.visits.map(backfillUpdatedAt) });
+    useTrips.setState({ trips: result.trips.map(backfillUpdatedAt) });
+    useStories.setState({ stories: sortStories(result.stories.map(backfillUpdatedAt)) });
     setMessage({
       kind: "ok",
-      text: `Restored ${result.visits.length} places, ${result.trips.length} trips and ${result.stories.length} stories.`,
+      text: t("backup.msg.restored", {
+        places: result.visits.length,
+        trips: result.trips.length,
+        stories: result.stories.length,
+      }),
     });
   }
 
@@ -156,26 +189,26 @@ export function Backup() {
     if (places.length === 0) {
       setMessage({
         kind: "err",
-        text: total === 0 ? "This file has no places to import." : "Couldn't read any places from this file — expected columns like lat, lon, country, city.",
+        text: total === 0 ? t("backup.msg.csvNoPlaces") : t("backup.msg.csvUnreadable"),
       });
       return;
     }
     try {
       const { added, updated } = await useVisits.getState().mergeVisits(places);
-      const skip = skipped ? `, ${skipped} skipped` : "";
+      const skip = skipped ? t("backup.msg.skipped", { count: skipped }) : "";
       setMessage({
         kind: "ok",
-        text: `Added ${added} place${added === 1 ? "" : "s"}, updated ${updated}${skip}. Your trips and stories are untouched.`,
+        text: t("backup.msg.merged", { added, updated, skip }),
       });
     } catch {
-      setMessage({ kind: "err", text: "Import failed while saving; your data is unchanged." });
+      setMessage({ kind: "err", text: t("backup.msg.saveErr") });
     }
   }
 
   return (
-    <section aria-label="Backup and restore">
+    <section aria-label={t("backup.aria")}>
       <div className="section-head">
-        <h2>Your data</h2>
+        <h2>{t("backup.title")}</h2>
       </div>
 
       {reminderDue && (
@@ -183,13 +216,13 @@ export function Backup() {
           <span aria-hidden>🛟</span>
           <span className="backup-reminder-text">
             {daysSince == null
-              ? "You haven't backed up yet — a lost phone loses your travels."
-              : `It's been ${daysSince} day${daysSince === 1 ? "" : "s"} since your last backup.`}{" "}
-            Export it and keep the file somewhere safe.
+              ? t("backup.reminder.never")
+              : t.plural("backup.reminder.days", daysSince)}{" "}
+            {t("backup.reminder.suffix")}
           </span>
           <span className="backup-reminder-actions">
             <button className="btn" type="button" onClick={() => void exportJson()}>
-              Back up now
+              {t("backup.reminder.backupNow")}
             </button>
             <button
               className="link"
@@ -199,30 +232,26 @@ export function Backup() {
                 setReminderDue(false);
               }}
             >
-              Later
+              {t("backup.reminder.later")}
             </button>
           </span>
         </div>
       )}
 
-      <p className="muted">
-        Everything lives in one portable file on your device. Export it to a drive or git, or share
-        it straight to your cloud (Drive, Nextcloud, Files…). Nothing leaves your device unless you
-        export it.
-      </p>
+      <p className="muted">{t("backup.intro")}</p>
 
       <div className="btn-row">
         <button className="btn" type="button" onClick={() => void exportJson()}>
-          Export data
+          {t("backup.export.data")}
         </button>
         <button className="btn-ghost" type="button" onClick={() => void exportCsv()}>
-          Export places (.csv)
+          {t("backup.export.csv")}
         </button>
         <button className="btn-ghost" type="button" onClick={() => void exportMd()}>
-          Export summary (.md)
+          {t("backup.export.md")}
         </button>
         <button className="btn-ghost" type="button" onClick={() => fileInput.current?.click()}>
-          Import…
+          {t("backup.import")}
         </button>
         <input
           ref={fileInput}
@@ -252,6 +281,71 @@ export function Backup() {
         is merged in — it only adds and updates places, never erasing your trips or stories. Files
         are validated and sanitized on import — never executed.
       </p>
+
+      {hasData && (
+        <div className="danger-zone">
+          {!resetOpen ? (
+            <>
+              <button
+                className="btn-danger"
+                type="button"
+                onClick={() => {
+                  setResetText("");
+                  setResetOpen(true);
+                }}
+              >
+                {t("backup.reset.button")}
+              </button>
+              <p className="muted small">{t("backup.reset.note")}</p>
+            </>
+          ) : (
+            <div className="reset-confirm" role="alertdialog" aria-label={t("backup.reset.confirmAria")}>
+              <p className="reset-warn">
+                {t("backup.reset.warn", {
+                  places: visits.length,
+                  trips: trips.length,
+                  stories: stories.length,
+                })}
+              </p>
+              <label className="reset-label" htmlFor="reset-confirm-input">
+                {t("backup.reset.typeWord", { word: RESET_WORD })}
+              </label>
+              <input
+                id="reset-confirm-input"
+                className="reset-input"
+                type="text"
+                value={resetText}
+                onChange={(e) => setResetText(e.target.value)}
+                autoComplete="off"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-label={t("backup.reset.inputAria", { word: RESET_WORD })}
+              />
+              <div className="btn-row">
+                <button
+                  className="btn-danger"
+                  type="button"
+                  disabled={resetText.trim().toUpperCase() !== RESET_WORD}
+                  onClick={() => void resetAll()}
+                >
+                  {t("backup.reset.erase")}
+                </button>
+                <button
+                  className="btn-ghost"
+                  type="button"
+                  onClick={() => {
+                    setResetOpen(false);
+                    setResetText("");
+                  }}
+                >
+                  {t("common.cancel")}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }

@@ -1,0 +1,245 @@
+// Device-sync engine (git mode) — spec 013.
+//
+// Orchestrates ONE sync run: pull the remote portable file, merge it record-by-
+// record into local data (reusing the convergent core in ./merge), write the
+// merged result back to local, and push it to the remote — in that order (FR-003).
+// A non-fast-forward on push (the other device pushed between our pull and push)
+// makes us re-pull, re-merge and retry automatically, so the user never resolves a
+// git text conflict by hand (FR-012).
+//
+// The engine is deliberately I/O-agnostic: the git host lives behind `SyncRemote`
+// (GitHub is one impl — see gitHubSyncRemote), and the portable-file codec + the
+// local write land through injected ports. That keeps it pure enough to unit-test
+// with an in-memory remote and keeps zero-lock-in honest (any git remote works).
+
+import { gcTombstones, mergeById, type SyncSnapshot } from "./merge";
+import type { Story, Trip, Visit } from "../schema/models";
+import { GitHubTarget, GitPushConflictError } from "../publish/gitTarget";
+
+/** The three synced collections, each as a records+tombstones snapshot. */
+export interface StoreSnapshots {
+  visits: SyncSnapshot<Visit>;
+  trips: SyncSnapshot<Trip>;
+  stories: SyncSnapshot<Story>;
+}
+
+/** An empty starting point (a fresh install, or a remote that has no file yet). */
+export function emptySnapshots(): StoreSnapshots {
+  return {
+    visits: { records: [], tombstones: [] },
+    trips: { records: [], tombstones: [] },
+    stories: { records: [], tombstones: [] },
+  };
+}
+
+/**
+ * Signals a non-fast-forward: the remote advanced since we pulled. The engine
+ * catches it to re-pull and re-merge; a `SyncRemote` raises it from `push`.
+ */
+export class SyncConflictError extends Error {
+  constructor(message = "The remote advanced since the last pull.") {
+    super(message);
+    this.name = "SyncConflictError";
+  }
+}
+
+/**
+ * A git remote holding the one portable file. `version` is an opaque token (a git
+ * blob SHA for GitHub) that pins the copy we pulled; `push` asserts it so a racing
+ * device's write can't be silently clobbered — on mismatch it throws
+ * SyncConflictError. Provider-agnostic on purpose (Constitution: zero lock-in).
+ */
+export interface SyncRemote {
+  readonly name: string;
+  /** Current file text + version, or null content when the file doesn't exist. */
+  pull(): Promise<{ content: string | null; version: string | null }>;
+  /** Write the file, requiring the remote is still at `expectedVersion`. */
+  push(content: string, message: string, expectedVersion: string | null): Promise<void>;
+}
+
+/** Records added / updated / removed by a merge, for the user-facing report (FR-016). */
+export interface SyncCounts {
+  added: number;
+  updated: number;
+  removed: number;
+}
+
+export interface SyncResult {
+  visits: SyncCounts;
+  trips: SyncCounts;
+  stories: SyncCounts;
+  total: SyncCounts;
+  /** True when the remote had no file yet and this run seeded it. */
+  createdRemote: boolean;
+}
+
+export interface SyncPorts {
+  /** Local data right now (records + tombstones per collection). */
+  localSnapshots: StoreSnapshots;
+  /** The git remote. */
+  remote: SyncRemote;
+  /**
+   * Parse a pulled portable file's text into snapshots. MUST validate + sanitize
+   * exactly as a manual import does (inert data) and throw on invalid content, so
+   * a malformed/hostile file aborts the sync instead of corrupting local data
+   * (FR-013). Wired from the existing import path by the caller.
+   */
+  parse: (text: string) => StoreSnapshots;
+  /** Serialize merged snapshots back to the canonical portable file text. */
+  serialize: (merged: StoreSnapshots) => string;
+  /** Persist the merged result locally in one transaction (FR-015). */
+  persist: (merged: StoreSnapshots) => Promise<void>;
+  /** Commit message for the push. */
+  message?: string;
+  /** Injectable clock (tests). */
+  now?: () => Date;
+  /** How many times to re-pull/re-merge on a push race before giving up. */
+  maxRetries?: number;
+  /** Tombstones older than this many days may be retired at the sync point (FR-011). */
+  gcHorizonDays?: number;
+}
+
+const DEFAULT_MESSAGE = "Sync Postcards via device sync";
+const DEFAULT_MAX_RETRIES = 3;
+const DEFAULT_GC_HORIZON_DAYS = 90;
+
+const visitTs = (v: Visit) => v.updatedAt ?? v.addedAt;
+const tripTs = (t: Trip) => t.updatedAt ?? t.addedAt;
+const storyTs = (s: Story) => s.updatedAt ?? s.addedAt;
+
+/** Merge every collection newest-wins, honouring tombstones (reuses ./merge). */
+function mergeAll(local: StoreSnapshots, remote: StoreSnapshots): StoreSnapshots {
+  return {
+    visits: mergeById(local.visits, remote.visits, (v) => v.visitId, visitTs),
+    trips: mergeById(local.trips, remote.trips, (t) => t.tripId, tripTs),
+    stories: mergeById(local.stories, remote.stories, (s) => s.storyId, storyTs),
+  };
+}
+
+/** Retire tombstones older than the horizon across every collection (FR-011). */
+function gcAll(s: StoreSnapshots, horizonIso: string): StoreSnapshots {
+  return {
+    visits: gcTombstones(s.visits, horizonIso),
+    trips: gcTombstones(s.trips, horizonIso),
+    stories: gcTombstones(s.stories, horizonIso),
+  };
+}
+
+/** Deterministic string form of a snapshot set (records + tombstones sorted by id),
+ *  independent of file metadata like exportedAt — used to detect "nothing to push". */
+function canonical(s: StoreSnapshots): string {
+  const sortSnap = <R>(snap: SyncSnapshot<R>, idOf: (r: R) => string): SyncSnapshot<R> => ({
+    records: [...snap.records].sort((a, b) => idOf(a).localeCompare(idOf(b))),
+    tombstones: [...snap.tombstones].sort((a, b) => a.id.localeCompare(b.id)),
+  });
+  return JSON.stringify({
+    visits: sortSnap(s.visits, (v) => v.visitId),
+    trips: sortSnap(s.trips, (t) => t.tripId),
+    stories: sortSnap(s.stories, (s2) => s2.storyId),
+  });
+}
+
+function countChanges<R>(before: R[], after: R[], idOf: (r: R) => string): SyncCounts {
+  const b = new Map(before.map((r) => [idOf(r), r]));
+  const a = new Map(after.map((r) => [idOf(r), r]));
+  let added = 0;
+  let updated = 0;
+  let removed = 0;
+  for (const [id, r] of a) {
+    const prev = b.get(id);
+    if (prev === undefined) added++;
+    else if (JSON.stringify(prev) !== JSON.stringify(r)) updated++;
+  }
+  for (const id of b.keys()) if (!a.has(id)) removed++;
+  return { added, updated, removed };
+}
+
+function sumCounts(...parts: SyncCounts[]): SyncCounts {
+  return parts.reduce(
+    (acc, c) => ({
+      added: acc.added + c.added,
+      updated: acc.updated + c.updated,
+      removed: acc.removed + c.removed,
+    }),
+    { added: 0, updated: 0, removed: 0 },
+  );
+}
+
+/**
+ * Run one full sync: pull → merge → write local → push, retrying on a push race.
+ * Local data is written only AFTER a successful push, so a failed sync (no network,
+ * auth denied) leaves local byte-identical to its prior state (FR-015 / SC-008).
+ */
+export async function syncOnce(ports: SyncPorts): Promise<SyncResult> {
+  const {
+    localSnapshots: local,
+    remote,
+    parse,
+    serialize,
+    persist,
+    message = DEFAULT_MESSAGE,
+  } = ports;
+  const now = ports.now?.() ?? new Date();
+  const maxRetries = ports.maxRetries ?? DEFAULT_MAX_RETRIES;
+  const gcDays = ports.gcHorizonDays ?? DEFAULT_GC_HORIZON_DAYS;
+  const horizonIso = new Date(now.getTime() - gcDays * 24 * 60 * 60 * 1000).toISOString();
+
+  let pulled = await remote.pull();
+  let createdRemote = pulled.content == null;
+  let merged: StoreSnapshots;
+  let attempt = 0;
+
+  for (;;) {
+    // A malformed/hostile pulled file throws here (parse validates+sanitizes) and
+    // aborts the run before any local write — local data is never corrupted.
+    const remoteSnap = pulled.content == null ? emptySnapshots() : parse(pulled.content);
+    merged = gcAll(mergeAll(local, remoteSnap), horizonIso);
+
+    // If the remote already holds the converged set, there is nothing to push —
+    // idempotent re-sync is a genuine no-op (SC-005).
+    if (pulled.content != null && canonical(merged) === canonical(remoteSnap)) break;
+
+    try {
+      await remote.push(serialize(merged), message, pulled.version);
+      break;
+    } catch (err) {
+      if (err instanceof SyncConflictError && attempt < maxRetries) {
+        attempt++;
+        pulled = await remote.pull();
+        createdRemote = false;
+        continue;
+      }
+      throw err; // network/auth/other, or retries exhausted — local left untouched
+    }
+  }
+
+  await persist(merged);
+
+  const visits = countChanges(local.visits.records, merged.visits.records, (v) => v.visitId);
+  const trips = countChanges(local.trips.records, merged.trips.records, (t) => t.tripId);
+  const stories = countChanges(local.stories.records, merged.stories.records, (s) => s.storyId);
+  return { visits, trips, stories, total: sumCounts(visits, trips, stories), createdRemote };
+}
+
+/**
+ * Adapt a GitHubTarget (the connector shared with Publish mode) to `SyncRemote`,
+ * translating its GitPushConflictError into the engine's SyncConflictError so the
+ * retry loop stays provider-agnostic.
+ */
+export function gitHubSyncRemote(target: GitHubTarget, path: string): SyncRemote {
+  return {
+    name: target.name,
+    async pull() {
+      const file = await target.getFile(path);
+      return file ? { content: file.content, version: file.version } : { content: null, version: null };
+    },
+    async push(content, message, expectedVersion) {
+      try {
+        await target.putFileConditional(path, content, message, expectedVersion);
+      } catch (err) {
+        if (err instanceof GitPushConflictError) throw new SyncConflictError(err.message);
+        throw err;
+      }
+    },
+  };
+}

@@ -11,6 +11,7 @@ import {
   type WikiFullText,
 } from "../../lib/wikivoyage";
 import type { PlaceRef } from "../../lib/schema/models";
+import { useT } from "../../lib/i18n";
 
 const KIND_GROUP: Record<string, string> = {
   place: "Explore",
@@ -50,6 +51,7 @@ function guideNames(place: PlaceRef) {
  * full guides inline (see GuideSection) alongside its photos and journal links.
  */
 export function GuideButton({ place, className }: { place: PlaceRef; className?: string }) {
+  const t = useT();
   const names = useMemo(() => guideNames(place), [place]);
   if (!names) return null;
 
@@ -69,10 +71,10 @@ export function GuideButton({ place, className }: { place: PlaceRef; className?:
       type="button"
       className={className ?? "mini-btn"}
       onClick={open}
-      aria-label={`Open ${place.name} with travel guides`}
-      title={`Open ${place.name} with travel guides`}
+      aria-label={t("guide.openWithGuides", { name: place.name })}
+      title={t("guide.openWithGuides", { name: place.name })}
     >
-      📖 <span className="row-btn-label">Guide</span>
+      📖 <span className="row-btn-label">{t("guide.label")}</span>
     </button>
   );
 }
@@ -80,11 +82,12 @@ export function GuideButton({ place, className }: { place: PlaceRef; className?:
 /** The same guides as the modal, rendered as an in-page section (city and
  *  country pages get their guides right on the page, not behind a button). */
 export function GuideSection({ place }: { place: PlaceRef }) {
+  const t = useT();
   const names = useMemo(() => guideNames(place), [place]);
   if (!names) return null;
   return (
     <section className="city-section guide-section">
-      <h3>Guides</h3>
+      <h3>{t("guide.sectionTitle")}</h3>
       <GuideContent placeName={place.name} names={names} />
     </section>
   );
