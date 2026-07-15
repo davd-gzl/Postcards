@@ -17,15 +17,17 @@ test("count with or without dependent territories", async ({ page }) => {
   await gotoTab(page, "Stats");
 
   // Default scope counts both, against the full countries + territories list.
-  const countTile = page.locator(".stat-grid .stat-tile").first();
-  const denomTile = page.locator(".stat-grid .stat-tile").nth(1);
-  await expect(countTile).toContainText("2");
-  await expect(denomTile).toContainText(/countries & territories/);
+  // The count lives in the coverage-ring headline; its scope wording sits in
+  // the hero caption beside the ring.
+  const countNum = page.locator(".hero-num");
+  const caption = page.locator(".hero-caption");
+  await expect(countNum).toContainText("2");
+  await expect(caption).toContainText(/countries & territories/);
 
   // Switch to UN members only (segmented toggle) → Hong Kong (a territory)
   // drops from the count, and the denominator relabels + shrinks.
   await page.getByRole("button", { name: "UN · 193" }).first().click();
-  await expect(countTile).toContainText("1");
-  await expect(denomTile).toContainText(/UN member states/);
-  await expect(denomTile).not.toContainText(/countries & territories/);
+  await expect(countNum).toContainText("1");
+  await expect(caption).toContainText(/UN member states/);
+  await expect(caption).not.toContainText(/countries & territories/);
 });

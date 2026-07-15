@@ -16,8 +16,8 @@ test("add a place via search and see it in stats + places", async ({ page }) => 
 
   // Stats reflects it, including the continent section.
   await gotoTab(page, "Stats");
-  await expect(page.getByText("countries", { exact: true })).toBeVisible();
-  await expect(page.locator(".country-head", { hasText: "France" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Coverage" })).toBeVisible();
+  await expect(page.locator(".country-summary", { hasText: "France" })).toBeVisible();
   await expect(page.getByText("By continent")).toBeVisible();
 
   // Places lists it.
@@ -57,5 +57,5 @@ test("a visited city lights up its country — countries can't be checked off di
   await expect(page.getByRole("button", { name: "Mark Japan visited" })).toHaveCount(0);
 
   await gotoTab(page, "Stats");
-  await expect(page.locator(".country-head", { hasText: "Japan" })).toBeVisible();
+  await expect(page.locator(".country-summary", { hasText: "Japan" })).toBeVisible();
 });
