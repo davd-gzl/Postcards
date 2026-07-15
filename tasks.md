@@ -1,5 +1,9 @@
 # Postcards — working task list
 
+> **FINAL STEP (user-authorized):** once every item below is done, AUTO-MERGE
+> `claude/monument-display-optimize-x1j6le` into the deployed default branch
+> `claude/repo-setup-speckit-3magw3` so GitHub Pages ships it (no manual merge).
+
 Running checklist for the current batch of requests. Kept so nothing is
 forgotten. Grouped by area; each item links to where it lives. Push directly to
 `claude/monument-display-optimize-x1j6le`.
