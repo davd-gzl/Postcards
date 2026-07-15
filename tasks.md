@@ -17,12 +17,11 @@ Decisions locked with the user:
 - **Scope:** **selectable** — one trip / date range / tag, with preview; strip photo EXIF/GPS on export
 - **Journey model:** **Trips drive the route** (from→to legs + transport mode); stories + photos attach to each place
 
-- [ ] Write `specs/012-journal-publish/spec.md` (speckit format)
-- [ ] Write `specs/012-journal-publish/plan.md` + Constitution Check
-- [ ] `specs/012-journal-publish/tasks.md` (implementation breakdown)
-- [ ] Implement: reader (Polarsteps-style book — journey map, transport legs, photo-led steps, left→right paging, cover page)
-- [ ] Implement: passphrase encryption of the exported data
-- [ ] Implement: portable bundle export + optional GitHub push (Sync button)
+- [x] Write `specs/012-journal-publish/spec.md` + `plan.md` (Constitution Check)
+- [x] Foundation: passphrase encryption (`lib/publish/encrypt.ts`, AES-GCM+PBKDF2, tested)
+- [x] Foundation: journey-bundle assembler (`lib/publish/bundle.ts`, trips-driven route + steps, tested)
+- [ ] Reader UI (Polarsteps-style book — journey map, transport legs, photo-led steps, left→right paging, cover page)
+- [ ] Portable bundle export (self-contained HTML) + optional GitHub push (Sync button)
 - [ ] Docs for the person hosting it (README in the export + `docs/`)
 
 ## Device sync (phone ↔ laptop) — P2P or git mode
@@ -40,9 +39,10 @@ mode, so it's high-value and not much extra surface. Recommendation:
   data channel, no cloud at all. Great for the constitution but heavier (pairing,
   signaling); worth a second phase once git mode proves the merge model.
 
-- [ ] Spec `specs/013-device-sync/spec.md` (git mode first, P2P as phase 2)
-- [ ] Record-level merge for visits / trips / stories (converge, never clobber)
-- [ ] Sync button shared with Publish mode's git connector
+- [x] Spec `specs/013-device-sync/spec.md` (git mode first, P2P as phase 2)
+- [x] Record-level convergent merge core (`lib/sync/merge.ts`, newest-wins + tombstones, tested — deterministic/commutative/idempotent)
+- [ ] Sync engine wiring (git pull→merge→push) + Sync button/UI, shared git connector with Publish mode
+- [ ] `updatedAt` on records (schema) for the merge timestamp
 
 ## UX / behaviour batch
 
