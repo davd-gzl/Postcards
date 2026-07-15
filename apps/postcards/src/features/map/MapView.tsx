@@ -948,6 +948,11 @@ export function MapView({
     // Torn down in cleanup (below): the online self-heal listener for the OSM base.
     let removeOsmHeal: (() => void) | null = null;
     ensurePmtilesProtocol();
+    // Prime the country-geometry fetch NOW (idempotent, memoised) so its
+    // download + parse overlaps style resolution and WebGL init, instead of only
+    // starting at the map "load" event — the offline base is this land shape, so
+    // an earlier fetch means a filled map sooner.
+    void getCountries();
 
     (async () => {
       const pack =
