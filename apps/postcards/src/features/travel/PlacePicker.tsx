@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useId, useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { searchPlaces } from "../visits/search";
 import { countryFlag } from "../../lib/format/format";
@@ -24,7 +24,10 @@ export function PlacePicker({
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
 
-  const results = useMemo(() => searchPlaces(ref, q), [ref, q]);
+  // Defer the scan off the keystroke render (see PlaceSearch): typing paints
+  // immediately; the search runs in an interruptible follow-up render.
+  const dq = useDeferredValue(q);
+  const results = useMemo(() => searchPlaces(ref, dq), [ref, dq]);
   const open = q.trim().length >= 1 && !value && results.length > 0;
 
   function choose(place: PlaceRef) {
@@ -42,7 +45,10 @@ export function PlacePicker({
       setActive((a) => (a <= 0 ? results.length - 1 : a - 1));
       e.preventDefault();
     } else if (e.key === "Enter") {
-      const r = results[active >= 0 ? active : 0];
+      // Deferred results can lag a fast typist by a keystroke — recompute
+      // synchronously for the action so Enter never picks stale or nothing.
+      const list = q === dq ? results : searchPlaces(ref, q);
+      const r = list[active >= 0 && active < list.length ? active : 0];
       if (r) choose(r.place);
       e.preventDefault();
     } else if (e.key === "Escape") {

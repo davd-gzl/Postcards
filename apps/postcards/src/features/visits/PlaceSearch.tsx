@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { searchPlaces } from "./search";
-import { useVisits, findByPlace } from "../../lib/store/useVisits";
+import { useVisits, findByPlace, visitIndex } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { useToast } from "../../lib/store/useToast";
 import { AddPlaceForm } from "./AddPlaceForm";
+import { placeKey } from "../../lib/schema/helpers";
 import type { PlaceRef } from "../../lib/schema/models";
 
 /**
@@ -18,7 +19,7 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const toggleVisit = useVisits((s) => s.toggleVisit);
-  const setAll = useVisits((s) => s.setAll);
+  const restoreVisit = useVisits((s) => s.restoreVisit);
   const showToast = useToast((s) => s.show);
   const [q, setQ] = useState("");
   const [active, setActive] = useState(-1);
@@ -31,8 +32,13 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
     if (focusNonce > 0) inputRef.current?.focus();
   }, [focusNonce]);
 
-  const results = useMemo(() => searchPlaces(ref, q), [ref, q]);
-  const notFound = q.trim().length >= 2 && results.length === 0;
+  // Defer the scan off the keystroke render: the input paints at native speed
+  // and the search fan-out runs in an interruptible follow-up render (dropped
+  // if the next keystroke lands first). notFound keys on the deferred query so
+  // the add-place form doesn't flash while results lag a beat behind.
+  const dq = useDeferredValue(q);
+  const results = useMemo(() => searchPlaces(ref, dq), [ref, dq]);
+  const notFound = dq.trim().length >= 2 && results.length === 0;
 
   // Keep the active option visible as arrows move it.
   useEffect(() => {
@@ -66,12 +72,13 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
    *  logged directly — you visit a country by visiting a place inside it. */
   function toggle(place: PlaceRef) {
     if (place.kind === "country") return;
-    const prev = useVisits.getState().visits;
-    const wasVisited = findByPlace(prev, place)?.status === "visited";
+    // Only this place's record changes — snapshot it alone; undo restores one
+    // record instead of rewriting the whole visits table.
+    const prev = findByPlace(useVisits.getState().visits, place);
     void toggleVisit(place);
     // Adds are silent (the chip flips to ✓ in place); only a removal — which
     // can drop photos/notes — gets a toast, and only so it can be undone.
-    if (wasVisited) showToast(`Removed ${place.name}`, () => setAll(prev));
+    if (prev?.status === "visited") showToast(`Removed ${place.name}`, () => restoreVisit(prev));
     inputRef.current?.focus();
   }
 
@@ -81,18 +88,24 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
       setActive(-1);
       return;
     }
+    if (e.key === "Enter") {
+      // The deferred results can lag a keystroke behind a fast typist — for
+      // the ACTION, fall back to a synchronous scan so Enter never lands on a
+      // stale list or silently does nothing.
+      const list = q === dq ? results : searchPlaces(ref, q);
+      const r = list[active >= 0 && active < list.length ? active : 0];
+      // Enter shows the place; Shift+Enter marks it visited (keyboard parity
+      // with the row's Add chip).
+      if (r) (e.shiftKey ? toggle : pick)(r.place);
+      e.preventDefault();
+      return;
+    }
     if (!results.length) return;
     if (e.key === "ArrowDown") {
       setActive((a) => (a + 1) % results.length);
       e.preventDefault();
     } else if (e.key === "ArrowUp") {
       setActive((a) => (a <= 0 ? results.length - 1 : a - 1));
-      e.preventDefault();
-    } else if (e.key === "Enter") {
-      const r = results[active >= 0 ? active : 0];
-      // Enter shows the place; Shift+Enter marks it visited (keyboard parity
-      // with the row's Add chip).
-      if (r) (e.shiftKey ? toggle : pick)(r.place);
       e.preventDefault();
     }
   }
@@ -119,7 +132,7 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
       />
       <p className="sr-only" role="status" aria-live="polite">
         {notFound
-          ? `No matches for ${q.trim()}`
+          ? `No matches for ${dq.trim()}`
           : results.length > 0
             ? `${results.length} result${results.length === 1 ? "" : "s"}`
             : ""}
@@ -133,7 +146,7 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
           aria-label="Search results"
         >
           {results.map((r, i) => {
-            const visited = findByPlace(visits, r.place)?.status === "visited";
+            const visited = visitIndex(visits).get(placeKey(r.place))?.status === "visited";
             return (
               <li
                 key={`${r.place.kind}:${r.place.id}`}
@@ -181,8 +194,8 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
       )}
       {notFound && (
         <div className="search-empty">
-          <p>“{q.trim()}” isn’t in the loaded data.</p>
-          <AddPlaceForm initialName={q.trim()} onDone={() => setQ("")} />
+          <p>“{dq.trim()}” isn’t in the loaded data.</p>
+          <AddPlaceForm initialName={dq.trim()} onDone={() => setQ("")} />
         </div>
       )}
     </div>

@@ -7,9 +7,7 @@ import { useTrips } from "../../lib/store/useTrips";
 import { sortStories, useStories } from "../../lib/store/useStories";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { replaceAllPortable } from "../../lib/db/visitsDb";
-import { serializeFile, EXPORT_FILENAME } from "./exportJson";
 import { toMarkdown } from "./exportMarkdown";
-import { importFile } from "./importJson";
 
 function download(filename: string, text: string, type: string) {
   const blob = new Blob([text], { type });
@@ -54,6 +52,9 @@ export function Backup() {
 
   async function exportJson() {
     try {
+      // Loaded on click: the codec pulls in the Zod schemas (~65 KB min), which
+      // nothing on the startup path needs — keep them out of the boot chunk.
+      const { serializeFile, EXPORT_FILENAME } = await import("./exportJson");
       await deliver(EXPORT_FILENAME, serializeFile(visits, trips, stories), "application/json");
     } catch {
       setMessage({ kind: "err", text: "Couldn't build the export file. Your data is unchanged." });
@@ -72,6 +73,8 @@ export function Backup() {
     e.target.value = "";
     if (!file) return;
     const text = await file.text();
+    // Lazy for the same reason as exportJson — the validator is the other Zod user.
+    const { importFile } = await import("./importJson");
     const result = importFile(text);
     if (!result.ok) {
       setMessage({ kind: "err", text: result.error });

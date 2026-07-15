@@ -3,7 +3,8 @@ import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { fileToPostcard } from "../../lib/image/downscale";
-import { MAX_PHOTOS_PER_VISIT, type Photo } from "../../lib/schema/models";
+import { MAX_PHOTOS_PER_VISIT } from "../../lib/schema/helpers";
+import type { Photo } from "../../lib/schema/models";
 
 /**
  * A place's photo gallery — your postcards, the monuments, the views — each with
@@ -21,10 +22,10 @@ export function PhotoGallery({
   photos: Photo[];
   placeName: string;
 }) {
-  const addPhoto = useVisits((s) => s.addPhoto);
+  const addPhotos = useVisits((s) => s.addPhotos);
   const removePhoto = useVisits((s) => s.removePhoto);
   const setPhotoCaption = useVisits((s) => s.setPhotoCaption);
-  const setAll = useVisits((s) => s.setAll);
+  const restoreVisit = useVisits((s) => s.restoreVisit);
   const showToast = useToast((s) => s.show);
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -102,9 +103,13 @@ export function PhotoGallery({
     const files = picked.slice(0, room);
     setBusy(true);
     try {
+      // Downscale everything first, then land the whole pick in ONE store write —
+      // per-photo writes re-put the entire (multi-MB) record once per photo.
+      const added: Photo[] = [];
       for (const file of files) {
-        await addPhoto(visitId, { src: await fileToPostcard(file), caption: null });
+        added.push({ src: await fileToPostcard(file), caption: null });
       }
+      await addPhotos(visitId, added);
       setIndex(count + files.length - 1); // jump to the newest
       setOpen(true);
       if (picked.length > room) showToast(`Added ${room} — the gallery is now full.`);
@@ -229,12 +234,13 @@ export function PhotoGallery({
                 className="link-danger"
                 disabled={busy}
                 onClick={async () => {
-                  // Photos exist nowhere but in-app — snapshot first so the
-                  // toast can undo what would otherwise be an unrecoverable tap.
-                  const prev = useVisits.getState().visits;
+                  // Photos exist nowhere but in-app — snapshot this record first
+                  // so the toast can undo what would otherwise be an
+                  // unrecoverable tap (one record back, not a full-table rewrite).
+                  const prev = useVisits.getState().visits.find((v) => v.visitId === visitId);
                   await removePhoto(visitId, safeIndex);
                   if (count <= 1) setOpen(false);
-                  showToast("Removed photo", () => setAll(prev));
+                  if (prev) showToast("Removed photo", () => restoreVisit(prev));
                 }}
               >
                 Remove

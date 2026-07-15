@@ -1,0 +1,52 @@
+import type { Photo, PlaceRef, Visit } from "./models";
+
+// Zod-free constants & helpers shared by the always-loaded stores and screens.
+// models.ts (the Zod schemas) re-exports everything here, so schema consumers —
+// the backup codecs, the generated JSON Schema, tests — keep one import. Startup
+// code must import from THIS module instead: importing models.ts for a value
+// drags zod (~65 KB min) into the boot chunk, and the only runtime users of the
+// schemas are the codecs behind the Export/Import buttons (loaded on demand).
+
+export const FORMAT = "postcards" as const;
+// v2 adds the optional top-level `trips` array (travel log). Files stay
+// structurally back-compatible (v1 files import unchanged), but the bump means an
+// older build opening a v2 file shows the graceful "update the app" prompt rather
+// than a cryptic strict-parse error on the unknown `trips` key.
+// v3 turns a visit's single `photo` into a `photos` gallery (each with an optional
+// caption). Both fields validate, so v1/v2 files import unchanged; new exports write
+// `photos`. Older builds opening a v3 file get the same graceful "update" prompt.
+// v4 adds the "custom" place kind — a USER-authored point (name + coordinates) for
+// places missing from the reference datasets. Reference data stays aggregated;
+// custom points are personal data and live only in the user's own file.
+// v5 adds the optional top-level `stories` array (Journal — a mini travel blog).
+// Files stay structurally back-compatible (v4 files import unchanged), but the bump
+// means an older build opening a v5 file shows the graceful "update the app" prompt
+// rather than a cryptic strict-parse error on the unknown `stories` key.
+export const SCHEMA_VERSION = 5;
+
+/** Most photos one place's gallery may hold (bounds the inline portable file). */
+export const MAX_PHOTOS_PER_VISIT = 48;
+
+/** Most photos one journal story may hold (bounds the inline portable file). */
+export const MAX_PHOTOS_PER_STORY = 24;
+
+/** Stable key used for dedupe: one visit per (kind, id). */
+export function placeKey(place: Pick<PlaceRef, "kind" | "id">): string {
+  return `${place.kind}:${place.id}`;
+}
+
+/**
+ * Migrate a visit's legacy single `photo` into the `photos` gallery and drop the
+ * legacy field, so the rest of the app only ever reads `photos`. Idempotent —
+ * safe to run on every load/import. Returns a new object (never mutates input).
+ */
+export function normalizeVisitPhotos(v: Visit): Visit {
+  const photos: Photo[] = v.photos ? [...v.photos] : [];
+  if (v.photo && !photos.some((p) => p.src === v.photo)) {
+    photos.unshift({ src: v.photo, caption: null });
+  }
+  const { photo: _legacy, ...rest } = v;
+  // Only carry `photos` when there is at least one — keeps photo-less records and
+  // exports clean, and the rest of the app reads `v.photos ?? []`.
+  return photos.length ? { ...rest, photos } : rest;
+}
