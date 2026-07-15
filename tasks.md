@@ -20,9 +20,9 @@ Decisions locked with the user:
 - [x] Write `specs/012-journal-publish/spec.md` + `plan.md` (Constitution Check)
 - [x] Foundation: passphrase encryption (`lib/publish/encrypt.ts`, AES-GCM+PBKDF2, tested)
 - [x] Foundation: journey-bundle assembler (`lib/publish/bundle.ts`, trips-driven route + steps, tested)
-- [ ] Reader UI (Polarsteps-style book — journey map, transport legs, photo-led steps, left→right paging, cover page)
-- [ ] Portable bundle export (self-contained HTML) + optional GitHub push (Sync button)
-- [ ] Docs for the person hosting it (README in the export + `docs/`)
+- [x] Reader UI (Polarsteps-style book — inline-SVG route map, transport legs, photo-led steps, paging, cover) — DONE
+- [x] Self-contained HTML export + optional GitHub push + passphrase-gate variant — DONE
+- [x] Docs for the host (HOSTING.md shipped in export + docs/publishing.md) — DONE
 
 ## Device sync (phone ↔ laptop) — P2P or git mode
 
