@@ -23,6 +23,9 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
   const showToast = useToast((s) => s.show);
   const [q, setQ] = useState("");
   const [active, setActive] = useState(-1);
+  // Expand the "add your own place" form even when there ARE near-miss results
+  // (e.g. searching "Gili" finds Gili Air but not the missing Gili Meno).
+  const [showAddOwn, setShowAddOwn] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const focusNonce = useUi((s) => s.searchFocusNonce);
@@ -39,6 +42,10 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
   const dq = useDeferredValue(q);
   const results = useMemo(() => searchPlaces(ref, dq), [ref, dq]);
   const notFound = dq.trim().length >= 2 && results.length === 0;
+  // A fresh query collapses the inline add-your-own form.
+  useEffect(() => {
+    setShowAddOwn(false);
+  }, [dq]);
 
   // Keep the active option visible as arrows move it.
   useEffect(() => {
@@ -191,6 +198,23 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
             );
           })}
         </ul>
+      )}
+      {!notFound && dq.trim().length >= 2 && results.length > 0 && (
+        <div className="search-addown">
+          {showAddOwn ? (
+            <AddPlaceForm
+              initialName={dq.trim()}
+              onDone={() => {
+                setShowAddOwn(false);
+                setQ("");
+              }}
+            />
+          ) : (
+            <button type="button" className="link search-addown-btn" onClick={() => setShowAddOwn(true)}>
+              ＋ Not here? Add “{dq.trim()}” as your own place
+            </button>
+          )}
+        </div>
       )}
       {notFound && (
         <div className="search-empty">

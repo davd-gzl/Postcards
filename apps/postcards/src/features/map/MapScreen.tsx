@@ -10,6 +10,7 @@ import { usePrefersReducedMotion } from "../../lib/hooks/usePrefersReducedMotion
 import { useOnlineStatus } from "../../lib/hooks/useOnlineStatus";
 import { countryFlag, formatInt } from "../../lib/format/format";
 import { StateToggles } from "../visits/StateToggles";
+import { AddPlaceForm } from "../visits/AddPlaceForm";
 import { GuideButton } from "../guides/GuideButton";
 import { StatStrip } from "../stats/StatStrip";
 import { MapView, hasSavedCamera, type Basemap, type MapFocus, type MapFit, type MapMode } from "./MapView";
@@ -113,6 +114,10 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // The online base fell back to the offline base (offline / blocked tiles). Set
   // when it happens; drives the manual "Reconnect" prompt — never auto-switches.
   const [fellBackOffline, setFellBackOffline] = useState(false);
+  // "Add your own place" seeded from the map (long-press/right-click a spot, or
+  // the ＋ Add place button which seeds the current map centre).
+  const [addPlaceAt, setAddPlaceAt] = useState<{ lon: number; lat: number } | null>(null);
+  const [addPlaceOpen, setAddPlaceOpen] = useState(false);
   const [cityFilter, setCityFilter] = useState<CityFilter>(() =>
     loadPref(FILTER_KEY, (v) => (v === "unvisited" || v === "visited" ? v : "all")),
   );
@@ -503,6 +508,10 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
               showToast("Online map unavailable — showing the offline map.");
             }
           }}
+          onAddHere={(c) => {
+            setAddPlaceAt(c);
+            setAddPlaceOpen(true);
+          }}
         />
         {online && fellBackOffline && onlineMap && (
           <div className="map-reconnect" role="status">
@@ -537,12 +546,53 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           ))}
         </div>
         <div className="map-ctl map-ctl-left">
+          <button
+            className="map-btn"
+            type="button"
+            title="Add a place the maps don't have — right-click or long-press the map, or use this"
+            onClick={() => {
+              setAddPlaceAt(
+                bounds ? { lon: (bounds.west + bounds.east) / 2, lat: (bounds.south + bounds.north) / 2 } : null,
+              );
+              setAddPlaceOpen(true);
+            }}
+          >
+            ＋ Add place
+          </button>
           {myPlaceCoords.length > 0 && (
             <button className="map-btn" type="button" onClick={() => fitToMyPlaces()}>
               Fit to my places
             </button>
           )}
         </div>
+        {addPlaceOpen && (
+          <div
+            className="map-add-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add your own place"
+            onClick={() => setAddPlaceOpen(false)}
+          >
+            <div className="map-add-dialog" onClick={(e) => e.stopPropagation()}>
+              <div className="section-head">
+                <h3>Add a place</h3>
+                <button
+                  className="link"
+                  type="button"
+                  onClick={() => setAddPlaceOpen(false)}
+                  aria-label="Close"
+                >
+                  Close
+                </button>
+              </div>
+              <AddPlaceForm
+                initialName=""
+                initialCoords={addPlaceAt ?? undefined}
+                onDone={() => setAddPlaceOpen(false)}
+              />
+            </div>
+          </div>
+        )}
         <div className="map-ctl map-ctl-right">
           <button
             className={"map-btn" + (layersOpen ? " on" : "")}
