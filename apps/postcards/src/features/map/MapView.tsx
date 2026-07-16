@@ -305,13 +305,48 @@ function inViewPoints(cities: City[]): FeatureCollection<Point> {
  * Popup for any tappable place marker: name, region · population, and actions —
  * check/uncheck visited right from the map, plus the city detail page.
  */
+/** Load a small Wikipedia thumbnail of the place into the popup's photo slot,
+ *  online only. Never touches the network offline (the caller gates on the live
+ *  basemap, which Offline mode forces to the no-network "simple" base). Removes
+ *  the slot if there's no image or the request fails — no empty gap, no spinner. */
+async function loadPopupThumb(name: string, fig: HTMLElement): Promise<void> {
+  try {
+    const { fetchSummary } = await import("../../lib/wikivoyage");
+    const sum = await fetchSummary(name, { project: "wikipedia" });
+    if (!sum?.thumb) {
+      fig.remove();
+      return;
+    }
+    const img = document.createElement("img");
+    img.className = "map-popup-img";
+    img.src = sum.thumb;
+    img.alt = name;
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.referrerPolicy = "no-referrer";
+    img.onerror = () => fig.remove();
+    fig.appendChild(img);
+  } catch {
+    fig.remove();
+  }
+}
+
 function openPlacePopup(
   map: MlMap,
   lngLat: maplibregl.LngLatLike,
   info: { name: string; sub: string; place: PlaceRef; hasPage: boolean },
+  showImage = false,
 ): void {
   const el = document.createElement("div");
   el.className = "map-popup";
+  // Online-only preview image (cities & monuments): a little Wikipedia photo of
+  // what the place is, loaded lazily at the top of the card once it opens.
+  if (showImage) {
+    const fig = document.createElement("div");
+    fig.className = "map-popup-photo";
+    el.appendChild(fig);
+    void loadPopupThumb(info.name, fig);
+  }
   const actions = document.createElement("div");
   actions.className = "map-popup-actions";
   const popup = new maplibregl.Popup({ closeButton: false, offset: 12, maxWidth: "260px" })
@@ -1461,7 +1496,10 @@ export function MapView({
             countryId: String(p.cc ?? ""),
           } as PlaceRef,
           hasPage: kind === "city" || kind === "heritage",
-        });
+        },
+        // A little preview photo for cities & monuments, but only when the online
+        // basemap is active (offline / Offline mode uses "simple" — no network).
+        basemap !== "simple" && (kind === "city" || kind === "heritage"));
         suppressBoundsRef.current = true;
         const tapZoom = Math.max(map.getZoom(), 6.5);
         if (basemap === "osm") prefetchAroundPoint(anchor.lng, anchor.lat, tapZoom);

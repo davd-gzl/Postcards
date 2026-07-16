@@ -543,6 +543,22 @@ h1.brand {
   flex-direction: column;
   gap: 1px;
 }
+/* Online-only preview photo at the top of a city/monument popup. Fixed height
+   so the card doesn't jump when the image lands; the slot removes itself when
+   there's no image. */
+.map-popup-photo {
+  margin: 0 0 6px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--elev, rgba(0, 0, 0, 0.05));
+  line-height: 0;
+}
+.map-popup-img {
+  display: block;
+  width: 100%;
+  height: 92px;
+  object-fit: cover;
+}
 /* Name on its own line, the "Country - Region" context on the next — they used
    to render inline and ran into each other with no space at all. */
 .map-popup strong {
