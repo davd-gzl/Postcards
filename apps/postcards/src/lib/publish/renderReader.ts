@@ -1,6 +1,12 @@
-// Render a PUBLISHED journey to ONE self-contained HTML document — the "book"
-// a visitor discovers: an editorial cover, a hand-drawn-feeling route map that
-// labels every city, and one photo-led page per step, paged left→right.
+// Render a PUBLISHED journey to ONE self-contained HTML document. Two readers,
+// same data and same guarantees, chosen with `opts.layout`:
+//   • "blog" (DEFAULT) — a LIVING travelogue: one long scrollable page with a
+//     masthead, a "Last updated" stamp, a jump-to-newest link, the labeled route
+//     map, and a dated feed of posts (one per step, chronological, each with a
+//     stable permalink). Made to re-publish over time and re-read; returning
+//     visitors find what's new.
+//   • "book" — the original paged reader: an editorial cover, the route map, and
+//     one photo-led page per step, paged left→right, read once end-to-end.
 //
 // Constitution guarantees baked into this output:
 //   • INERT — all story text and captions are placed with textContent (never
@@ -31,6 +37,17 @@ export interface RenderReaderOptions {
    *  licenses). Defaults to the app's Natural Earth / OpenStreetMap / GeoNames
    *  credit. Plain text only — never a link (offline, zero external requests). */
   attribution?: string;
+  /**
+   * How the reader presents the journey.
+   *   • "blog" (default) — a LIVING travelogue: one long vertical, scrollable page
+   *     with a masthead, a "last updated" stamp, a jump-to-newest link, the map,
+   *     and a dated feed of posts (one per step). Made to re-publish over time and
+   *     be re-read; returning visitors find what's new.
+   *   • "book" — the original paged "book": a cover, a map, and one page per stop,
+   *     turned left→right, read once end-to-end.
+   * Both variants stay fully self-contained (inline only) and injection-safe.
+   */
+  layout?: "blog" | "book";
 }
 
 /** Default credit for the reference data behind the coordinates and outline. */
@@ -216,6 +233,61 @@ body{
 .pc-gate-input{width:100%; margin-top:6px; padding:12px 14px; font-size:16px; border-radius:12px;
   border:1px solid var(--pc-border); background:var(--pc-surface); color:var(--pc-text)}
 .pc-gate-msg{color:var(--pc-accent); min-height:22px; margin:16px 0 0; font-weight:600}
+
+/* ---- Blog layout (the living travelogue, DEFAULT) ------------------------ */
+.pc-head-blog{justify-content:space-between}
+.pc-blog-brand{flex:1; min-width:0; font-family:var(--pc-serif); font-weight:700; font-size:15px;
+  letter-spacing:.01em; color:var(--pc-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.pc-blog{padding:6px 0 0}
+.pc-masthead{padding:30px 0 4px; border-bottom:1px solid var(--pc-border); margin:0 0 8px}
+.pc-blog-title{font-family:var(--pc-serif); font-weight:700; font-size:clamp(32px,7.6vw,52px);
+  line-height:1.05; letter-spacing:-.015em; margin:6px 0 12px}
+.pc-blog-sub{font-family:var(--pc-serif); font-style:italic; font-size:19px; color:var(--pc-muted); margin:0 0 12px}
+.pc-blog-dates{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--pc-muted); margin:0 0 16px}
+.pc-updated{display:inline-flex; align-items:center; gap:8px; margin:0 6px 18px 0; font-size:13px; font-weight:600;
+  color:var(--pc-gold); background:color-mix(in srgb, var(--pc-gold) 12%, transparent);
+  border:1px solid color-mix(in srgb, var(--pc-gold) 32%, transparent); padding:6px 13px; border-radius:99px}
+.pc-updated-dot{width:8px; height:8px; border-radius:99px; background:var(--pc-gold);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--pc-gold) 22%, transparent)}
+.pc-latest{display:flex; align-items:center; gap:11px; text-decoration:none; color:var(--pc-text);
+  background:var(--pc-surface); border:1px solid var(--pc-border); border-radius:14px; padding:12px 15px;
+  font-weight:600; margin:0 0 8px; box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.pc-latest:hover{background:var(--pc-elev)}
+.pc-latest-tag{flex:none; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--pc-accent); background:color-mix(in srgb, var(--pc-accent) 12%, transparent);
+  padding:4px 9px; border-radius:99px}
+.pc-latest-title{font-family:var(--pc-serif); font-size:17px; min-width:0; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap}
+.pc-latest-arrow{flex:none; margin-left:auto; color:var(--pc-accent)}
+
+/* Map card (blog reuses the labeled route map, without the paged animation) */
+.pc-mapcard{margin:22px 0 4px}
+.pc-mapcard h2{font-family:var(--pc-serif); font-weight:700; font-size:25px; margin:0 0 14px; letter-spacing:-.01em}
+
+/* The feed of dated posts */
+.pc-feed{margin-top:26px}
+.pc-post{scroll-margin-top:78px; padding:6px 0 2px; animation:pc-fade .4s ease both}
+@keyframes pc-fade{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+.pc-post-meta{display:flex; align-items:center; flex-wrap:wrap; gap:9px 12px; margin:0 0 10px}
+.pc-post-date{font-size:13px; letter-spacing:.05em; text-transform:uppercase; color:var(--pc-muted);
+  font-variant-numeric:tabular-nums}
+.pc-post-mode{display:inline-flex; align-items:center; gap:6px; background:var(--pc-accent); color:var(--pc-accent-ink);
+  border-radius:99px; padding:4px 11px; font-size:12px; font-weight:600}
+.pc-permalink{margin-left:auto; display:inline-flex; align-items:center; gap:7px; text-decoration:none;
+  color:var(--pc-muted); border:1px solid var(--pc-border); background:var(--pc-surface); border-radius:99px;
+  padding:4px 11px; font-size:12px; line-height:1.4}
+.pc-permalink:hover{background:var(--pc-elev); color:var(--pc-text)}
+.pc-permalink-note{opacity:0; transition:opacity .2s ease; font-weight:700; color:var(--pc-accent)}
+.pc-permalink.is-copied .pc-permalink-note{opacity:1}
+.pc-post-place{font-family:var(--pc-serif); font-weight:700; font-size:26px; letter-spacing:-.01em; margin:0 0 4px}
+.pc-post-title{font-family:var(--pc-serif); font-style:italic; font-weight:600; font-size:19px;
+  color:var(--pc-muted); margin:0 0 14px}
+.pc-post-hero{padding:0; width:100%; cursor:pointer; margin:6px 0 0; display:block}
+.pc-post .pc-story-text{margin-top:16px}
+.pc-post .pc-gallery{margin-top:12px}
+.pc-divider{border:0; height:1px; background:var(--pc-border); margin:32px 0; position:relative}
+.pc-divider::after{content:"❖"; position:absolute; top:-11px; left:50%; transform:translateX(-50%);
+  background:var(--pc-bg); color:var(--pc-gold); padding:0 12px; font-size:13px}
 
 /* Footer */
 .pc-foot{max-width:720px; margin:0 auto; padding:22px 20px 96px; color:var(--pc-muted);
@@ -437,8 +509,9 @@ const READER_JS = `
     return sec;
   }
 
-  function buildMap(j){
-    var sec=el("section",{className:"pc-spread pc-mapwrap","aria-label":"Journey map",tabIndex:-1});
+  // Shared map content (kicker, heading, the fitted labeled route map, legend,
+  // attribution) — used by both the book spread and the blog map card.
+  function fillMap(sec,j){
     sec.appendChild(el("p",{className:"pc-kicker",textContent:"The route"}));
     sec.appendChild(el("h2",{textContent:"Where the journey went"}));
     sec.appendChild(el("div",{className:"pc-map",html:mapSvg(j.steps)}));
@@ -458,6 +531,40 @@ const READER_JS = `
     if(legend.childNodes.length) sec.appendChild(legend);
     sec.appendChild(el("p",{className:"pc-attrib",textContent:document.body.getAttribute("data-attrib")||""}));
     return sec;
+  }
+  function buildMap(j){ // book: a paged spread
+    return fillMap(el("section",{className:"pc-spread pc-mapwrap","aria-label":"Journey map",tabIndex:-1}),j);
+  }
+  function buildMapCard(j){ // blog: a static card near the top
+    return fillMap(el("section",{className:"pc-mapwrap pc-mapcard","aria-label":"Journey map"}),j);
+  }
+
+  // The feed reads OLDEST→NEWEST so the trip unfolds top to bottom. Flip this one
+  // constant to show the newest post first (per-post anchors stay stable either way).
+  var FEED_NEWEST_FIRST=false;
+
+  // Index of the most recent (newest-dated) step — the "latest" entry a returning
+  // reader wants. Falls back to the last step when nothing is dated.
+  function newestIndex(steps){
+    var bi=-1, bd=null;
+    for(var i=0;i<steps.length;i++){
+      var d=steps[i].date;
+      if(d!=null&&(bd==null||d>=bd)){ bd=d; bi=i; }
+    }
+    return bi<0?steps.length-1:bi;
+  }
+  function entryTitle(step){
+    if(step.story&&step.story.title) return step.story.title;
+    return step.place.name;
+  }
+  function themeToggle(){
+    var theme=el("button",{className:"pc-theme",type:"button","aria-label":"Toggle light or dark theme",title:"Toggle theme",textContent:"◐"});
+    theme.addEventListener("click",function(){
+      var r=document.documentElement;
+      var dark=r.getAttribute("data-theme")==="dark"||(r.getAttribute("data-theme")!=="light"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches);
+      r.setAttribute("data-theme",dark?"light":"dark");
+    });
+    return theme;
   }
 
   function buildStep(step,n,total){
@@ -546,22 +653,119 @@ const READER_JS = `
     window.scrollTo(0,0);
   }
 
+  // Dispatch to the reader the author chose (blog by default). The layout rides
+  // on <body data-layout> so it is known even before an encrypted payload unlocks.
   function start(journey){
     state.journey=journey;
     var doc=journey&&journey.title?journey.title:"A journey";
     try{document.title=doc;}catch(_e){}
+    var layout=(document.body&&document.body.getAttribute("data-layout"))||"blog";
+    if(layout==="book") startBook(journey); else startBlog(journey);
+  }
+
+  // --- blog: one long, scrollable page of dated posts (a living travelogue) ---
+  function buildPost(step,i,total){
+    var art=el("article",{className:"pc-post",id:"entry-"+(i+1),"aria-label":"Entry "+(i+1)+" of "+total+": "+step.place.name});
+    var meta=el("div",{className:"pc-post-meta"});
+    if(step.date) meta.appendChild(el("time",{className:"pc-post-date",datetime:step.date,textContent:fmtDate(step.date)}));
+    if(step.arriveBy) meta.appendChild(el("span",{className:"pc-post-mode"},[MODE_GLYPH[step.arriveBy]||"•"," ",MODE_LABEL[step.arriveBy]||"Travel"]));
+    // A stable permalink: a real hash link (works with no JS) that also copies the
+    // full URL to the clipboard when available.
+    var hash="entry-"+(i+1);
+    var link=el("a",{className:"pc-permalink",href:"#"+hash,"aria-label":"Permalink to this entry",title:"Copy link to this entry"});
+    link.appendChild(el("span",{className:"pc-permalink-ico","aria-hidden":"true",textContent:"🔗"}));
+    link.appendChild(el("span",{className:"pc-permalink-note","aria-hidden":"true",textContent:"Copied"}));
+    link.addEventListener("click",function(){
+      try{
+        var url=(location.href||"").split("#")[0]+"#"+hash;
+        if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url);
+        link.className="pc-permalink is-copied";
+        setTimeout(function(){link.className="pc-permalink";},1400);
+      }catch(_e){}
+    });
+    meta.appendChild(link);
+    art.appendChild(meta);
+
+    art.appendChild(el("h2",{className:"pc-post-place"},[flag(step.place.countryId)+" "+step.place.name]));
+    if(step.story&&step.story.title) art.appendChild(el("h3",{className:"pc-post-title",textContent:step.story.title}));
+
+    if(step.photos&&step.photos.length){
+      var hero=el("button",{type:"button",className:"pc-hero pc-post-hero","aria-label":"View photo 1 of "+step.photos.length});
+      hero.appendChild(el("img",{src:step.photos[0].src,alt:step.photos[0].caption||("Photo of "+step.place.name),loading:"lazy",decoding:"async"}));
+      hero.addEventListener("click",function(){openLightbox(step.photos,0,hero);});
+      art.appendChild(hero);
+      if(step.photos.length>1){
+        var gal=el("div",{className:"pc-gallery"});
+        for(var p=1;p<step.photos.length;p++){ (function(idx){
+          var btn=el("button",{type:"button",className:"pc-thumb","aria-label":"View photo "+(idx+1)+" of "+step.photos.length});
+          btn.appendChild(el("img",{src:step.photos[idx].src,alt:step.photos[idx].caption||"",loading:"lazy",decoding:"async"}));
+          btn.addEventListener("click",function(){openLightbox(step.photos,idx,btn);});
+          gal.appendChild(btn);
+        })(p); }
+        art.appendChild(gal);
+      }
+    }
+    if(step.story&&step.story.text) art.appendChild(el("p",{className:"pc-story-text",textContent:step.story.text}));
+    return art;
+  }
+
+  function startBlog(journey){
+    var app=document.getElementById("pc-app"); app.innerHTML="";
+    var steps=journey.steps||[];
+
+    var head=el("div",{className:"pc-head pc-head-blog"});
+    head.appendChild(el("span",{className:"pc-blog-brand",textContent:journey.title||"A journey"}));
+    head.appendChild(themeToggle());
+    app.appendChild(head);
+
+    var blog=el("div",{className:"pc-blog"});
+    var mast=el("header",{className:"pc-masthead"});
+    mast.appendChild(el("p",{className:"pc-kicker",textContent:"A Postcards travelogue"}));
+    mast.appendChild(el("h1",{className:"pc-blog-title",textContent:journey.title||"A journey"}));
+    if(journey.subtitle) mast.appendChild(el("p",{className:"pc-blog-sub",textContent:journey.subtitle}));
+    var dr=journey.dateRange||{};
+    if(dr.start){
+      var range=dr.end&&dr.end!==dr.start?fmtDate(dr.start)+" — "+fmtDate(dr.end):fmtDate(dr.start);
+      mast.appendChild(el("p",{className:"pc-blog-dates",textContent:range}));
+    }
+    var nIdx=steps.length?newestIndex(steps):-1;
+    var lastDate=nIdx>=0?steps[nIdx].date:(dr.end||null);
+    if(lastDate){
+      mast.appendChild(el("p",{className:"pc-updated"},[
+        el("span",{className:"pc-updated-dot","aria-hidden":"true"}),
+        "Last updated "+fmtDate(lastDate)]));
+    }
+    if(nIdx>=0){
+      var latest=el("a",{className:"pc-latest",href:"#entry-"+(nIdx+1)});
+      latest.appendChild(el("span",{className:"pc-latest-tag",textContent:"Latest"}));
+      latest.appendChild(el("span",{className:"pc-latest-title",textContent:entryTitle(steps[nIdx])}));
+      latest.appendChild(el("span",{className:"pc-latest-arrow","aria-hidden":"true",textContent:"→"}));
+      mast.appendChild(latest);
+    }
+    blog.appendChild(mast);
+
+    if(steps.length) blog.appendChild(buildMapCard(journey));
+
+    var feed=el("section",{className:"pc-feed","aria-label":"Journal entries"});
+    var order=[];
+    for(var i=0;i<steps.length;i++) order.push(i);
+    if(FEED_NEWEST_FIRST) order.reverse();
+    for(var o=0;o<order.length;o++){
+      feed.appendChild(buildPost(steps[order[o]],order[o],steps.length));
+      if(o<order.length-1) feed.appendChild(el("hr",{className:"pc-divider","aria-hidden":"true"}));
+    }
+    blog.appendChild(feed);
+    app.appendChild(blog);
+  }
+
+  function startBook(journey){
     var app=document.getElementById("pc-app"); app.innerHTML="";
 
     var head=el("div",{className:"pc-head"});
     var prog=el("div",{className:"pc-progress",role:"progressbar","aria-label":"Reading progress","aria-valuemin":"1"});
     bar=el("div",{className:"pc-progress-bar"}); prog.appendChild(bar);
     counter=el("span",{className:"pc-counter"});
-    var theme=el("button",{className:"pc-theme",type:"button","aria-label":"Toggle light or dark theme",title:"Toggle theme",textContent:"◐"});
-    theme.addEventListener("click",function(){
-      var r=document.documentElement;
-      var dark=r.getAttribute("data-theme")==="dark"||(r.getAttribute("data-theme")!=="light"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches);
-      r.setAttribute("data-theme",dark?"light":"dark");
-    });
+    var theme=themeToggle();
     head.appendChild(prog); head.appendChild(counter); head.appendChild(theme);
     app.appendChild(head);
 
@@ -656,6 +860,7 @@ export function renderReaderHtml(
 ): string {
   const encrypted = opts.encrypted;
   const attribution = opts.attribution ?? DEFAULT_ATTRIBUTION;
+  const layout = opts.layout === "book" ? "book" : "blog";
   // Never leak the real title into an encrypted file.
   const docTitle = encrypted ? "A locked journey" : journey?.title || "A journey";
   const payloadScript = encrypted
@@ -672,9 +877,9 @@ export function renderReaderHtml(
 <title>${escapeHtml(docTitle)}</title>
 <style>${READER_CSS}</style>
 </head>
-<body data-attrib="${escapeHtml(attribution)}">
+<body data-attrib="${escapeHtml(attribution)}" data-layout="${layout}">
 <div class="pc-shell">
-<noscript><div class="pc-noscript">This published journal is an interactive book that needs JavaScript to page through. Please enable JavaScript in your browser to read it. Your data stays private — nothing is sent anywhere.</div></noscript>
+<noscript><div class="pc-noscript">This published travel journal needs JavaScript to display. Please enable JavaScript in your browser to read it. Your data stays private — nothing is sent anywhere.</div></noscript>
 <main id="pc-app" class="pc-app" aria-live="polite"><p class="pc-loading">Loading the journey…</p></main>
 <footer class="pc-foot">Published with Postcards · a private, offline travel journal. ${escapeHtml(attribution)}</footer>
 </div>

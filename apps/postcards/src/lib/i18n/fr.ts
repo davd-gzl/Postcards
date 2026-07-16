@@ -514,6 +514,16 @@ export const fr: Messages = {
   "publish.pickFolder": "Choisir un nom de voyage…",
   "publish.noNamedTrips": "Aucun voyage nommé",
 
+  // ── Publish mode (reader layout selector) ────────────────────────────────
+  "publish.layout.legend": "Mode de lecture",
+  "publish.layout.aria": "Disposition du lecteur",
+  "publish.layout.blog": "Blog",
+  "publish.layout.book": "Livre",
+  "publish.layout.blogHint":
+    "Un blog vivant — une seule page défilante avec la date de « dernière mise à jour », un lien vers le plus récent et un fil de billets datés. Idéal pour un journal que vous republiez ; les lecteurs qui reviennent trouvent les nouveautés.",
+  "publish.layout.bookHint":
+    "Un livre paginé — une couverture, la carte de l'itinéraire et une page illustrée par étape, du début à la fin.",
+
   // ── Misc shared ──────────────────────────────────────────────────────────
   "common.undo": "Annuler",
   "common.retry": "Réessayer",

@@ -513,6 +513,16 @@ export const ko: Messages = {
   "publish.pickFolder": "여행 이름 선택…",
   "publish.noNamedTrips": "이름 있는 여행 없음",
 
+  // ── Publish mode (reader layout selector) ────────────────────────────────
+  "publish.layout.legend": "읽기 방식",
+  "publish.layout.aria": "리더 레이아웃",
+  "publish.layout.blog": "블로그",
+  "publish.layout.book": "책",
+  "publish.layout.blogHint":
+    "살아 있는 블로그 — “마지막 업데이트” 표시, 최신 글로 바로 가는 링크, 날짜별 글 피드가 있는 하나의 스크롤 페이지. 계속 다시 게시하는 일지에 가장 좋으며, 다시 찾는 독자가 새 글을 쉽게 찾습니다.",
+  "publish.layout.bookHint":
+    "페이지로 넘기는 책 — 표지, 경로 지도, 각 방문지마다 사진 중심의 한 페이지를 처음부터 끝까지.",
+
   // ── Misc shared ──────────────────────────────────────────────────────────
   "common.undo": "실행 취소",
   "common.retry": "다시 시도",

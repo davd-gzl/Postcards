@@ -519,6 +519,16 @@ export const en = {
   "publish.pickFolder": "Pick a trip name…",
   "publish.noNamedTrips": "No named trips yet",
 
+  // ── Publish mode (reader layout selector) ────────────────────────────────
+  "publish.layout.legend": "How it reads",
+  "publish.layout.aria": "Reader layout",
+  "publish.layout.blog": "Blog",
+  "publish.layout.book": "Book",
+  "publish.layout.blogHint":
+    "A living blog — one scrollable page with a “last updated” stamp, a jump-to-newest link, and a dated feed of posts. Best for a journal you keep re-publishing; returning readers find what's new.",
+  "publish.layout.bookHint":
+    "A paged book — a cover, the route map, and one photo-led page per stop, turned start to finish.",
+
   // ── Misc shared ──────────────────────────────────────────────────────────
   "common.undo": "Undo",
   "common.retry": "Retry",
