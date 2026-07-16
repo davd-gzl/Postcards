@@ -14,6 +14,7 @@ const MAX_MARKERS_KEY = "postcards-max-markers";
 const THEME_KEY = "postcards-theme";
 const LOCALE_KEY = "postcards-locale";
 const AUTO_SYNC_KEY = "postcards-auto-sync";
+const OFFLINE_MODE_KEY = "postcards-offline-mode";
 
 // Explicit colour theme. "system" follows the device (prefers-color-scheme);
 // "light"/"dark" force a palette. The choice is applied by toggling a data-theme
@@ -113,6 +114,17 @@ function loadAutoSync(): boolean {
   return readLocal(AUTO_SYNC_KEY) === "1";
 }
 
+// The master "self-contained" switch. When on, Postcards makes NO optional
+// outbound request whatever the individual toggles say: the map stays on the
+// bundled offline basemap, place guides never auto-fetch, and the first-run
+// "Show detailed map" offer is withheld. It's a hard override enforced at every
+// egress site (see effectiveBasemap, the guides hook, the consent banner) — the
+// one guarantee a privacy-first user can set and forget. Default OFF so the
+// existing opt-in flows are unchanged; only a stored "1" turns it on.
+function loadOfflineMode(): boolean {
+  return readLocal(OFFLINE_MODE_KEY) === "1";
+}
+
 interface SettingsState {
   countryScope: CountryScope;
   setCountryScope: (scope: CountryScope) => void;
@@ -122,6 +134,8 @@ interface SettingsState {
   setOnlineMap: (value: boolean) => void;
   autoSync: boolean;
   setAutoSync: (value: boolean) => void;
+  offlineMode: boolean;
+  setOfflineMode: (value: boolean) => void;
   maxMarkers: number;
   setMaxMarkers: (value: number) => void;
   theme: ThemeMode;
@@ -150,6 +164,11 @@ export const useSettings = create<SettingsState>((set) => ({
   setAutoSync: (autoSync) => {
     writeLocal(AUTO_SYNC_KEY, autoSync ? "1" : "0");
     set({ autoSync });
+  },
+  offlineMode: loadOfflineMode(),
+  setOfflineMode: (offlineMode) => {
+    writeLocal(OFFLINE_MODE_KEY, offlineMode ? "1" : "0");
+    set({ offlineMode });
   },
   maxMarkers: loadMaxMarkers(),
   setMaxMarkers: (maxMarkers) => {

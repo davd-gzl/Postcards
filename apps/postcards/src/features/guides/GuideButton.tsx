@@ -105,7 +105,12 @@ interface GuideNames {
  *  online) plus the grouped guide links. */
 function GuideContent({ placeName, names }: { placeName: string; names: GuideNames }) {
   const ref = useMemo(() => getReferenceData(), []);
-  const autoLoad = useSettings((s) => s.autoLoadGuides);
+  // Offline mode is the master override: no overview ever auto-fetches, and the
+  // manual "Load overview" button is withheld too (external guide LINKS stay —
+  // tapping one is the user deliberately leaving the app). Only saved overviews
+  // show. So autoLoad collapses to false whenever Offline mode is on.
+  const offlineMode = useSettings((s) => s.offlineMode);
+  const autoLoad = useSettings((s) => s.autoLoadGuides && !s.offlineMode);
   const { countryIso2, countryName, cityName, summaryTitle, searchQuery } = names;
   // Built lazily here — rows with a closed modal do no guide work at all.
   const links = useMemo(
@@ -167,6 +172,7 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
   }
 
   async function loadOverview() {
+    if (offlineMode) return; // self-contained: never reach Wikimedia
     setState("loading");
     const [wv, wp] = await Promise.all([
       fetchSummary(summaryTitle),
@@ -232,10 +238,13 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
         {!overview && state === "loading" && (
           <p className="muted small guide-loading">Loading overview…</p>
         )}
-        {!overview && state === "idle" && !autoLoad && (
+        {!overview && state === "idle" && !autoLoad && !offlineMode && (
           <button type="button" className="btn-ghost guide-overview-btn" onClick={loadOverview}>
             ↧ Load overview &amp; photo
           </button>
+        )}
+        {!overview && offlineMode && (
+          <p className="muted small">Overviews are off in Offline mode.</p>
         )}
         {!overview && state === "empty" && (
           <p className="muted small">

@@ -73,6 +73,11 @@ export const en = {
   "settings.language.title": "Language",
   "settings.language.desc":
     "Choose the app's language. Place, country and city names keep their own language.",
+  "settings.offlineMode.title": "Offline mode",
+  "settings.offlineMode.toggle": "Fully offline — no network requests",
+  "settings.offlineMode.desc":
+    "Run completely self-contained. Overrides everything below: the map stays on the bundled offline basemap, guide overviews never fetch, and the first-run detailed-map offer is withheld. Your own places and journal never leave this device either way — this also stops the map and guides from reaching out.",
+  "settings.detailedMap.offlineNote": "Turn off Offline mode to use the detailed map.",
   "settings.places.title": "Places",
   "settings.scope.title": "What counts as a country",
   "settings.scope.desc":
@@ -122,6 +127,7 @@ export const en = {
   "settings.packs.desc":
     "Add an openly-licensed set of places (POIs, metro stations, huts…) shared by anyone. Paste a GitHub link or import a file — a pack is inert data, validated and sanitized, and its places become searchable and mappable. Removing a pack never touches your journal.",
   "settings.packs.urlLabel": "GitHub link to a pack file",
+  "settings.packs.offlineNote": "Adding a pack from a link is off in Offline mode — import a pack file instead.",
   "settings.packs.add": "Add",
   "settings.packs.adding": "Adding…",
   "settings.packs.importFile": "Import file",
@@ -255,7 +261,6 @@ export const en = {
   "places.rowMenu.aria": "Edit {name}",
   "places.rowMenu.date": "Date",
   "places.rowMenu.folder": "Folder",
-  "places.rowMenu.folderPlaceholder": "e.g. Japan 2024",
   "places.rowMenu.note": "Note",
   "places.rowMenu.notePlaceholder": "A short note",
   "places.row.removedToast": "Removed {name}",
@@ -428,7 +433,7 @@ export const en = {
   "journal.geo.noCities": "No cities found nearby.",
   "journal.geo.unavailable": "Location unavailable. Check the browser permission and try again.",
   "journal.folder": "Folder",
-  "journal.folderPlaceholder": "e.g. Japan 2024 (optional)",
+  "journal.folderPlaceholder": "Optional",
   "journal.byFolder": "By folder",
   "journal.viewAria": "Journal view",
   "journal.viewFeed": "Feed",
@@ -476,6 +481,11 @@ export const en = {
   "map.online.enable": "Detailed map",
   "map.online.enableHint":
     "Stream detailed tiles from OpenStreetMap. This uses the network and shares your IP and map view with OpenStreetMap — the map stays fully offline until you tap this.",
+  "map.consent.title": "See the detailed world map?",
+  "map.consent.body":
+    "Stream streets, labels and terrain from OpenStreetMap. Only your map view reaches OpenStreetMap — your places, journal and everything else stay on this device. You can turn it off anytime in Settings.",
+  "map.consent.enable": "Show detailed map",
+  "map.consent.dismiss": "Not now",
   "map.dividerAria": "Resize the list (drag, or use the arrow keys)",
   "map.dividerTitle": "Slide to resize the list",
   "map.list.aria": "Cities in view",

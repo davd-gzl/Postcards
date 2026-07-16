@@ -66,6 +66,11 @@ export const fr: Messages = {
   "settings.language.title": "Langue",
   "settings.language.desc":
     "Choisissez la langue de l'application. Les noms de lieux, de pays et de villes gardent leur propre langue.",
+  "settings.offlineMode.title": "Mode hors ligne",
+  "settings.offlineMode.toggle": "Entièrement hors ligne — aucune requête réseau",
+  "settings.offlineMode.desc":
+    "Fonctionne de façon totalement autonome. Prime sur tout le reste : la carte reste sur le fond de carte hors ligne intégré, les aperçus de guides ne se chargent jamais et l'offre de carte détaillée au premier lancement est masquée. Vos lieux et votre journal ne quittent de toute façon jamais cet appareil — ceci empêche aussi la carte et les guides de se connecter.",
+  "settings.detailedMap.offlineNote": "Désactivez le mode hors ligne pour utiliser la carte détaillée.",
   "settings.places.title": "Lieux",
   "settings.scope.title": "Ce qui compte comme un pays",
   "settings.scope.desc":
@@ -115,6 +120,7 @@ export const fr: Messages = {
   "settings.packs.desc":
     "Ajoutez un ensemble de lieux sous licence ouverte (POI, stations de métro, refuges…) partagé par n'importe qui. Collez un lien GitHub ou importez un fichier — un pack est une donnée inerte, validée et nettoyée, et ses lieux deviennent consultables et cartographiables. Retirer un pack ne touche jamais à votre journal.",
   "settings.packs.urlLabel": "Lien GitHub vers un fichier de pack",
+  "settings.packs.offlineNote": "L'ajout d'un pack via un lien est désactivé en mode hors ligne — importez plutôt un fichier de pack.",
   "settings.packs.add": "Ajouter",
   "settings.packs.adding": "Ajout…",
   "settings.packs.importFile": "Importer un fichier",
@@ -249,7 +255,6 @@ export const fr: Messages = {
   "places.rowMenu.aria": "Modifier {name}",
   "places.rowMenu.date": "Date",
   "places.rowMenu.folder": "Dossier",
-  "places.rowMenu.folderPlaceholder": "ex. Japon 2024",
   "places.rowMenu.note": "Note",
   "places.rowMenu.notePlaceholder": "Une courte note",
   "places.row.removedToast": "{name} retiré",
@@ -423,7 +428,7 @@ export const fr: Messages = {
   "journal.geo.noCities": "Aucune ville trouvée à proximité.",
   "journal.geo.unavailable": "Localisation indisponible. Vérifiez l'autorisation du navigateur et réessayez.",
   "journal.folder": "Dossier",
-  "journal.folderPlaceholder": "ex. Japon 2024 (facultatif)",
+  "journal.folderPlaceholder": "Facultatif",
   "journal.byFolder": "Par dossier",
   "journal.viewAria": "Vue du journal",
   "journal.viewFeed": "Fil",
@@ -471,6 +476,11 @@ export const fr: Messages = {
   "map.online.enable": "Carte détaillée",
   "map.online.enableHint":
     "Diffuser les tuiles détaillées depuis OpenStreetMap. Cela utilise le réseau et partage votre IP et votre vue de carte avec OpenStreetMap — la carte reste entièrement hors ligne jusqu'à ce que vous appuyiez ici.",
+  "map.consent.title": "Voir la carte du monde détaillée ?",
+  "map.consent.body":
+    "Diffuse les rues, les libellés et le relief depuis OpenStreetMap. Seule votre vue de carte parvient à OpenStreetMap — vos lieux, votre journal et tout le reste restent sur cet appareil. Vous pouvez désactiver cela à tout moment dans les Réglages.",
+  "map.consent.enable": "Afficher la carte détaillée",
+  "map.consent.dismiss": "Plus tard",
   "map.dividerAria": "Redimensionner la liste (glissez, ou utilisez les flèches)",
   "map.dividerTitle": "Glissez pour redimensionner la liste",
   "map.list.aria": "Villes dans la vue",
