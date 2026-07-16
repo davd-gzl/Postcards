@@ -45,5 +45,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Postcards lets you attach your own photos to the places you have been. Photos stay on your device — they never leave it unless you export or publish on purpose.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Take a photo to attach to a place you have been. Photos stay on your device — they never leave it unless you export or publish on purpose.</string>
 </dict>
 </plist>
