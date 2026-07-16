@@ -88,6 +88,22 @@ EVERYWHERE (tab switches, list scroll, filters, opening a place, toggles).
       re-measure, repeat until snappy. Add perf guards where sensible.
       NOTE: the running map-perf agent owns MapView — sequence these right after it so they don't collide.
 
+## Downloadable data (unpack from the app, like tiles)
+
+- [ ] Make the reference data DOWNLOADABLE on demand + cached, not packed into the app. Today the SW
+      precaches ~6.7MB of datasets on install. Instead: keep a tiny bundled CORE (instant first paint),
+      move the big sets (cities-all ~135k, heritage, airports, stations…) OUT of precache, fetch them
+      on first need (same-origin) and cache (Cache API/IndexedDB) so they work offline once downloaded —
+      exactly like the offline tile "save area" model. Add a Settings "data packs" UI (download / remove /
+      sizes) mirroring the tile download UX. Honors local-first/offline; shrinks the install.
+      (vite-plugin-pwa precache config, lib/reference loaders, gazetteerWorker, a data-cache seam, Settings.)
+
+## Whole-app optimization (loop-review)
+
+- [ ] Iterative review-and-optimize pass over the whole codebase (correctness, perf, simplification,
+      dead code, consistency) — loop until clean. Pairs with the running upgrade-sweep + the mobile
+      reactivity loop. Use /code-review + /simplify style passes per area; verify each round.
+
 ## Place types
 
 - [ ] **Railway stations** — add a "station" place type like airports: a real, openly-licensed dataset
