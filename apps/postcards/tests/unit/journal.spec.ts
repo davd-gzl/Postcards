@@ -97,11 +97,23 @@ describe("journal round-trip", () => {
 });
 
 describe("StorySchema (strict, sanitized)", () => {
-  it("requires a date and a non-empty title", () => {
+  it("requires a date, and at least a title, text or photo", () => {
     const noDate = { ...story() } as Record<string, unknown>;
     delete noDate.date;
     expect(StorySchema.safeParse(noDate).success).toBe(false);
-    expect(StorySchema.safeParse({ ...story(), title: "" }).success).toBe(false);
+    // Title may be empty when there's text (title is optional now).
+    expect(StorySchema.safeParse({ ...story(), title: "" }).success).toBe(true);
+    // No title, no text, no photos → an empty story is rejected.
+    expect(StorySchema.safeParse({ ...story(), title: "", text: "" }).success).toBe(false);
+    // Image-only (no title, no text, but a photo) is allowed.
+    expect(
+      StorySchema.safeParse({
+        ...story(),
+        title: "",
+        text: "",
+        photos: [{ src: dataUrl, caption: null }],
+      }).success,
+    ).toBe(true);
   });
 
   it("rejects unknown keys (strict)", () => {
@@ -114,10 +126,11 @@ describe("StorySchema (strict, sanitized)", () => {
     expect(r.text).toBe("IMPORTXML(evil)");
   });
 
-  it("rejects a title that sanitizes to empty (would break the export round-trip)", () => {
-    // "===" passes min(1) on the raw input, but sanitizing strips it to "" —
-    // such a story would export as title "" and the backup would refuse to restore.
-    expect(StorySchema.safeParse({ ...story(), title: "===" }).success).toBe(false);
+  it("a title that sanitizes to empty is allowed only when there's other content", () => {
+    // "===" sanitizes to "" — fine here because the story still has text.
+    expect(StorySchema.safeParse({ ...story(), title: "===" }).success).toBe(true);
+    // With no text and no photos, that empty-sanitizing title leaves nothing → rejected.
+    expect(StorySchema.safeParse({ ...story(), title: "===", text: "" }).success).toBe(false);
   });
 
   it("caps a story's gallery at 24 photos", () => {

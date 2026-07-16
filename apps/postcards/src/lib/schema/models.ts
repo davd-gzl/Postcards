@@ -209,17 +209,22 @@ export const StorySchema = z
     place: PlaceRefSchema,
     /** The day the story is about — required, unlike a visit's optional date. */
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    // Title AND text are both optional so a journal entry can be image-only. Each
+    // stays a (possibly empty) string — no key ripple for consumers — and the
+    // whole-story refine below still requires a title, some text, OR a photo, so a
+    // completely empty story can't be created or imported.
     title: z
       .string()
-      .min(1)
       .max(200)
       .transform((s) => sanitizeText(s, 200))
-      // Same guard as PlaceRef.name: never accept a title that sanitizes away.
-      .refine((s) => s.length > 0, { message: "Title is empty once sanitized" }),
+      .optional()
+      .transform((s) => s ?? ""),
     text: z
       .string()
       .max(8000)
-      .transform((s) => sanitizeText(s, 8000)),
+      .transform((s) => sanitizeText(s, 8000))
+      .optional()
+      .transform((s) => s ?? ""),
     /**
      * Optional folder label (e.g. "Japan 2024") that groups stories under one
      * name in the feed. Additive & optional exactly like a Trip's `name` and the
@@ -246,7 +251,13 @@ export const StorySchema = z
     /** Last-mutated stamp for device sync (spec 013); see Visit.updatedAt. */
     updatedAt: z.string().datetime({ offset: true }).optional(),
   })
-  .strict();
+  .strict()
+  // A story must carry SOMETHING: a title, some text, or at least one photo. This
+  // lets an image-only entry through (photos, no title/text) while still rejecting
+  // a completely empty story on create or import.
+  .refine((s) => s.title.trim().length > 0 || s.text.trim().length > 0 || (s.photos?.length ?? 0) > 0, {
+    message: "A story needs a title, some text, or a photo",
+  });
 
 /**
  * A deletion marker carried inside the portable file so a delete on one device

@@ -825,7 +825,9 @@ export function JournalScreen() {
     // so what's saved round-trips: a title like "===" collapses to empty and must
     // not be storable — it would export as "" and the backup would refuse to restore.
     const cleanTitle = sanitizeText(title, 200);
-    if (!place || !date || !cleanTitle) return;
+    const cleanText = sanitizeText(text, 8000);
+    // Allow an image-only entry: a place + date and at least one of title/text/photo.
+    if (!place || !date || !(cleanTitle || cleanText || photos.length)) return;
     const prev = useStories.getState().stories;
     // Blank captions become null (never stored as empty strings).
     const cleanPhotos = photos.map((p) => ({
@@ -839,16 +841,18 @@ export function JournalScreen() {
       place,
       date,
       title: cleanTitle,
-      text: sanitizeText(text, 8000),
+      text: cleanText,
       folder: cleanFolder,
       photos: cleanPhotos,
     };
+    // A titleless (image-only) entry uses its place as the toast label.
+    const label = cleanTitle || place.name;
     if (editingId) {
       await updateStory(editingId, fields);
-      showToast(t("journal.toast.updated", { title: fields.title }), () => setAll(prev));
+      showToast(t("journal.toast.updated", { title: label }), () => setAll(prev));
     } else {
       await addStory(fields);
-      showToast(t("journal.toast.added", { title: fields.title }), () => setAll(prev));
+      showToast(t("journal.toast.added", { title: label }), () => setAll(prev));
     }
     resetForm();
     // The writing is stored; the crash-recovery cache has done its job.
@@ -858,7 +862,7 @@ export function JournalScreen() {
   function removeWithUndo(s: Story) {
     const prev = useStories.getState().stories;
     void removeStory(s.storyId);
-    showToast(t("journal.toast.removed", { title: s.title }), () => setAll(prev));
+    showToast(t("journal.toast.removed", { title: s.title || s.place.name }), () => setAll(prev));
   }
 
   function exportMd() {
@@ -1096,7 +1100,13 @@ export function JournalScreen() {
             <button
               className="btn"
               type="submit"
-              disabled={!place || !date || !sanitizeText(title, 200)}
+              // A story needs a place + date and SOMETHING to say — a title, some
+              // text, or at least one photo (an image-only entry is allowed).
+              disabled={
+                !place ||
+                !date ||
+                !(sanitizeText(title, 200) || sanitizeText(text, 8000) || photos.length)
+              }
             >
               {editingId ? t("journal.saveChanges") : t("journal.saveStory")}
             </button>
@@ -1288,15 +1298,15 @@ export function JournalScreen() {
                     </>
                   )}
                 </header>
-                <h3 className="journal-title">{s.title}</h3>
+                {s.title && <h3 className="journal-title">{s.title}</h3>}
                 {s.text && <p className="journal-text">{s.text}</p>}
-                <StoryPhotos photos={s.photos ?? []} title={s.title} />
+                <StoryPhotos photos={s.photos ?? []} title={s.title || s.place.name} />
                 <footer className="journal-actions">
                   <button
                     className="link"
                     type="button"
                     onClick={() => startEdit(s)}
-                    aria-label={t("journal.editAria", { title: s.title })}
+                    aria-label={t("journal.editAria", { title: s.title || s.place.name })}
                   >
                     {t("common.edit")}
                   </button>
@@ -1304,7 +1314,7 @@ export function JournalScreen() {
                     className="link-danger"
                     type="button"
                     onClick={() => removeWithUndo(s)}
-                    aria-label={t("journal.removeAria", { title: s.title })}
+                    aria-label={t("journal.removeAria", { title: s.title || s.place.name })}
                   >
                     {t("common.remove")}
                   </button>
