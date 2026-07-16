@@ -3,6 +3,12 @@
 > **FINAL STEP (user-authorized):** once every item below is done, AUTO-MERGE
 > `claude/monument-display-optimize-x1j6le` into the deployed default branch
 > `claude/repo-setup-speckit-3magw3` so GitHub Pages ships it (no manual merge).
+>
+> **TRANSLATION POLICY (user):** do fr/ko translation AT THE END, not per feature.
+> New features add en.ts keys + fr/ko placeholders (English, to keep the
+> compile-time key-parity build green); a single final pass translates them all.
+> **Quality bar (user): keep it secure & done the right way** — inert/validated
+> data, sanitized text, no injection, tokens on-device only.
 
 Running checklist for the current batch of requests. Kept so nothing is
 forgotten. Grouped by area; each item links to where it lives. Push directly to
@@ -67,6 +73,16 @@ mode, so it's high-value and not much extra surface. Recommendation:
       + folder grouping, PublishScreen selector, title from the name). DONE.
 - [x] Editorial published site (paper/ink, serif+sans, cover) + a fitted map labeling EACH city
       (pins + names, curved route, compass/legend) — self-contained, zero external requests. DONE.
+
+## Journal
+
+- [ ] **Calendar view** — a month calendar where each day with an entry is coloured (e.g. tinted by
+      the entry's place/country, intensity by count); tap a day to see/add its entries. Plus filters
+      by **place** and **time/period** (extend the existing place + year filters). (`JournalScreen`,
+      new calendar component; reuse `distinctYearsDesc`.)
+- [ ] **Journal folders** — an optional folder/collection on stories, with **proposed folders at
+      creation** (suggest existing folders + the current trip/place context). Mirror the trip-folder
+      pattern; sanitized/inert like other text. Filter the feed by folder.
 
 ## Map
 
