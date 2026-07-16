@@ -110,7 +110,6 @@ function RowMenu({ v, onClose }: { v: Visit; onClose: () => void }) {
           list={listId}
           value={folder}
           maxLength={80}
-          placeholder={t("places.rowMenu.folderPlaceholder")}
           onChange={(e) => setFolder(e.target.value)}
         />
         <datalist id={listId}>
