@@ -18,7 +18,7 @@ import { visitedCountryIds } from "../stats/computeStats";
 import { matchesDateFilter, type DateFilter } from "../travel/period";
 import { airportPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
 import { prefetchAroundBounds, prefetchAroundPoint, OSM_TILE_TEMPLATE } from "../../lib/offline/tiles";
-import type { Bounds } from "./viewport";
+import { markerCitiesInView, type Bounds, type CityFilter } from "./viewport";
 import type { City } from "../../lib/reference/types";
 import type { PlaceRef, Visit } from "../../lib/schema/models";
 import { countryFlag, formatInt } from "../../lib/format/format";
@@ -71,6 +71,10 @@ async function fetchCountries(): Promise<FeatureCollection<Polygon | MultiPolygo
 
 // Module-level cache: resolve the country geometry at most once per session, and
 // allow a retry after a failed load (offline first-run) without a full remount.
+// (The static file is also SW-precached; the app fetches the SAME plain URL that
+// Workbox's precache route serves from cache, so there is ONE network download
+// per install and this promise guarantees ONE parse per session — no double
+// fetch even across basemap-toggle remounts.)
 let countriesPromise: Promise<FeatureCollection<Polygon | MultiPolygon> | null> | null = null;
 function getCountries(force = false): Promise<FeatureCollection<Polygon | MultiPolygon> | null> {
   if (force) countriesPromise = null;
@@ -81,6 +85,40 @@ function getCountries(force = false): Promise<FeatureCollection<Polygon | MultiP
     });
   }
   return countriesPromise;
+}
+
+// Lakes & rivers get the SAME module-scoped memoisation as the country
+// geometry: fetched + parsed at most once per session, so a remount (basemap
+// toggle, tab switch) never re-downloads or re-parses them. A failed load
+// (offline first-run) clears its slot so a later attempt can retry.
+async function fetchWater(url: string): Promise<FeatureCollection | null> {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    return (await r.json()) as FeatureCollection;
+  } catch {
+    return null;
+  }
+}
+let lakesPromise: Promise<FeatureCollection | null> | null = null;
+let riversPromise: Promise<FeatureCollection | null> | null = null;
+function getLakes(): Promise<FeatureCollection | null> {
+  if (!lakesPromise) {
+    lakesPromise = fetchWater(LAKES_URL).then((fc) => {
+      if (!fc) lakesPromise = null; // let a later attempt retry
+      return fc;
+    });
+  }
+  return lakesPromise;
+}
+function getRivers(): Promise<FeatureCollection | null> {
+  if (!riversPromise) {
+    riversPromise = fetchWater(RIVERS_URL).then((fc) => {
+      if (!fc) riversPromise = null; // let a later attempt retry
+      return fc;
+    });
+  }
+  return riversPromise;
 }
 
 const EMOJI_FONT = '"Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
@@ -207,6 +245,44 @@ function makeAirportPin(iata: string, wish: boolean, favorite: boolean): ImageDa
   ctx.fillStyle = accent;
   ctx.fillText(iata, pad + planeW + gap, h / 2 + 1);
   return ctx.getImageData(0, 0, w, h);
+}
+
+// Pre-generate the flag/airport marker images for EVERY place currently in a
+// personal source, so a camera move (a zoom-OUT especially) never reveals a
+// symbol whose image hasn't been made yet. Relying on `styleimagemissing`
+// alone meant flags for countries that only scrolled into view on the zoom-out
+// were requested mid-render and only painted on the NEXT frame/interaction —
+// the "flags load in late" bug. hasImage-guarded, so this is a cheap no-op once
+// warm. A repaint is nudged only when something new was actually added.
+function ensurePillImages(map: MlMap, fc: FeatureCollection<Point>): void {
+  let added = false;
+  for (const f of fc.features) {
+    const p = f.properties ?? {};
+    const cc = String(p.cc ?? "");
+    const fav = Number(p.fav) === 1;
+    const id = `pill-${cc}-${fav ? 1 : 0}`;
+    if (!map.hasImage(id)) {
+      map.addImage(id, makeCityPill(cc, fav), { pixelRatio: 2 });
+      added = true;
+    }
+  }
+  if (added) map.triggerRepaint();
+}
+
+function ensureAirImages(map: MlMap, fc: FeatureCollection<Point>): void {
+  let added = false;
+  for (const f of fc.features) {
+    const p = f.properties ?? {};
+    const iata = String(p.iata ?? "");
+    const wish = Number(p.wish) === 1;
+    const fav = Number(p.fav) === 1;
+    const id = `air-${iata}-${wish ? 1 : 0}-${fav ? 1 : 0}`;
+    if (!map.hasImage(id)) {
+      map.addImage(id, makeAirportPin(iata, wish, fav), { pixelRatio: 2 });
+      added = true;
+    }
+  }
+  if (added) map.triggerRepaint();
 }
 
 function inViewPoints(cities: City[]): FeatureCollection<Point> {
@@ -543,7 +619,7 @@ export function MapView({
   onBounds,
   focus,
   fit,
-  viewCities,
+  cityFilter = "all",
   tripArcs,
   basemap = "simple",
   dark = false,
@@ -572,7 +648,10 @@ export function MapView({
   onBounds?: (b: Bounds) => void;
   focus?: MapFocus | null;
   fit?: MapFit | null;
-  viewCities?: City[];
+  /** The in-view city dots follow the list's filter (all / hide-visited /
+   *  visited). The map recomputes the dot set straight off the live camera on
+   *  every move, so it needs the filter here rather than a pre-filtered list. */
+  cityFilter?: CityFilter;
   tripArcs?: FeatureCollection<LineString> | null;
   basemap?: Basemap;
   dark?: boolean;
@@ -600,8 +679,8 @@ export function MapView({
   const visitsRef = useRef(useVisits.getState().visits);
   const onBoundsRef = useRef(onBounds);
   onBoundsRef.current = onBounds;
-  const viewCitiesRef = useRef(viewCities);
-  viewCitiesRef.current = viewCities;
+  const cityFilterRef = useRef(cityFilter);
+  cityFilterRef.current = cityFilter;
   const tripArcsRef = useRef(tripArcs);
   tripArcsRef.current = tripArcs;
   const reducedRef = useRef(reducedMotion);
@@ -803,7 +882,11 @@ export function MapView({
       .join("|");
     if (citiesKey !== lastCitiesKey.current) {
       lastCitiesKey.current = citiesKey;
-      (map.getSource("cities") as GeoJSONSource | undefined)?.setData(visitedCityPoints(vis, ref));
+      const fc = visitedCityPoints(vis, ref);
+      (map.getSource("cities") as GeoJSONSource | undefined)?.setData(fc);
+      // Warm the flag images up front — a later zoom-out must not have to fetch
+      // any visited flag's image before it can paint (the "load in late" bug).
+      ensurePillImages(map, fc);
     }
     const wishKey = vis
       .filter((v) => v.status === "wishlist" && v.place.kind === "city")
@@ -821,7 +904,9 @@ export function MapView({
       .join("|");
     if (airKey !== lastAirKey.current) {
       lastAirKey.current = airKey;
-      (map.getSource("airports") as GeoJSONSource | undefined)?.setData(airportPoints(vis, ref));
+      const fc = airportPoints(vis, ref);
+      (map.getSource("airports") as GeoJSONSource | undefined)?.setData(fc);
+      ensureAirImages(map, fc);
     }
     // Monuments (and browsable airports) are viewport-capped and depend on
     // visits only through their heritage/airport "seen" state — period-filtered
@@ -888,19 +973,39 @@ export function MapView({
     }
   }
 
-  function applyViewCities(map: MlMap) {
-    // Render markers for the full in-view set (not the list's paged/sorted
-    // slice — that made only ~30 dots ever show and flicker on every pan). Bound
-    // marker count with the same zoom-aware cap as the POI layers, keeping the
-    // most populous cities so the cap never hides a major place; sort only when
-    // we're actually over the cap.
-    const cities = viewCitiesRef.current ?? [];
-    const cap = Math.max(1, maxMarkersRef.current);
-    const capped =
-      cities.length > cap
-        ? [...cities].sort((a, b) => (b.population ?? 0) - (a.population ?? 0)).slice(0, cap)
-        : cities;
-    (map.getSource("cities-inview") as GeoJSONSource | undefined)?.setData(inViewPoints(capped));
+  // The in-view city dots, recomputed straight off the LIVE camera. Driven by
+  // the map's own move/moveend (and the filter/period/gazetteer effects) rather
+  // than a React `viewCities` prop, so on a zoom-OUT the dots repaint promptly
+  // and completely on the FIRST try instead of trailing a bounds→snapshot→prop
+  // round-trip. Same population-cap + filter as the list, via a shared pure
+  // helper, so the dots and the list stay in lock-step.
+  function applyInViewCities(map: MlMap) {
+    const b = map.getBounds();
+    const bounds: Bounds = {
+      west: b.getWest(),
+      south: b.getSouth(),
+      east: b.getEast(),
+      north: b.getNorth(),
+    };
+    const filter = cityFilterRef.current;
+    let visitedIds: Set<string> | undefined;
+    if (filter !== "all") {
+      // Mirrors MapScreen's list filter exactly: any city with a record in the
+      // active period counts as "visited" here (status is not consulted).
+      visitedIds = new Set(
+        visitsRef.current
+          .filter((v) => v.place.kind === "city" && matchesDateFilter(v.date, yearRef.current))
+          .map((v) => v.place.id),
+      );
+    }
+    const cities = markerCitiesInView(
+      ref.allCities(),
+      bounds,
+      maxMarkersRef.current,
+      filter,
+      visitedIds,
+    );
+    (map.getSource("cities-inview") as GeoJSONSource | undefined)?.setData(inViewPoints(cities));
   }
 
   function applyTripArcs(map: MlMap) {
@@ -945,23 +1050,20 @@ export function MapView({
   }
 
   // Lakes & rivers for the OFFLINE overview only — the rich online bases draw
-  // their own water, so this never runs (and never fetches) for them.
+  // their own water, so this never runs (and never fetches) for them. Both go
+  // through the module-memoised getters, so a basemap toggle back to the offline
+  // base re-reads them from the resolved promise instead of re-fetching/parsing.
   function loadPhysicalWater(map: MlMap) {
     if (basemap !== "simple") return;
-    for (const [url, id] of [
-      [LAKES_URL, "lakes"],
-      [RIVERS_URL, "rivers"],
+    for (const [get, id] of [
+      [getLakes, "lakes"],
+      [getRivers, "rivers"],
     ] as const) {
-      void fetch(url)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((fc: FeatureCollection | null) => {
-          if (fc && mapRef.current === map) {
-            (map.getSource(id) as GeoJSONSource | undefined)?.setData(fc);
-          }
-        })
-        .catch(() => {
-          /* offline first-run before caching: the base still renders without water */
-        });
+      void get().then((fc) => {
+        if (fc && mapRef.current === map) {
+          (map.getSource(id) as GeoJSONSource | undefined)?.setData(fc);
+        }
+      });
     }
   }
 
@@ -1060,7 +1162,7 @@ export function MapView({
             showCountriesRef.current ? "visible" : "none",
           );
         }
-        applyViewCities(map);
+        applyInViewCities(map);
         applyTripArcs(map);
         loadGeometry(map);
         loadPhysicalWater(map);
@@ -1083,8 +1185,12 @@ export function MapView({
         if (!map) return;
         lastCamera = { center: map.getCenter(), zoom: map.getZoom() };
         if (!loadedRef.current) return;
-        // The in-view POI cap follows every camera move (even programmatic ones).
+        // The in-view POI cap AND the in-view city dots follow every camera move
+        // (even programmatic flies) — recomputed here off the final camera so a
+        // zoom-out paints every newly-revealed marker at once, on the first try,
+        // without waiting on a React render.
         applyViewportPoi(map);
+        applyInViewCities(map);
         const wasProgrammatic = suppressBoundsRef.current;
         if (wasProgrammatic) {
           suppressBoundsRef.current = false; // programmatic fly — keep the list still
@@ -1109,9 +1215,9 @@ export function MapView({
           else setTimeout(warm, 400);
         }
       });
-      // The list follows the map LIVE while panning/zooming (throttled — the
-      // in-view set is capped, so each refresh is cheap); moveend above still
-      // lands the final, exact frame.
+      // The list AND the in-view dots follow the map LIVE while panning/zooming
+      // (throttled — the in-view set is capped, so each refresh is cheap); the
+      // moveend above still lands the final, exact frame.
       let lastLiveBounds = 0;
       map.on("move", () => {
         if (!map || !loadedRef.current || suppressBoundsRef.current) return;
@@ -1119,6 +1225,7 @@ export function MapView({
         if (now - lastLiveBounds < 150) return;
         lastLiveBounds = now;
         emitBounds(map);
+        applyInViewCities(map);
       });
       // Any real user gesture re-enables list refreshes immediately.
       for (const ev of ["dragstart", "wheel", "dblclick"] as const) {
@@ -1364,14 +1471,16 @@ export function MapView({
     lastWishKey.current = "<init>";
     lastAirKey.current = "<init>";
     applyVisited(map);
+    applyInViewCities(map); // the full set changes which cities fall in view
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gazGen]);
 
+  // The list filter (all / hide-visited / visited) narrows the in-view dots too.
   useEffect(() => {
     const map = mapRef.current;
-    if (map && loadedRef.current) applyViewCities(map);
+    if (map && loadedRef.current) applyInViewCities(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewCities]);
+  }, [cityFilter]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1393,6 +1502,7 @@ export function MapView({
     lastCountryKey.current = "<init>";
     applyVisited(map);
     applyViewportPoi(map);
+    applyInViewCities(map); // the period re-partitions visited vs unvisited dots
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year]);
 
@@ -1408,6 +1518,7 @@ export function MapView({
     applyMode(map, mode);
     applyAllCityDots(map); // build the towns dot field on toggle-on (no-op otherwise)
     applyViewportPoi(map); // repopulate/clear the capped POI for the new mode/cap
+    applyInViewCities(map); // a new marker cap changes how many dots the view holds
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, showTowns, maxMarkers]);
 

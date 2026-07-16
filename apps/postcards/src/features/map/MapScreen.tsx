@@ -526,7 +526,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           onBounds={setBounds}
           focus={focus}
           fit={fit}
-          viewCities={snapshot}
+          cityFilter={cityFilter}
           tripArcs={showTrips ? arcs : null}
           globe={globe}
           mode={mode}
