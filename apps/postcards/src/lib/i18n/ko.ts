@@ -392,6 +392,23 @@ export const ko: Messages = {
   "journal.geo.unavailableDevice": "이 기기에서는 위치를 사용할 수 없습니다.",
   "journal.geo.noCities": "주변에 도시를 찾을 수 없습니다.",
   "journal.geo.unavailable": "위치를 사용할 수 없습니다. 브라우저 권한을 확인하고 다시 시도하세요.",
+  // TODO(i18n): translate — English placeholders (compile-time key parity).
+  "journal.folder": "Folder",
+  "journal.folderPlaceholder": "e.g. Japan 2024 (optional)",
+  "journal.byFolder": "By folder",
+  "journal.viewAria": "Journal view",
+  "journal.viewFeed": "Feed",
+  "journal.viewCalendar": "Calendar",
+  "journal.cal.prevMonth": "Previous month",
+  "journal.cal.nextMonth": "Next month",
+  "journal.cal.gridAria": "Journal entries by day",
+  "journal.cal.dayEntriesAria_one": "{date}, {count} entry — show it",
+  "journal.cal.dayEntriesAria_other": "{date}, {count} entries — show them",
+  "journal.cal.dayEmptyAria": "{date}, no entries — write a story",
+  "journal.cal.legendAria": "What the day colours mean",
+  "journal.cal.legendOther": "Elsewhere",
+  "journal.daySelected": "Entries on {date}",
+  "journal.clearDayAria": "Clear the day filter",
 
   // ── Map screen ───────────────────────────────────────────────────────────
   "map.loading": "지도 불러오는 중…",

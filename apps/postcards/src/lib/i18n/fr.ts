@@ -393,6 +393,23 @@ export const fr: Messages = {
   "journal.geo.unavailableDevice": "La localisation n'est pas disponible sur cet appareil.",
   "journal.geo.noCities": "Aucune ville trouvée à proximité.",
   "journal.geo.unavailable": "Localisation indisponible. Vérifiez l'autorisation du navigateur et réessayez.",
+  // TODO(i18n): translate — English placeholders (compile-time key parity).
+  "journal.folder": "Folder",
+  "journal.folderPlaceholder": "e.g. Japan 2024 (optional)",
+  "journal.byFolder": "By folder",
+  "journal.viewAria": "Journal view",
+  "journal.viewFeed": "Feed",
+  "journal.viewCalendar": "Calendar",
+  "journal.cal.prevMonth": "Previous month",
+  "journal.cal.nextMonth": "Next month",
+  "journal.cal.gridAria": "Journal entries by day",
+  "journal.cal.dayEntriesAria_one": "{date}, {count} entry — show it",
+  "journal.cal.dayEntriesAria_other": "{date}, {count} entries — show them",
+  "journal.cal.dayEmptyAria": "{date}, no entries — write a story",
+  "journal.cal.legendAria": "What the day colours mean",
+  "journal.cal.legendOther": "Elsewhere",
+  "journal.daySelected": "Entries on {date}",
+  "journal.clearDayAria": "Clear the day filter",
 
   // ── Map screen ───────────────────────────────────────────────────────────
   "map.loading": "Chargement de la carte…",

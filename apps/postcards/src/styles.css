@@ -3328,6 +3328,136 @@ button.brand:focus-visible {
   flex: 1;
   min-width: 140px;
 }
+
+/* Journal view toggle (Feed / Calendar) + the active single-day chip. */
+.journal-viewtabs {
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.journal-dayfilter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+/* Folder tag on a story card — subtle, links to the "By folder" filter. */
+.journal-folder-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* ── Journal month calendar ─────────────────────────────────────────────────
+   Each day with entries is tinted by its dominant place's continent (inline
+   rgba, alpha scaled by count). Colour is never the only cue: the day number,
+   a count badge, and each cell's aria-label carry the same information. */
+.journal-cal {
+  margin-top: 6px;
+}
+.journal-cal-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.journal-cal-title {
+  flex: 1;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.journal-cal-grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.journal-cal-grid th {
+  padding: 2px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+}
+.journal-cal-cell,
+.journal-cal-pad {
+  padding: 2px;
+  text-align: center;
+  vertical-align: top;
+}
+.journal-cal-day {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 38px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.journal-cal-day.has-entries {
+  border-color: var(--border-strong);
+  font-weight: 700;
+}
+.journal-cal-day:hover {
+  border-color: var(--border-strong);
+}
+.journal-cal-num {
+  line-height: 1.1;
+}
+/* Count badge for multi-entry days — theme-inverted so it stays high-contrast. */
+.journal-cal-badge {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--surface);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+/* A single-entry day gets a small solid dot instead of a number badge. */
+.journal-cal-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text);
+  opacity: 0.7;
+}
+.journal-cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--muted);
+}
+.journal-cal-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.journal-cal-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
 .setting-picker {
   max-width: 220px;
   margin-top: 8px;

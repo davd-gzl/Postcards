@@ -197,6 +197,27 @@ export const StorySchema = z
       .string()
       .max(8000)
       .transform((s) => sanitizeText(s, 8000)),
+    /**
+     * Optional folder label (e.g. "Japan 2024") that groups stories under one
+     * name in the feed. Additive & optional exactly like a Trip's `name` and the
+     * `updatedAt` stamp: absent on older files and NOT injected on parse (the
+     * transform returns `undefined`, so no `folder` key is written), which keeps
+     * v1–v7 files validating and round-tripping byte-identically. Sanitized to
+     * inert text when present; a value that sanitizes away is dropped rather than
+     * stored empty.
+     */
+    folder: z
+      .string()
+      .max(80)
+      // `.transform` BEFORE `.optional` keeps the KEY optional (folder?: string) so
+      // existing stories without a folder still typecheck and round-trip byte-identically;
+      // the transform runs only when a value is present, sanitizing it to inert text
+      // and dropping it entirely if it sanitizes away.
+      .transform((v) => {
+        const s = sanitizeText(v, 80);
+        return s.length ? s : undefined;
+      })
+      .optional(),
     photos: z.array(PhotoSchema).max(MAX_PHOTOS_PER_STORY).optional(),
     addedAt: z.string().datetime({ offset: true }),
     /** Last-mutated stamp for device sync (spec 013); see Visit.updatedAt. */
