@@ -94,7 +94,24 @@ mode, so it's high-value and not much extra surface. Recommendation:
       divider/slider already docks the list, so it's redundant. Drop the button + `listTall` state +
       `.list-tall` CSS. — queued after the blog agent.
 
-## Publish / Sync — GitHub connector
+## Sync — the ideal frictionless flow (user vision)
+
+Goal: **one-time setup, then it just works** — auto fetch/pull/push, and data transferred so
+there's **no conflict** (or as little as possible) with a **remediation** path for the rare case.
+The conflict-free ENGINE already exists (`lib/sync/merge.ts` — record-level newest-wins +
+tombstones, converges). Remaining is the UX:
+
+- [ ] **One-button setup**: minimal config (repo + token, or a paste-one-thing flow), stored once
+      on-device. After that, no per-sync fiddling.
+- [ ] **Automatic push/pull** (OPT-IN, off by default — the one-time enable IS the explicit consent,
+      keeping the constitution's "data leaves only on explicit action"): once on, pull on app
+      launch / when it regains focus, and push after changes (debounced) / on backgrounding. Manual
+      "Sync now" stays for the off case. Show clear status (last synced, syncing, error).
+- [ ] **Conflict-free transfer** (done): reuse the record-level merge so concurrent edits converge;
+      the conditional-push retry (re-pull→re-merge→push) already handles the race.
+- [ ] **Remediation** for the rare unresolved case: if something can't auto-resolve (e.g. repeated
+      push races, or a suspicious divergence), surface a clear, non-destructive review — what
+      changed on each side, keep-both / pick, and never silently lose data. A sync log.
 
 - [ ] Token-free clarity + a guide + a guided GitHub "proposition":
       - Make clear you DON'T need a token: "Download" the site/data and host/`git push` it yourself on
