@@ -564,6 +564,8 @@ export const ko: Messages = {
   // ── Connection status ────────────────────────────────────────────────────
   "conn.online": "온라인",
   "conn.offline": "오프라인",
+  "conn.goOffline": "클릭하여 오프라인 전환 — 완전 자체 완결, 외부 전송 없음",
+  "conn.goOnline": "클릭하여 온라인 전환 — 지도, 사진, 가이드",
 
   // ── Guides (button + section heading) ────────────────────────────────────
   "guide.openWithGuides": "{name}을(를) 여행 가이드와 함께 열기",

@@ -511,6 +511,17 @@ h1.brand {
   font-size: 9px;
   line-height: 1;
 }
+/* The chip is a real toggle button (click to flip Offline mode). */
+.conn-toggle {
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+}
+.conn-toggle:hover {
+  background: var(--bg-sub);
+  border-color: var(--accent);
+}
 .conn-online .dot {
   color: #16a34a;
 }

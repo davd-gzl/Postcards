@@ -1,27 +1,34 @@
-import { useOnlineStatus } from "../lib/hooks/useOnlineStatus";
+import { useSettings } from "../lib/store/useSettings";
 import { useT } from "../lib/i18n";
 
 /**
- * A small, always-visible chip telling you whether the app is online or offline.
- * Non-interactive — it only reports state. The label (not colour alone) plus an
- * aria-live region keep it accessible (WCAG 1.4.1 / 4.1.3).
+ * The online/offline switch in the top bar. Clicking it flips the app's master
+ * Offline mode — the self-contained switch that gates ALL optional egress (map
+ * tiles, place photos, guides, data-pack fetches). The label and dot follow the
+ * mode so the toggle is always visibly responsive, and the tooltip states what a
+ * click will do. Accessible: a real button with aria-pressed for the toggle
+ * state and a title (WCAG 4.1.2, keyboard-first).
  */
 export function ConnectionStatus() {
   const t = useT();
-  const online = useOnlineStatus();
+  const offlineMode = useSettings((s) => s.offlineMode);
+  const setOfflineMode = useSettings((s) => s.setOfflineMode);
+  const online = !offlineMode;
   const label = online ? t("conn.online") : t("conn.offline");
+  const hint = online ? t("conn.goOffline") : t("conn.goOnline");
   return (
-    <span
-      className={"conn-status " + (online ? "conn-online" : "conn-offline")}
-      role="status"
-      aria-live="polite"
-      title={label}
-      aria-label={label}
+    <button
+      type="button"
+      className={"conn-status conn-toggle " + (online ? "conn-online" : "conn-offline")}
+      aria-pressed={offlineMode}
+      aria-label={`${label} — ${hint}`}
+      title={hint}
+      onClick={() => setOfflineMode(!offlineMode)}
     >
       <span className="dot" aria-hidden>
         {online ? "●" : "○"}
       </span>
       <span className="conn-label">{label}</span>
-    </span>
+    </button>
   );
 }

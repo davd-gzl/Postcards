@@ -565,6 +565,8 @@ export const fr: Messages = {
   // ── Connection status ────────────────────────────────────────────────────
   "conn.online": "En ligne",
   "conn.offline": "Hors ligne",
+  "conn.goOffline": "Cliquez pour passer hors ligne — totalement autonome, aucune sortie",
+  "conn.goOnline": "Cliquez pour passer en ligne — cartes, photos et guides",
 
   // ── Guides (button + section heading) ────────────────────────────────────
   "guide.openWithGuides": "Ouvrir {name} avec les guides de voyage",
