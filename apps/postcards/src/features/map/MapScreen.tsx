@@ -590,19 +590,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           ))}
         </div>
         <div className="map-ctl map-ctl-left">
-          <button
-            className="map-btn"
-            type="button"
-            title={t("map.addPlaceTitle")}
-            onClick={() => {
-              setAddPlaceAt(
-                bounds ? { lon: (bounds.west + bounds.east) / 2, lat: (bounds.south + bounds.north) / 2 } : null,
-              );
-              setAddPlaceOpen(true);
-            }}
-          >
-            ＋ {t("map.addPlace")}
-          </button>
+          {/* No "+ Add place" button: add via long-press/right-click on the map
+              (the "Add a place here" popup) or the search box. Keeps the controls
+              uncluttered. */}
           {myPlaceCoords.length > 0 && (
             <button className="map-btn" type="button" onClick={() => fitToMyPlaces()}>
               {t("map.fitToMyPlaces")}

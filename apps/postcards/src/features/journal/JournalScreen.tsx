@@ -214,7 +214,7 @@ function StoryPhotos({ photos, title }: { photos: Photo[]; title: string }) {
               setOpen(true);
             }}
           >
-            <img src={p.src} alt={p.caption ?? ""} />
+            <img src={p.src} alt={p.caption ?? ""} loading="lazy" decoding="async" />
           </button>
         ))}
       </div>
@@ -1048,7 +1048,7 @@ export function JournalScreen() {
             <ul className="journal-photo-edit-list">
               {photos.map((p, i) => (
                 <li key={i} className="journal-photo-edit">
-                  <img src={p.src} alt="" />
+                  <img src={p.src} alt="" loading="lazy" decoding="async" />
                   <input
                     className="caption-input"
                     type="text"
