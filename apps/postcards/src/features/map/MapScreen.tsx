@@ -15,7 +15,7 @@ import { GuideButton } from "../guides/GuideButton";
 import { StatStrip } from "../stats/StatStrip";
 import { MapView, hasSavedCamera, type Basemap, type MapFocus, type MapFit, type MapMode } from "./MapView";
 import { tripArcs } from "./visitedLayers";
-import { tripsInPeriod, periodLabel } from "../travel/period";
+import { tripsInPeriod, periodLabel, dateBuckets, matchesDateFilter } from "../travel/period";
 import { citiesInView, type Bounds } from "./viewport";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import type { City } from "../../lib/reference/types";
@@ -93,6 +93,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const mapFocus = useUi((s) => s.mapFocus);
   const tripYear = useUi((s) => s.tripYear);
   const tripMonth = useUi((s) => s.tripMonth);
+  const setTripPeriod = useUi((s) => s.setTripPeriod);
   const reducedMotion = usePrefersReducedMotion();
   // The privacy escape hatch: when off, the app uses the no-network offline map
   // only (zero outbound requests), overriding whatever detailed basemap is saved.
@@ -134,7 +135,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const [showCountries, setShowCountries] = useState(() =>
     loadPref("postcards-countries", (v) => v !== "0"),
   );
-  const [listTall, setListTall] = useState(false);
   // The list always sits right of the map (desktop) / below it (mobile);
   // the slider decides how much room it gets. The axis follows the layout.
   const [wide, setWide] = useState(
@@ -170,7 +170,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   function onDivDown(e: React.PointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
     dividerDrag.current = true;
-    setListTall(false); // the slider takes over any "expand list" preset
   }
   function onDivMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!dividerDrag.current || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
@@ -214,7 +213,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
         Math.round((screenRef.current?.getBoundingClientRect().height ?? 940) - 140),
       );
       const next = clamp(cur + (e.key === "ArrowUp" ? -step : step), 120, ceiling);
-      setListTall(false);
       setMapH(next);
       savePref("postcards-map-h", String(next));
       e.preventDefault();
@@ -296,9 +294,36 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     [allCities, bounds],
   );
   const inViewCapped = inView.length === IN_VIEW_CAP;
-  const visitedCityIds = useMemo(
-    () => new Set(visits.filter((v) => v.place.kind === "city").map((v) => v.place.id)),
+
+  // The map's date filter IS the shared travel period's year (useUi), so a single
+  // selection drives the visited markers, the country shading, the in-view list
+  // AND the trip arcs together — one coherent choice, never two that can drift
+  // apart. "none" = undated visits: a map-only bucket that reads as "all" for the
+  // dated trip arcs (there's no undated-trip arc), so those simply clear. It is
+  // deliberately NOT a persisted map pref — it's session state shared with the
+  // Trips tab, exactly like the trip filter it extends, so it belongs there.
+  const mapYear = tripYear; // "all" | "YYYY" | "none"
+  function changeYear(y: string) {
+    // Year granularity on the map; reset month (a Trips-tab-only refinement) so a
+    // stale month can't survive under a freshly-picked year.
+    setTripPeriod(y, "all");
+  }
+  // Year chips come from YOUR visited places' dates (never the 135k gazetteer),
+  // mirroring the Places/Journal/Trips year filter: newest-first + a "No date"
+  // bucket when some visited place is undated.
+  const yearBuckets = useMemo(
+    () => dateBuckets(visits.filter((v) => v.status !== "wishlist")),
     [visits],
+  );
+
+  const visitedCityIds = useMemo(
+    () =>
+      new Set(
+        visits
+          .filter((v) => v.place.kind === "city" && matchesDateFilter(v.date, mapYear))
+          .map((v) => v.place.id),
+      ),
+    [visits, mapYear],
   );
   // The filtered list is a SNAPSHOT: it recomputes only when the viewport or the
   // filter changes — never when a visit is toggled. So under "Hide visited",
@@ -315,14 +340,15 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
         : inView.filter((c) => ids.has(c.id) === (cityFilter === "visited"));
     setSnapshot(sortAZ ? [...arr].sort((a, b) => collator.compare(a.name, b.name)) : arr);
     setShown(PAGE);
-    // visitedCityIds deliberately NOT a dependency — see comment above.
+    // visitedCityIds deliberately NOT a dependency — see comment above. mapYear
+    // IS one: a new period re-partitions visited vs unvisited in the list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, cityFilter, sortAZ]);
+  }, [inView, cityFilter, sortAZ, mapYear]);
   function visitedCityIdsNow(): Set<string> {
     return new Set(
       useVisits
         .getState()
-        .visits.filter((v) => v.place.kind === "city")
+        .visits.filter((v) => v.place.kind === "city" && matchesDateFilter(v.date, mapYear))
         .map((v) => v.place.id),
     );
   }
@@ -347,7 +373,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
       new Set(
         useVisits
           .getState()
-          .visits.filter((v) => v.place.kind === kind && v.status !== "wishlist")
+          .visits.filter(
+            (v) => v.place.kind === kind && v.status !== "wishlist" && matchesDateFilter(v.date, mapYear),
+          )
           .map((v) => v.place.id),
       );
     if (mode === "monuments") {
@@ -392,18 +420,23 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     }
     return null;
     // visits deliberately via getState() — the header count refreshing on a
-    // check is fine to defer to the next bounds/mode change.
+    // check is fine to defer to the next bounds/mode change. mapYear IS a dep so
+    // the "seen" counts re-derive when the period changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, bounds, ref]);
+  }, [mode, bounds, ref, mapYear]);
 
-  // Trip arcs honour the Travel-log time filter (shared via useUi).
+  // Trip arcs honour the same shared period as the map's year filter (useUi): a
+  // year narrows them to that year's dated trips; "none"/undated has no dated-
+  // trip arc, so they clear. One selection, arcs + places together.
   const arcTrips = useMemo(
     () => tripsInPeriod(trips, tripYear, tripMonth),
     [trips, tripYear, tripMonth],
   );
   const arcs = useMemo(() => tripArcs(arcTrips, ref), [arcTrips, ref]);
   const hasArcs = arcs.features.length > 0;
-  const periodTag = periodLabel(tripYear, tripMonth);
+  // Never surface the map-only "none" bucket as a period label ("No date" isn't
+  // a trip period); the Trips toggle then simply shows no tag (and no arcs).
+  const periodTag = tripYear === "none" ? "" : periodLabel(tripYear, tripMonth);
 
   // Another tab asked the map to fly somewhere (Places row → map).
   useEffect(() => {
@@ -476,7 +509,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     <div
       ref={screenRef}
       style={paneVars}
-      className={"map-screen" + (listTall ? " list-tall" : "")}
+      className="map-screen"
     >
       {/* Search lives in the app top bar now — this row is just the counters. */}
       {active && (
@@ -500,6 +533,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           showTowns={showTowns}
           showCountries={showCountries}
           maxMarkers={maxMarkers}
+          year={mapYear}
           reducedMotion={reducedMotion}
           onBaseUnavailable={() => {
             if (basemap === "osm") {
@@ -694,15 +728,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
       <section className="view-list" aria-label={t("map.list.aria")}>
         <div className="section-head">
           <h2>{mode === "monuments" ? t("map.list.headingMonuments") : mode === "airports" ? t("map.list.headingAirports") : t("map.list.headingCities")}</h2>
-          <button
-            className="mini-btn list-expand"
-            type="button"
-            aria-pressed={listTall}
-            title={listTall ? t("map.list.expandTitleCollapse") : t("map.list.expandTitleExpand")}
-            onClick={() => setListTall((v) => !v)}
-          >
-            {listTall ? `▼ ${t("map.list.showMap")}` : `▲ ${t("map.list.showList")}`}
-          </button>
           <span className="list-head-meta muted">
             <span>
               {t("map.list.inView", {
@@ -714,6 +739,35 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             )}
           </span>
         </div>
+
+        {/* Date filter — one selection narrows the markers, the country shading,
+            this list AND the trip arcs to a year (or the undated bucket). Shown
+            in every mode (it filters the whole map), only when your visited
+            places actually span more than one bucket. Mirrors Places' chips. */}
+        {(yearBuckets.years.length > 1 ||
+          (yearBuckets.years.length === 1 && yearBuckets.undated)) && (
+          <div
+            className="segmented wrap year-filter"
+            role="group"
+            aria-label={t("map.yearFilterAria")}
+          >
+            {[
+              { val: "all", label: t("map.year.all") },
+              ...yearBuckets.years.map((y) => ({ val: y, label: y })),
+              ...(yearBuckets.undated ? [{ val: "none", label: t("map.year.noDate") }] : []),
+            ].map(({ val, label }) => (
+              <button
+                key={val}
+                type="button"
+                aria-pressed={mapYear === val}
+                className={mapYear === val ? "seg-on" : ""}
+                onClick={() => changeYear(val)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {poi ? (
           poi.items.length === 0 ? (

@@ -15,6 +15,7 @@ import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { useT } from "../../lib/i18n";
 import { visitedCountryIds } from "../stats/computeStats";
+import { matchesDateFilter, type DateFilter } from "../travel/period";
 import { airportPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
 import { prefetchAroundBounds, prefetchAroundPoint, OSM_TILE_TEMPLATE } from "../../lib/offline/tiles";
 import type { Bounds } from "./viewport";
@@ -552,6 +553,7 @@ export function MapView({
   showTowns = false,
   showCountries = false,
   maxMarkers = 250,
+  year = "all",
   onBaseUnavailable,
   onAddHere,
 }: {
@@ -563,6 +565,10 @@ export function MapView({
   showCountries?: boolean;
   /** Cap on airport/monument markers drawn in the current view (anti-blanket). */
   maxMarkers?: number;
+  /** Date filter for YOUR places: "all" (any date), "none" (undated), or a
+   *  4-digit year. Narrows the visited/wishlist/airport markers, the visited-
+   *  country shading and the browsable-POI "seen" state to that period. */
+  year?: DateFilter;
   onBounds?: (b: Bounds) => void;
   focus?: MapFocus | null;
   fit?: MapFit | null;
@@ -615,6 +621,10 @@ export function MapView({
   modeRef.current = mode;
   const maxMarkersRef = useRef(maxMarkers);
   maxMarkersRef.current = maxMarkers;
+  // The active date filter for YOUR places (see the `year` prop). Read from a
+  // ref so the imperative painters use the latest value without re-subscribing.
+  const yearRef = useRef(year);
+  yearRef.current = year;
   const [failed, setFailed] = useState(false);
   const [dataState, setDataState] = useState<"loading" | "ready" | "error">("loading");
 
@@ -683,7 +693,12 @@ export function MapView({
       if (m === "monuments" || (m === "all" && z >= 4.5)) {
         const seen = new Set(
           visitsRef.current
-            .filter((v) => v.status !== "wishlist" && v.place.kind === "heritage")
+            .filter(
+              (v) =>
+                v.status !== "wishlist" &&
+                v.place.kind === "heritage" &&
+                matchesDateFilter(v.date, yearRef.current),
+            )
             .map((v) => v.place.id),
         );
         // Seen-first via a single stable partition (no full sort), so the cap
@@ -723,7 +738,12 @@ export function MapView({
       if (m === "airports" || (m === "all" && z >= 5)) {
         const seen = new Set(
           visitsRef.current
-            .filter((v) => v.status !== "wishlist" && v.place.kind === "airport")
+            .filter(
+              (v) =>
+                v.status !== "wishlist" &&
+                v.place.kind === "airport" &&
+                matchesDateFilter(v.date, yearRef.current),
+            )
             .map((v) => v.place.id),
         );
         const all = ref.allAirports();
@@ -767,9 +787,14 @@ export function MapView({
   const lastWishKey = useRef("<init>");
   const lastAirKey = useRef("<init>");
   function applyVisited(map: MlMap) {
+    // The date filter narrows YOUR places to the selected period BEFORE building
+    // any source, so the same one selection drives the markers, the country
+    // shading and (via the keys below) which of them are worth re-tiling. The
+    // reference dot fields (cities-all etc.) never see this — only your records.
+    const vis = visitsRef.current.filter((v) => matchesDateFilter(v.date, yearRef.current));
     const markerKey = (v: Visit) =>
       `${v.place.kind}:${v.place.id}:${v.status}:${v.favorite ? 1 : 0}`;
-    const citiesKey = visitsRef.current
+    const citiesKey = vis
       .filter(
         (v) => v.status !== "wishlist" && (v.place.kind === "city" || v.place.kind === "custom"),
       )
@@ -778,35 +803,30 @@ export function MapView({
       .join("|");
     if (citiesKey !== lastCitiesKey.current) {
       lastCitiesKey.current = citiesKey;
-      (map.getSource("cities") as GeoJSONSource | undefined)?.setData(
-        visitedCityPoints(visitsRef.current, ref),
-      );
+      (map.getSource("cities") as GeoJSONSource | undefined)?.setData(visitedCityPoints(vis, ref));
     }
-    const wishKey = visitsRef.current
+    const wishKey = vis
       .filter((v) => v.status === "wishlist" && v.place.kind === "city")
       .map((v) => v.place.id)
       .sort()
       .join("|");
     if (wishKey !== lastWishKey.current) {
       lastWishKey.current = wishKey;
-      (map.getSource("wishlist") as GeoJSONSource | undefined)?.setData(
-        wishlistCityPoints(visitsRef.current, ref),
-      );
+      (map.getSource("wishlist") as GeoJSONSource | undefined)?.setData(wishlistCityPoints(vis, ref));
     }
-    const airKey = visitsRef.current
+    const airKey = vis
       .filter((v) => v.place.kind === "airport")
       .map(markerKey)
       .sort()
       .join("|");
     if (airKey !== lastAirKey.current) {
       lastAirKey.current = airKey;
-      (map.getSource("airports") as GeoJSONSource | undefined)?.setData(
-        airportPoints(visitsRef.current, ref),
-      );
+      (map.getSource("airports") as GeoJSONSource | undefined)?.setData(airportPoints(vis, ref));
     }
     // Monuments (and browsable airports) are viewport-capped and depend on
-    // visits only through their heritage/airport "seen" state.
-    const poiKey = visitsRef.current
+    // visits only through their heritage/airport "seen" state — period-filtered
+    // too, so applyViewportPoi (which reads yearRef) rebuilds when it changes.
+    const poiKey = vis
       .filter((v) => v.place.kind === "heritage" || v.place.kind === "airport")
       .map((v) => `${v.place.kind}:${v.place.id}:${v.status}`)
       .sort()
@@ -815,7 +835,7 @@ export function MapView({
       lastPoiKey.current = poiKey;
       applyViewportPoi(map);
     }
-    const countryKey = [...visitedCountryIds(visitsRef.current)].sort().join(",");
+    const countryKey = [...visitedCountryIds(vis)].sort().join(",");
     if (countryKey !== lastCountryKey.current) {
       lastCountryKey.current = countryKey;
       applyCountryFill(map);
@@ -824,11 +844,13 @@ export function MapView({
 
   // Shade the countries you've visited: set the fill layer's filter to their
   // numeric ISO codes (which join to the geometry). Airports and neutral "ZZ"
-  // points don't count a country, matching the stats and passport.
+  // points don't count a country, matching the stats and passport. Honours the
+  // active period so shading only marks countries with a qualifying visit.
   function applyCountryFill(map: MlMap) {
     if (!map.getLayer("countries-visited-fill")) return;
+    const vis = visitsRef.current.filter((v) => matchesDateFilter(v.date, yearRef.current));
     const nums: string[] = [];
-    for (const iso2 of visitedCountryIds(visitsRef.current)) {
+    for (const iso2 of visitedCountryIds(vis)) {
       const num = ref.countryByIso2(iso2)?.numeric;
       if (num) nums.push(num);
     }
@@ -1356,6 +1378,23 @@ export function MapView({
     if (map && loadedRef.current) applyTripArcs(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tripArcs]);
+
+  // A new date period changes which of YOUR places qualify. The change-keys are
+  // derived from the (now period-filtered) visits, but reset them to the
+  // sentinel so every personal source is guaranteed to rebuild, then repaint the
+  // markers, the country shading and the viewport-capped POI for the new period.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    lastCitiesKey.current = "<init>";
+    lastWishKey.current = "<init>";
+    lastAirKey.current = "<init>";
+    lastPoiKey.current = "<init>";
+    lastCountryKey.current = "<init>";
+    applyVisited(map);
+    applyViewportPoi(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year]);
 
   useEffect(() => {
     const map = mapRef.current;

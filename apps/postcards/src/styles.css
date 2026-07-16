@@ -638,6 +638,7 @@ h1.brand {
    is left goes to the header count and the first rows, not to controls. */
 @container viewlist (max-height: 200px) {
   .list-filter,
+  .view-list .year-filter,
   .list-pager {
     display: none;
   }
@@ -2814,21 +2815,6 @@ textarea.select {
 .map-ctl-top button {
   white-space: nowrap;
   flex: none;
-}
-
-/* ▲ List expand: collapse the map to a strip so the list takes the screen. */
-.map-screen.list-tall .map-box {
-  height: 15vh;
-  min-height: 100px;
-}
-@media (min-width: 900px) {
-  .list-expand {
-    display: none; /* desktop has the two-pane layout — nothing to expand */
-  }
-  .map-screen.list-tall .map-box {
-    height: auto;
-    min-height: 0;
-  }
 }
 
 /* ===== Search in the top bar (it was eating a whole row on every screen) ===== */
