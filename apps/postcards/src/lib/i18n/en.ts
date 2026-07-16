@@ -724,6 +724,10 @@ export const en = {
   "publish.toast.buildErr": "Couldn't build the site. Your data is unchanged.",
   "publish.toast.missingFields": "Fill in owner, repo, branch and a token to push to GitHub.",
   "publish.toast.pushed": "Pushed to {owner}/{repo} — GitHub Pages will update shortly.",
+  "publish.toast.pushedLive": "Published — GitHub Pages is switched on and building your site.",
+  "publish.liveSitePrefix": "Your site:",
+  "publish.liveSiteNote":
+    "GitHub Pages can take a minute to build the first time. If the link 404s, open the repo's Settings → Pages once to finish enabling it.",
   "publish.toast.pushErr": "GitHub push failed. Local download still works.",
 
   // ── About / "How it works" ───────────────────────────────────────────────

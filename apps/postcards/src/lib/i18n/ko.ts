@@ -718,6 +718,10 @@ export const ko: Messages = {
   "publish.toast.buildErr": "사이트를 만들 수 없습니다. 데이터는 변경되지 않았습니다.",
   "publish.toast.missingFields": "GitHub로 push하려면 소유자, 저장소, 브랜치, 토큰을 입력하세요.",
   "publish.toast.pushed": "{owner}/{repo}로 push됨 — GitHub Pages가 곧 업데이트됩니다.",
+  "publish.toast.pushedLive": "게시됨 — GitHub Pages가 켜지고 사이트를 빌드하고 있습니다.",
+  "publish.liveSitePrefix": "내 사이트:",
+  "publish.liveSiteNote":
+    "GitHub Pages는 처음 빌드에 1분 정도 걸릴 수 있습니다. 링크가 404를 반환하면 저장소의 Settings → Pages를 한 번 열어 활성화를 완료하세요.",
   "publish.toast.pushErr": "GitHub push에 실패했습니다. 로컬 내려받기는 여전히 작동합니다.",
 
   // ── About / "How it works" ───────────────────────────────────────────────
