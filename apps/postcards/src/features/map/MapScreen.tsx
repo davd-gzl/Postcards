@@ -797,6 +797,30 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           >
             ≡ {t("map.layersButton")}
           </button>
+          {!offlineMode && (
+            // Two-way toggle, ALWAYS pressable right next to Layers (not hidden in
+            // the panel): stream OpenStreetMap tiles, or go back to the zero-egress
+            // offline map. The map ships offline (no requests) until you turn this
+            // on. Withheld only under Offline mode (the master override).
+            <button
+              className={"map-btn" + (onlineMap ? " on" : "")}
+              type="button"
+              aria-pressed={onlineMap}
+              title={onlineMap ? t("map.online.disableHint") : t("map.online.enableHint")}
+              onClick={() => {
+                const next = !onlineMap;
+                setOnlineMap(next);
+                if (next) {
+                  setBasemap("osm");
+                  savePref(BASEMAP_KEY, "osm");
+                }
+                // Going offline: effectiveBasemap forces the offline base, so no
+                // tiles are fetched — nothing else to do.
+              }}
+            >
+              🌐 {t("map.online.enable")}
+            </button>
+          )}
           {layersOpen && (
             <div className="layers-panel" role="group" aria-label={t("map.layersAria")}>
               <button
@@ -849,30 +873,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
               {onlineMap && basemapCycle.length > 1 && (
                 <button className="map-btn" type="button" onClick={switchBasemap}>
                   ⤳ {t(BASEMAP_LABEL_KEY[nextBasemap])}
-                </button>
-              )}
-              {!offlineMode && (
-                // Two-way toggle: stream OpenStreetMap tiles, or go back to the
-                // zero-egress offline map. The map ships offline (no requests)
-                // until you turn this on. Withheld entirely under Offline mode
-                // (the master override), where the map is forced offline.
-                <button
-                  className={"map-btn" + (onlineMap ? " on" : "")}
-                  type="button"
-                  aria-pressed={onlineMap}
-                  title={onlineMap ? t("map.online.disableHint") : t("map.online.enableHint")}
-                  onClick={() => {
-                    const next = !onlineMap;
-                    setOnlineMap(next);
-                    if (next) {
-                      setBasemap("osm");
-                      savePref(BASEMAP_KEY, "osm");
-                    }
-                    // Going offline: effectiveBasemap forces the offline base, so
-                    // no tiles are fetched — nothing else to do.
-                  }}
-                >
-                  🌐 {t("map.online.enable")}
                 </button>
               )}
             </div>
