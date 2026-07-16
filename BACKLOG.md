@@ -11,6 +11,10 @@ _Last reconciled: 2026-07-16._
 
 ## Done (verified)
 
+- ✅ Top-bar "● Online" chip is now a real **toggle button** — click it to flip
+  Offline mode (label/dot follow the mode, aria-pressed, tooltip). _Screenshot,
+  online↔offline._ (Earlier I'd wrongly moved the *map* layer button; the ask was
+  this top-bar chip.)
 - ✅ PWA auto-update prompt — a "new version — reload" banner (SW registered
   manually in `main.tsx`, prompt mode) so an open tab never serves a stale
   cached build. _Screenshot._
