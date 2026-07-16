@@ -27,6 +27,7 @@
 
 import type { PublishedJourney } from "./bundle";
 import type { EncryptedEnvelope } from "./encrypt";
+import { LAND_OUTLINE } from "./landOutline";
 
 export interface RenderReaderOptions {
   /** When set, the reader ships this envelope instead of a plain journey and
@@ -93,7 +94,8 @@ const READER_CSS = `
   --pc-bg:#f6f1e7; --pc-surface:#fffdf8; --pc-elev:#efe7d6;
   --pc-text:#241f18; --pc-muted:#6c6354; --pc-border:#e5dcc8;
   --pc-accent:#a4381c; --pc-accent-ink:#fff7ef; --pc-gold:#8a6a2c;
-  --pc-ocean:#e2e8e2; --pc-map-paper:#e8ebe0; --pc-map-ink:#3b392f; --pc-map-grat:#cdd3c4;
+  --pc-ocean:#d9e6f1; --pc-map-paper:#eef1e5; --pc-map-ink:#3b392f; --pc-map-grat:#bcc7d3;
+  --pc-map-coast:#b9c2ab;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
@@ -101,7 +103,8 @@ const READER_CSS = `
     --pc-bg:#15130f; --pc-surface:#1d1a15; --pc-elev:#26211a;
     --pc-text:#efe8da; --pc-muted:#a89e8b; --pc-border:#332d22;
     --pc-accent:#e3855d; --pc-accent-ink:#1b130d; --pc-gold:#cba85f;
-    --pc-ocean:#171b18; --pc-map-paper:#191d17; --pc-map-ink:#d6d1c2; --pc-map-grat:#2c3026;
+    --pc-ocean:#0f1d2a; --pc-map-paper:#20271d; --pc-map-ink:#d6d1c2; --pc-map-grat:#243243;
+    --pc-map-coast:#3a462f;
     color-scheme:dark;
   }
 }
@@ -109,7 +112,8 @@ const READER_CSS = `
   --pc-bg:#15130f; --pc-surface:#1d1a15; --pc-elev:#26211a;
   --pc-text:#efe8da; --pc-muted:#a89e8b; --pc-border:#332d22;
   --pc-accent:#e3855d; --pc-accent-ink:#1b130d; --pc-gold:#cba85f;
-  --pc-ocean:#171b18; --pc-map-paper:#191d17; --pc-map-ink:#d6d1c2; --pc-map-grat:#2c3026;
+  --pc-ocean:#0f1d2a; --pc-map-paper:#20271d; --pc-map-ink:#d6d1c2; --pc-map-grat:#243243;
+  --pc-map-coast:#3a462f;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -176,8 +180,9 @@ body{
 .pc-map::after{content:""; position:absolute; inset:0; pointer-events:none; border-radius:16px;
   background:radial-gradient(130% 120% at 50% 45%, transparent 58%, rgba(60,45,20,.14))}
 .pc-map-svg{display:block; width:100%; height:auto}
-.pc-map-bg{fill:var(--pc-map-paper)}
-.pc-grat line{stroke:var(--pc-map-grat); stroke-width:.7}
+.pc-map-bg{fill:var(--pc-ocean)}
+.pc-land{fill:var(--pc-map-paper); stroke:var(--pc-map-coast); stroke-width:.8; stroke-linejoin:round}
+.pc-grat line{stroke:var(--pc-map-grat); stroke-width:.6; opacity:.7}
 .pc-leg{fill:none; stroke-width:2.4; stroke-linecap:round}
 .pc-leg-halo{fill:none; stroke:var(--pc-map-paper); stroke-width:5.2; stroke-linecap:round; opacity:.85}
 .pc-pt{fill:var(--pc-accent); stroke:var(--pc-map-paper); stroke-width:1.4}
@@ -386,6 +391,17 @@ const READER_JS = `
   function mercY(lat){var la=Math.max(-85,Math.min(85,lat)); return Math.log(Math.tan(Math.PI/4+la*Math.PI/360));}
   function invMercY(y){return (2*Math.atan(Math.exp(y))-Math.PI/2)*180/Math.PI;}
 
+  // The embedded world land outline (public-domain Natural Earth, simplified).
+  // Parsed once from its inert JSON island; [] if absent, so the map degrades to
+  // the plain graticule it drew before.
+  var LAND_CACHE=null;
+  function readLand(){
+    if(LAND_CACHE) return LAND_CACHE;
+    try{var e=document.getElementById("pc-land"); LAND_CACHE=e?JSON.parse(e.textContent):[];}
+    catch(_e){LAND_CACHE=[];}
+    return LAND_CACHE;
+  }
+
   function placeLabel(cx,cy,name,placed,W,H){
     var fs=11.5, w=Math.min(150,(name?name.length:0)*fs*0.56)+6, h=fs+5;
     var cands=[
@@ -412,6 +428,12 @@ const READER_JS = `
     var minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
     for(i=0;i<X.length;i++){minX=Math.min(minX,X[i]);maxX=Math.max(maxX,X[i]);minY=Math.min(minY,Y[i]);maxY=Math.max(maxY,Y[i]);}
     if(!isFinite(minX)){minX=-Math.PI;maxX=Math.PI;minY=-1.4;maxY=1.4;}
+    // Guarantee a minimum extent so ONE stop (or a tight cluster) shows regional
+    // context — its country and coastline — instead of zooming into an empty void.
+    // ~0.3 rad ≈ 17° of longitude; the same in Mercator-y units of latitude.
+    var MIN_SPAN=0.3;
+    if(maxX-minX<MIN_SPAN){var mcx=(minX+maxX)/2; minX=mcx-MIN_SPAN/2; maxX=mcx+MIN_SPAN/2;}
+    if(maxY-minY<MIN_SPAN){var mcy=(minY+maxY)/2; minY=mcy-MIN_SPAN/2; maxY=mcy+MIN_SPAN/2;}
     var spanX=(maxX-minX)||0.5, spanY=(maxY-minY)||0.5;
     minX-=spanX*0.18; maxX+=spanX*0.18; minY-=spanY*0.24; maxY+=spanY*0.24;
     spanX=maxX-minX; spanY=maxY-minY;
@@ -424,6 +446,25 @@ const READER_JS = `
     var s="";
     s+='<svg class="pc-map-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Route map of the journey, showing each city">';
     s+='<rect class="pc-map-bg" x="0" y="0" width="'+W+'" height="'+H+'"/>';
+
+    // Land silhouette behind everything: the embedded, heavily-simplified world
+    // outline (offline, no network). Only rings touching the padded viewport are
+    // emitted, so a regional view stays a small path. A >180° longitude jump
+    // starts a fresh sub-path so a ring near the antimeridian can't streak across.
+    var land=readLand(), lp="";
+    for(var li=0;li<land.length;li++){
+      var ring=land[li], seg="", any=false, prevLon=null;
+      for(var pi=0;pi<ring.length;pi++){
+        var llon=ring[pi][0], llat=ring[pi][1];
+        var Lx=sx(llon*Math.PI/180), Ly=sy(mercY(llat));
+        var cmd=(pi===0||(prevLon!==null&&Math.abs(llon-prevLon)>180))?"M":"L";
+        seg+=cmd+Lx.toFixed(1)+" "+Ly.toFixed(1);
+        if(Lx>-40&&Lx<W+40&&Ly>-40&&Ly<H+40) any=true;
+        prevLon=llon;
+      }
+      if(any) lp+=seg+"Z";
+    }
+    if(lp) s+='<path class="pc-land" d="'+lp+'"/>';
 
     // Graticule fitted to the visible region (a refined faint grid = "a map").
     var lonMin=minX*180/Math.PI, lonMax=maxX*180/Math.PI;
@@ -871,6 +912,10 @@ export function renderReaderHtml(
   const payloadScript = encrypted
     ? `<script type="application/json" id="pc-env">${jsonForScript(encrypted)}</script>`
     : `<script type="application/json" id="pc-data">${jsonForScript(journey ?? { title: docTitle, dateRange: {}, steps: [], totals: { countries: 0, places: 0, distanceKm: 0 } })}</script>`;
+  // The route-map land silhouette. Static public-domain geometry — it reveals
+  // nothing about the journey, so it ships even for encrypted files (the map is
+  // drawn client-side after unlock).
+  const landScript = `<script type="application/json" id="pc-land">${jsonForScript(LAND_OUTLINE)}</script>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -889,6 +934,7 @@ export function renderReaderHtml(
 <footer class="pc-foot">Published with Postcards · a private, offline travel journal. ${escapeHtml(attribution)}</footer>
 </div>
 ${payloadScript}
+${landScript}
 <script>${READER_JS}</script>
 </body>
 </html>`;

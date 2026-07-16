@@ -410,6 +410,9 @@ export const fr: Messages = {
   "journal.noDate": "Sans date",
   "journal.noMatch": "Aucun récit ne correspond à ce filtre.",
   "journal.clearFilters": "Effacer les filtres",
+  "journal.searchLabel": "Rechercher des entrées par ville",
+  "journal.searchPlaceholder": "Rechercher une ville…",
+  "journal.searchClear": "Effacer la recherche",
   "journal.editAria": "Modifier le récit {title}",
   "journal.removeAria": "Retirer le récit {title}",
   "journal.showingCount": "{shown} sur {total} affichés",
@@ -546,6 +549,8 @@ export const fr: Messages = {
   "moments.desc":
     "Des moments du monde, pas des lieux : des choses qu'on ne peut vivre qu'à un endroit. Cochez ceux que vous avez vécus ; marquez ceux dont vous rêvez. Chacun renvoie à quelques lieux où il se produit ; touchez-en un pour le voir sur la carte. Groupés par continent et pays d'origine ; ceux sans frontières figurent sous « Partout dans le monde ».",
   "moments.placesFor": "Lieux pour {name} :",
+  "moments.loading": "Chargement des moments…",
+  "moments.loadError": "Impossible de charger les moments — réessayez plus tard.",
 
   // ── Inline state toggles ─────────────────────────────────────────────────
   "states.statusAria": "Statut de {name}",
@@ -805,13 +810,22 @@ export const fr: Messages = {
     "Tout fonctionne hors ligne dès le départ. Dans les Réglages, vous pouvez activer plus : la carte détaillée en ligne, des régions de carte à enregistrer pour un voyage, la liste complète des villes du monde (petites villes et villages) et des packs de lieux communautaires. Tout est optionnel et supprimable — rien ne se télécharge tout seul.",
   "about.footPre": "Appuyez sur ",
   "about.footPost": " pour voir les raccourcis clavier.",
+  "about.version": "Version {version}",
   "about.gotIt": "Compris",
 
   // ── First-run intro ──────────────────────────────────────────────────────
   "intro.title": "Postcards",
   "intro.lede": "Souvenez-vous de partout où vous êtes allé. Privé, hors ligne, à vous.",
+  "intro.mode.title": "Connexion",
+  "intro.mode.online": "En ligne",
+  "intro.mode.offline": "Hors ligne",
+  "intro.mode.onlineDesc": "Plus riche : tuiles de carte, photos et guides — vous choisissez ce qui se charge.",
+  "intro.mode.offlineDesc": "Totalement autonome — rien ne quitte jamais votre appareil.",
   "intro.map.title": "Carte détaillée",
   "intro.map.desc": "Vraies rues et libellés, diffusés quand vous le souhaitez.",
+  "intro.offline.title": "Carte hors ligne pour un voyage",
+  "intro.offline.desc": "Enregistrez des zones pour que la carte fonctionne sans réseau.",
+  "intro.offline.action": "Configurer",
   "intro.cities.title": "Liste complète des villes",
   "intro.cities.desc": "Chaque ville et village (~17 Mo), recherche hors ligne.",
   "intro.enable": "Activer",

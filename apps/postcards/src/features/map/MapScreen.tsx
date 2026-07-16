@@ -35,10 +35,6 @@ type CityFilter = "all" | "unvisited" | "visited";
 const BASEMAP_KEY = "postcards-basemap";
 const GLOBE_KEY = "postcards-globe";
 const FILTER_KEY = "postcards-city-filter";
-// Records that we've made the first-run detailed-map offer, so it's shown once
-// and never again — set on either choice (Enable or Not now). Absent = new user
-// who hasn't seen it, which is exactly when the banner appears.
-const MAP_CONSENT_KEY = "postcards-map-consent";
 
 // i18n key for each basemap's label (translated at the call site).
 const BASEMAP_LABEL_KEY: Record<Basemap, MessageKey> = {
@@ -123,13 +119,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // The online base fell back to the offline base (offline / blocked tiles). Set
   // when it happens; drives the manual "Reconnect" prompt — never auto-switches.
   const [fellBackOffline, setFellBackOffline] = useState(false);
-  // First-run only: a new user lands on the zero-egress offline overview (few
-  // labels, no streets) and would never think to dig into Settings for detail.
-  // So we offer it up front — one tap streams OpenStreetMap tiles. Still an
-  // explicit choice (nothing fetches until they accept), just an unmissable one.
-  const [askMapConsent, setAskMapConsent] = useState(
-    () => !onlineMap && loadPref(MAP_CONSENT_KEY, (v) => v == null),
-  );
   // "Add your own place" seeded from the map (long-press/right-click a spot, or
   // the ＋ Add place button which seeds the current map centre).
   const [addPlaceAt, setAddPlaceAt] = useState<{ lon: number; lat: number } | null>(null);
@@ -634,37 +623,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             >
               {t("map.reconnect.button")}
             </button>
-          </div>
-        )}
-        {active && askMapConsent && !onlineMap && !offlineMode && (
-          <div className="map-consent" role="dialog" aria-label={t("map.consent.title")}>
-            <p className="map-consent-title">🌍 {t("map.consent.title")}</p>
-            <p className="map-consent-body small">{t("map.consent.body")}</p>
-            <div className="map-consent-actions">
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  setOnlineMap(true);
-                  setBasemap("osm");
-                  savePref(BASEMAP_KEY, "osm");
-                  savePref(MAP_CONSENT_KEY, "on");
-                  setAskMapConsent(false);
-                }}
-              >
-                {t("map.consent.enable")}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={() => {
-                  savePref(MAP_CONSENT_KEY, "off");
-                  setAskMapConsent(false);
-                }}
-              >
-                {t("map.consent.dismiss")}
-              </button>
-            </div>
           </div>
         )}
         <div className="map-ctl map-ctl-top segmented" role="group" aria-label={t("map.modeAria")}>

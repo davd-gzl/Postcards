@@ -1890,6 +1890,11 @@ h1.brand {
 .about-modal .btn {
   width: 100%;
 }
+.about-version {
+  margin: 10px 0 0;
+  text-align: center;
+  opacity: 0.7;
+}
 .about-foot a,
 .guide-search a {
   color: var(--accent);
@@ -3519,6 +3524,26 @@ button.brand:focus-visible {
   min-width: 140px;
 }
 
+/* Free-text city search over the journal feed + calendar. */
+.journal-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.journal-search-ico {
+  flex: none;
+  font-size: 15px;
+  opacity: 0.7;
+}
+.journal-search-input {
+  flex: 1;
+  min-width: 0;
+}
+.journal-search-clear {
+  flex: none;
+}
+
 /* Journal view toggle (Feed / Calendar) + the active single-day chip. */
 .journal-viewtabs {
   gap: 6px;
@@ -3816,15 +3841,14 @@ button.brand:focus-visible {
   overflow-y: auto;
   text-align: center;
   color: #eaf0ff;
-  background:
+  /* An opaque base colour UNDER the gradients: the overlay must never be even
+     briefly see-through, or the light page body flashes white behind the globe
+     while the content fades in. */
+  background-color: #06080f;
+  background-image:
     radial-gradient(1200px 700px at 50% -10%, #16224a 0%, rgba(22, 34, 74, 0) 60%),
     radial-gradient(900px 620px at 82% 112%, #241a4a 0%, rgba(36, 26, 74, 0) 55%),
     linear-gradient(180deg, #06080f 0%, #0a1024 55%, #06080f 100%);
-  animation: intro-in 0.55s ease both;
-}
-@keyframes intro-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 /* A faint star field — layered radial dots, no image (CSP-safe). */
 .intro::before {
@@ -3938,6 +3962,34 @@ button.brand:focus-visible {
   border-color: rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
   color: rgba(234, 240, 255, 0.75);
+}
+/* Online / Offline segmented control on the intro. */
+.intro-seg {
+  flex: none;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.intro-seg-btn {
+  border: 0;
+  background: none;
+  color: rgba(234, 240, 255, 0.7);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.intro-seg-btn.is-on {
+  background: rgba(120, 160, 255, 0.32);
+  color: #f2f6ff;
+  box-shadow: 0 1px 6px rgba(40, 70, 160, 0.4);
+}
+.intro-seg-btn:not(.is-on):hover {
+  color: #eaf0ff;
 }
 .intro-more {
   margin: 2px 0 0;
