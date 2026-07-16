@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Postcards is local-first and privacy-first. The device is the source of truth
+  and the ONLY backup is the user's own explicit JSON export. Android Auto Backup
+  and device-to-device transfer must NEVER carry the app's data off the device:
+  the WebView store holds the whole journal AND the on-device sync GitHub token
+  (localStorage "postcards-sync-token"). Both channels exclude everything.
+  (android:allowBackup="false" already disables cloud backup; this also covers
+  the Android 12+ device-transfer channel, and is explicit for auditability.)
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="." />
+    </device-transfer>
+</data-extraction-rules>
