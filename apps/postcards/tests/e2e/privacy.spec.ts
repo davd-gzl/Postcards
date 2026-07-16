@@ -34,7 +34,7 @@ test("only OpenStreetMap tiles leave the origin during core flows", async ({ pag
   await page.getByRole("button", { name: "Places", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Places" })).toBeVisible();
   await page.getByRole("button", { name: "Settings" }).click();
-  await expect(page.getByText("Your data")).toBeVisible(); // export surface lives here now
+  await expect(page.getByRole("heading", { name: "Your data" })).toBeVisible(); // export surface lives here now
   await page.waitForTimeout(1000); // let any stray beacons fire
 
   expect(external, `external requests: ${external.join(", ")}`).toEqual([]);

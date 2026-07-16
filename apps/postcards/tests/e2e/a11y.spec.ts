@@ -40,6 +40,6 @@ test("map, stats and places screens pass the axe WCAG 2.1 AA gate", async ({ pag
   await assertNoSeriousViolations(page, "passport");
 
   await page.getByRole("button", { name: "Settings" }).click();
-  await expect(page.getByText("Your data")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your data" })).toBeVisible();
   await assertNoSeriousViolations(page, "settings");
 });
