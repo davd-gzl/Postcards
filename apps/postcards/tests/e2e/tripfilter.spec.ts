@@ -48,10 +48,12 @@ test("the map's own date filter tags the trip arcs by period", async ({ page }) 
   await addDatedTrip(page, "LHR", "SFO", "2023-05-01");
 
   await page.getByRole("button", { name: "Map", exact: true }).click();
-  // Pick 2024 on the map's own filter chips (derived from the dated trips).
+  // Open the map's Filter popover and pick 2024 (chips derive from the dated trips).
+  await page.locator(".map-ctl-right").getByRole("button", { name: /Filter/ }).click();
   await page.locator(".year-filter").getByRole("button", { name: "2024", exact: true }).click();
 
-  // The Trips toggle (in the Layers panel) reflects the map's period.
+  // The Trips toggle (in the Layers panel) reflects the map's period. Opening
+  // Layers closes the Filter popover, but the selection stays applied.
   await page.getByRole("button", { name: /Layers/ }).click();
   await expect(page.getByRole("button", { name: /Trips.*2024/ })).toBeVisible();
 });
