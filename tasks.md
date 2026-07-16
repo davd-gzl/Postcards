@@ -98,19 +98,12 @@ there's **no conflict** (or as little as possible) with a **remediation** path f
 The conflict-free ENGINE already exists (`lib/sync/merge.ts` — record-level newest-wins +
 tombstones, converges). Remaining is the UX:
 
-- [ ] **One-button setup**: minimal config (repo + token, or a paste-one-thing flow), stored once
-      on-device. After that, no per-sync fiddling.
-- [ ] **Automatic push/pull** (OPT-IN, off by default — the one-time enable IS the explicit consent,
-      keeping the constitution's "data leaves only on explicit action"): once on, pull on app
-      launch / when it regains focus, and push after changes (debounced) / on backgrounding. Manual
-      "Sync now" stays for the off case. Show clear status (last synced, syncing, error).
-- [ ] **Conflict-free transfer** (done): reuse the record-level merge so concurrent edits converge;
-      the conditional-push retry (re-pull→re-merge→push) already handles the race.
-- [ ] **Remediation** for the rare unresolved case: if something can't auto-resolve (e.g. repeated
-      push races, or a suspicious divergence), surface a clear, non-destructive review — what
-      changed on each side, keep-both / pick, and never silently lose data. A sync log.
-
-- [ ] Token-free clarity + a guide + a guided GitHub "proposition":
+- [x] **One-button setup** (stored once on-device, connected/disconnected chip, Disconnect, Download-data-file for the no-token path). DONE.
+- [x] **Opt-in auto push/pull** (off by default; pull on launch/focus/visible/online, debounced push on edit/backgrounding; single in-flight lock, self-write loop guarded; manual Sync-now stays). DONE.
+- [x] **Conflict-free transfer** — reuses the record-level merge + conditional-push retry. DONE (pre-existing).
+- [x] **Remediation** — sync log (last 10 runs, per-store counts) + a safety guard that blocks a
+      mass-deletion pull with an "apply anyway / skip" prompt (never silent loss) + distinct error codes. DONE.
+- [x] Token-free clarity + token guide + guided GitHub proposition:
       - Make clear you DON'T need a token: "Download" the site/data and host/`git push` it yourself on
         any static host (GitHub Pages, Netlify, Nextcloud, USB) — zero lock-in. Token is only for the
         in-app convenience push.

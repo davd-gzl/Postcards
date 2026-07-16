@@ -44,6 +44,26 @@ export class SyncConflictError extends Error {
 }
 
 /**
+ * Raised by the SAFETY GUARD (spec 013 remediation): applying this pull would
+ * remove a large share of the device's records — the remote was probably reset,
+ * emptied, or replaced by a stale/small backup. The engine throws this BEFORE any
+ * push or local write, so both the remote and local data are left byte-identical:
+ * the surprise mass-deletion is surfaced for the user to confirm rather than
+ * silently applied. Re-run with `force: true` to apply it deliberately. It carries
+ * the counts so the UI can explain exactly what it prevented.
+ */
+export class SyncGuardError extends Error {
+  readonly localCount: number;
+  readonly removedCount: number;
+  constructor(localCount: number, removedCount: number) {
+    super(`Sync would remove ${removedCount} of ${localCount} local records; blocked pending confirmation.`);
+    this.name = "SyncGuardError";
+    this.localCount = localCount;
+    this.removedCount = removedCount;
+  }
+}
+
+/**
  * A git remote holding the one portable file. `version` is an opaque token (a git
  * blob SHA for GitHub) that pins the copy we pulled; `push` asserts it so a racing
  * device's write can't be silently clobbered — on mismatch it throws
@@ -97,6 +117,17 @@ export interface SyncPorts {
   maxRetries?: number;
   /** Tombstones older than this many days may be retired at the sync point (FR-011). */
   gcHorizonDays?: number;
+  /**
+   * Safety guard against a surprise mass-deletion. Called with the total local
+   * record count and how many of them this merge would remove, BEFORE any push or
+   * local write. Return true to ABORT with a SyncGuardError (leaving remote + local
+   * untouched) so the user can confirm; false to proceed. Skipped entirely when
+   * `force` is set. Kept as an injected predicate so the threshold lives with the
+   * caller and the engine stays policy-free + easy to unit-test.
+   */
+  guard?: (info: { local: number; removed: number }) => boolean;
+  /** Bypass `guard` for a deliberate, user-confirmed "apply anyway" run. */
+  force?: boolean;
 }
 
 const DEFAULT_MESSAGE = "Sync Postcards via device sync";
@@ -194,6 +225,20 @@ export async function syncOnce(ports: SyncPorts): Promise<SyncResult> {
     // aborts the run before any local write — local data is never corrupted.
     const remoteSnap = pulled.content == null ? emptySnapshots() : parse(pulled.content);
     merged = gcAll(mergeAll(local, remoteSnap), horizonIso);
+
+    // SAFETY GUARD (checked before BOTH the push and the "nothing to push" break,
+    // since persist runs either way): if this merge would wipe a large share of
+    // local records, throw before touching remote or local so nothing is lost by
+    // surprise. `force` bypasses it for a confirmed re-run.
+    if (!ports.force && ports.guard) {
+      const removed =
+        countChanges(local.visits.records, merged.visits.records, (v) => v.visitId).removed +
+        countChanges(local.trips.records, merged.trips.records, (t) => t.tripId).removed +
+        countChanges(local.stories.records, merged.stories.records, (s) => s.storyId).removed;
+      const localTotal =
+        local.visits.records.length + local.trips.records.length + local.stories.records.length;
+      if (ports.guard({ local: localTotal, removed })) throw new SyncGuardError(localTotal, removed);
+    }
 
     // If the remote already holds the converged set, there is nothing to push —
     // idempotent re-sync is a genuine no-op (SC-005).

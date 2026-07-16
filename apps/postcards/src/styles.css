@@ -2363,6 +2363,82 @@ h1.brand {
 .sync-last {
   align-self: center;
 }
+/* Connected / disconnected state chip. Colour + a filled/hollow dot both carry the
+   status, so it doesn't rely on colour alone (WCAG 1.4.1). */
+.sync-connection {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 8px 0 10px;
+}
+.sync-connection .sync-dot {
+  font-size: 11px;
+  line-height: 1;
+}
+.sync-connection.is-connected {
+  color: var(--visited);
+}
+.sync-connection.is-disconnected {
+  color: var(--muted);
+  font-weight: 500;
+}
+.connector-token-hint {
+  margin-top: 4px;
+}
+/* The token guide (a native <details>): keyboard-first, theme-aware via tokens. */
+.connector-guide {
+  margin: 8px 0 4px;
+}
+.connector-guide-steps {
+  margin: 8px 12px;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.connector-guide-steps li {
+  margin-bottom: 6px;
+}
+.connector-guide-reassure {
+  margin: 8px 12px;
+}
+/* Sync log: a compact, transparent history of recent runs. */
+.sync-log-wrap {
+  margin: 12px 0;
+}
+.sync-log {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sync-log-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 12px;
+  border-left: 3px solid var(--border-strong);
+  font-size: 13px;
+}
+.sync-log-row.sync-log-ok {
+  border-left-color: var(--visited);
+}
+.sync-log-row.sync-log-error {
+  border-left-color: var(--danger);
+}
+.sync-log-row.sync-log-blocked {
+  border-left-color: var(--stat-want);
+}
+.sync-log-when {
+  font-size: 11.5px;
+}
+.sync-log-empty {
+  margin: 8px 12px;
+}
 .region-list {
   list-style: none;
   margin: 8px 0;

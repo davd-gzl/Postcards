@@ -7,6 +7,7 @@ import {
   syncOnce,
   emptySnapshots,
   SyncConflictError,
+  SyncGuardError,
   type StoreSnapshots,
   type SyncRemote,
 } from "../../src/lib/sync/engine";
@@ -217,5 +218,109 @@ describe("syncOnce (git-mode device sync)", () => {
     await expect(sync(visits(visit("safe", "2026-01-01T00:00:00.000Z")), remote)).rejects.toThrow();
     // The remote was never overwritten (local push never happened).
     expect(remote.content).toBe("{ not json");
+  });
+});
+
+describe("syncOnce safety guard (mass-deletion remediation)", () => {
+  const T = "2026-02-01T00:00:00.000Z"; // record edit time
+  const DEL = "2026-02-10T00:00:00.000Z"; // deletion time (after the edit, before NOW)
+
+  /** A remote whose file was RESET to nothing but a tombstone for each id — the
+   *  "remote was emptied/reset" scenario that would silently wipe local data. */
+  function resetRemoteTombstoning(ids: string[]): MemoryRemote {
+    const remote = new MemoryRemote();
+    const reset: StoreSnapshots = {
+      visits: { records: [], tombstones: ids.map((id) => ({ id, deletedAt: DEL })) },
+      trips: { records: [], tombstones: [] },
+      stories: { records: [], tombstones: [] },
+    };
+    remote.content = serialize(reset);
+    remote.version = 1;
+    return remote;
+  }
+
+  // Gate a pull that would remove more than half of local records.
+  const gateHalf = (info: { local: number; removed: number }) =>
+    info.removed > 0 && info.removed > info.local / 2;
+
+  it("blocks a pull that would wipe a large share of local records (nothing written or pushed)", async () => {
+    const remote = resetRemoteTombstoning(["v1", "v2", "v3", "v4"]);
+    const local = visits(visit("v1", T), visit("v2", T), visit("v3", T), visit("v4", T));
+    let persisted: StoreSnapshots | null = null;
+    await expect(
+      syncOnce({
+        localSnapshots: local,
+        remote,
+        parse,
+        serialize,
+        persist: async (m) => {
+          persisted = m;
+        },
+        now: () => new Date(NOW),
+        guard: gateHalf,
+      }),
+    ).rejects.toBeInstanceOf(SyncGuardError);
+    expect(persisted).toBeNull(); // local never touched
+    expect(remote.pushes).toBe(0); // remote never overwritten
+  });
+
+  it("the guard error carries the exact counts it prevented", async () => {
+    const remote = resetRemoteTombstoning(["v1", "v2", "v3", "v4"]);
+    const local = visits(visit("v1", T), visit("v2", T), visit("v3", T), visit("v4", T));
+    try {
+      await syncOnce({
+        localSnapshots: local,
+        remote,
+        parse,
+        serialize,
+        persist: async () => {},
+        now: () => new Date(NOW),
+        guard: gateHalf,
+      });
+      throw new Error("expected SyncGuardError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SyncGuardError);
+      expect((e as SyncGuardError).localCount).toBe(4);
+      expect((e as SyncGuardError).removedCount).toBe(4);
+    }
+  });
+
+  it("force bypasses the guard and applies the deletion deliberately", async () => {
+    const remote = resetRemoteTombstoning(["v1", "v2", "v3", "v4"]);
+    const local = visits(visit("v1", T), visit("v2", T), visit("v3", T), visit("v4", T));
+    let persisted: StoreSnapshots = emptySnapshots();
+    const result = await syncOnce({
+      localSnapshots: local,
+      remote,
+      parse,
+      serialize,
+      persist: async (m) => {
+        persisted = m;
+      },
+      now: () => new Date(NOW),
+      guard: gateHalf,
+      force: true,
+    });
+    expect(persisted.visits.records).toEqual([]);
+    expect(result.visits.removed).toBe(4);
+  });
+
+  it("does not gate a normal converging sync that removes nothing", async () => {
+    const remote = new MemoryRemote();
+    await sync(visits(visit("a", T)), remote); // seed (no guard)
+    let persisted: StoreSnapshots = emptySnapshots();
+    const result = await syncOnce({
+      localSnapshots: visits(visit("b", "2026-02-05T00:00:00.000Z")),
+      remote,
+      parse,
+      serialize,
+      persist: async (m) => {
+        persisted = m;
+      },
+      now: () => new Date(NOW),
+      guard: gateHalf, // present, but no removal occurs → not triggered
+    });
+    expect(persisted.visits.records.map((v) => v.visitId).sort()).toEqual(["a", "b"]);
+    expect(result.visits.removed).toBe(0);
   });
 });

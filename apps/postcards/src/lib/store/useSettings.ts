@@ -13,6 +13,7 @@ const ONLINE_MAP_KEY = "postcards-online-map";
 const MAX_MARKERS_KEY = "postcards-max-markers";
 const THEME_KEY = "postcards-theme";
 const LOCALE_KEY = "postcards-locale";
+const AUTO_SYNC_KEY = "postcards-auto-sync";
 
 // Explicit colour theme. "system" follows the device (prefers-color-scheme);
 // "light"/"dark" force a palette. The choice is applied by toggling a data-theme
@@ -100,6 +101,14 @@ function loadOnlineMap(): boolean {
   return readLocal(ONLINE_MAP_KEY) !== "0";
 }
 
+// Device sync (spec 013): auto-sync is OFF by default. It stays off until the user
+// flips it on — that one opt-in IS the explicit consent for the app to reach the
+// configured git remote in the background (Constitution: data leaves the device
+// only on explicit user action). Only a stored "1" enables it.
+function loadAutoSync(): boolean {
+  return readLocal(AUTO_SYNC_KEY) === "1";
+}
+
 interface SettingsState {
   countryScope: CountryScope;
   setCountryScope: (scope: CountryScope) => void;
@@ -107,6 +116,8 @@ interface SettingsState {
   setAutoLoadGuides: (value: boolean) => void;
   onlineMap: boolean;
   setOnlineMap: (value: boolean) => void;
+  autoSync: boolean;
+  setAutoSync: (value: boolean) => void;
   maxMarkers: number;
   setMaxMarkers: (value: number) => void;
   theme: ThemeMode;
@@ -130,6 +141,11 @@ export const useSettings = create<SettingsState>((set) => ({
   setOnlineMap: (onlineMap) => {
     writeLocal(ONLINE_MAP_KEY, onlineMap ? "1" : "0");
     set({ onlineMap });
+  },
+  autoSync: loadAutoSync(),
+  setAutoSync: (autoSync) => {
+    writeLocal(AUTO_SYNC_KEY, autoSync ? "1" : "0");
+    set({ autoSync });
   },
   maxMarkers: loadMaxMarkers(),
   setMaxMarkers: (maxMarkers) => {
