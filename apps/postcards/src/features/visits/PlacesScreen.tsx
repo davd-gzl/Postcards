@@ -475,6 +475,9 @@ export function PlacesScreen() {
               {t("places.visited.empty")}
             </p>
           )}
+          {visited.length > 0 && visitedShown.length === 0 && (
+            <p className="muted empty">{t("places.noMatch")}</p>
+          )}
           <ul className="city-list">
             {visitedShown.slice(0, shown).map((v) => (
               <VisitRow key={v.visitId} v={v} />
@@ -501,6 +504,9 @@ export function PlacesScreen() {
               {t("places.favorites.empty")}
             </p>
           )}
+          {favorites.length > 0 && favoritesShown.length === 0 && (
+            <p className="muted empty">{t("places.noMatch")}</p>
+          )}
           <ul className="city-list">
             {favoritesShown.slice(0, shown).map((v) => (
               <VisitRow key={v.visitId} v={v} />
@@ -526,6 +532,9 @@ export function PlacesScreen() {
               </span>
               {t("places.wishlist.empty")}
             </p>
+          )}
+          {wishlist.length > 0 && wishlistShown.length === 0 && (
+            <p className="muted empty">{t("places.noMatch")}</p>
           )}
           <ul className="city-list">
             {wishlistShown.slice(0, shown).map((v) => (
@@ -569,6 +578,9 @@ export function PlacesScreen() {
                   {t("places.monuments.hideSeen")}
                 </button>
               </div>
+              {monuments.length === 0 && (
+                <p className="muted empty">{t("places.noMatch")}</p>
+              )}
               <ul className="city-list">
                 {monuments.slice(0, shown).map((h) => {
                   const country = ref.countryByIso2(h.countryIso2)?.name ?? h.countryIso2;
@@ -624,6 +636,9 @@ export function PlacesScreen() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
+          {countryRows.length === 0 && (
+            <p className="muted empty">{t("places.noMatch")}</p>
+          )}
           <ul className="city-list" style={{ marginTop: 8 }}>
             {/* Paged like every other long list here — 250 country rows (each
                 with its toggles) re-reconciled per keystroke janked filtering.
@@ -653,12 +668,12 @@ export function PlacesScreen() {
                   </button>
                   {isVisited && subCount > 0 && (
                     // Visited through its cities/monuments — already counted; the
-                    // chip says so, and the toggles keep ⚑/★ reachable.
+                    // chip says so, and ⚑ Want-to-go is suppressed (you've been).
                     <span className="chip chip-on" aria-label={t("places.country.visitedAria", { name: c.name })}>
                       ✓ {t("places.country.visitedChip")}
                     </span>
                   )}
-                  <StateToggles place={place} />
+                  <StateToggles place={place} derivedVisited={isVisited && subCount > 0} />
                 </li>
               );
             })}

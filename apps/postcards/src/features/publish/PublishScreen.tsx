@@ -190,7 +190,16 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
     subtitle,
   ]);
 
-  const empty = journey.steps.length === 0;
+  // Guard the narrowing scopes: picking "One trip" / "By trip" / "Date range"
+  // but not actually choosing a value leaves `sel` with no tripIds/date bounds,
+  // so buildJourney would publish EVERYTHING. Treat that as empty so the summary,
+  // preview and export all stay disabled until a concrete selection is made — a
+  // mis-step must never silently push the whole journal to a public page.
+  const selectionIncomplete =
+    (scope === "trip" && !tripId) ||
+    (scope === "folder" && !folderName) ||
+    (scope === "range" && !dateFrom && !dateTo);
+  const empty = journey.steps.length === 0 || selectionIncomplete;
   const canExport = !empty && !!title.trim() && !busy;
   // A published encrypted file is a public static blob — crackable offline — so a
   // short passphrase is the likeliest real break. Warn (and the crypto layer

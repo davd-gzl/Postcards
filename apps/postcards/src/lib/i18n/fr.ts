@@ -86,6 +86,7 @@ export const fr: Messages = {
   "settings.offline.title": "Cartes hors ligne",
   "settings.offline.desc":
     "Enregistrez la carte détaillée OpenStreetMap pour une utilisation hors ligne : téléchargez le monde entier ou une seule région, avec la taille réelle affichée d'emblée. Les paquets couvrent le zoom d'ensemble (pays, grandes villes) ; les zones au niveau des rues que vous parcourez en ligne sont conservées hors ligne automatiquement. Les tuiles proviennent d'OpenStreetMap et ne sont récupérées que lorsque vous appuyez sur Télécharger.",
+  "settings.offline.offlineNote": "Les téléchargements sont désactivés en mode hors ligne — désactivez-le pour enregistrer des cartes ou la liste complète des villes.",
   "settings.offline.tileMeta": "{tiles} tuiles · ≈{mb} Mo",
   "settings.offline.cappedSuffix": " (plafonné)",
   "settings.offline.savedSuffix": " · enregistré le {date}",
@@ -226,6 +227,7 @@ export const fr: Messages = {
   "places.year.noDate": "Sans date",
   "places.visited.empty":
     "Rien pour l'instant. Ajoutez des lieux depuis la carte ou la barre de recherche — visiter une ville collecte aussi son pays.",
+  "places.noMatch": "Rien ne correspond à votre filtre.",
   "places.favorites.empty":
     "Aucun favori pour l'instant. Appuyez sur le cœur d'un lieu visité et il apparaît ici.",
   "places.wishlist.empty":
@@ -492,6 +494,8 @@ export const fr: Messages = {
   "map.list.inView": "{count} dans la vue",
   "map.list.visited": "· {count} visités",
   "map.list.poiEmpty": "Rien dans cette vue — déplacez ou zoomez la carte.",
+  "map.poiNoneVisited": "Aucun de ceux-ci n'est encore marqué comme visité.",
+  "map.poiAllVisited": "Vous avez visité tous ceux qui sont dans la vue.",
   "map.filterAria": "Filtrer",
   "map.filterCitiesAria": "Filtrer les villes",
   "map.filter.all": "Tout",

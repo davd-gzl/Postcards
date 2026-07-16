@@ -10,7 +10,15 @@ import { useT } from "../../lib/i18n";
  * been (or while it's already set, so it can be unset). Rows show at most two
  * buttons — one tap each, no menus.
  */
-export function StateToggles({ place }: { place: PlaceRef }) {
+export function StateToggles({
+  place,
+  derivedVisited = false,
+}: {
+  place: PlaceRef;
+  /** A country counted visited via a city inside it (coverage is derived). Such a
+   *  country must NOT still offer ⚑ Want-to-go — you've effectively been. */
+  derivedVisited?: boolean;
+}) {
   const t = useT();
   // Subscribe to this place's record only — record identities are stable across
   // unrelated updates, so untouched rows don't re-render on every store change.
@@ -70,7 +78,7 @@ export function StateToggles({ place }: { place: PlaceRef }) {
           ✓
         </button>
       )}
-      {!been && (
+      {!been && !derivedVisited && (
         <button
           className={"state want" + (want ? " on" : "")}
           type="button"
