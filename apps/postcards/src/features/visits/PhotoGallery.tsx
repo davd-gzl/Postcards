@@ -142,7 +142,9 @@ export function PhotoGallery({
           onClick={() => setOpen(true)}
           aria-label={t.plural("photo.viewAria", count, { place: placeName })}
         >
-          <img src={photos[0]!.src} alt="" />
+          {/* Row thumbnails decode the full downscaled data URL — lazy + async
+              decode keeps off-screen rows off the main thread while scrolling. */}
+          <img src={photos[0]!.src} alt="" loading="lazy" decoding="async" />
           {count > 1 && <span className="postcard-count" aria-hidden>{count}</span>}
         </button>
       ) : (
