@@ -68,6 +68,14 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
+        <div className="about-item">
+          <span className="about-emoji" aria-hidden>📦</span>
+          <div>
+            <h3>{t("about.downloads.title")}</h3>
+            <p>{t("about.downloads.body")}</p>
+          </div>
+        </div>
+
         </div>
         <p className="muted small about-foot">
           {t("about.footPre")}

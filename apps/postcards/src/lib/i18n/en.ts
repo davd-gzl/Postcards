@@ -794,6 +794,9 @@ export const en = {
   "about.facts.title": "Where facts come from",
   "about.facts.body":
     "Maps and place facts come from open sources: OpenStreetMap, Natural Earth, GeoNames and UNESCO. The app never invents data.",
+  "about.downloads.title": "Optional downloads",
+  "about.downloads.body":
+    "Everything works offline out of the box. In Settings you can opt into more: the detailed online map, offline map regions to save for a trip, the full world city list (small towns and villages), and community place packs. All optional, all removable — nothing downloads on its own.",
   "about.footPre": "Press ",
   "about.footPost": " to see keyboard shortcuts.",
   "about.gotIt": "Got it",

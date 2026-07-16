@@ -41,6 +41,18 @@ const TABS: { id: Tab; label: MessageKey; keys: string[]; Icon: () => JSX.Elemen
 const DIALOG_LAYER_SELECTOR =
   ".modal-backdrop, .lightbox, .maplibregl-popup, .journal-composer-busy";
 
+// First run: show the "How it works" intro once so a newcomer learns what the
+// app is and what's optionally downloadable, before touching anything. Stored,
+// so it never reappears; the top-bar button still opens it anytime.
+const INTRO_KEY = "postcards-intro-seen";
+function introUnseen(): boolean {
+  try {
+    return localStorage.getItem(INTRO_KEY) == null;
+  } catch {
+    return false; // private mode: don't nag on every load
+  }
+}
+
 export function App() {
   const t = useT();
   const tab = useUi((s) => s.tab);
@@ -49,7 +61,17 @@ export function App() {
   const countryPageId = useUi((s) => s.countryPageId);
   const [showHelp, setShowHelp] = useState(false);
   const { canInstall, install } = useInstallPrompt();
-  const [showAbout, setShowAbout] = useState(false);
+  const [showAbout, setShowAbout] = useState(introUnseen);
+  // Marks the intro as seen (first-run auto-open) and closes it — whether it was
+  // opened automatically or from the top bar, dismissing it never shows it again.
+  const closeAbout = () => {
+    try {
+      localStorage.setItem(INTRO_KEY, "1");
+    } catch {
+      /* private mode: not persisted */
+    }
+    setShowAbout(false);
+  };
   const mainRef = useRef<HTMLElement>(null);
   // Once the map has rendered it never unmounts again (see <main> below);
   // the tab already re-renders on change, so a ref is enough to remember it.
@@ -318,7 +340,7 @@ export function App() {
       <Toast />
 
       {showHelp && <ShortcutsHelp onClose={() => setShowHelp(false)} />}
-      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+      {showAbout && <AboutModal onClose={closeAbout} />}
     </div>
   );
 }

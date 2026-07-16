@@ -17,6 +17,18 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:4173",
     trace: "on-first-retry",
+    // Seed the "intro seen" flag so the first-run welcome modal never auto-opens
+    // over the app during tests (it would block the very first interaction). The
+    // real first-run intro is exercised by users, not the suite.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: "http://localhost:4173",
+          localStorage: [{ name: "postcards-intro-seen", value: "1" }],
+        },
+      ],
+    },
   },
   webServer: {
     command: "pnpm build && pnpm preview --port 4173",
