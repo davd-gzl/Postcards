@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { citiesInView, type Bounds } from "../../src/features/map/viewport";
+import {
+  citiesInView,
+  markerCitiesInView,
+  type Bounds,
+} from "../../src/features/map/viewport";
 import type { City } from "../../src/lib/reference/types";
 
 function city(id: string, lat: number, lon: number, population: number): City {
@@ -84,5 +88,72 @@ describe("citiesInView", () => {
     ]) {
       expect(new Set(citiesInView(many, b, 20).map((c) => c.id))).toEqual(new Set(brute(b, 20)));
     }
+  });
+
+  it("the grid path matches a brute-force scan at the poles and the date line", () => {
+    // Cities clustered where the grid's row-clamp / column-wrap edge cases bite:
+    // the far north/south rows and either side of ±180°.
+    const edge: City[] = [
+      city("northpole", 89.9, 10, 500),
+      city("northpole2", 89.4, -170, 600),
+      city("svalbard", 78.2, 15.6, 2_600),
+      city("southpole", -89.8, 0, 100),
+      city("mcmurdo", -77.85, 166.7, 1_200), // Antarctica, near +180
+      city("attu", 52.9, 172.9, 20), // just west of the date line
+      city("adak", 51.88, -176.66, 300), // just east of the date line
+      city("quito", -0.18, -78.47, 1_600_000), // equator, for good measure
+    ];
+    const brute = (b: Bounds, limit: number) =>
+      new Set(
+        edge
+          .filter(
+            (c) =>
+              c.lat >= b.south &&
+              c.lat <= b.north &&
+              (b.west <= b.east
+                ? c.lon >= b.west && c.lon <= b.east
+                : c.lon >= b.west || c.lon <= b.east),
+          )
+          .sort((x, y) => (y.population ?? 0) - (x.population ?? 0))
+          .slice(0, limit)
+          .map((c) => c.id),
+      );
+    for (const b of [
+      { west: -180, south: 80, east: 180, north: 90 } as Bounds, // north cap
+      { west: -20, south: -90, east: 20, north: -70 } as Bounds, // south cap
+      { west: 170, south: 45, east: -170, north: 60 } as Bounds, // date line, Aleutians
+      { west: 160, south: -85, east: -160, north: -70 } as Bounds, // date line, Antarctica
+    ]) {
+      expect(new Set(citiesInView(edge, b, 20).map((c) => c.id))).toEqual(brute(b, 20));
+    }
+  });
+});
+
+describe("markerCitiesInView", () => {
+  const nyc = city("nyc", 40.7, -74, 8_400_000);
+  const boston = city("boston", 42.36, -71.06, 690_000);
+  const philly = city("philly", 39.95, -75.16, 1_580_000);
+  const usEast: Bounds = { west: -80, south: 36, east: -68, north: 45 };
+  const set = [nyc, boston, philly];
+
+  it("returns the population-capped in-view set (biggest kept)", () => {
+    const two = markerCitiesInView(set, usEast, 2).map((c) => c.id);
+    expect(two).toEqual(["nyc", "philly"]); // top two by population
+  });
+
+  it("filter 'visited' keeps only cities with a record", () => {
+    const visited = new Set(["nyc", "boston"]);
+    const ids = markerCitiesInView(set, usEast, 10, "visited", visited).map((c) => c.id);
+    expect(new Set(ids)).toEqual(new Set(["nyc", "boston"]));
+  });
+
+  it("filter 'unvisited' drops cities with a record", () => {
+    const visited = new Set(["nyc"]);
+    const ids = markerCitiesInView(set, usEast, 10, "unvisited", visited).map((c) => c.id);
+    expect(new Set(ids)).toEqual(new Set(["boston", "philly"]));
+  });
+
+  it("null bounds yields nothing", () => {
+    expect(markerCitiesInView(set, null, 10)).toEqual([]);
   });
 });

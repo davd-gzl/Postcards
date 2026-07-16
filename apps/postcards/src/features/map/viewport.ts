@@ -134,3 +134,41 @@ export function citiesInView(
   if (!presorted) result.sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
   return result.slice(0, limit);
 }
+
+/** The list/marker filter the map screen shares between its list and its dots. */
+export type CityFilter = "all" | "unvisited" | "visited";
+
+/** Working set considered "in view" before the on-map marker cap — the same
+ *  size the MapScreen list snapshots, so the map dots and the list stay in
+ *  lock-step (both flow through `citiesInView`). */
+export const IN_VIEW_CAP = 2000;
+
+/**
+ * The exact set of cities to paint as in-view markers for a viewport: the
+ * population-ordered in-view working set, narrowed by the list filter, then
+ * capped for the map (most-populous kept, so the cap never hides a major city).
+ *
+ * Pure and deterministic so the map can recompute it straight off the live
+ * camera on every `moveend` — no React round-trip — and so it's unit-testable.
+ * `visitedIds` is only consulted when a non-"all" filter is active.
+ */
+export function markerCitiesInView(
+  cities: City[],
+  bounds: Bounds | null,
+  cap: number,
+  filter: CityFilter = "all",
+  visitedIds?: ReadonlySet<string>,
+): City[] {
+  const inView = citiesInView(cities, bounds, IN_VIEW_CAP, true);
+  const filtered =
+    filter === "all" || !visitedIds
+      ? inView
+      : inView.filter((c) => visitedIds.has(c.id) === (filter === "visited"));
+  const capN = Math.max(1, cap);
+  if (filtered.length <= capN) return filtered;
+  // `inView` is population-descending and the filter preserves order, so the
+  // head is already the biggest cities; sort defensively to guarantee it.
+  return [...filtered]
+    .sort((a, b) => (b.population ?? 0) - (a.population ?? 0))
+    .slice(0, capN);
+}
