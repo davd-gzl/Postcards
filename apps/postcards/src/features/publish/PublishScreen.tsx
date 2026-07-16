@@ -64,6 +64,9 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
   const [passphrase, setPassphrase] = useState("");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(false);
+  // How the published reader presents the trip. "blog" (the living travelogue) is
+  // the default; "book" keeps the original paged reader.
+  const [layout, setLayout] = useState<"blog" | "book">("blog");
 
   // GitHub connector — one optional target. Token is kept ONLY in memory here
   // (React state) and is never written into the exported bundle.
@@ -134,9 +137,9 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
   async function buildHtml(): Promise<string> {
     if (passphrase.trim()) {
       const env = await encryptJson(journey, passphrase);
-      return renderReaderHtml(null, { encrypted: env });
+      return renderReaderHtml(null, { encrypted: env, layout });
     }
-    return renderReaderHtml(journey);
+    return renderReaderHtml(journey, { layout });
   }
 
   async function onDownload() {
@@ -185,9 +188,13 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
   }
 
   // The plain-journey reader powers the in-modal preview (same code as the
-  // export), so what you see is exactly what ships. Encrypted export still uses
-  // this journey — the preview just shows it unlocked for you, the author.
-  const previewHtml = useMemo(() => (preview ? renderReaderHtml(journey) : ""), [preview, journey]);
+  // export), so what you see is exactly what ships — including the chosen layout
+  // (blog by default). Encrypted export still uses this journey — the preview just
+  // shows it unlocked for you, the author.
+  const previewHtml = useMemo(
+    () => (preview ? renderReaderHtml(journey, { layout }) : ""),
+    [preview, journey, layout],
+  );
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -208,8 +215,8 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
 
         <p className="muted small">
           Turn a slice of your journal into a self-contained, read-only travel-blog website — a
-          cover, a route map, and one photo-led page per stop. It runs offline from a single file
-          and makes no network requests.
+          route map and a dated feed of posts you can re-publish as the trip unfolds (or the classic
+          paged book). It runs offline from a single file and makes no network requests.
         </p>
 
         {/* Scope */}
@@ -343,6 +350,33 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
           </label>
         </fieldset>
 
+        {/* Reader layout — blog (living travelogue) is the default */}
+        <fieldset className="publish-fieldset">
+          <legend>{t("publish.layout.legend")}</legend>
+          <div className="btn-row" role="radiogroup" aria-label={t("publish.layout.aria")}>
+            {(
+              [
+                ["blog", t("publish.layout.blog")],
+                ["book", t("publish.layout.book")],
+              ] as ["blog" | "book", string][]
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={layout === id}
+                className={"mini-btn" + (layout === id ? " on" : "")}
+                onClick={() => setLayout(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="muted small">
+            {layout === "blog" ? t("publish.layout.blogHint") : t("publish.layout.bookHint")}
+          </p>
+        </fieldset>
+
         {/* Protection */}
         <fieldset className="publish-fieldset">
           <legend>Protection (optional)</legend>
@@ -429,14 +463,14 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
             aria-pressed={preview}
             onClick={() => setPreview((p) => !p)}
           >
-            {preview ? "Hide preview" : "Preview book"}
+            {preview ? "Hide preview" : "Preview"}
           </button>
         </div>
 
         {preview && !empty && (
           <div className="publish-preview">
             <iframe
-              title="Preview of the published book"
+              title="Preview of the published site"
               className="publish-preview-frame"
               sandbox="allow-scripts"
               srcDoc={previewHtml}
