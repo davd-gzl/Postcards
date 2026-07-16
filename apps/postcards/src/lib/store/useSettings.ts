@@ -87,18 +87,22 @@ export function applyThemeAttr(theme: ThemeMode): void {
   }
 }
 
-// Default ON: opening a place is itself an explicit action, so loading its public
-// Wikivoyage/Wikipedia overview is expected. The toggle lets privacy-minded users
-// require a tap instead. Only "0" disables it (so a first run defaults to on).
+// Default OFF (Constitution: data leaves the device only on explicit action).
+// Opening one of your own places must not silently phone Wikimedia and reveal
+// which place you're viewing; the overview loads on the existing "Load overview"
+// tap. Turn this on to have it load automatically when online. Only "1" enables.
 function loadAutoGuides(): boolean {
-  return readLocal(AUTO_GUIDES_KEY) !== "0";
+  return readLocal(AUTO_GUIDES_KEY) === "1";
 }
 
-// The detailed OpenStreetMap map is on by default (it fetches map tiles from
-// OpenStreetMap). Turning this off makes the app use the no-network offline map
-// only, restoring the zero-outbound-request posture. Only "0" disables it.
+// Default OFF (Constitution: data leaves the device only on explicit action).
+// On first run the map is the bundled offline vector basemap — zero outbound
+// requests. Streaming detailed tiles from OpenStreetMap (which discloses your IP
+// and the area you're looking at) waits for a deliberate opt-in: the one-tap
+// "Show detailed map" consent on the map, or this toggle in Settings. Only "1"
+// enables, so a fresh install never reaches the network for a tile.
 function loadOnlineMap(): boolean {
-  return readLocal(ONLINE_MAP_KEY) !== "0";
+  return readLocal(ONLINE_MAP_KEY) === "1";
 }
 
 // Device sync (spec 013): auto-sync is OFF by default. It stays off until the user

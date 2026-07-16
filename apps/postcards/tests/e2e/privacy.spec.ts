@@ -2,11 +2,12 @@ import { test, expect } from "@playwright/test";
 import { gotoTab } from "./nav-helper";
 
 // SC-006 / Constitution III: no personal data and no third-party trackers ever
-// leave the device. The detailed OpenStreetMap map is on by default, so anonymous
-// map-tile fetches to tile.openstreetmap.org are expected and allowed (they carry
-// no personal data, and a Settings switch turns them off for a fully offline app).
-// EVERY other outbound request — telemetry, analytics, fonts, anything — is a
-// violation. App, gazetteer and map geometry are all served locally.
+// leave the device. The map now ships OFFLINE by default (the detailed
+// OpenStreetMap basemap is opt-in via a one-tap consent), so core flows should
+// make ZERO external requests. tile.openstreetmap.org stays on the allow-list so
+// the test still passes if a run has the online map enabled — but no OSM tile is
+// expected here. EVERY other outbound request — telemetry, analytics, fonts,
+// anything — is a violation. App, gazetteer and map geometry are served locally.
 const ALLOWED_HOSTS = ["tile.openstreetmap.org"];
 
 test("only OpenStreetMap tiles leave the origin during core flows", async ({ page, baseURL }) => {

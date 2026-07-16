@@ -444,6 +444,9 @@ export const en = {
   "map.basemap.simple": "Simple map (offline)",
   "map.basemap.osm": "Detailed map",
   "map.basemap.detail": "Offline streets",
+  "map.online.enable": "Detailed map",
+  "map.online.enableHint":
+    "Stream detailed tiles from OpenStreetMap. This uses the network and shares your IP and map view with OpenStreetMap — the map stays fully offline until you tap this.",
   "map.dividerAria": "Resize the list (drag, or use the arrow keys)",
   "map.dividerTitle": "Slide to resize the list",
   "map.list.aria": "Cities in view",

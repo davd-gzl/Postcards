@@ -98,6 +98,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // The privacy escape hatch: when off, the app uses the no-network offline map
   // only (zero outbound requests), overriding whatever detailed basemap is saved.
   const onlineMap = useSettings((s) => s.onlineMap);
+  const setOnlineMap = useSettings((s) => s.setOnlineMap);
   const maxMarkers = useSettings((s) => s.maxMarkers);
   // The explicit colour-theme choice (System / Light / Dark) drives the
   // basemap's dark palette too, so it never desyncs from the UI.
@@ -699,6 +700,22 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
               {onlineMap && basemapCycle.length > 1 && (
                 <button className="map-btn" type="button" onClick={switchBasemap}>
                   ⤳ {t(BASEMAP_LABEL_KEY[nextBasemap])}
+                </button>
+              )}
+              {!onlineMap && (
+                // Explicit one-tap consent to stream OpenStreetMap tiles — the map
+                // ships offline (zero egress) until the user asks for detail here.
+                <button
+                  className="map-btn"
+                  type="button"
+                  title={t("map.online.enableHint")}
+                  onClick={() => {
+                    setOnlineMap(true);
+                    setBasemap("osm");
+                    savePref(BASEMAP_KEY, "osm");
+                  }}
+                >
+                  🌐 {t("map.online.enable")}
                 </button>
               )}
             </div>

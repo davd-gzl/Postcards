@@ -438,6 +438,9 @@ export const ko: Messages = {
   "map.basemap.simple": "간단한 지도 (오프라인)",
   "map.basemap.osm": "상세 지도",
   "map.basemap.detail": "오프라인 거리 지도",
+  "map.online.enable": "상세 지도",
+  "map.online.enableHint":
+    "OpenStreetMap에서 상세 타일을 스트리밍합니다. 네트워크를 사용하며 IP와 지도 보기가 OpenStreetMap에 공유됩니다 — 여기를 누르기 전까지 지도는 완전히 오프라인으로 유지됩니다.",
   "map.dividerAria": "목록 크기 조정 (드래그하거나 화살표 키 사용)",
   "map.dividerTitle": "밀어서 목록 크기 조정",
   "map.list.aria": "화면 안의 도시",
