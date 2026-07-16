@@ -193,6 +193,19 @@ export class GitHubTarget implements PublishTarget {
     }
   }
 
+  /** List a directory's entries on the target branch (name + type). Empty on a
+   *  missing path or a non-directory. Used to build the root index of travels. */
+  async listDir(path = ""): Promise<{ name: string; type: string }[]> {
+    const url = path ? this.contentsUrl(path) : `${this.apiBase}/repos/${this.cfg.owner}/${this.cfg.repo}/contents`;
+    const res = await this.fetchFn(`${url}?ref=${encodeURIComponent(this.cfg.branch)}`, {
+      headers: this.headers(),
+      referrerPolicy: "no-referrer",
+    });
+    if (!res.ok) return [];
+    const body = await res.json();
+    return Array.isArray(body) ? body.map((e: { name: string; type: string }) => ({ name: e.name, type: e.type })) : [];
+  }
+
   /** The public GitHub Pages URL this repo serves at once Pages is enabled.
    *  A `<owner>.github.io` repo is served at the root; every other repo is a
    *  project site at `https://<owner>.github.io/<repo>/`. */

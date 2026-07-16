@@ -105,4 +105,26 @@ describe("GitHubTarget", () => {
       expect(url).toBeNull();
     });
   });
+
+  describe("listDir (root index of travels)", () => {
+    it("returns dir/file entries of the repo root, empty on failure", async () => {
+      const ok = mockFetch((url) => {
+        expect(url).toContain("/repos/davd-gzl/postcards/contents");
+        return new Response(
+          JSON.stringify([
+            { name: "japan-2024", type: "dir" },
+            { name: "index.html", type: "file" },
+          ]),
+          { status: 200 },
+        );
+      });
+      const entries = await new GitHubTarget({ ...cfg, fetchFn: ok }).listDir("");
+      expect(entries).toEqual([
+        { name: "japan-2024", type: "dir" },
+        { name: "index.html", type: "file" },
+      ]);
+      const bad = mockFetch(() => new Response("Not Found", { status: 404 }));
+      expect(await new GitHubTarget({ ...cfg, fetchFn: bad }).listDir("")).toEqual([]);
+    });
+  });
 });
