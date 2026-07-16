@@ -36,7 +36,10 @@ export const FORMAT = "postcards" as const;
 // exactly like `name`/`updatedAt` — never injected on parse — so v1–v7 files import
 // unchanged and round-trip byte-identically; an older build opening a v8 file gets the
 // same graceful "update" prompt.
-export const SCHEMA_VERSION = 8;
+// v9 adds the same optional `folder` on a VISIT, so places can be grouped under one
+// name in the list. Additive & optional, never injected on parse — v1–v8 files import
+// unchanged and round-trip byte-identically.
+export const SCHEMA_VERSION = 9;
 
 /** Most photos one place's gallery may hold (bounds the inline portable file). */
 export const MAX_PHOTOS_PER_VISIT = 48;

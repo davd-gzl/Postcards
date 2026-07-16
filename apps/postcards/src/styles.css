@@ -685,6 +685,52 @@ h1.brand {
   gap: 10px;
   padding: 7px 0;
   border-bottom: 1px solid var(--border);
+  /* Let the inline "⋯" row menu wrap onto its own full-width line below the row. */
+  flex-wrap: wrap;
+}
+/* A small grouping tag on a place row (its folder). */
+.folder-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--chip, rgba(128, 128, 128, 0.16));
+  font-size: 11px;
+  white-space: nowrap;
+}
+.row-more {
+  min-width: 34px;
+  font-size: 18px;
+  line-height: 1;
+}
+/* The inline per-row editor (date / folder / note). Full width under the row. */
+.row-menu {
+  flex-basis: 100%;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 4px 0 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.row-menu .picker-label {
+  margin: 0;
+}
+.row-menu-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+@media (max-width: 520px) {
+  .row-menu {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Compact rows: one line, flag + name + muted context, small toggle. */

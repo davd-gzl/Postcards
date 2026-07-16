@@ -12,6 +12,7 @@
 export const en = {
   // ── Common / reused ──────────────────────────────────────────────────────
   "common.cancel": "Cancel",
+  "common.save": "Save",
   "common.remove": "Remove",
   "common.open": "Open",
   "common.close": "Close",
@@ -238,6 +239,13 @@ export const en = {
   "places.row.markVisitedAria": "Mark {name} visited",
   "places.row.beenThere": "Been there",
   "places.row.removeAria": "Remove {name}",
+  "places.row.moreAria": "More options for {name} (date, folder, note)",
+  "places.rowMenu.aria": "Edit {name}",
+  "places.rowMenu.date": "Date",
+  "places.rowMenu.folder": "Folder",
+  "places.rowMenu.folderPlaceholder": "e.g. Japan 2024",
+  "places.rowMenu.note": "Note",
+  "places.rowMenu.notePlaceholder": "A short note",
   "places.row.removedToast": "Removed {name}",
   "places.meta.airport": "Airport",
   "places.meta.monument": "Monument",

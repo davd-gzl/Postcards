@@ -64,6 +64,20 @@ describe("PostcardsFileSchema", () => {
     expect(r.note).toBe("HYPERLINK(evil)");
   });
 
+  it("keeps an optional folder (sanitized) and never injects the key when absent", () => {
+    // Present: sanitized and kept.
+    const withFolder = VisitSchema.parse({ ...baseVisit(), folder: "  Japan 2024  " });
+    expect(withFolder.folder).toBe("Japan 2024");
+    // Absent: the key must NOT be injected, so folder-less files round-trip byte-identically.
+    const without = VisitSchema.parse(baseVisit());
+    expect("folder" in without).toBe(false);
+    // A folder that sanitizes away is dropped to undefined — which JSON.stringify
+    // omits, so it never persists an empty folder.
+    const blank = VisitSchema.parse({ ...baseVisit(), folder: "   " });
+    expect(blank.folder).toBeUndefined();
+    expect(JSON.stringify(blank).includes("folder")).toBe(false);
+  });
+
   it("can generate a JSON Schema for external tools (interoperability)", () => {
     // Zod 4 ships a native JSON-Schema exporter. Our schema has sanitizing
     // transforms, so describe the *input* shape and allow unrepresentable nodes.
