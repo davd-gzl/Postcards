@@ -16,7 +16,7 @@ import {
 import { travelTotals } from "../travel/distance";
 import { MODE_GLYPH } from "../travel/modes";
 import { useUi } from "../../lib/store/useUi";
-import { countryFlag, formatInt, formatKm, formatPercent } from "../../lib/format/format";
+import { countryFlag, formatDate, formatInt, formatKm, formatPercent } from "../../lib/format/format";
 import { CONTINENT_COLORS, CONTINENT_ORDER } from "../../lib/reference/continents";
 import { ScopeToggle } from "../../ui/ScopeToggle";
 import { useT } from "../../lib/i18n";
@@ -157,7 +157,9 @@ function CountryRow({
         <span className="country-caret" aria-hidden>
           ›
         </span>
-        <Bar value={c.cityPct} label={t("stats.country.cityBarAria", { name: c.name })} />
+        {c.citiesTotal > 0 && (
+          <Bar value={c.cityPct} label={t("stats.country.cityBarAria", { name: c.name })} />
+        )}
       </summary>
 
       <div className="country-body">
@@ -279,6 +281,16 @@ export function StatsView() {
   /* eslint-disable react-hooks/exhaustive-deps */
   const coverage = useMemo(() => computeCoverage(visits, ref, scope), [visits, ref, scope, gazGen]);
   const records = useMemo(() => computeRecords(visits, ref), [visits, ref, gazGen]);
+  // With only one visited city, northernmost = southernmost = biggest = that same
+  // city, so the Records list repeats it. Only show the spatial superlatives once
+  // there are at least two distinct cities to compare.
+  const distinctCities = useMemo(
+    () =>
+      new Set(
+        visits.filter((v) => v.place.kind === "city" && v.status === "visited").map((v) => v.place.id),
+      ).size,
+    [visits],
+  );
   const travel = useMemo(() => travelTotals(trips, ref), [trips, ref]);
 
   function flyToCity(iso2: string) {
@@ -475,11 +487,11 @@ export function StatsView() {
         </section>
       )}
 
-      {(records.northernmost || records.biggestCity || records.firstVisit) && (
+      {((distinctCities >= 2 && (records.northernmost || records.biggestCity)) || records.firstVisit) && (
         <section className="stats-section" aria-labelledby="stats-records-h">
           <h3 id="stats-records-h">{t("stats.records.title")}</h3>
           <div className="records-grid">
-            {records.northernmost && (
+            {distinctCities >= 2 && records.northernmost && (
               <div className="record">
                 <span className="record-emoji" aria-hidden>🧭</span>
                 <span>
@@ -492,7 +504,7 @@ export function StatsView() {
                 </span>
               </div>
             )}
-            {records.southernmost && records.southernmost.name !== records.northernmost?.name && (
+            {distinctCities >= 2 && records.southernmost && records.southernmost.name !== records.northernmost?.name && (
               <div className="record">
                 <span className="record-emoji" aria-hidden>🐧</span>
                 <span>
@@ -505,7 +517,7 @@ export function StatsView() {
                 </span>
               </div>
             )}
-            {records.biggestCity && (
+            {distinctCities >= 2 && records.biggestCity && (
               <div className="record">
                 <span className="record-emoji" aria-hidden>🏙️</span>
                 <span>
@@ -525,7 +537,7 @@ export function StatsView() {
                 <span className="record-emoji" aria-hidden>🌱</span>
                 <span>
                   {t("stats.records.firstVisit")} <strong>{records.firstVisit.name}</strong>{" "}
-                  <span className="muted">({records.firstVisit.date})</span>
+                  <span className="muted">({formatDate(records.firstVisit.date)})</span>
                 </span>
               </div>
             )}
@@ -534,7 +546,7 @@ export function StatsView() {
                 <span className="record-emoji" aria-hidden>🆕</span>
                 <span>
                   {t("stats.records.latest")} <strong>{records.latestVisit.name}</strong>{" "}
-                  <span className="muted">({records.latestVisit.date})</span>
+                  <span className="muted">({formatDate(records.latestVisit.date)})</span>
                 </span>
               </div>
             )}

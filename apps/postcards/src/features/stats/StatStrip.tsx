@@ -43,13 +43,21 @@ export function StatStrip() {
     cls?: string;
     view: PlacesView;
   }) {
+    // A tiny-but-nonzero coverage rounds to "0%", which reads as "none visited"
+    // even after you've been somewhere. Floor it to "<1%" (same as the hero).
+    const pctLabel =
+      pct != null && pct > 0 && formatPercent(pct) === formatPercent(0)
+        ? "<1%"
+        : pct != null
+          ? formatPercent(pct)
+          : null;
     const aria =
       pct != null
         ? t("statStrip.visitedAria", {
             num: formatInt(num),
             den: formatInt(den ?? num),
             label,
-            pct: formatPercent(pct),
+            pct: pctLabel ?? formatPercent(pct),
           })
         : t("statStrip.openAria", { label });
     return (
@@ -63,7 +71,7 @@ export function StatStrip() {
         <span className={"ss-num" + (cls ? ` ${cls}` : "")}>
           {formatInt(num)}
           {den != null && <span className="ss-den">/{formatInt(den)}</span>}
-          {pct != null && <span className="ss-pct">{formatPercent(pct)}</span>}
+          {pctLabel != null && <span className="ss-pct">{pctLabel}</span>}
         </span>
         <span className="ss-label">{label}</span>
       </button>
