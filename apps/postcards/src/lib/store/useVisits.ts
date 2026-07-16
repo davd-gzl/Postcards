@@ -3,6 +3,7 @@ import { backfillUpdatedAt, MAX_PHOTOS_PER_VISIT, normalizeVisitPhotos, placeKey
 import type { Photo, PlaceRef, Visit } from "../schema/models";
 import { sanitizeText } from "../schema/sanitize";
 import * as db from "../db/visitsDb";
+import { stampPlaceCoords } from "../reference/placeCoords";
 import { uuid } from "./uuid";
 
 /** Now, as the ISO stamp written to `updatedAt` on every mutating path (spec 013). */
@@ -109,6 +110,10 @@ export const useVisits = create<VisitsState>((set, get) => ({
   },
   async addVisit({ place, date = null, note = null, status = "visited", favorite = false }) {
     const existing = findByPlace(get().visits, place);
+    // Stamp coordinates onto the record now, while the place is fresh from the
+    // in-memory gazetteer — so it can be mapped later without it (published
+    // sites, the portable file, a device on the top-10k bundle only).
+    place = stampPlaceCoords(place);
     const visit: Visit = {
       visitId: existing?.visitId ?? uuid(),
       place,

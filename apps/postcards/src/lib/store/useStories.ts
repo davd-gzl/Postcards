@@ -3,6 +3,7 @@ import { backfillUpdatedAt } from "../schema/helpers";
 import type { Photo, PlaceRef, Story } from "../schema/models";
 import * as db from "../db/storiesDb";
 import * as visitsDb from "../db/visitsDb";
+import { stampPlaceCoords } from "../reference/placeCoords";
 import { uuid } from "./uuid";
 
 /** Now, as the ISO stamp written to `updatedAt` on every mutating path (spec 013). */
@@ -46,6 +47,10 @@ export const useStories = create<StoriesState>((set, get) => ({
   },
   async addStory({ place, date, title, text, photos = [], folder = null }) {
     const at = new Date().toISOString();
+    // Stamp coordinates from the in-memory gazetteer so a published journey can
+    // plot this place without it (the site is self-contained; the bundle is only
+    // the top-10k cities). See stampPlaceCoords.
+    place = stampPlaceCoords(place);
     const story: Story = {
       storyId: uuid(),
       place,
@@ -67,6 +72,8 @@ export const useStories = create<StoriesState>((set, get) => ({
   async updateStory(storyId, changes) {
     const existing = get().stories.find((s) => s.storyId === storyId);
     if (!existing) return;
+    // If the place was changed, stamp its coordinates too (see stampPlaceCoords).
+    if (changes.place) changes = { ...changes, place: stampPlaceCoords(changes.place) };
     const updated: Story = { ...existing, ...changes, updatedAt: stampNow() };
     // Normalize an edited folder label: trim it, and drop the key entirely when
     // cleared so we never persist an empty `folder` (the schema forbids it).
