@@ -520,6 +520,31 @@ export function JournalScreen() {
   const storyYears = useMemo(() => distinctYearsDesc(stories), [stories]);
   const storyFolders = useMemo(() => distinctFolders(stories), [stories]);
 
+  // Self-heal a filter that points at something that no longer exists — e.g. you
+  // filtered to a folder/country/year, then deleted its last story. Without this
+  // the feed shows an empty "no match" state while the dropdown snaps back to
+  // "All", reading as a broken empty screen.
+  useEffect(() => {
+    if (filterSel === "all") return;
+    const kind = filterSel.slice(0, 2);
+    const val = filterSel.slice(2);
+    const stillThere =
+      (kind === "c:" && storyCountries.some(([iso2]) => iso2 === val)) ||
+      (kind === "p:" && storyPlaces.some((p) => placeKey(p) === val)) ||
+      (kind === "f:" && storyFolders.includes(val));
+    if (!stillThere) {
+      setFilterSel("all");
+      setDaySel(null);
+      setFeedShown(FEED_PAGE);
+    }
+  }, [filterSel, storyCountries, storyPlaces, storyFolders]);
+  useEffect(() => {
+    if (yearSel !== "all" && yearSel !== "none" && !storyYears.includes(yearSel)) {
+      setYearSel("all");
+      setFeedShown(FEED_PAGE);
+    }
+  }, [yearSel, storyYears]);
+
   // The place/country/folder part of the feed filter, shared by BOTH the feed and
   // the calendar so the calendar respects the current place filter. Year and the
   // single-day filter are layered on top separately (so you can filter place AND time).
@@ -633,6 +658,9 @@ export function JournalScreen() {
     if (composerOpen && dirty) {
       setDate(iso);
       setDayChoice(false);
+      // The composer is below the feed/calendar — bring it into view so tapping a
+      // day visibly does something (before, it silently just set the date).
+      scrollToComposer();
     } else {
       openComposer(undefined, iso);
     }
@@ -663,6 +691,7 @@ export function JournalScreen() {
     setPhotos(s.photos ?? []);
     setNearby(null);
     setGeoMsg(null);
+    setDayChoice(false); // entering edit dismisses a lingering near-midnight prompt
     setComposerOpen(true);
     scrollToComposer();
   }
@@ -681,6 +710,11 @@ export function JournalScreen() {
     setFolder(draft.folder);
     if (draft.editingId) hydratePhotosFor.current = draft.editingId;
     setComposerOpen(true);
+    // Tell the user their in-progress writing was recovered — otherwise, with a
+    // feed already filling the screen, the refilled composer below goes unnoticed.
+    showToast(t("journal.toast.draftRecovered"));
+    scrollToComposer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Rehydrate a restored edit's photos once stories are loaded — saving with

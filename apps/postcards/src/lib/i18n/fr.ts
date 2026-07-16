@@ -424,6 +424,7 @@ export const fr: Messages = {
   "journal.toast.readImgErr": "Impossible de lire cette image.",
   "journal.toast.updated": "« {title} » mis à jour",
   "journal.toast.added": "« {title} » ajouté",
+  "journal.toast.draftRecovered": "Brouillon non enregistré récupéré.",
   "journal.toast.removed": "« {title} » retiré",
   "journal.toast.exportErr": "Impossible de créer le fichier du journal. Vos données sont inchangées.",
   "journal.geo.unavailableDevice": "La localisation n'est pas disponible sur cet appareil.",
