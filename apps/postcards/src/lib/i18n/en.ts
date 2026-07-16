@@ -570,6 +570,8 @@ export const en = {
   // ── Connection status ────────────────────────────────────────────────────
   "conn.online": "Online",
   "conn.offline": "Offline",
+  "conn.goOffline": "Click to go offline — fully self-contained, no egress",
+  "conn.goOnline": "Click to go online — maps, photos & guides",
 
   // ── Guides (button + section heading) ────────────────────────────────────
   "guide.openWithGuides": "Open {name} with travel guides",
