@@ -106,10 +106,14 @@ interface IndexedHeritage extends HeritageSite {
   search: string;
 }
 
+// Community-pack places, indexed for search, merged into every ReferenceData
+// instance's city set. Module-level so they survive a gazetteer swap / reinit.
+let packCities: IndexedCity[] = [];
+
 class ReferenceDataImpl implements ReferenceData {
   readonly countries: Country[];
   readonly provenance: ReferenceProvenance[] = provenance;
-  private cities: IndexedCity[];
+  private cities: IndexedCity[] = [];
   private airports: IndexedAirport[];
   private heritage: IndexedHeritage[];
   private byIso2 = new Map<string, Country>();
@@ -124,22 +128,34 @@ class ReferenceDataImpl implements ReferenceData {
   private languages: Record<string, Language[]>;
   private articleNames: Record<string, string>;
 
+  // The world gazetteer (bundled core → optional full set). Kept separate from the
+  // community-pack places so a gazetteer swap never drops installed packs.
+  private baseCities: IndexedCity[] = [];
+
   /** Swap in a bigger city set in place (same instance every consumer holds).
    *  `prepared` rows arrive from the gazetteer worker already folded + sorted —
    *  re-doing that here would stall the main thread for ~135k rows. */
   replaceCities(cities: City[], prepared = false): void {
-    this.cities = prepared
+    this.baseCities = prepared
       ? (cities as IndexedCity[])
       : cities
           .map((c) => ({ ...c, search: normalize(c.name) }))
           .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
+    // Refresh the per-country "known cities" denominators from the WORLD set only
+    // (pack POIs are extra places, not part of the cities-known count).
+    const counts = new Map<string, number>();
+    for (const c of this.baseCities) counts.set(c.countryIso2, (counts.get(c.countryIso2) ?? 0) + 1);
+    for (const country of this.countries) country.cityCount = counts.get(country.iso2) ?? 0;
+    this.remergeCities();
+  }
+
+  /** Rebuild the live city set = world gazetteer + installed community-pack places,
+   *  and the id index. Called on any change to either side. */
+  remergeCities(): void {
+    this.cities = packCities.length ? this.baseCities.concat(packCities) : this.baseCities;
     this.cityIndex.clear();
     for (const c of this.cities) this.cityIndex.set(c.id, c);
-    this.citiesByCountry.clear(); // per-country slices rebuild from the new set
-    // Refresh the per-country "known cities" denominators the stats show.
-    const counts = new Map<string, number>();
-    for (const c of cities) counts.set(c.countryIso2, (counts.get(c.countryIso2) ?? 0) + 1);
-    for (const country of this.countries) country.cityCount = counts.get(country.iso2) ?? 0;
+    this.citiesByCountry.clear(); // per-country slices rebuild lazily from the new set
   }
 
   constructor(
@@ -155,7 +171,7 @@ class ReferenceDataImpl implements ReferenceData {
     // Population-descending order is the contract everywhere (search relevance,
     // the cities-in-view list's presorted fast path). The bundled file is already
     // sorted, so this is a near-free adaptive pass; it guarantees injected data too.
-    this.cities = cities
+    this.baseCities = cities
       .map((c) => ({ ...c, search: normalize(c.name) }))
       .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
     this.airports = airports.map((a) => ({ ...a, search: normalize(a.name) }));
@@ -166,7 +182,8 @@ class ReferenceDataImpl implements ReferenceData {
       this.byIso2.set(c.iso2, c);
       this.byNumeric.set(c.numeric, c);
     }
-    for (const c of this.cities) this.cityIndex.set(c.id, c);
+    // Build the live city set (world gazetteer + any installed pack places).
+    this.remergeCities();
     for (const a of this.airports) this.airportIndex.set(a.id, a);
     for (const h of this.heritage) {
       this.heritageIndex.set(h.id, h);
@@ -404,6 +421,25 @@ async function loadFullGazetteer(): Promise<IndexedCity[] | null> {
 async function upgradeToFullGazetteer(impl: ReferenceDataImpl): Promise<void> {
   await whenIdle();
   await applyFullGazetteer(impl);
+}
+
+/**
+ * Install/replace the community-pack places that are merged into the searchable +
+ * mappable city set. Called by the packs store at startup and whenever a pack is
+ * added or removed. Fires the gazetteer event so screens holding memoized city
+ * snapshots refresh. Pack ids are namespaced (pack:<id>:<n>), so they never
+ * collide with GeoNames ids.
+ */
+export function setPackPlaces(places: City[]): void {
+  packCities = places
+    .map((c) => ({ ...c, search: normalize(c.name) }))
+    .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
+  const impl = instance as ReferenceDataImpl | null;
+  if (impl) {
+    impl.remergeCities();
+    generation++;
+    window.dispatchEvent(new Event(GAZETTEER_UPGRADED_EVENT));
+  }
 }
 
 /** Fetch + swap in the full gazetteer (shared by the opted-in auto-load and the

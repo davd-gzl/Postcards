@@ -9,7 +9,9 @@
          localStorage; the crucial defence is a strict `connect-src` (+ img-src,
          object-src 'none', form-action 'none'): an injected or dependency-borne
          script cannot POST the token to any host but the few the app legitimately
-         talks to, nor smuggle it out via an <img>, form or <object>. Delivered as
+         talks to (api.github.com + GitHub-raw for community data packs, OSM tiles,
+         Wikimedia — never an arbitrary host), nor smuggle it out via an <img>,
+         form or <object>. Delivered as
          a meta because GitHub Pages sends no headers and the Capacitor WebView
          never sees them for the bundled index.html — the only portable channel.
          script-src keeps 'unsafe-inline' ONLY because the Publish PREVIEW renders
@@ -33,7 +35,7 @@
                style-src 'self' 'unsafe-inline';
                worker-src 'self' blob:;
                img-src 'self' data: blob: https://tile.openstreetmap.org https://upload.wikimedia.org;
-               connect-src 'self' https://api.github.com https://tile.openstreetmap.org https://upload.wikimedia.org https://*.wikipedia.org https://*.wikivoyage.org;
+               connect-src 'self' https://api.github.com https://raw.githubusercontent.com https://gist.githubusercontent.com https://tile.openstreetmap.org https://upload.wikimedia.org https://*.wikipedia.org https://*.wikivoyage.org;
                frame-src 'self';
                manifest-src 'self'"
     />

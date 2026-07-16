@@ -18,6 +18,9 @@ void initReferenceData().then(() => {
       <App />
     </StrictMode>,
   );
+  // Merge any installed community data packs into the reference set (off the
+  // critical path; fires the gazetteer event so screens refresh when it lands).
+  void import("./lib/packs/store").then((m) => m.useDataPacks.getState().load());
 });
 
 // Warm the code-split MapScreen chunk (~1 MB, mostly MapLibre) while the

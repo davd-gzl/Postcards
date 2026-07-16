@@ -9,6 +9,7 @@ import { ThemeToggle } from "../../ui/ThemeToggle";
 import { LanguageToggle } from "../../ui/LanguageToggle";
 import { Backup } from "../backup/Backup";
 import { SyncSection } from "./SyncSection";
+import { DataPacksSection } from "./DataPacksSection";
 import { Attribution } from "../../ui/Attribution";
 import { formatInt } from "../../lib/format/format";
 import { downloadFullCities, fullCitiesEnabled } from "../../lib/reference/referenceData";
@@ -296,6 +297,9 @@ export function SettingsScreen() {
           </div>
         )}
       </section>
+
+      {/* Community data packs */}
+      <DataPacksSection />
 
       {/* Publish & sync */}
       <section className="settings-section">

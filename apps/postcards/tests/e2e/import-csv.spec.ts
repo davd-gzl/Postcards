@@ -22,7 +22,9 @@ test("import a places CSV — merges without erasing, no confirm", async ({ page
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.locator('input[type="file"]').first().setInputFiles({
+  // The Backup import is the only file input that accepts CSV — target it
+  // directly so a sibling file input (e.g. data packs) can never shadow it.
+  await page.locator('input[type="file"][accept*="csv"]').setInputFiles({
     name: "places_export.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(CSV),

@@ -111,6 +111,18 @@ export const fr: Messages = {
   "settings.guides.desc":
     "Lorsque vous ouvrez un lieu, un court aperçu et une photo peuvent être chargés depuis Wikivoyage et Wikipédia. Ouvrir un lieu est votre propre action, donc c'est activé par défaut ; désactivez-le pour ne charger les guides que sur appui. Rien d'autre ne quitte votre appareil.",
   "settings.guides.toggle": "Charger les aperçus des guides automatiquement en ligne",
+  "settings.packs.title": "Packs de données communautaires",
+  "settings.packs.desc":
+    "Ajoutez un ensemble de lieux sous licence ouverte (POI, stations de métro, refuges…) partagé par n'importe qui. Collez un lien GitHub ou importez un fichier — un pack est une donnée inerte, validée et nettoyée, et ses lieux deviennent consultables et cartographiables. Retirer un pack ne touche jamais à votre journal.",
+  "settings.packs.urlLabel": "Lien GitHub vers un fichier de pack",
+  "settings.packs.add": "Ajouter",
+  "settings.packs.adding": "Ajout…",
+  "settings.packs.importFile": "Importer un fichier",
+  "settings.packs.meta": "{count} lieux · {license}",
+  "settings.packs.removeAria": "Retirer le pack {name}",
+  "settings.packs.toast.added": "« {name} » ajouté — {count} lieux sont maintenant consultables.",
+  "settings.packs.toast.removed": "« {name} » retiré.",
+  "settings.packs.toast.failed": "Impossible d'ajouter ce pack de données.",
   "settings.publish.title": "Publier un site partageable",
   "settings.publish.desc":
     "Transformez un voyage, une plage de dates ou tout votre contenu en un site web de carnet de voyage autonome et en lecture seule, hébergeable n'importe où — un dossier, une clé USB, GitHub Pages, Netlify, Nextcloud. Il fonctionne hors ligne depuis un seul fichier, retire le GPS des photos et peut être verrouillé par une phrase secrète.",

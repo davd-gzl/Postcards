@@ -118,6 +118,18 @@ export const en = {
   "settings.guides.desc":
     "When you open a place, a short overview and photo can load from Wikivoyage and Wikipedia. Opening a place is your own action, so this is on by default; turn it off to load guides only when you tap. Nothing else leaves your device.",
   "settings.guides.toggle": "Load guide overviews automatically when online",
+  "settings.packs.title": "Community data packs",
+  "settings.packs.desc":
+    "Add an openly-licensed set of places (POIs, metro stations, huts…) shared by anyone. Paste a GitHub link or import a file — a pack is inert data, validated and sanitized, and its places become searchable and mappable. Removing a pack never touches your journal.",
+  "settings.packs.urlLabel": "GitHub link to a pack file",
+  "settings.packs.add": "Add",
+  "settings.packs.adding": "Adding…",
+  "settings.packs.importFile": "Import file",
+  "settings.packs.meta": "{count} places · {license}",
+  "settings.packs.removeAria": "Remove pack {name}",
+  "settings.packs.toast.added": "Added “{name}” — {count} places are now searchable.",
+  "settings.packs.toast.removed": "Removed “{name}”.",
+  "settings.packs.toast.failed": "Couldn't add that data pack.",
   "settings.publish.title": "Publish a shareable site",
   "settings.publish.desc":
     "Turn a trip, a date range, or everything into a self-contained, read-only travel-blog website you can host anywhere — a folder, a USB stick, GitHub Pages, Netlify, Nextcloud. It runs offline from one file, strips photo GPS, and can be locked with a passphrase.",
