@@ -13,7 +13,11 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Return focus to whatever opened this (the top-bar button, or nothing on a
+    // first-run auto-open) when it closes — don't drop focus to the page top.
+    const prev = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
+    return () => prev?.focus?.();
   }, []);
 
   useModalKeys(dialogRef, onClose);
