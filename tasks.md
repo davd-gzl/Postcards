@@ -88,15 +88,30 @@ EVERYWHERE (tab switches, list scroll, filters, opening a place, toggles).
       re-measure, repeat until snappy. Add perf guards where sensible.
       NOTE: the running map-perf agent owns MapView — sequence these right after it so they don't collide.
 
+## Settings page — simplify
+
+- [ ] The Settings ("parameters") page is too text-heavy / overwhelming (well written, but a lot to read).
+      Make it concise + scannable: progressive disclosure (collapsible sections / "learn more"), shorter
+      copy, clear grouping, sensible defaults hidden behind advanced. Keep all functionality; move the
+      long explanations into help disclosures. (SettingsScreen.tsx, i18n, styles.css.)
+
 ## Downloadable data (unpack from the app, like tiles)
 
-- [ ] Make the reference data DOWNLOADABLE on demand + cached, not packed into the app. Today the SW
-      precaches ~6.7MB of datasets on install. Instead: keep a tiny bundled CORE (instant first paint),
-      move the big sets (cities-all ~135k, heritage, airports, stations…) OUT of precache, fetch them
-      on first need (same-origin) and cache (Cache API/IndexedDB) so they work offline once downloaded —
-      exactly like the offline tile "save area" model. Add a Settings "data packs" UI (download / remove /
-      sizes) mirroring the tile download UX. Honors local-first/offline; shrinks the install.
-      (vite-plugin-pwa precache config, lib/reference loaders, gazetteerWorker, a data-cache seam, Settings.)
+- [ ] Bundle only the **top ~10,000 cities** (by population) in the app for instant first paint; the rest
+      of the gazetteer (full ~135k) + monuments/airports/stations become **downloadable + cached** on
+      demand, NOT precached. Fetch on first need (same-origin), cache (Cache API/IndexedDB), work offline
+      once downloaded — like the offline tile "save area" model. Settings "data packs" UI (download /
+      remove / sizes). Shrinks the install; honors local-first/offline.
+      (split the gazetteer build into core-10k + rest; vite-plugin-pwa precache excludes the big sets;
+      lib/reference loaders + gazetteerWorker fetch-and-cache seam; Settings.)
+
+## Git / GitHub Pages support (general)
+
+- [ ] General **git support** (push/pull to any git remote via the existing PublishTarget/sync seam —
+      GitHub is one impl; keep it vendor-neutral) AND a convenient **GitHub Pages** integration for
+      PUBLIC publishing: when you publish a public site, streamline create/use repo → push site → enable
+      Pages via the API (token with pages:write) → surface the live `username.github.io/repo` URL.
+      Builds on gitTarget + PublishScreen + the connector guide. Token stays on-device.
 
 ## Community data packs (shareable, add-by-link)
 
