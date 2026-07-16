@@ -67,6 +67,11 @@ export const ko: Messages = {
   "settings.language.title": "언어",
   "settings.language.desc":
     "앱 언어를 선택하세요. 장소, 국가, 도시 이름은 원래 언어를 유지합니다.",
+  "settings.offlineMode.title": "오프라인 모드",
+  "settings.offlineMode.toggle": "완전 오프라인 — 네트워크 요청 없음",
+  "settings.offlineMode.desc":
+    "완전히 자체 완결형으로 실행합니다. 아래 모든 설정에 우선합니다. 지도는 내장 오프라인 기본 지도로 유지되고, 가이드 개요는 절대 불러오지 않으며, 첫 실행 시 상세 지도 제안도 표시되지 않습니다. 장소와 저널은 어차피 이 기기를 떠나지 않으며 — 이 모드는 지도와 가이드의 외부 연결도 차단합니다.",
+  "settings.detailedMap.offlineNote": "상세 지도를 사용하려면 오프라인 모드를 끄세요.",
   "settings.places.title": "장소",
   "settings.scope.title": "국가로 세는 기준",
   "settings.scope.desc":
@@ -116,6 +121,7 @@ export const ko: Messages = {
   "settings.packs.desc":
     "누구나 공유하는 오픈 라이선스 장소 모음(POI, 지하철역, 산장 등)을 추가하세요. GitHub 링크를 붙여넣거나 파일을 가져오세요 — 팩은 검증·정화된 비활성 데이터이며, 그 장소들은 검색과 지도 표시가 가능해집니다. 팩을 제거해도 일지에는 영향이 없습니다.",
   "settings.packs.urlLabel": "팩 파일의 GitHub 링크",
+  "settings.packs.offlineNote": "오프라인 모드에서는 링크로 팩 추가가 비활성화됩니다 — 대신 팩 파일을 가져오세요.",
   "settings.packs.add": "추가",
   "settings.packs.adding": "추가 중…",
   "settings.packs.importFile": "파일 가져오기",
@@ -249,7 +255,6 @@ export const ko: Messages = {
   "places.rowMenu.aria": "{name} 편집",
   "places.rowMenu.date": "날짜",
   "places.rowMenu.folder": "폴더",
-  "places.rowMenu.folderPlaceholder": "예: 일본 2024",
   "places.rowMenu.note": "메모",
   "places.rowMenu.notePlaceholder": "짧은 메모",
   "places.row.removedToast": "{name} 삭제됨",
@@ -422,7 +427,7 @@ export const ko: Messages = {
   "journal.geo.noCities": "주변에 도시를 찾을 수 없습니다.",
   "journal.geo.unavailable": "위치를 사용할 수 없습니다. 브라우저 권한을 확인하고 다시 시도하세요.",
   "journal.folder": "폴더",
-  "journal.folderPlaceholder": "예: 일본 2024 (선택)",
+  "journal.folderPlaceholder": "선택 사항",
   "journal.byFolder": "폴더별",
   "journal.viewAria": "일지 보기",
   "journal.viewFeed": "피드",
@@ -470,6 +475,11 @@ export const ko: Messages = {
   "map.online.enable": "상세 지도",
   "map.online.enableHint":
     "OpenStreetMap에서 상세 타일을 스트리밍합니다. 네트워크를 사용하며 IP와 지도 보기가 OpenStreetMap에 공유됩니다 — 여기를 누르기 전까지 지도는 완전히 오프라인으로 유지됩니다.",
+  "map.consent.title": "상세 세계 지도를 볼까요?",
+  "map.consent.body":
+    "OpenStreetMap에서 도로, 라벨, 지형을 스트리밍합니다. OpenStreetMap에는 지도 보기만 전달되며 — 장소, 저널 등 나머지는 모두 이 기기에 남습니다. 설정에서 언제든지 끌 수 있습니다.",
+  "map.consent.enable": "상세 지도 표시",
+  "map.consent.dismiss": "나중에",
   "map.dividerAria": "목록 크기 조정 (드래그하거나 화살표 키 사용)",
   "map.dividerTitle": "밀어서 목록 크기 조정",
   "map.list.aria": "화면 안의 도시",

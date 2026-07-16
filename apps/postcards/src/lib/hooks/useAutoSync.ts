@@ -26,7 +26,10 @@ import { readRemoteConfig, isConfigured } from "../sync/syncConfig";
 const AUTO_SYNC_DEBOUNCE_MS = 4000;
 
 export function useAutoSync(): void {
-  const autoSync = useSettings((s) => s.autoSync);
+  // Offline mode is the master override — background sync never wires up while
+  // it's on, whatever the auto-sync toggle says (a manual push is still a
+  // deliberate button in Settings, which Offline mode leaves to the user).
+  const autoSync = useSettings((s) => s.autoSync && !s.offlineMode);
 
   useEffect(() => {
     if (!autoSync) return; // opt-in: do nothing until explicitly enabled

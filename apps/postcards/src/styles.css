@@ -420,6 +420,34 @@ h1.brand {
   padding: 5px 8px 5px 14px;
   box-shadow: var(--shadow-sm);
 }
+/* First-run offer to turn on the detailed (online) map. A card near the bottom
+   of the map, above the mode controls — unmissable but dismissible, and never
+   covering the whole view. */
+.map-consent {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 7;
+  width: min(340px, calc(100% - 24px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-md, var(--shadow-sm));
+}
+.map-consent-title {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+.map-consent-body {
+  margin: 0 0 10px;
+}
+.map-consent-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 /* "Add your own place" dialog opened from the map. */
 .map-add-overlay {
   /* Fixed to the VIEWPORT (not absolute within the short map box), so on a phone

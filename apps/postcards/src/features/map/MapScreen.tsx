@@ -35,6 +35,10 @@ type CityFilter = "all" | "unvisited" | "visited";
 const BASEMAP_KEY = "postcards-basemap";
 const GLOBE_KEY = "postcards-globe";
 const FILTER_KEY = "postcards-city-filter";
+// Records that we've made the first-run detailed-map offer, so it's shown once
+// and never again — set on either choice (Enable or Not now). Absent = new user
+// who hasn't seen it, which is exactly when the banner appears.
+const MAP_CONSENT_KEY = "postcards-map-consent";
 
 // i18n key for each basemap's label (translated at the call site).
 const BASEMAP_LABEL_KEY: Record<Basemap, MessageKey> = {
@@ -99,6 +103,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // only (zero outbound requests), overriding whatever detailed basemap is saved.
   const onlineMap = useSettings((s) => s.onlineMap);
   const setOnlineMap = useSettings((s) => s.setOnlineMap);
+  // The master self-contained switch: when on, it overrides onlineMap entirely —
+  // no tiles, no consent offer, no reconnect prompt. Zero optional egress.
+  const offlineMode = useSettings((s) => s.offlineMode);
   const maxMarkers = useSettings((s) => s.maxMarkers);
   // The explicit colour-theme choice (System / Light / Dark) drives the
   // basemap's dark palette too, so it never desyncs from the UI.
@@ -119,6 +126,13 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // The online base fell back to the offline base (offline / blocked tiles). Set
   // when it happens; drives the manual "Reconnect" prompt — never auto-switches.
   const [fellBackOffline, setFellBackOffline] = useState(false);
+  // First-run only: a new user lands on the zero-egress offline overview (few
+  // labels, no streets) and would never think to dig into Settings for detail.
+  // So we offer it up front — one tap streams OpenStreetMap tiles. Still an
+  // explicit choice (nothing fetches until they accept), just an unmissable one.
+  const [askMapConsent, setAskMapConsent] = useState(
+    () => !onlineMap && loadPref(MAP_CONSENT_KEY, (v) => v == null),
+  );
   // "Add your own place" seeded from the map (long-press/right-click a spot, or
   // the ＋ Add place button which seeds the current map centre).
   const [addPlaceAt, setAddPlaceAt] = useState<{ lon: number; lat: number } | null>(null);
@@ -274,8 +288,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // offline streets map) are user choices now — no bland outline map to cycle to.
   const basemapCycle: Basemap[] = hasDetail ? ["osm", "detail"] : ["osm"];
   const nextBasemap = basemapCycle[(basemapCycle.indexOf(basemap) + 1) % basemapCycle.length]!;
-  // When online maps are turned off in Settings, force the offline vector map.
-  const effectiveBasemap: Basemap = onlineMap ? basemap : "simple";
+  // When online maps are turned off in Settings — or Offline mode overrides
+  // everything — force the bundled offline vector map (zero outbound requests).
+  const effectiveBasemap: Basemap = onlineMap && !offlineMode ? basemap : "simple";
 
   function switchBasemap() {
     setBasemap(nextBasemap);
@@ -567,6 +582,37 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             </button>
           </div>
         )}
+        {active && askMapConsent && !onlineMap && !offlineMode && (
+          <div className="map-consent" role="dialog" aria-label={t("map.consent.title")}>
+            <p className="map-consent-title">🌍 {t("map.consent.title")}</p>
+            <p className="map-consent-body small">{t("map.consent.body")}</p>
+            <div className="map-consent-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setOnlineMap(true);
+                  setBasemap("osm");
+                  savePref(BASEMAP_KEY, "osm");
+                  savePref(MAP_CONSENT_KEY, "on");
+                  setAskMapConsent(false);
+                }}
+              >
+                {t("map.consent.enable")}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => {
+                  savePref(MAP_CONSENT_KEY, "off");
+                  setAskMapConsent(false);
+                }}
+              >
+                {t("map.consent.dismiss")}
+              </button>
+            </div>
+          </div>
+        )}
         <div className="map-ctl map-ctl-top segmented" role="group" aria-label={t("map.modeAria")}>
           {(["all", "cities", "monuments", "airports"] as MapMode[]).map((m) => (
             <button
@@ -692,9 +738,10 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                   ⤳ {t(BASEMAP_LABEL_KEY[nextBasemap])}
                 </button>
               )}
-              {!onlineMap && (
+              {!onlineMap && !offlineMode && (
                 // Explicit one-tap consent to stream OpenStreetMap tiles — the map
                 // ships offline (zero egress) until the user asks for detail here.
+                // Withheld entirely under Offline mode (the master override).
                 <button
                   className="map-btn"
                   type="button"

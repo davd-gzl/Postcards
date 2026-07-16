@@ -32,6 +32,8 @@ export function SettingsScreen() {
   const setAutoLoadGuides = useSettings((s) => s.setAutoLoadGuides);
   const onlineMap = useSettings((s) => s.onlineMap);
   const setOnlineMap = useSettings((s) => s.setOnlineMap);
+  const offlineMode = useSettings((s) => s.offlineMode);
+  const setOfflineMode = useSettings((s) => s.setOfflineMode);
   const maxMarkers = useSettings((s) => s.maxMarkers);
   const setMaxMarkers = useSettings((s) => s.setMaxMarkers);
   const [progress, setProgress] = useState<Record<string, number | undefined>>({});
@@ -146,6 +148,21 @@ export function SettingsScreen() {
         <LanguageToggle />
       </section>
 
+      {/* Offline mode — the master "self-contained" switch. One flip guarantees
+          zero optional egress across the whole app (map, guides, everything). */}
+      <section className="settings-section">
+        <h3>🔒 {t("settings.offlineMode.title")}</h3>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={offlineMode}
+            onChange={(e) => setOfflineMode(e.target.checked)}
+          />
+          <span>{t("settings.offlineMode.toggle")}</span>
+        </label>
+        <p className="muted small">{t("settings.offlineMode.desc")}</p>
+      </section>
+
       {/* Places — what counts as a country + whether guides load automatically. */}
       <section className="settings-section">
         <h3>{t("settings.places.title")}</h3>
@@ -171,11 +188,13 @@ export function SettingsScreen() {
         <label className="toggle-row">
           <input
             type="checkbox"
-            checked={onlineMap}
+            checked={onlineMap && !offlineMode}
+            disabled={offlineMode}
             onChange={(e) => setOnlineMap(e.target.checked)}
           />
           <span>{t("settings.detailedMap.toggle")}</span>
         </label>
+        {offlineMode && <p className="muted small">{t("settings.detailedMap.offlineNote")}</p>}
         <details className="settings-details">
           <summary>{t("settings.map.advanced")}</summary>
           <label className="picker-label setting-picker" htmlFor="max-markers">

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useDataPacks } from "../../lib/packs/store";
 import { useToast } from "../../lib/store/useToast";
+import { useSettings } from "../../lib/store/useSettings";
 import { useT } from "../../lib/i18n";
 
 /**
@@ -19,6 +20,9 @@ export function DataPacksSection() {
   const addFromUrl = useDataPacks((s) => s.addFromUrl);
   const addFromText = useDataPacks((s) => s.addFromText);
   const remove = useDataPacks((s) => s.remove);
+  // Offline mode blocks fetching a pack from a URL (that's a network request);
+  // importing a pack FILE stays available — it's read straight off the device.
+  const offlineMode = useSettings((s) => s.offlineMode);
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -74,11 +78,18 @@ export function DataPacksSection() {
           inputMode="url"
           placeholder="https://github.com/…/pack.json"
           value={url}
+          disabled={offlineMode}
           onChange={(e) => setUrl(e.target.value)}
         />
       </label>
+      {offlineMode && <p className="muted small">{t("settings.packs.offlineNote")}</p>}
       <div className="publish-actions">
-        <button className="btn" type="button" disabled={busy || !url.trim()} onClick={() => void onAddUrl()}>
+        <button
+          className="btn"
+          type="button"
+          disabled={busy || offlineMode || !url.trim()}
+          onClick={() => void onAddUrl()}
+        >
           {busy ? t("settings.packs.adding") : t("settings.packs.add")}
         </button>
         <button className="btn-ghost" type="button" disabled={busy} onClick={() => fileRef.current?.click()}>
