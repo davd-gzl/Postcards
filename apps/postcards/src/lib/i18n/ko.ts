@@ -831,6 +831,8 @@ export const ko: Messages = {
   "intro.skip": "건너뛰기",
 
   // ── Misc shared ──────────────────────────────────────────────────────────
+  "update.available": "새 버전이 있습니다.",
+  "update.reload": "새로고침",
   "common.undo": "실행 취소",
   "common.retry": "다시 시도",
   "map.canvasAria": "방문한 장소 지도",

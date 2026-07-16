@@ -838,6 +838,8 @@ export const fr: Messages = {
   "intro.skip": "Passer",
 
   // ── Misc shared ──────────────────────────────────────────────────────────
+  "update.available": "Une nouvelle version est disponible.",
+  "update.reload": "Recharger",
   "common.undo": "Annuler",
   "common.retry": "Réessayer",
   "map.canvasAria": "Carte des lieux visités",

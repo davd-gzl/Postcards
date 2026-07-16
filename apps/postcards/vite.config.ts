@@ -26,7 +26,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      // "prompt", not "autoUpdate": a new deploy installs and WAITS, and the app
+      // surfaces a "new version — reload" banner (see UpdateBanner) rather than
+      // swapping code under an open tab. This is what keeps users off stale
+      // cached builds without a jarring silent reload.
+      registerType: "prompt",
+      // We register the SW ourselves in main.tsx (manual navigator.serviceWorker,
+      // no workbox-window dep), so disable the plugin's auto-injected script to
+      // avoid a duplicate registration.
+      injectRegister: null,
       manifest: {
         name: "Postcards",
         short_name: "Postcards",
