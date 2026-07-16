@@ -481,6 +481,8 @@ export const en = {
   "map.online.enable": "Detailed map",
   "map.online.enableHint":
     "Stream detailed tiles from OpenStreetMap. This uses the network and shares your IP and map view with OpenStreetMap — the map stays fully offline until you tap this.",
+  "map.online.disableHint":
+    "Detailed map is on. Tap to switch back to the offline map — no network, nothing leaves your device.",
   "map.consent.title": "See the detailed world map?",
   "map.consent.body":
     "Stream real streets and labels from OpenStreetMap. Only your map view is shared — everything else stays on this device.",

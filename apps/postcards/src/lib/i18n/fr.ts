@@ -476,6 +476,8 @@ export const fr: Messages = {
   "map.online.enable": "Carte détaillée",
   "map.online.enableHint":
     "Diffuser les tuiles détaillées depuis OpenStreetMap. Cela utilise le réseau et partage votre IP et votre vue de carte avec OpenStreetMap — la carte reste entièrement hors ligne jusqu'à ce que vous appuyiez ici.",
+  "map.online.disableHint":
+    "La carte détaillée est active. Appuyez pour revenir à la carte hors ligne — aucun réseau, rien ne quitte votre appareil.",
   "map.consent.title": "Voir la carte du monde détaillée ?",
   "map.consent.body":
     "Diffuse les vraies rues et les libellés depuis OpenStreetMap. Seule votre vue de carte est partagée — tout le reste reste sur cet appareil.",
