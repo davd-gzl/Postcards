@@ -20,6 +20,66 @@ import type { Trip } from "../../lib/schema/models";
 
 type Scope = "all" | "trip" | "folder" | "range";
 
+// Remember the target repo (owner/repo/branch) so publishing defaults to the same
+// place — the TOKEN is deliberately NOT persisted (it stays in memory for the
+// session only; the constitution keeps credentials off any durable store here).
+const REPO_KEY = "postcards-publish-repo";
+function loadRepo(): { owner: string; repo: string; branch: string } {
+  try {
+    const v = JSON.parse(localStorage.getItem(REPO_KEY) || "{}");
+    return { owner: v.owner || "", repo: v.repo || "", branch: v.branch || "main" };
+  } catch {
+    return { owner: "", repo: "", branch: "main" };
+  }
+}
+function saveRepo(g: { owner: string; repo: string; branch: string }): void {
+  try {
+    localStorage.setItem(REPO_KEY, JSON.stringify({ owner: g.owner, repo: g.repo, branch: g.branch }));
+  } catch {
+    /* private mode: not remembered */
+  }
+}
+
+/** A URL-safe subdirectory name for one travel, e.g. "Japan 2024" → "japan-2024".
+ *  Each published travel lives in its own folder on the same repo so journeys
+ *  coexist instead of overwriting the site root. */
+function slugify(name: string): string {
+  const s = name
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "") // strip combining diacritics
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return s || "journey";
+}
+
+/** A minimal, inert root landing page listing every published travel folder, so
+ *  the repo root isn't a 404 and visitors can browse between journeys. */
+function buildRootIndex(siteTitle: string, folders: string[]): string {
+  const esc = (x: string) =>
+    x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const items = folders
+    .map((f) => `<li><a href="./${esc(f)}/">${esc(f.replace(/-/g, " "))}</a></li>`)
+    .join("\n      ");
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(siteTitle)}</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;max-width:42rem;margin:3rem auto;padding:0 1rem}
+h1{font-size:1.4rem}ul{list-style:none;padding:0}li{margin:.4rem 0}
+a{display:inline-block;padding:.5rem .8rem;border:1px solid #ccc;border-radius:.5rem;text-decoration:none;color:inherit}
+@media(prefers-color-scheme:dark){body{background:#111;color:#eee}a{border-color:#444}}</style>
+</head><body>
+<h1>${esc(siteTitle)}</h1>
+<ul>
+      ${items}
+</ul>
+<p style="opacity:.6;font-size:.85rem">Published with Postcards — a private, local-first travel journal.</p>
+</body></html>
+`;
+}
+
 /** A short human label for a trip in the picker: "✈️ Paris → Rome · 2 May 2026". */
 function tripLabel(t: Trip): string {
   const glyph = MODE_GLYPH[t.mode] ?? "•";
@@ -71,12 +131,9 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
   // GitHub connector — one optional target. Token is kept ONLY in memory here
   // (React state) and is never written into the exported bundle.
   const [ghOpen, setGhOpen] = useState(false);
-  const [gh, setGh] = useState<GitHubConnectorValue>({
-    owner: "",
-    repo: "",
-    branch: "main",
-    token: "",
-  });
+  // Owner/repo/branch default to the last-used repo (remembered); token is always
+  // empty at start — it is never persisted.
+  const [gh, setGh] = useState<GitHubConnectorValue>(() => ({ ...loadRepo(), token: "" }));
   // The public URL a successful push publishes to (GitHub Pages). Shown as a
   // clickable link so the user can jump straight to their live site.
   const [liveUrl, setLiveUrl] = useState<string | null>(null);
@@ -189,34 +246,61 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
     setBusy(true);
     try {
       const html = await buildHtml();
-      const target = new GitHubTarget({
-        owner: gh.owner.trim(),
-        repo: gh.repo.trim(),
-        branch: gh.branch.trim(),
-        token: gh.token.trim(),
-      });
+      const owner = gh.owner.trim();
+      const repo = gh.repo.trim();
+      const branch = gh.branch.trim();
+      // Remember the repo (never the token) so the next publish defaults here.
+      saveRepo({ owner, repo, branch });
+      const target = new GitHubTarget({ owner, repo, branch, token: gh.token.trim() });
+
+      // Each travel gets its OWN subdirectory on the same repo, so journeys coexist
+      // (…github.io/<repo>/japan-2024/) instead of overwriting the root. The slug
+      // comes from the selected trip/folder, else the site title.
+      const travelName =
+        (scope === "folder" && folderName.trim()) ||
+        (scope === "trip" && tripOptions.find((tr) => tr.tripId === tripId)?.name?.trim()) ||
+        title.trim() ||
+        "journey";
+      const slug = slugify(travelName);
+
       await target.putFiles(
         [
-          { path: "index.html", content: html },
-          // Ship the host-facing README inside the export (FR-015).
-          { path: "README.md", content: HOSTING_README },
+          { path: `${slug}/index.html`, content: html },
+          // Ship the host-facing README beside each travel (FR-015).
+          { path: `${slug}/README.md`, content: HOSTING_README },
         ],
-        `Publish "${title.trim()}" via Postcards`,
+        `Publish "${travelName}" via Postcards`,
       );
-      // Best-effort: switch on GitHub Pages so the site goes live without a trip
-      // to the repo's Settings. Returns null when the token can't manage Pages —
-      // then we fall back to the "pushed" toast (the README covers manual setup).
+
+      // Refresh the root landing page so the repo root lists every travel folder
+      // (best-effort — a token without read access just skips it).
+      try {
+        const entries = await target.listDir("");
+        const folders = entries
+          .filter((e) => e.type === "dir" && !e.name.startsWith("."))
+          .map((e) => e.name);
+        if (!folders.includes(slug)) folders.push(slug);
+        folders.sort((a, b) => a.localeCompare(b));
+        await target.putFiles(
+          [{ path: "index.html", content: buildRootIndex(repo, folders) }],
+          "Update travels index via Postcards",
+        );
+      } catch {
+        /* listing/root-index is a nicety; the travel itself already published */
+      }
+
+      // Best-effort: switch on GitHub Pages so the site goes live without a trip to
+      // the repo's Settings. Returns null when the token can't manage Pages.
       let siteUrl: string | null = null;
       try {
         siteUrl = await target.enablePages();
       } catch {
         siteUrl = null;
       }
-      setLiveUrl(siteUrl ?? target.pagesSiteUrl());
+      // Link straight to THIS travel's subdirectory.
+      setLiveUrl(target.pagesSiteUrl() + slug + "/");
       showToast(
-        siteUrl
-          ? t("publish.toast.pushedLive")
-          : t("publish.toast.pushed", { owner: gh.owner.trim(), repo: gh.repo.trim() }),
+        siteUrl ? t("publish.toast.pushedLive") : t("publish.toast.pushed", { owner, repo }),
       );
     } catch (e) {
       showToast(e instanceof Error ? e.message : t("publish.toast.pushErr"));
