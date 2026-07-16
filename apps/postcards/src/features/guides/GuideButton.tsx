@@ -157,6 +157,7 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
   const [fullState, setFullState] = useState<"idle" | "loading" | "empty">("idle");
 
   async function loadFullGuide() {
+    if (offlineMode) return; // self-contained: never reach Wikimedia
     setFullState("loading");
     const wv = await fetchFullText(summaryTitle);
     const got = wv ?? (await fetchFullText(summaryTitle, { project: "wikipedia" }));
@@ -258,7 +259,10 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
         )}
         {(overview || full) && cardText && (
           <figure className="guide-card">
-            {photo && (
+            {/* The photo is a remote Wikimedia URL (only the text is saved on
+                device), so rendering it fetches from the network — withheld under
+                Offline mode so a saved overview stays truly self-contained. */}
+            {photo && !offlineMode && (
               <img
                 className="guide-photo"
                 src={photo}
@@ -282,7 +286,7 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
         )}
 
         {/* The whole guide, readable right here — no trip to the website. */}
-        {(overview || full) && !full && fullState === "idle" && (
+        {(overview || full) && !full && fullState === "idle" && !offlineMode && (
           <button type="button" className="btn-ghost guide-overview-btn" onClick={() => void loadFullGuide()}>
             📖 Read the whole guide here
           </button>
