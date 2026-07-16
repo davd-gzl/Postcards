@@ -48,6 +48,14 @@ mode, so it's high-value and not much extra surface. Recommendation:
 - [x] Sync engine wiring (git pull→merge→push, conditional-push retry) + Sync UI, shared connector — DONE
 - [x] `updatedAt` on records + tombstones (schema v6, DB v4, backfilled) — DONE
 
+## Publish mode — follow-up (v2)
+
+- [ ] Name a trip (like a folder) + select it when publishing (optional `name` on trips,
+      TravelScreen field, "By trip" scope in PublishScreen, title from the name). (in progress)
+- [ ] Redesign the published site to look crafted/editorial (typography, palette, photo-forward,
+      cover) — less "AI-looking" — with a map that labels EACH city; stays fully self-contained
+      (inline only, zero external requests). (in progress)
+
 ## UX / behaviour batch
 
 - [x] City name never cropped; on hover show full name (tooltip) — shared CityLine + picker/passport/airports
