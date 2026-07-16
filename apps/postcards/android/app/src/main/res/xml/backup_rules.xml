@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pre-Android-12 Auto Backup rules (fullBackupContent). Exclude everything so the
+  journal and the on-device sync token are never uploaded to Google Drive.
+  Backup is already off via android:allowBackup="false"; this is explicit for
+  older API levels and for auditability. See data_extraction_rules.xml (12+).
+-->
+<full-backup-content>
+    <exclude domain="root" path="." />
+</full-backup-content>
