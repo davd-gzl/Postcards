@@ -111,6 +111,22 @@ export const VisitSchema = z.object({
    * each with an optional caption. Stored on-device (privacy/inert as above).
    */
   photos: z.array(PhotoSchema).max(MAX_PHOTOS_PER_VISIT).optional(),
+  /**
+   * Optional folder label (e.g. "Japan 2024") that groups places under one name
+   * in the list — the same shape as a Story's `folder` and a Trip's `name`.
+   * Additive & optional: absent on older files and NOT injected on parse (the
+   * transform returns `undefined`, so no `folder` key is written), keeping earlier
+   * files validating and round-tripping byte-identically. Sanitized to inert text
+   * when present; a value that sanitizes away is dropped rather than stored empty.
+   */
+  folder: z
+    .string()
+    .max(80)
+    .transform((v) => {
+      const s = sanitizeText(v, 80);
+      return s.length ? s : undefined;
+    })
+    .optional(),
   addedAt: z.string().datetime({ offset: true }),
   /**
    * When this record was last mutated (device sync, spec 013). Optional so files

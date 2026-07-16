@@ -81,7 +81,10 @@ interface VisitsState {
   /** Set (or clear, with null) the caption on the photo at `index`. */
   setPhotoCaption: (visitId: string, index: number, caption: string | null) => Promise<void>;
   /** Set or clear the visit's own date and/or note (FR-002). */
-  setDetails: (visitId: string, details: { date?: string | null; note?: string | null }) => Promise<void>;
+  setDetails: (
+    visitId: string,
+    details: { date?: string | null; note?: string | null; folder?: string | null },
+  ) => Promise<void>;
   /** Put ONE visit back (single-record undo): upsert by visitId, one write —
    *  setAll would clear and rewrite the entire visits table. */
   restoreVisit: (visit: Visit) => Promise<void>;
@@ -200,6 +203,11 @@ export const useVisits = create<VisitsState>((set, get) => ({
       ...(details.date !== undefined ? { date: details.date || null } : {}),
       ...(details.note !== undefined
         ? { note: details.note?.trim() ? sanitizeText(details.note, 2000) : null }
+        : {}),
+      // Folder: a sanitized value groups the place; an empty one clears the key
+      // (undefined) so the record round-trips like a folder-less one.
+      ...(details.folder !== undefined
+        ? { folder: details.folder?.trim() ? sanitizeText(details.folder, 80) : undefined }
         : {}),
       updatedAt: stampNow(),
     };

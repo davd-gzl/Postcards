@@ -7,6 +7,7 @@ import type { Messages } from "./en";
 export const ko: Messages = {
   // ── Common / reused ──────────────────────────────────────────────────────
   "common.cancel": "취소",
+  "common.save": "저장",
   "common.remove": "삭제",
   "common.open": "열기",
   "common.close": "닫기",
@@ -232,6 +233,13 @@ export const ko: Messages = {
   "places.row.markVisitedAria": "{name} 방문으로 표시",
   "places.row.beenThere": "가봤어요",
   "places.row.removeAria": "{name} 삭제",
+  "places.row.moreAria": "{name} 추가 옵션 (날짜, 폴더, 메모)",
+  "places.rowMenu.aria": "{name} 편집",
+  "places.rowMenu.date": "날짜",
+  "places.rowMenu.folder": "폴더",
+  "places.rowMenu.folderPlaceholder": "예: 일본 2024",
+  "places.rowMenu.note": "메모",
+  "places.rowMenu.notePlaceholder": "짧은 메모",
   "places.row.removedToast": "{name} 삭제됨",
   "places.meta.airport": "공항",
   "places.meta.monument": "기념물",

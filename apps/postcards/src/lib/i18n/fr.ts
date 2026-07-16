@@ -6,6 +6,7 @@ import type { Messages } from "./en";
 export const fr: Messages = {
   // ── Common / reused ──────────────────────────────────────────────────────
   "common.cancel": "Annuler",
+  "common.save": "Enregistrer",
   "common.remove": "Retirer",
   "common.open": "Ouvrir",
   "common.close": "Fermer",
@@ -232,6 +233,13 @@ export const fr: Messages = {
   "places.row.markVisitedAria": "Marquer {name} comme visité",
   "places.row.beenThere": "J'y suis allé",
   "places.row.removeAria": "Retirer {name}",
+  "places.row.moreAria": "Plus d'options pour {name} (date, dossier, note)",
+  "places.rowMenu.aria": "Modifier {name}",
+  "places.rowMenu.date": "Date",
+  "places.rowMenu.folder": "Dossier",
+  "places.rowMenu.folderPlaceholder": "ex. Japon 2024",
+  "places.rowMenu.note": "Note",
+  "places.rowMenu.notePlaceholder": "Une courte note",
   "places.row.removedToast": "{name} retiré",
   "places.meta.airport": "Aéroport",
   "places.meta.monument": "Monument",

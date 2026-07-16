@@ -4,7 +4,7 @@ import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
 import { useSettings } from "../../lib/store/useSettings";
-import { countryFlag, formatDate } from "../../lib/format/format";
+import { countryFlag } from "../../lib/format/format";
 import type { Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
 import { inScope } from "../../lib/reference/scope";
@@ -68,6 +68,79 @@ function placeMeta(
   };
 }
 
+/** The per-row "more" popover: edit the visit's date, folder and note in one
+ *  place, so the row itself stays a clean single column (flag + name). Opens
+ *  inline below the row; the folder box suggests folders already in use. */
+function RowMenu({ v, onClose }: { v: Visit; onClose: () => void }) {
+  const t = useT();
+  const setDetails = useVisits((s) => s.setDetails);
+  const [date, setDate] = useState(v.date ?? "");
+  const [folder, setFolder] = useState(v.folder ?? "");
+  const [note, setNote] = useState(v.note ?? "");
+  // Folders already in use, for the datalist — a snapshot when the menu opens.
+  const folders = useMemo(() => {
+    const set = new Set<string>();
+    for (const x of useVisits.getState().visits) if (x.folder) set.add(x.folder);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, []);
+  const listId = `visit-folders-${v.visitId}`;
+  function save() {
+    void setDetails(v.visitId, {
+      date: date || null,
+      folder: folder.trim() || null,
+      note: note.trim() || null,
+    });
+    onClose();
+  }
+  return (
+    <div className="row-menu" role="group" aria-label={t("places.rowMenu.aria", { name: v.place.name })}>
+      <label className="picker-label">
+        <span>{t("places.rowMenu.date")}</span>
+        <input
+          type="date"
+          className="select"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+      </label>
+      <label className="picker-label">
+        <span>{t("places.rowMenu.folder")}</span>
+        <input
+          className="select"
+          list={listId}
+          value={folder}
+          maxLength={80}
+          placeholder={t("places.rowMenu.folderPlaceholder")}
+          onChange={(e) => setFolder(e.target.value)}
+        />
+        <datalist id={listId}>
+          {folders.map((f) => (
+            <option key={f} value={f} />
+          ))}
+        </datalist>
+      </label>
+      <label className="picker-label">
+        <span>{t("places.rowMenu.note")}</span>
+        <input
+          className="select"
+          value={note}
+          maxLength={2000}
+          placeholder={t("places.rowMenu.notePlaceholder")}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </label>
+      <div className="row-menu-actions">
+        <button className="btn" type="button" onClick={save}>
+          {t("common.save")}
+        </button>
+        <button className="btn-ghost" type="button" onClick={onClose}>
+          {t("common.cancel")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** One visited or wishlist row — visited adds details, photos and the favorite star.
  *  Memoized: store updates replace only the changed visit object, so after a
  *  toggle the other (up to 100) rows — photo thumbnails included — skip re-render. */
@@ -80,6 +153,7 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
   const restoreVisit = useVisits((s) => s.restoreVisit);
   const showToast = useToast((s) => s.show);
   const flyTo = useUi((s) => s.flyTo);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { coord, sub } = placeMeta(ref, v, t);
 
   function removeWithUndo() {
@@ -90,7 +164,7 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
   }
 
   return (
-    <li className="city-row compact">
+    <li className={"city-row compact" + (menuOpen ? " menu-open" : "")}>
       <button
         className="city-focus"
         type="button"
@@ -107,15 +181,12 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
           flag={countryFlag(v.place.countryId)}
           name={v.place.name}
           sub={
-            wishlist ? (
-              <>· {sub}</>
-            ) : (
-              <>
-                · {sub}
-                {v.date ? ` · ${formatDate(v.date)}` : ""}
-                {v.note ? ` · ${v.note}` : ""}
-              </>
-            )
+            // One clean column: just the region, plus a folder chip when set. The
+            // date and note now live in the row's "⋯" menu, not inline.
+            <>
+              · {sub}
+              {!wishlist && v.folder ? <span className="folder-chip">📁 {v.folder}</span> : null}
+            </>
           }
         />
       </button>
@@ -148,6 +219,17 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
           ✓ {t("places.row.beenThere")}
         </button>
       )}
+      {!wishlist && (
+        <button
+          className="mini-btn row-more"
+          type="button"
+          aria-expanded={menuOpen}
+          aria-label={t("places.row.moreAria", { name: v.place.name })}
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          ⋯
+        </button>
+      )}
       <button
         className="link-danger"
         type="button"
@@ -156,6 +238,7 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
       >
         {t("common.remove")}
       </button>
+      {menuOpen && !wishlist && <RowMenu v={v} onClose={() => setMenuOpen(false)} />}
     </li>
   );
 });
