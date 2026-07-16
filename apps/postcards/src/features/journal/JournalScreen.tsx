@@ -464,8 +464,10 @@ export function JournalScreen() {
   // Publish mode (shareable travel-blog site) — opened from the toolbar.
   const [publishOpen, setPublishOpen] = useState(false);
 
-  // Open by default: Journal greets you ready to write — no button first.
-  const [composerOpen, setComposerOpen] = useState(true);
+  // Closed by default: the page shows your memories, not an empty form. Open the
+  // composer from the toolbar buttons up top, or by long-pressing the page. (A
+  // recovered draft still reopens it on mount — see the draft-restore effect.)
+  const [composerOpen, setComposerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [place, setPlace] = useState<PlaceRef | null>(null);
   const [date, setDate] = useState(today());
@@ -656,6 +658,35 @@ export function JournalScreen() {
     setComposerOpen(true);
     scrollToComposer();
   }
+
+  // Long-press anywhere on the page (that isn't a control) to start a new entry —
+  // a fast path to the composer now that it no longer sits open by default. A
+  // press that moves (a scroll/drag) or lands on a button/link/field is ignored.
+  const pressTimer = useRef<number | null>(null);
+  const pressAt = useRef<{ x: number; y: number } | null>(null);
+  function cancelPress() {
+    if (pressTimer.current != null) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  }
+  function onPagePointerDown(e: React.PointerEvent) {
+    if (composerOpen) return;
+    if ((e.target as HTMLElement).closest("button, a, input, textarea, select, [role='dialog']"))
+      return;
+    pressAt.current = { x: e.clientX, y: e.clientY };
+    cancelPress();
+    pressTimer.current = window.setTimeout(() => {
+      pressTimer.current = null;
+      openComposer();
+    }, 500);
+  }
+  function onPagePointerMove(e: React.PointerEvent) {
+    const s = pressAt.current;
+    if (s && (Math.abs(e.clientX - s.x) > 10 || Math.abs(e.clientY - s.y) > 10)) cancelPress();
+  }
+  // Never leave a timer dangling if the screen unmounts mid-press.
+  useEffect(() => cancelPress, []);
 
   /** Anything typed that a reset would lose. */
   const dirty = !!(title.trim() || text.trim() || photos.length);
@@ -939,7 +970,14 @@ export function JournalScreen() {
   }
 
   return (
-    <section aria-label={t("journal.title")}>
+    <section
+      aria-label={t("journal.title")}
+      onPointerDown={onPagePointerDown}
+      onPointerMove={onPagePointerMove}
+      onPointerUp={cancelPress}
+      onPointerCancel={cancelPress}
+      onPointerLeave={cancelPress}
+    >
       <div className="section-head">
         <h2>{t("journal.title")}</h2>
       </div>
@@ -964,6 +1002,10 @@ export function JournalScreen() {
           </button>
         )}
       </div>
+
+      {!composerOpen && stories.length > 0 && (
+        <p className="muted small journal-press-hint">{t("journal.pressHint")}</p>
+      )}
 
       {publishOpen && (
         <Suspense fallback={null}>

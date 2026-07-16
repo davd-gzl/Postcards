@@ -418,6 +418,7 @@ export const en = {
   "journal.searchLabel": "Search entries by city",
   "journal.searchPlaceholder": "Search a city…",
   "journal.searchClear": "Clear search",
+  "journal.pressHint": "Tip: long-press the page to start a new entry.",
   "journal.editAria": "Edit story {title}",
   "journal.removeAria": "Remove story {title}",
   "journal.showingCount": "Showing {shown} of {total}",
