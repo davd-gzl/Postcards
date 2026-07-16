@@ -122,7 +122,11 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState("My travels");
   const [subtitle, setSubtitle] = useState("");
   const [passphrase, setPassphrase] = useState("");
-  const [busy, setBusy] = useState(false);
+  // Which action is in flight, so ONLY that button shows its progress label
+  // (a shared boolean made Download read "Pushing…" during a push, and vice
+  // versa). `busy` still gates canExport + both buttons against double-submit.
+  const [busyKind, setBusyKind] = useState<null | "download" | "push">(null);
+  const busy = busyKind !== null;
   const [preview, setPreview] = useState(false);
   // How the published reader presents the trip. "blog" (the living travelogue) is
   // the default; "book" keeps the original paged reader.
@@ -232,7 +236,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
 
   async function onDownload() {
     if (!canExport) return;
-    setBusy(true);
+    setBusyKind("download");
     try {
       const html = await buildHtml();
       download("index.html", html, "text/html");
@@ -242,7 +246,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
       // instead of a generic failure, so the user can act on it.
       showToast(e instanceof Error ? e.message : t("publish.toast.buildErr"));
     } finally {
-      setBusy(false);
+      setBusyKind(null);
     }
   }
 
@@ -252,7 +256,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
       showToast(t("publish.toast.missingFields"));
       return;
     }
-    setBusy(true);
+    setBusyKind("push");
     try {
       const html = await buildHtml();
       const owner = gh.owner.trim();
@@ -314,7 +318,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
     } catch (e) {
       showToast(e instanceof Error ? e.message : t("publish.toast.pushErr"));
     } finally {
-      setBusy(false);
+      setBusyKind(null);
     }
   }
 
@@ -582,7 +586,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
         {/* Export */}
         <div className="publish-actions">
           <button className="btn" type="button" disabled={!canExport} onClick={onDownload}>
-            {busy ? t("publish.building") : t("publish.download")}
+            {busyKind === "download" ? t("publish.building") : t("publish.download")}
           </button>
           <button
             className="btn-ghost"
@@ -627,7 +631,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
               />
               <div className="publish-actions">
                 <button className="btn" type="button" disabled={!canExport} onClick={onPushGitHub}>
-                  {busy ? t("publish.pushing") : t("publish.push")}
+                  {busyKind === "push" ? t("publish.pushing") : t("publish.push")}
                 </button>
               </div>
               {liveUrl && (

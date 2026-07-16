@@ -247,6 +247,23 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
         {!overview && offlineMode && (
           <p className="muted small">Overviews are off in Offline mode.</p>
         )}
+        {/* Auto-load is on but the overview never loaded because the device is
+            offline — the effect bailed and left this area blank. Say so, with a
+            Retry for when the connection is back. Gated on !navigator.onLine so a
+            normal ONLINE auto-load (state flips to "loading") never flashes it. */}
+        {!overview &&
+          state === "idle" &&
+          autoLoad &&
+          !offlineMode &&
+          typeof navigator !== "undefined" &&
+          !navigator.onLine && (
+            <p className="muted small">
+              You&rsquo;re offline — the overview loads when you&rsquo;re back online.{" "}
+              <button type="button" className="mini-btn" onClick={loadOverview}>
+                Retry
+              </button>
+            </p>
+          )}
         {!overview && state === "empty" && (
           <p className="muted small">
             {typeof navigator !== "undefined" && !navigator.onLine
