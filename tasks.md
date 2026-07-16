@@ -74,6 +74,17 @@ mode, so it's high-value and not much extra surface. Recommendation:
 - [x] Editorial published site (paper/ink, serif+sans, cover) + a fitted map labeling EACH city
       (pins + names, curved route, compass/legend) — self-contained, zero external requests. DONE.
 
+## ⭐ PRIORITY #1 — add-a-city latency on mobile (LOOP until zero)
+
+- [ ] Adding a city (mark visited / add place) STILL has latency on mobile — the flag must paint
+      **instantly**. Run an iterative loop: instrument tap→flag-visible latency (a Playwright perf
+      assertion on a mobile viewport), find and kill EVERY source of lag (store update path, keep the
+      IndexedDB write OFF the paint path, imperative flag repaint without a full-app React re-render,
+      marker image generation/caching, avoid rebuilding the whole visited GeoJSON), re-measure, repeat
+      until the flag appears synchronously with the tap. Leave a regression perf test. (MapView paint
+      path, useVisits, visitsDb.) NOTE: the running map-perf agent owns MapView — do this as its
+      immediate continuation / next agent so they don't collide.
+
 ## Batch 4 (current)
 
 - [ ] Remove the "＋ Add place" button from the map controls (keep long-press/right-click + search add).
