@@ -54,6 +54,13 @@ mode, so it's high-value and not much extra surface. Recommendation:
       adding a place is just naming the spot — country pre-fills from a typed/dropped point, still
       editable, blank in open ocean. DONE.
 
+## Publish mode — follow-up (v3)
+
+- [ ] Reframe the published site from a paged "book (read once at the end)" into a LIVING BLOG:
+      a scrollable, dated feed of entries you re-publish over time; masthead with "Last updated" +
+      a "latest entry" jump link; per-post permalinks; keep the labeled-city map. Keep "book" as an
+      alternate layout (Blog default). Self-contained, a11y, encryption preserved. (in progress)
+
 ## Publish mode — follow-up (v2)
 
 - [x] Name a trip (folder) + "By trip" publish scope (optional `name` on trips, TravelScreen field
