@@ -795,6 +795,9 @@ export const fr: Messages = {
   "about.facts.title": "D'où viennent les faits",
   "about.facts.body":
     "Les cartes et les faits sur les lieux proviennent de sources ouvertes : OpenStreetMap, Natural Earth, GeoNames et UNESCO. L'application n'invente jamais de données.",
+  "about.downloads.title": "Téléchargements optionnels",
+  "about.downloads.body":
+    "Tout fonctionne hors ligne dès le départ. Dans les Réglages, vous pouvez activer plus : la carte détaillée en ligne, des régions de carte à enregistrer pour un voyage, la liste complète des villes du monde (petites villes et villages) et des packs de lieux communautaires. Tout est optionnel et supprimable — rien ne se télécharge tout seul.",
   "about.footPre": "Appuyez sur ",
   "about.footPost": " pour voir les raccourcis clavier.",
   "about.gotIt": "Compris",

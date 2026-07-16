@@ -788,6 +788,9 @@ export const ko: Messages = {
   "about.facts.title": "정보의 출처",
   "about.facts.body":
     "지도와 장소 정보는 공개 출처에서 옵니다: OpenStreetMap, Natural Earth, GeoNames, UNESCO. 앱은 데이터를 지어내지 않습니다.",
+  "about.downloads.title": "선택적 다운로드",
+  "about.downloads.body":
+    "모든 기능이 기본적으로 오프라인에서 작동합니다. 설정에서 더 많은 것을 선택할 수 있습니다: 상세 온라인 지도, 여행용으로 저장하는 오프라인 지도 지역, 전 세계 도시 전체 목록(소도시와 마을 포함), 커뮤니티 장소 팩. 모두 선택 사항이며 삭제 가능하고 — 저절로 다운로드되는 것은 없습니다.",
   "about.footPre": " ",
   "about.footPost": " 키를 누르면 키보드 단축키를 볼 수 있습니다.",
   "about.gotIt": "확인",
