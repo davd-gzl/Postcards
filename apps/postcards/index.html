@@ -4,10 +4,43 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
-    <!-- Send our ORIGIN (not the URL) as the Referer on cross-origin requests so the
-         opt-in OpenStreetMap tile server accepts them ("Referer is required"). The
-         hosted PWA also sets this via public/_headers; this meta covers the Vite
-         dev/preview server and the Capacitor native webview, which never see _headers. -->
+    <!-- Content-Security-Policy — the ONE control the "token stays on device"
+         promise rests on. The GitHub sync token lives in this origin's
+         localStorage; the crucial defence is a strict `connect-src` (+ img-src,
+         object-src 'none', form-action 'none'): an injected or dependency-borne
+         script cannot POST the token to any host but the few the app legitimately
+         talks to, nor smuggle it out via an <img>, form or <object>. Delivered as
+         a meta because GitHub Pages sends no headers and the Capacitor WebView
+         never sees them for the bundled index.html — the only portable channel.
+         script-src keeps 'unsafe-inline' ONLY because the Publish PREVIEW renders
+         the generated reader in a `sandbox="allow-scripts"` srcdoc iframe, which
+         inherits this policy and is all inline script; that frame has an opaque
+         origin and cannot read this origin's token, and static hosting offers no
+         per-request nonce, so 'unsafe-inline' here does not widen the credential's
+         blast radius — the connect-src backstop still contains any exfiltration.
+         NOTE: `frame-ancestors`/`sandbox` are ignored in a meta CSP, so there is
+         no clickjacking protection on a header-less static host (a non-issue on
+         native). connect-src omits self-hosted GitHub Enterprise apiBase hosts;
+         those users must serve the app with their own header-based CSP. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               base-uri 'none';
+               object-src 'none';
+               form-action 'none';
+               frame-ancestors 'none';
+               script-src 'self' 'unsafe-inline';
+               style-src 'self' 'unsafe-inline';
+               worker-src 'self' blob:;
+               img-src 'self' data: blob: https://tile.openstreetmap.org https://upload.wikimedia.org;
+               connect-src 'self' https://api.github.com https://tile.openstreetmap.org https://upload.wikimedia.org https://*.wikipedia.org https://*.wikivoyage.org;
+               frame-src 'self';
+               manifest-src 'self'"
+    />
+    <!-- Send our ORIGIN (not the URL) as the Referer on cross-origin requests so
+         the opt-in OpenStreetMap tile server accepts them ("Referer is required").
+         This meta is the only referrer channel that reaches the Vite dev/preview
+         server and the Capacitor native webview. -->
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
