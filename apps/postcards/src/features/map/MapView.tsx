@@ -931,8 +931,15 @@ export function MapView({
   // numeric ISO codes (which join to the geometry). Airports and neutral "ZZ"
   // points don't count a country, matching the stats and passport. Honours the
   // active period so shading only marks countries with a qualifying visit.
-  function applyCountryFill(map: MlMap) {
+  //
+  // Setting this filter re-buckets the detailed Natural Earth 50m country
+  // polygons on the tiler — a ~0.5s main-thread long task on a phone. The tint
+  // is HIDDEN by default (the "My countries" toggle), so skip the re-filter while
+  // it isn't shown: marking a city visited must not pay to recolour an invisible
+  // layer. The toggle-on effect passes `force` to paint it when it becomes visible.
+  function applyCountryFill(map: MlMap, force = false) {
     if (!map.getLayer("countries-visited-fill")) return;
+    if (!force && !showCountriesRef.current) return;
     const vis = visitsRef.current.filter((v) => matchesDateFilter(v.date, yearRef.current));
     const nums: string[] = [];
     for (const iso2 of visitedCountryIds(vis)) {
@@ -1530,6 +1537,12 @@ export function MapView({
       "visibility",
       showCountries ? "visible" : "none",
     );
+    // Paint the tint the moment it's turned on — applyCountryFill is skipped
+    // while hidden, so the filter may be stale from visits added in the meantime.
+    if (showCountries) {
+      lastCountryKey.current = "<init>";
+      applyCountryFill(map, true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showCountries]);
 

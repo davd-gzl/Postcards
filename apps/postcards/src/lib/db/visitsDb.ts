@@ -1,5 +1,12 @@
 import { openDB, type IDBPDatabase } from "idb";
 import type { Story, Trip, Visit } from "../schema/models";
+import {
+  dehydrateVisit,
+  hydrateVisit,
+  referencedPhotoIds,
+  type PhotoBlobKV,
+  type StoredVisit,
+} from "../image/photoBlobs";
 
 // On-device working store (Constitution II: local-first, no backend).
 const DB_NAME = "postcards";
@@ -9,9 +16,14 @@ const LEGACY_DB_NAME = "placebeen"; // the pre-rename database — migrated once
 // v3 adds the "stories" store (Journal) — additive again; visits and trips are untouched.
 // v4 adds the "tombstones" store (device sync, spec 013): deletion markers so a
 // delete propagates instead of being resurrected. Additive & idempotent again.
-const DB_VERSION = 4;
+// v5 adds the "photos" store: a visit's photos are stored as BLOBS keyed by a
+// photo id, and only lightweight `{ id, caption }` refs stay on the visit record
+// (perf — a toggle no longer re-`put`s multi-MB of inline base64). Additive &
+// idempotent; existing inline-photo records are migrated on the next load.
+const DB_VERSION = 5;
 const STORE = "visits";
 const TOMBSTONES = "tombstones";
+const PHOTOS = "photos";
 
 /** Which user collection a tombstone's id belongs to (its merge namespace). */
 export type TombstoneKind = "visit" | "trip" | "story";
@@ -84,6 +96,9 @@ export function getDb(): Promise<IDBPDatabase> {
         if (!database.objectStoreNames.contains(TOMBSTONES)) {
           database.createObjectStore(TOMBSTONES, { keyPath: "key" });
         }
+        if (!database.objectStoreNames.contains(PHOTOS)) {
+          database.createObjectStore(PHOTOS, { keyPath: "id" });
+        }
       },
     }).then(async (database) => {
       await migrateLegacyDb(database);
@@ -95,27 +110,111 @@ export function getDb(): Promise<IDBPDatabase> {
 
 const db = getDb;
 
+/** A read-only blob port backed by an in-memory snapshot of the photos store, so
+ *  hydrating N visits costs ONE getAll rather than N micro-transactions. */
+function snapshotKv(blobs: Map<string, Blob>): PhotoBlobKV {
+  return {
+    async get(id) {
+      return blobs.get(id);
+    },
+    async put() {
+      /* hydrate never writes */
+    },
+  };
+}
+
+/** A read/write blob port over an open transaction's photos object store. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function txKv(store: any): PhotoBlobKV {
+  return {
+    async get(id) {
+      return (await store.get(id))?.blob as Blob | undefined;
+    },
+    async put(id, blob) {
+      await store.put({ id, blob });
+    },
+  };
+}
+
+async function loadAllBlobs(database: IDBPDatabase): Promise<Map<string, Blob>> {
+  const map = new Map<string, Blob>();
+  const rows = (await database.getAll(PHOTOS)) as { id: string; blob: Blob }[];
+  for (const r of rows) map.set(r.id, r.blob);
+  return map;
+}
+
+/** Delete photo blobs no live visit references (orphans from photo removals or
+ *  caption edits, and anything a restore left behind). Best-effort, on load only. */
+async function gcOrphanPhotos(database: IDBPDatabase): Promise<void> {
+  const keys = (await database.getAllKeys(PHOTOS)) as string[];
+  if (keys.length === 0) return;
+  const recs = (await database.getAll(STORE)) as StoredVisit[];
+  const referenced = new Set<string>();
+  for (const r of recs) for (const id of referencedPhotoIds(r)) referenced.add(id);
+  const orphans = keys.filter((k) => !referenced.has(k));
+  if (orphans.length === 0) return;
+  const tx = database.transaction(PHOTOS, "readwrite");
+  for (const k of orphans) await tx.store.delete(k);
+  await tx.done;
+}
+
 export async function getAllVisits(): Promise<Visit[]> {
   if (!hasIndexedDB()) return [];
-  return (await db()).getAll(STORE) as Promise<Visit[]>;
+  const database = await db();
+  const stored = (await database.getAll(STORE)) as StoredVisit[];
+  const blobs = await loadAllBlobs(database);
+  const kv = snapshotKv(blobs);
+  const out: Visit[] = [];
+  const migrate: Visit[] = [];
+  for (const rec of stored) {
+    const { visit, needsMigrate } = await hydrateVisit(rec, kv);
+    out.push(visit);
+    if (needsMigrate) migrate.push(visit);
+  }
+  // Re-persist any pre-split (inline) records once, so their bytes move to the
+  // blob store and future toggles are cheap. Best-effort — never block the load.
+  for (const v of migrate) {
+    try {
+      await putVisit(v);
+    } catch {
+      /* a failed migration must not stop the app from opening */
+    }
+  }
+  try {
+    await gcOrphanPhotos(database);
+  } catch {
+    /* GC is housekeeping — never fatal */
+  }
+  return out;
 }
 
 export async function putVisit(visit: Visit): Promise<void> {
   if (!hasIndexedDB()) return;
-  await (await db()).put(STORE, visit);
+  const database = await db();
+  const tx = database.transaction([STORE, PHOTOS], "readwrite");
+  const slim = await dehydrateVisit(visit, txKv(tx.objectStore(PHOTOS)));
+  await tx.objectStore(STORE).put(slim);
+  await tx.done;
 }
 
 export async function deleteVisit(visitId: string): Promise<void> {
   if (!hasIndexedDB()) return;
-  await (await db()).delete(STORE, visitId);
+  const database = await db();
+  const tx = database.transaction([STORE, PHOTOS], "readwrite");
+  const rec = (await tx.objectStore(STORE).get(visitId)) as StoredVisit | undefined;
+  if (rec) for (const id of referencedPhotoIds(rec)) await tx.objectStore(PHOTOS).delete(id);
+  await tx.objectStore(STORE).delete(visitId);
+  await tx.done;
 }
 
 export async function replaceAllVisits(visits: Visit[]): Promise<void> {
   if (!hasIndexedDB()) return;
   const database = await db();
-  const tx = database.transaction(STORE, "readwrite");
-  await tx.store.clear();
-  for (const v of visits) await tx.store.put(v);
+  const tx = database.transaction([STORE, PHOTOS], "readwrite");
+  await tx.objectStore(STORE).clear();
+  await tx.objectStore(PHOTOS).clear();
+  const kv = txKv(tx.objectStore(PHOTOS));
+  for (const v of visits) await tx.objectStore(STORE).put(await dehydrateVisit(v, kv));
   await tx.done;
 }
 
@@ -135,16 +234,21 @@ export async function replaceAllPortable(
 ): Promise<void> {
   if (!hasIndexedDB()) return;
   const database = await db();
-  const stores = [STORE, "trips"];
+  // PHOTOS rides along in the same transaction so a restore/sync lands the visit
+  // refs and their blobs atomically (never refs pointing at absent images).
+  const stores = [STORE, PHOTOS, "trips"];
   if (stories) stores.push("stories");
   // Device sync lands records AND tombstones in ONE transaction, so a merged pull
   // can never leave the device with the new records but the old tombstones.
   if (tombstones) stores.push(TOMBSTONES);
   const tx = database.transaction(stores, "readwrite");
   const visitStore = tx.objectStore(STORE);
+  const photoStore = tx.objectStore(PHOTOS);
   const tripStore = tx.objectStore("trips");
+  const kv = txKv(photoStore);
   await visitStore.clear();
-  for (const v of visits) await visitStore.put(v);
+  await photoStore.clear();
+  for (const v of visits) await visitStore.put(await dehydrateVisit(v, kv));
   await tripStore.clear();
   for (const t of trips) await tripStore.put(t);
   if (stories) {
