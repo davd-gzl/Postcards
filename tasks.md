@@ -73,8 +73,22 @@ mode, so it's high-value and not much extra surface. Recommendation:
 - [ ] Filter the map by DATE — a year (+ "Any year" / "No date") filter that shows only the
       places visited in that period (visited markers + country shading + the in-view list), matching
       the existing year-filter UX in Places/Journal/Trips; align with the trip-arc period filter.
-      (MapScreen filter UI, MapView visited painting, reuse `distinctYearsDesc`.) — queued after the
-      blog agent (shares the i18n catalogs).
+      (MapScreen filter UI, MapView visited painting, reuse `distinctYearsDesc`.) — queued after the blog agent.
+- [ ] Remove the map "▲ Show list / ▼ Show map" toggle (`.list-expand`, MapScreen.tsx:697) — the
+      divider/slider already docks the list, so it's redundant. Drop the button + `listTall` state +
+      `.list-tall` CSS. — queued after the blog agent.
+
+## Publish / Sync — GitHub connector
+
+- [ ] Token-free clarity + a guide + a guided GitHub "proposition":
+      - Make clear you DON'T need a token: "Download" the site/data and host/`git push` it yourself on
+        any static host (GitHub Pages, Netlify, Nextcloud, USB) — zero lock-in. Token is only for the
+        in-app convenience push.
+      - Add an in-app GUIDE for the fine-grained PAT (how to create it, minimal scope: contents:write on
+        the one repo, stays on-device, never in exports) in `GitHubConnectorFields`.
+      - Make GitHub a recommended, walked-through option (create repo → token → push → your URL at
+        username.github.io/repo). Optionally OAuth Device Flow later (needs a client_id — maintainer setup).
+      — queued after the blog agent (shares PublishScreen / i18n).
 
 ## UX / behaviour batch
 
