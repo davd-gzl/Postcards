@@ -48,6 +48,11 @@ mode, so it's high-value and not much extra surface. Recommendation:
 - [x] Sync engine wiring (git pull→merge→push, conditional-push retry) + Sync UI, shared connector — DONE
 - [x] `updatedAt` on records + tombstones (schema v6, DB v4, backfilled) — DONE
 
+## Add-place
+
+- [ ] Auto-select the country from the coordinates (nearest gazetteer city) so adding a place
+      is just naming the city — country pre-filled but still editable. (`AddPlaceForm`, new `countryAtPoint` helper)
+
 ## Publish mode — follow-up (v2)
 
 - [ ] Name a trip (like a folder) + select it when publishing (optional `name` on trips,
