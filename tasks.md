@@ -74,6 +74,28 @@ mode, so it's high-value and not much extra surface. Recommendation:
 - [x] Editorial published site (paper/ink, serif+sans, cover) + a fitted map labeling EACH city
       (pins + names, curved route, compass/legend) — self-contained, zero external requests. DONE.
 
+## Batch 4 (current)
+
+- [ ] Remove the "＋ Add place" button from the map controls (keep long-press/right-click + search add).
+- [ ] List rows to ONE column (flag + name); move the date into a per-row "more" menu that also
+      lets you set a **folder** etc. Implies **folders on visits/places**, surfaced via the row menu.
+- [ ] BUG: zooming OUT doesn't show all flags on the first try — they load in late. Make the
+      visited-flag / in-view marker repaint immediate on zoom-out (debounce/idle/recompute lag).
+- [ ] Round out **Capacitor** for a native feel (status bar, safe-area insets, splash, haptics,
+      keyboard handling) — verify config + platforms.
+- [ ] BUG: long-press to add a place → the add-place modal is BROKEN on mobile. Fix the overlay/dialog
+      sizing/positioning on small screens.
+- [ ] **Do all remaining backlog items, integrated** (below).
+- [ ] **Launch a workflow** on "whatever could be upgraded" → implement top picks.
+
+### Remaining backlog to finish (integration)
+- [ ] Map-data perf (from the read-only audit): gazetteer **spatial index** for the viewport query;
+      geometry prime/low-res-seed + kill first-load double-fetch.
+- [ ] Intra-city places (spec 014) — structure + loading seam + UI with graceful per-city availability;
+      small provenance-cited sample where feasible (full dataset stays a follow-up).
+- [ ] Tile audit #7 (no full remount on basemap/theme toggle) + #8 (robust offline first-paint).
+- [ ] ShortcutsHelp.tsx i18n (interleaved <kbd> — deferred earlier).
+
 ## Journal
 
 - [x] **Calendar view** — Feed/Calendar toggle; a month grid tinting each entry-day by its dominant
