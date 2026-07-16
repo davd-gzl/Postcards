@@ -15,7 +15,7 @@ import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { useT } from "../../lib/i18n";
 import { visitedCountryIds } from "../stats/computeStats";
-import { matchesDateFilter, type DateFilter } from "../travel/period";
+import { mapDateMatches, type MapDate } from "../travel/period";
 import { airportPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
 import { prefetchAroundBounds, prefetchAroundPoint, OSM_TILE_TEMPLATE } from "../../lib/offline/tiles";
 import { markerCitiesInView, type Bounds, type CityFilter } from "./viewport";
@@ -629,7 +629,8 @@ export function MapView({
   showTowns = false,
   showCountries = false,
   maxMarkers = 250,
-  year = "all",
+  dateFilter = { mode: "all" },
+  folder = "",
   onBaseUnavailable,
   onAddHere,
 }: {
@@ -641,10 +642,15 @@ export function MapView({
   showCountries?: boolean;
   /** Cap on airport/monument markers drawn in the current view (anti-blanket). */
   maxMarkers?: number;
-  /** Date filter for YOUR places: "all" (any date), "none" (undated), or a
-   *  4-digit year. Narrows the visited/wishlist/airport markers, the visited-
-   *  country shading and the browsable-POI "seen" state to that period. */
-  year?: DateFilter;
+  /** Date filter for YOUR places: any date, undated-only, or a precise [from,to]
+   *  range (a year chip is just a whole-year range). Narrows the visited/wishlist
+   *  /airport markers, the visited-country shading and the browsable-POI "seen"
+   *  state to that window. */
+  dateFilter?: MapDate;
+  /** Folder filter for YOUR places: "" (all) or a folder name — narrows the
+   *  personal markers and country shading to visits filed under that folder,
+   *  and hides the browsable reference dots (they belong to no folder). */
+  folder?: string;
   onBounds?: (b: Bounds) => void;
   focus?: MapFocus | null;
   fit?: MapFit | null;
@@ -700,10 +706,18 @@ export function MapView({
   modeRef.current = mode;
   const maxMarkersRef = useRef(maxMarkers);
   maxMarkersRef.current = maxMarkers;
-  // The active date filter for YOUR places (see the `year` prop). Read from a
-  // ref so the imperative painters use the latest value without re-subscribing.
-  const yearRef = useRef(year);
-  yearRef.current = year;
+  // The active date + folder filter for YOUR places. Read from refs so the
+  // imperative painters use the latest value without re-subscribing.
+  const dateRef = useRef(dateFilter);
+  dateRef.current = dateFilter;
+  const folderRef = useRef(folder);
+  folderRef.current = folder;
+  // One place decides whether a visit passes the current date AND folder filter —
+  // used by every painter that draws YOUR records (flags, wishes, country tint,
+  // the "seen" state of browsable monuments/airports).
+  const visitMatches = (v: Visit): boolean =>
+    mapDateMatches(v.date, dateRef.current) &&
+    (!folderRef.current || v.folder === folderRef.current);
   const [failed, setFailed] = useState(false);
   const [dataState, setDataState] = useState<"loading" | "ready" | "error">("loading");
 
@@ -776,7 +790,7 @@ export function MapView({
               (v) =>
                 v.status !== "wishlist" &&
                 v.place.kind === "heritage" &&
-                matchesDateFilter(v.date, yearRef.current),
+                visitMatches(v),
             )
             .map((v) => v.place.id),
         );
@@ -821,7 +835,7 @@ export function MapView({
               (v) =>
                 v.status !== "wishlist" &&
                 v.place.kind === "airport" &&
-                matchesDateFilter(v.date, yearRef.current),
+                visitMatches(v),
             )
             .map((v) => v.place.id),
         );
@@ -870,7 +884,7 @@ export function MapView({
     // any source, so the same one selection drives the markers, the country
     // shading and (via the keys below) which of them are worth re-tiling. The
     // reference dot fields (cities-all etc.) never see this — only your records.
-    const vis = visitsRef.current.filter((v) => matchesDateFilter(v.date, yearRef.current));
+    const vis = visitsRef.current.filter((v) => visitMatches(v));
     const markerKey = (v: Visit) =>
       `${v.place.kind}:${v.place.id}:${v.status}:${v.favorite ? 1 : 0}`;
     const citiesKey = vis
@@ -940,7 +954,7 @@ export function MapView({
   function applyCountryFill(map: MlMap, force = false) {
     if (!map.getLayer("countries-visited-fill")) return;
     if (!force && !showCountriesRef.current) return;
-    const vis = visitsRef.current.filter((v) => matchesDateFilter(v.date, yearRef.current));
+    const vis = visitsRef.current.filter((v) => visitMatches(v));
     const nums: string[] = [];
     for (const iso2 of visitedCountryIds(vis)) {
       const num = ref.countryByIso2(iso2)?.numeric;
@@ -1003,6 +1017,13 @@ export function MapView({
   // round-trip. Same population-cap + filter as the list, via a shared pure
   // helper, so the dots and the list stay in lock-step.
   function applyInViewCities(map: MlMap) {
+    const src = map.getSource("cities-inview") as GeoJSONSource | undefined;
+    // Filtering to a folder hides the browsable reference dots — those are cities
+    // you could visit, not the ones in your folder, so they'd only be noise.
+    if (folderRef.current) {
+      src?.setData(EMPTY_FC);
+      return;
+    }
     const b = map.getBounds();
     const bounds: Bounds = {
       west: b.getWest(),
@@ -1017,7 +1038,7 @@ export function MapView({
       // active period counts as "visited" here (status is not consulted).
       visitedIds = new Set(
         visitsRef.current
-          .filter((v) => v.place.kind === "city" && matchesDateFilter(v.date, yearRef.current))
+          .filter((v) => v.place.kind === "city" && visitMatches(v))
           .map((v) => v.place.id),
       );
     }
@@ -1529,9 +1550,9 @@ export function MapView({
     lastCountryKey.current = "<init>";
     applyVisited(map);
     applyViewportPoi(map);
-    applyInViewCities(map); // the period re-partitions visited vs unvisited dots
+    applyInViewCities(map); // the period/folder re-partitions visited vs unvisited dots
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [year]);
+  }, [dateFilter, folder]);
 
   useEffect(() => {
     const map = mapRef.current;

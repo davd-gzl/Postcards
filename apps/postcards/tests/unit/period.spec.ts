@@ -74,3 +74,44 @@ describe("periodLabel", () => {
     expect(periodLabel("2024", "08")).toBe("August 2024");
   });
 });
+
+import { mapDateMatches, yearRange, rangeExactYear, type MapDate } from "../../src/features/travel/period";
+
+describe("map date window", () => {
+  it("yearRange spans Jan 1 – Dec 31", () => {
+    expect(yearRange("2024")).toEqual({ from: "2024-01-01", to: "2024-12-31" });
+  });
+
+  it("all matches anything, including undated", () => {
+    const f: MapDate = { mode: "all" };
+    expect(mapDateMatches("2024-06-01", f)).toBe(true);
+    expect(mapDateMatches(null, f)).toBe(true);
+  });
+
+  it("undated matches only places with no date", () => {
+    const f: MapDate = { mode: "undated" };
+    expect(mapDateMatches(null, f)).toBe(true);
+    expect(mapDateMatches("2024-06-01", f)).toBe(false);
+  });
+
+  it("a bounded range is inclusive and excludes undated", () => {
+    const f: MapDate = { mode: "range", from: "2024-06-01", to: "2024-06-30" };
+    expect(mapDateMatches("2024-06-01", f)).toBe(true);
+    expect(mapDateMatches("2024-06-30", f)).toBe(true);
+    expect(mapDateMatches("2024-05-31", f)).toBe(false);
+    expect(mapDateMatches("2024-07-01", f)).toBe(false);
+    expect(mapDateMatches(null, f)).toBe(false);
+  });
+
+  it("an open-ended range bounds only the given side", () => {
+    expect(mapDateMatches("2020-01-01", { mode: "range", from: "2024-01-01", to: "" })).toBe(false);
+    expect(mapDateMatches("2025-01-01", { mode: "range", from: "2024-01-01", to: "" })).toBe(true);
+    expect(mapDateMatches("2030-01-01", { mode: "range", from: "", to: "2024-12-31" })).toBe(false);
+  });
+
+  it("rangeExactYear detects a whole-year window (for lighting the chip)", () => {
+    expect(rangeExactYear({ mode: "range", from: "2024-01-01", to: "2024-12-31" })).toBe("2024");
+    expect(rangeExactYear({ mode: "range", from: "2024-06-01", to: "2024-06-30" })).toBeNull();
+    expect(rangeExactYear({ mode: "all" })).toBeNull();
+  });
+});
