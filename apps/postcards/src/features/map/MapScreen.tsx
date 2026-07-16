@@ -248,6 +248,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
       ? Math.round((clamp(mapH - 120, 0, 680) / 680) * 100)
       : 50;
   const [layersOpen, setLayersOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [mode, setMode] = useState<MapMode>(() =>
     loadPref("postcards-map-mode", (v) =>
       v === "cities" || v === "monuments" || v === "airports" ? v : "all",
@@ -342,6 +343,13 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   }
   const rangeFrom = dateFilter.mode === "range" ? dateFilter.from : "";
   const rangeTo = dateFilter.mode === "range" ? dateFilter.to : "";
+  // Whether any narrowing is active (drives the dot on the Filter button and the
+  // Clear action inside the popover).
+  const filterActive = dateFilter.mode !== "all" || !!folder;
+  function clearFilter() {
+    setDateFilter({ mode: "all" });
+    setFolder("");
+  }
   // Folders in use, gathered from your visits AND your trip names (both are
   // "folders" on the map), for the folder picker.
   const folderOptions = useMemo(() => {
@@ -353,6 +361,8 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     }
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [visits, trips]);
+  // The Filter control only appears when there's something to filter by.
+  const hasFilterControls = yearBuckets.years.length > 0 || folderOptions.length > 0;
   // A short human label for the active window (for the trip-arc period tag etc.).
   const periodTag =
     dateFilter.mode === "undated"
@@ -708,13 +718,114 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           </div>
         )}
         <div className="map-ctl map-ctl-right">
+          {hasFilterControls && (
+            <>
+              <button
+                className={
+                  "map-btn" + (filterOpen ? " on" : "") + (filterActive ? " map-btn-dot" : "")
+                }
+                type="button"
+                aria-expanded={filterOpen}
+                aria-haspopup="true"
+                title={t("map.filterTitle")}
+                onClick={() => {
+                  setFilterOpen((v) => !v);
+                  setLayersOpen(false);
+                }}
+              >
+                🎚 {t("map.filterButton")}
+              </button>
+              {filterOpen && (
+                <div
+                  className="layers-panel filter-panel"
+                  role="group"
+                  aria-label={t("map.filterPanelAria")}
+                >
+                  {(yearBuckets.years.length > 1 ||
+                    (yearBuckets.years.length === 1 && yearBuckets.undated)) && (
+                    <div
+                      className="segmented wrap year-filter"
+                      role="group"
+                      aria-label={t("map.yearFilterAria")}
+                    >
+                      {[
+                        { val: "all", label: t("map.year.all") },
+                        ...yearBuckets.years.map((y) => ({ val: y, label: y })),
+                        ...(yearBuckets.undated ? [{ val: "none", label: t("map.year.noDate") }] : []),
+                      ].map(({ val, label }) => (
+                        <button
+                          key={val}
+                          type="button"
+                          aria-pressed={activeYear === val}
+                          className={activeYear === val ? "seg-on" : ""}
+                          onClick={() => pickYear(val)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {yearBuckets.years.length > 0 && (
+                    <div className="map-daterange">
+                      <label className="picker-label" htmlFor="map-from">
+                        <span className="small">{t("map.filter.from")}</span>
+                        <input
+                          id="map-from"
+                          type="date"
+                          className="select"
+                          value={rangeFrom}
+                          onChange={(e) => setRange(e.target.value, rangeTo)}
+                        />
+                      </label>
+                      <label className="picker-label" htmlFor="map-to">
+                        <span className="small">{t("map.filter.to")}</span>
+                        <input
+                          id="map-to"
+                          type="date"
+                          className="select"
+                          value={rangeTo}
+                          onChange={(e) => setRange(rangeFrom, e.target.value)}
+                        />
+                      </label>
+                    </div>
+                  )}
+                  {folderOptions.length > 0 && (
+                    <label className="picker-label" htmlFor="map-folder">
+                      <span className="small">{t("map.filter.folder")}</span>
+                      <select
+                        id="map-folder"
+                        className="select"
+                        value={folder}
+                        onChange={(e) => setFolder(e.target.value)}
+                      >
+                        <option value="">{t("map.filter.allFolders")}</option>
+                        {folderOptions.map((f) => (
+                          <option key={f} value={f}>
+                            {f}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  {filterActive && (
+                    <button className="link map-filter-clear" type="button" onClick={clearFilter}>
+                      {t("map.filter.clear")}
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
+          )}
           <button
             className={"map-btn" + (layersOpen ? " on" : "")}
             type="button"
             aria-expanded={layersOpen}
             aria-haspopup="true"
             title={t("map.layersTitle")}
-            onClick={() => setLayersOpen((v) => !v)}
+            onClick={() => {
+              setLayersOpen((v) => !v);
+              setFilterOpen(false);
+            }}
           >
             ≡ {t("map.layersButton")}
           </button>
@@ -827,87 +938,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             )}
           </span>
         </div>
-
-        {/* Date filter — one selection narrows the markers, the country shading,
-            this list AND the trip arcs to a year (or the undated bucket). Shown
-            in every mode (it filters the whole map), only when your visited
-            places actually span more than one bucket. Mirrors Places' chips. */}
-        {(yearBuckets.years.length > 0 || folderOptions.length > 0) && (
-          <div className="map-filter">
-            {/* Quick year chips (only when your places span more than one bucket). */}
-            {(yearBuckets.years.length > 1 ||
-              (yearBuckets.years.length === 1 && yearBuckets.undated)) && (
-              <div
-                className="segmented wrap year-filter"
-                role="group"
-                aria-label={t("map.yearFilterAria")}
-              >
-                {[
-                  { val: "all", label: t("map.year.all") },
-                  ...yearBuckets.years.map((y) => ({ val: y, label: y })),
-                  ...(yearBuckets.undated ? [{ val: "none", label: t("map.year.noDate") }] : []),
-                ].map(({ val, label }) => (
-                  <button
-                    key={val}
-                    type="button"
-                    aria-pressed={activeYear === val}
-                    className={activeYear === val ? "seg-on" : ""}
-                    onClick={() => pickYear(val)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-            {/* Precise dates + folder, tucked into a disclosure so the panel stays
-                compact — open it to pick an exact window or a single folder. */}
-            <details className="map-filter-more">
-              <summary>{t("map.filter.more")}</summary>
-              {yearBuckets.years.length > 0 && (
-                <div className="map-daterange">
-                  <label className="picker-label" htmlFor="map-from">
-                    <span className="small">{t("map.filter.from")}</span>
-                    <input
-                      id="map-from"
-                      type="date"
-                      className="select"
-                      value={rangeFrom}
-                      onChange={(e) => setRange(e.target.value, rangeTo)}
-                    />
-                  </label>
-                  <label className="picker-label" htmlFor="map-to">
-                    <span className="small">{t("map.filter.to")}</span>
-                    <input
-                      id="map-to"
-                      type="date"
-                      className="select"
-                      value={rangeTo}
-                      onChange={(e) => setRange(rangeFrom, e.target.value)}
-                    />
-                  </label>
-                </div>
-              )}
-              {folderOptions.length > 0 && (
-                <label className="picker-label" htmlFor="map-folder">
-                  <span className="small">{t("map.filter.folder")}</span>
-                  <select
-                    id="map-folder"
-                    className="select"
-                    value={folder}
-                    onChange={(e) => setFolder(e.target.value)}
-                  >
-                    <option value="">{t("map.filter.allFolders")}</option>
-                    {folderOptions.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-            </details>
-          </div>
-        )}
 
         {poi ? (
           poi.items.length === 0 ? (

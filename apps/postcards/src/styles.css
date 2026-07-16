@@ -3353,29 +3353,47 @@ button.brand:focus-visible {
 .year-filter {
   margin: 0 0 8px;
 }
-/* Map date + folder filter: the quick chips, plus a disclosure holding the
-   precise From–To pickers and the folder select. */
-.map-filter {
-  margin: 0 0 8px;
+/* Map date + folder filter: a compact popover (same chrome as the Layers panel)
+   holding the quick year chips, the precise From–To pickers and the folder
+   select — so on mobile it never eats the list's space. */
+.filter-panel {
+  width: min(280px, 80vw);
+  gap: 10px;
 }
-.map-filter-more > summary {
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--muted);
-  padding: 2px 0;
-  user-select: none;
+.filter-panel .year-filter {
+  margin: 0;
 }
-.map-filter-more[open] > summary {
-  margin-bottom: 6px;
+.filter-panel .picker-label {
+  gap: 4px;
 }
 .map-daterange {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  margin: 0 0 8px;
+  margin: 0;
 }
 .map-daterange .picker-label {
   flex: 1 1 120px;
+}
+.map-filter-clear {
+  align-self: flex-start;
+  padding: 2px 0;
+}
+/* A small dot on the Filter button when a narrowing is active, so you can tell at
+   a glance the map is filtered even with the popover closed. */
+.map-btn-dot {
+  position: relative;
+}
+.map-btn-dot::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 1.5px solid var(--surface);
 }
 .countries-head {
   display: flex;
