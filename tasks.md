@@ -110,6 +110,20 @@ EVERYWHERE (tab switches, list scroll, filters, opening a place, toggles).
       Constitution: decentralized (any URL, no central server), local-first (cached, offline after),
       privacy (explicit action), inert + provenance-tagged. Builds on the downloadable-data cache seam.
 
+## Upgrade sweep — findings to implement (ranked; full report: tasks/wvks6fxqc.output)
+
+- [x] **Android Auto Backup OFF** — was leaking the sync token + journal to Google Drive. FIXED (allowBackup=false + extraction rules).
+- [ ] **Photos as Blobs in a dedicated IDB store** (biggest reactivity win — toggles re-put ~2.4MB today). IN PROGRESS (priority-#1 agent).
+- [ ] **iOS Info.plist** usage strings (NSCamera/NSPhotoLibrary) — file picker can crash / fail App Review without them. (doing now)
+- [ ] **CSP** — add `<meta http-equiv=CSP>` (covers native WebView) + create `public/_headers` (nosniff, referrer-policy, permissions-policy). ⚖️
+- [ ] **Vendor code-splitting** (`manualChunks`: maplibre+pmtiles, vendor) — stop re-downloading a 1.09MB chunk on every map edit.
+- [ ] **Small thumbnail variant** (~160px) for list/grid rows (they decode 1000px data URLs today) + lazy/async decode.
+- [ ] **ESLint** (typescript-eslint + react-hooks + jsx-a11y) + lint CI step — no linter exists.
+- [ ] **useAutoSync/runSync unit tests** — the sync glue (infinite-push-loop risk) is untested.
+- [ ] **Capacitor 6→7** (own PR: android/ + ios/) → unblocks **targetSdk 34→35** (Play rejects 34).
+- [ ] **@capacitor/status-bar + splash-screen + keyboard** + theme-aware `theme-color` (the native-feel pass).
+- [ ] Lower the 256MB import ceiling + parse/validate off-thread; tsconfig `noUncheckedIndexedAccess`/`verbatimModuleSyntax`; dep hygiene (@types/node ^22, drop world-atlas), off-thread image decode.
+
 ## Whole-app optimization (loop-review)
 
 - [ ] Iterative review-and-optimize pass over the whole codebase (correctness, perf, simplification,
