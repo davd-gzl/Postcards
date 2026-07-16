@@ -126,27 +126,35 @@ export function SettingsScreen() {
         <h2>{t("settings.title")}</h2>
       </div>
 
+      {/* Appearance — two self-evident pickers, no prose. */}
       <section className="settings-section">
         <h3>{t("settings.appearance.title")}</h3>
-        <p className="muted small">{t("settings.appearance.desc")}</p>
         <ThemeToggle />
-      </section>
-
-      <section className="settings-section">
-        <h3>{t("settings.language.title")}</h3>
-        <p className="muted small">{t("settings.language.desc")}</p>
         <LanguageToggle />
       </section>
 
+      {/* Places — what counts as a country + whether guides load automatically. */}
       <section className="settings-section">
-        <h3>{t("settings.scope.title")}</h3>
+        <h3>{t("settings.places.title")}</h3>
+        <div className="picker-label">
+          <span>{t("settings.scope.title")}</span>
+          <ScopeToggle />
+        </div>
         <p className="muted small">{t("settings.scope.desc")}</p>
-        <ScopeToggle />
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={autoLoadGuides}
+            onChange={(e) => setAutoLoadGuides(e.target.checked)}
+          />
+          <span>{t("settings.guides.toggle")}</span>
+        </label>
       </section>
 
+      {/* Map — the online basemap toggle up front; markers + offline packs tucked
+          into a disclosure so the page isn't dominated by the region list. */}
       <section className="settings-section">
         <h3>{t("settings.detailedMap.title")}</h3>
-        <p className="muted small">{t("settings.detailedMap.desc")}</p>
         <label className="toggle-row">
           <input
             type="checkbox"
@@ -155,75 +163,73 @@ export function SettingsScreen() {
           />
           <span>{t("settings.detailedMap.toggle")}</span>
         </label>
-        <label className="picker-label setting-picker" htmlFor="max-markers">
-          {t("settings.detailedMap.maxMarkers")}
-          <select
-            id="max-markers"
-            className="select"
-            value={maxMarkers}
-            onChange={(e) => setMaxMarkers(Number(e.target.value))}
-          >
-            {MARKER_CAP_CHOICES.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="muted small">{t("settings.detailedMap.markersDesc")}</p>
-      </section>
-
-      <section className="settings-section">
-        <h3>{t("settings.offline.title")}</h3>
-        <p className="muted small">{t("settings.offline.desc")}</p>
-        <ul className="region-list">
-          {OFFLINE_REGIONS.map((r) => {
-            const est = estimates[r.id]!;
-            const p = progress[r.id];
-            return (
-              <li key={r.id} className="region-row">
-                <span className="region-emoji" aria-hidden>
-                  {r.emoji}
-                </span>
-                <span className="region-name">
-                  {r.name}
-                  <span className="muted small">
-                    {" "}
-                    {t("settings.offline.tileMeta", { tiles: formatInt(est.tiles), mb: est.mb })}
-                    {est.capped ? t("settings.offline.cappedSuffix") : ""}
-                    {savedAt[r.id]
-                      ? t("settings.offline.savedSuffix", { date: savedAt[r.id]! })
-                      : ""}
+        <details className="settings-details">
+          <summary>{t("settings.map.advanced")}</summary>
+          <label className="picker-label setting-picker" htmlFor="max-markers">
+            {t("settings.detailedMap.maxMarkers")}
+            <select
+              id="max-markers"
+              className="select"
+              value={maxMarkers}
+              onChange={(e) => setMaxMarkers(Number(e.target.value))}
+            >
+              {MARKER_CAP_CHOICES.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="muted small">{t("settings.offline.desc")}</p>
+          <ul className="region-list">
+            {OFFLINE_REGIONS.map((r) => {
+              const est = estimates[r.id]!;
+              const p = progress[r.id];
+              return (
+                <li key={r.id} className="region-row">
+                  <span className="region-emoji" aria-hidden>
+                    {r.emoji}
                   </span>
-                </span>
-                {p == null ? (
-                  <button className="mini-btn" type="button" onClick={() => void download(r)}>
-                    {savedAt[r.id]
-                      ? `⟳ ${t("settings.offline.redownload")}`
-                      : `⬇ ${t("settings.offline.download")}`}
-                  </button>
-                ) : (
-                  <>
-                    <span className="region-progress" role="status">
-                      {Math.round(p * 100)}%
+                  <span className="region-name">
+                    {r.name}
+                    <span className="muted small">
+                      {" "}
+                      {t("settings.offline.tileMeta", { tiles: formatInt(est.tiles), mb: est.mb })}
+                      {est.capped ? t("settings.offline.cappedSuffix") : ""}
+                      {savedAt[r.id]
+                        ? t("settings.offline.savedSuffix", { date: savedAt[r.id]! })
+                        : ""}
                     </span>
-                    <button
-                      className="link-danger"
-                      type="button"
-                      onClick={() => controllers.current[r.id]?.abort()}
-                    >
-                      {t("common.cancel")}
+                  </span>
+                  {p == null ? (
+                    <button className="mini-btn" type="button" onClick={() => void download(r)}>
+                      {savedAt[r.id]
+                        ? `⟳ ${t("settings.offline.redownload")}`
+                        : `⬇ ${t("settings.offline.download")}`}
                     </button>
-                  </>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-        <p className="muted small">{t("settings.offline.sizeNote")}</p>
-        <button className="link-danger" type="button" onClick={() => setConfirmReset(true)}>
-          {t("settings.offline.reset")}
-        </button>
+                  ) : (
+                    <>
+                      <span className="region-progress" role="status">
+                        {Math.round(p * 100)}%
+                      </span>
+                      <button
+                        className="link-danger"
+                        type="button"
+                        onClick={() => controllers.current[r.id]?.abort()}
+                      >
+                        {t("common.cancel")}
+                      </button>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <p className="muted small">{t("settings.offline.sizeNote")}</p>
+          <button className="link-danger" type="button" onClick={() => setConfirmReset(true)}>
+            {t("settings.offline.reset")}
+          </button>
+        </details>
         {confirmReset && (
           <div className="modal-backdrop" onClick={() => setConfirmReset(false)}>
             <div
@@ -249,19 +255,7 @@ export function SettingsScreen() {
         )}
       </section>
 
-      <section className="settings-section">
-        <h3>{t("settings.guides.title")}</h3>
-        <p className="muted small">{t("settings.guides.desc")}</p>
-        <label className="toggle-row">
-          <input
-            type="checkbox"
-            checked={autoLoadGuides}
-            onChange={(e) => setAutoLoadGuides(e.target.checked)}
-          />
-          <span>{t("settings.guides.toggle")}</span>
-        </label>
-      </section>
-
+      {/* Publish & sync */}
       <section className="settings-section">
         <h3>{t("settings.publish.title")}</h3>
         <p className="muted small">{t("settings.publish.desc")}</p>
@@ -272,6 +266,7 @@ export function SettingsScreen() {
 
       <SyncSection />
 
+      {/* Your data */}
       <section className="settings-section">
         <Backup />
         <p className="muted small">{t("settings.data.cloudNote")}</p>

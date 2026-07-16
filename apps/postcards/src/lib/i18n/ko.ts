@@ -66,9 +66,11 @@ export const ko: Messages = {
   "settings.language.title": "언어",
   "settings.language.desc":
     "앱 언어를 선택하세요. 장소, 국가, 도시 이름은 원래 언어를 유지합니다.",
+  "settings.places.title": "장소",
   "settings.scope.title": "국가로 세는 기준",
   "settings.scope.desc":
     "국가를 세는 모든 곳에 사용됩니다: 합계, 여권, 대륙별 진행률.",
+  "settings.map.advanced": "추가 지도 옵션 및 오프라인 팩",
   "settings.detailedMap.title": "상세 지도",
   "settings.detailedMap.desc":
     "상세 OpenStreetMap 지도는 기본으로 켜져 있으며, 온라인일 때 OpenStreetMap에서 타일을 가져옵니다. 끄면 간단한 오프라인 지도만 사용하여 앱이 어떤 네트워크 요청도 하지 않습니다. 어느 경우든 개인 데이터는 기기를 떠나지 않습니다.",
