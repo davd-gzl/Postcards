@@ -37,29 +37,23 @@ test("filter the travel log by year", async ({ page }) => {
   await expect(page.locator(".travel-totals")).toContainText("2 trips");
 });
 
-// The filter is shared: narrowing the Travel log to a year also narrows the trip
-// arcs shown on the map, surfaced on the map's Trips toggle.
-test("the map trip arcs honour the travel-log time filter", async ({ page }) => {
+// The map has its OWN date filter (independent of the Trips tab now), with quick
+// chips built from your dated content. Picking a year narrows the trip arcs and
+// tags the map's Trips toggle with that period.
+test("the map's own date filter tags the trip arcs by period", async ({ page }) => {
   await page.goto("/");
   await gotoTab(page, "Trips");
 
   await addDatedTrip(page, "CDG", "JFK", "2024-08-14");
   await addDatedTrip(page, "LHR", "SFO", "2023-05-01");
 
-  await page.locator("#trip-filter-year").selectOption("2024");
-  await expect(page.locator(".travel-totals")).toContainText("1 trip");
-
-  // On the map, the Trips toggle now reflects the shared period.
   await page.getByRole("button", { name: "Map", exact: true }).click();
-  // The Trips toggle sits inside the Layers panel now.
+  // Pick 2024 on the map's own filter chips (derived from the dated trips).
+  await page.locator(".year-filter").getByRole("button", { name: "2024", exact: true }).click();
+
+  // The Trips toggle (in the Layers panel) reflects the map's period.
   await page.getByRole("button", { name: /Layers/ }).click();
   await expect(page.getByRole("button", { name: /Trips.*2024/ })).toBeVisible();
-
-  // Clearing the filter (back on Trips) drops the tag on the map toggle.
-  await gotoTab(page, "Trips");
-  await page.locator("#trip-filter-year").selectOption("all");
-  await page.getByRole("button", { name: "Map", exact: true }).click();
-  await expect(page.getByRole("button", { name: /Trips.*2024/ })).toHaveCount(0);
 });
 
 // If the trips underneath the filter change so the selected year vanishes, the

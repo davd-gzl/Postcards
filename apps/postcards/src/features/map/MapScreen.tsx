@@ -15,7 +15,7 @@ import { GuideButton } from "../guides/GuideButton";
 import { StatStrip } from "../stats/StatStrip";
 import { MapView, hasSavedCamera, type Basemap, type MapFocus, type MapFit, type MapMode } from "./MapView";
 import { tripArcs } from "./visitedLayers";
-import { tripsInPeriod, periodLabel, dateBuckets, matchesDateFilter } from "../travel/period";
+import { dateBuckets, mapDateMatches, yearRange, rangeExactYear, type MapDate } from "../travel/period";
 import { citiesInView, type Bounds } from "./viewport";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import type { City } from "../../lib/reference/types";
@@ -95,9 +95,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const visits = useVisits((s) => s.visits);
   const showToast = useToast((s) => s.show);
   const mapFocus = useUi((s) => s.mapFocus);
-  const tripYear = useUi((s) => s.tripYear);
-  const tripMonth = useUi((s) => s.tripMonth);
-  const setTripPeriod = useUi((s) => s.setTripPeriod);
   const reducedMotion = usePrefersReducedMotion();
   // The privacy escape hatch: when off, the app uses the no-network offline map
   // only (zero outbound requests), overriding whatever detailed basemap is saved.
@@ -140,6 +137,12 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const [cityFilter, setCityFilter] = useState<CityFilter>(() =>
     loadPref(FILTER_KEY, (v) => (v === "unvisited" || v === "visited" ? v : "all")),
   );
+  // The map's own date + folder filter (session state, map-local — no longer tied
+  // to the Trips tab's period, so it can be as precise as a single day). A year
+  // chip is a whole-year range; the date pickers set any window; the folder box
+  // narrows to one folder/trip name.
+  const [dateFilter, setDateFilter] = useState<MapDate>({ mode: "all" });
+  const [folder, setFolder] = useState("");
   const trips = useTrips((s) => s.trips);
   const [showTrips, setShowTrips] = useState(true);
   const [globe, setGlobe] = useState(() => loadPref(GLOBE_KEY, (v) => v === "1"));
@@ -311,35 +314,62 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   );
   const inViewCapped = inView.length === IN_VIEW_CAP;
 
-  // The map's date filter IS the shared travel period's year (useUi), so a single
-  // selection drives the visited markers, the country shading, the in-view list
-  // AND the trip arcs together — one coherent choice, never two that can drift
-  // apart. "none" = undated visits: a map-only bucket that reads as "all" for the
-  // dated trip arcs (there's no undated-trip arc), so those simply clear. It is
-  // deliberately NOT a persisted map pref — it's session state shared with the
-  // Trips tab, exactly like the trip filter it extends, so it belongs there.
-  const mapYear = tripYear; // "all" | "YYYY" | "none"
-  function changeYear(y: string) {
-    // Year granularity on the map; reset month (a Trips-tab-only refinement) so a
-    // stale month can't survive under a freshly-picked year.
-    setTripPeriod(y, "all");
-  }
-  // Year chips come from YOUR visited places' dates (never the 135k gazetteer),
-  // mirroring the Places/Journal/Trips year filter: newest-first + a "No date"
-  // bucket when some visited place is undated.
+  // One predicate decides whether a visit passes the map's date window AND folder
+  // filter — every count, marker set and the in-view list use it, so they always
+  // agree. A bounded date range excludes undated places; a folder narrows to that
+  // folder only.
+  const visitPasses = (v: (typeof visits)[number]) =>
+    mapDateMatches(v.date, dateFilter) && (!folder || v.folder === folder);
+  // Quick-pick chips: a year (→ that whole year) or the undated bucket, from YOUR
+  // visited places' dates (never the 135k gazetteer). Which chip is lit is derived
+  // from the current window so the date pickers and the chips stay in step.
   const yearBuckets = useMemo(
-    () => dateBuckets(visits.filter((v) => v.status !== "wishlist")),
-    [visits],
+    () =>
+      dateBuckets([
+        ...visits.filter((v) => v.status !== "wishlist").map((v) => ({ date: v.date })),
+        ...trips.map((tr) => ({ date: tr.date })),
+      ]),
+    [visits, trips],
   );
+  const activeYear =
+    dateFilter.mode === "all" ? "all" : dateFilter.mode === "undated" ? "none" : rangeExactYear(dateFilter);
+  function pickYear(y: string) {
+    setDateFilter(y === "all" ? { mode: "all" } : y === "none" ? { mode: "undated" } : { mode: "range", ...yearRange(y) });
+  }
+  // Set the precise window from the date pickers; clearing both falls back to All.
+  function setRange(from: string, to: string) {
+    setDateFilter(from || to ? { mode: "range", from, to } : { mode: "all" });
+  }
+  const rangeFrom = dateFilter.mode === "range" ? dateFilter.from : "";
+  const rangeTo = dateFilter.mode === "range" ? dateFilter.to : "";
+  // Folders in use, gathered from your visits AND your trip names (both are
+  // "folders" on the map), for the folder picker.
+  const folderOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const v of visits) if (v.folder) set.add(v.folder);
+    for (const tr of trips) {
+      const n = tr.name?.trim();
+      if (n) set.add(n);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [visits, trips]);
+  // A short human label for the active window (for the trip-arc period tag etc.).
+  const periodTag =
+    dateFilter.mode === "undated"
+      ? ""
+      : activeYear && activeYear !== "all"
+        ? activeYear
+        : dateFilter.mode === "range"
+          ? [dateFilter.from, dateFilter.to].filter(Boolean).join(" – ")
+          : "";
 
   const visitedCityIds = useMemo(
     () =>
       new Set(
-        visits
-          .filter((v) => v.place.kind === "city" && matchesDateFilter(v.date, mapYear))
-          .map((v) => v.place.id),
+        visits.filter((v) => v.place.kind === "city" && visitPasses(v)).map((v) => v.place.id),
       ),
-    [visits, mapYear],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visits, dateFilter, folder],
   );
   // The filtered list is a SNAPSHOT: it recomputes only when the viewport or the
   // filter changes — never when a visit is toggled. So under "Hide visited",
@@ -350,21 +380,24 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const [sortAZ, setSortAZ] = useState(false);
   useEffect(() => {
     const ids = visitedCityIdsNow();
-    const arr =
-      cityFilter === "all"
+    const arr = folder
+      ? // A folder is selected → the list is YOUR folder's cities in view (the
+        // browse dots are hidden too), so it matches the pruned markers.
+        inView.filter((c) => ids.has(c.id))
+      : cityFilter === "all"
         ? inView
         : inView.filter((c) => ids.has(c.id) === (cityFilter === "visited"));
     setSnapshot(sortAZ ? [...arr].sort((a, b) => collator.compare(a.name, b.name)) : arr);
     setShown(PAGE);
-    // visitedCityIds deliberately NOT a dependency — see comment above. mapYear
-    // IS one: a new period re-partitions visited vs unvisited in the list.
+    // visitedCityIds deliberately NOT a dependency — see comment above. The date
+    // window / folder ARE: a new selection re-partitions the list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, cityFilter, sortAZ, mapYear]);
+  }, [inView, cityFilter, sortAZ, dateFilter, folder]);
   function visitedCityIdsNow(): Set<string> {
     return new Set(
       useVisits
         .getState()
-        .visits.filter((v) => v.place.kind === "city" && matchesDateFilter(v.date, mapYear))
+        .visits.filter((v) => v.place.kind === "city" && visitPasses(v))
         .map((v) => v.place.id),
     );
   }
@@ -390,7 +423,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
         useVisits
           .getState()
           .visits.filter(
-            (v) => v.place.kind === kind && v.status !== "wishlist" && matchesDateFilter(v.date, mapYear),
+            (v) => v.place.kind === kind && v.status !== "wishlist" && visitPasses(v),
           )
           .map((v) => v.place.id),
       );
@@ -436,23 +469,23 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     }
     return null;
     // visits deliberately via getState() — the header count refreshing on a
-    // check is fine to defer to the next bounds/mode change. mapYear IS a dep so
-    // the "seen" counts re-derive when the period changes.
+    // check is fine to defer to the next bounds/mode change. The date window /
+    // folder ARE deps so the "seen" counts re-derive when the selection changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, bounds, ref, mapYear]);
+  }, [mode, bounds, ref, dateFilter, folder]);
 
-  // Trip arcs honour the same shared period as the map's year filter (useUi): a
-  // year narrows them to that year's dated trips; "none"/undated has no dated-
-  // trip arc, so they clear. One selection, arcs + places together.
+  // Trip arcs honour the SAME map filter as the places: a trip shows only when
+  // its date is in the window AND (if a folder is chosen) its name is that
+  // folder. Undated trips have no arc, so a bounded window simply clears them.
   const arcTrips = useMemo(
-    () => tripsInPeriod(trips, tripYear, tripMonth),
-    [trips, tripYear, tripMonth],
+    () =>
+      trips.filter(
+        (tr) => mapDateMatches(tr.date, dateFilter) && (!folder || (tr.name ?? "").trim() === folder),
+      ),
+    [trips, dateFilter, folder],
   );
   const arcs = useMemo(() => tripArcs(arcTrips, ref), [arcTrips, ref]);
   const hasArcs = arcs.features.length > 0;
-  // Never surface the map-only "none" bucket as a period label ("No date" isn't
-  // a trip period); the Trips toggle then simply shows no tag (and no arcs).
-  const periodTag = tripYear === "none" ? "" : periodLabel(tripYear, tripMonth);
 
   // Another tab asked the map to fly somewhere (Places row → map).
   useEffect(() => {
@@ -549,7 +582,8 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           showTowns={showTowns}
           showCountries={showCountries}
           maxMarkers={maxMarkers}
-          year={mapYear}
+          dateFilter={dateFilter}
+          folder={folder}
           reducedMotion={reducedMotion}
           onBaseUnavailable={() => {
             if (basemap === "osm") {
@@ -798,28 +832,80 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             this list AND the trip arcs to a year (or the undated bucket). Shown
             in every mode (it filters the whole map), only when your visited
             places actually span more than one bucket. Mirrors Places' chips. */}
-        {(yearBuckets.years.length > 1 ||
-          (yearBuckets.years.length === 1 && yearBuckets.undated)) && (
-          <div
-            className="segmented wrap year-filter"
-            role="group"
-            aria-label={t("map.yearFilterAria")}
-          >
-            {[
-              { val: "all", label: t("map.year.all") },
-              ...yearBuckets.years.map((y) => ({ val: y, label: y })),
-              ...(yearBuckets.undated ? [{ val: "none", label: t("map.year.noDate") }] : []),
-            ].map(({ val, label }) => (
-              <button
-                key={val}
-                type="button"
-                aria-pressed={mapYear === val}
-                className={mapYear === val ? "seg-on" : ""}
-                onClick={() => changeYear(val)}
+        {(yearBuckets.years.length > 0 || folderOptions.length > 0) && (
+          <div className="map-filter">
+            {/* Quick year chips (only when your places span more than one bucket). */}
+            {(yearBuckets.years.length > 1 ||
+              (yearBuckets.years.length === 1 && yearBuckets.undated)) && (
+              <div
+                className="segmented wrap year-filter"
+                role="group"
+                aria-label={t("map.yearFilterAria")}
               >
-                {label}
-              </button>
-            ))}
+                {[
+                  { val: "all", label: t("map.year.all") },
+                  ...yearBuckets.years.map((y) => ({ val: y, label: y })),
+                  ...(yearBuckets.undated ? [{ val: "none", label: t("map.year.noDate") }] : []),
+                ].map(({ val, label }) => (
+                  <button
+                    key={val}
+                    type="button"
+                    aria-pressed={activeYear === val}
+                    className={activeYear === val ? "seg-on" : ""}
+                    onClick={() => pickYear(val)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* Precise dates + folder, tucked into a disclosure so the panel stays
+                compact — open it to pick an exact window or a single folder. */}
+            <details className="map-filter-more">
+              <summary>{t("map.filter.more")}</summary>
+              {yearBuckets.years.length > 0 && (
+                <div className="map-daterange">
+                  <label className="picker-label" htmlFor="map-from">
+                    <span className="small">{t("map.filter.from")}</span>
+                    <input
+                      id="map-from"
+                      type="date"
+                      className="select"
+                      value={rangeFrom}
+                      onChange={(e) => setRange(e.target.value, rangeTo)}
+                    />
+                  </label>
+                  <label className="picker-label" htmlFor="map-to">
+                    <span className="small">{t("map.filter.to")}</span>
+                    <input
+                      id="map-to"
+                      type="date"
+                      className="select"
+                      value={rangeTo}
+                      onChange={(e) => setRange(rangeFrom, e.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
+              {folderOptions.length > 0 && (
+                <label className="picker-label" htmlFor="map-folder">
+                  <span className="small">{t("map.filter.folder")}</span>
+                  <select
+                    id="map-folder"
+                    className="select"
+                    value={folder}
+                    onChange={(e) => setFolder(e.target.value)}
+                  >
+                    <option value="">{t("map.filter.allFolders")}</option>
+                    {folderOptions.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </details>
           </div>
         )}
 

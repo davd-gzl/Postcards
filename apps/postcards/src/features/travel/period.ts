@@ -50,6 +50,45 @@ export function itemsInDateBucket<T extends { date: string | null }>(
 }
 
 /**
+ * The map's richer date selection. The quick year chips are presets over this:
+ *   • all — any date
+ *   • undated — only places with no date
+ *   • range — an inclusive [from, to] window ("" = open on that end), which a
+ *     year chip fills as that whole year and the date pickers set precisely.
+ * A single exact day is just a range with from === to.
+ */
+export type MapDate =
+  | { mode: "all" }
+  | { mode: "undated" }
+  | { mode: "range"; from: string; to: string };
+
+/** ISO YYYY-MM-DD bounds for a whole 4-digit year (used by the year-chip preset). */
+export function yearRange(year: string): { from: string; to: string } {
+  return { from: `${year}-01-01`, to: `${year}-12-31` };
+}
+
+/** Whether a (possibly missing) date falls in the map's date selection. A bounded
+ *  range excludes undated places; the fully-open "all" keeps them. */
+export function mapDateMatches(date: string | null | undefined, f: MapDate): boolean {
+  if (f.mode === "all") return true;
+  if (f.mode === "undated") return !date;
+  if (!date) return false;
+  if (f.from && date < f.from) return false;
+  // Compare on the date prefix so a `to` of "2024-06-30" still admits a stored
+  // "2024-06-30T…" timestamp; dates here are plain YYYY-MM-DD in practice.
+  if (f.to && date.slice(0, 10) > f.to) return false;
+  return true;
+}
+
+/** The 4-digit year a range represents exactly (Jan 1–Dec 31), else null — lets
+ *  the UI light the matching year chip when the window is exactly one year. */
+export function rangeExactYear(f: MapDate): string | null {
+  if (f.mode !== "range" || !f.from || !f.to) return null;
+  const y = f.from.slice(0, 4);
+  return f.from === `${y}-01-01` && f.to === `${y}-12-31` ? y : null;
+}
+
+/**
  * The year chips for a set of dated items: the distinct years (newest first)
  * plus whether any item is undated (the "No date" bucket). Mirrors the
  * Places-screen year filter so the map can offer the same chips over visits.
