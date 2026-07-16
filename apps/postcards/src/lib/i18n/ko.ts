@@ -112,6 +112,18 @@ export const ko: Messages = {
   "settings.guides.desc":
     "장소를 열면 Wikivoyage와 Wikipedia에서 짧은 개요와 사진을 불러올 수 있습니다. 장소를 여는 것은 사용자의 행동이므로 기본으로 켜져 있습니다. 끄면 누를 때만 가이드를 불러옵니다. 그 외에는 아무것도 기기를 떠나지 않습니다.",
   "settings.guides.toggle": "온라인일 때 가이드 개요 자동으로 불러오기",
+  "settings.packs.title": "커뮤니티 데이터 팩",
+  "settings.packs.desc":
+    "누구나 공유하는 오픈 라이선스 장소 모음(POI, 지하철역, 산장 등)을 추가하세요. GitHub 링크를 붙여넣거나 파일을 가져오세요 — 팩은 검증·정화된 비활성 데이터이며, 그 장소들은 검색과 지도 표시가 가능해집니다. 팩을 제거해도 일지에는 영향이 없습니다.",
+  "settings.packs.urlLabel": "팩 파일의 GitHub 링크",
+  "settings.packs.add": "추가",
+  "settings.packs.adding": "추가 중…",
+  "settings.packs.importFile": "파일 가져오기",
+  "settings.packs.meta": "{count}개 장소 · {license}",
+  "settings.packs.removeAria": "{name} 팩 제거",
+  "settings.packs.toast.added": "“{name}” 추가됨 — {count}개 장소를 이제 검색할 수 있습니다.",
+  "settings.packs.toast.removed": "“{name}” 제거됨.",
+  "settings.packs.toast.failed": "해당 데이터 팩을 추가할 수 없습니다.",
   "settings.publish.title": "공유 가능한 사이트 게시",
   "settings.publish.desc":
     "여행 하나, 기간, 또는 전체를 어디에서나 호스팅할 수 있는 독립형 읽기 전용 여행 블로그 웹사이트로 만드세요 — 폴더, USB 메모리, GitHub Pages, Netlify, Nextcloud. 하나의 파일로 오프라인에서 실행되고, 사진의 GPS를 제거하며, 암호로 잠글 수 있습니다.",
