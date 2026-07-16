@@ -1,6 +1,6 @@
 {
   "$id": "https://github.com/davd-gzl/Postcards/blob/main/apps/postcards/src/lib/schema/portable-file.schema.json",
-  "title": "Postcards portable data file (schemaVersion 9)",
+  "title": "Postcards portable data file (schemaVersion 10)",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
@@ -406,7 +406,6 @@
           },
           "title": {
             "type": "string",
-            "minLength": 1,
             "maxLength": 200
           },
           "text": {
@@ -460,8 +459,6 @@
           "storyId",
           "place",
           "date",
-          "title",
-          "text",
           "addedAt"
         ],
         "additionalProperties": false

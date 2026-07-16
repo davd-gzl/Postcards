@@ -39,7 +39,10 @@ export const FORMAT = "postcards" as const;
 // v9 adds the same optional `folder` on a VISIT, so places can be grouped under one
 // name in the list. Additive & optional, never injected on parse — v1–v8 files import
 // unchanged and round-trip byte-identically.
-export const SCHEMA_VERSION = 9;
+// v10 makes a journal story's `title` and `text` BOTH optional (an image-only entry),
+// guarded so a story still needs a title, text, or a photo. A relaxation, so v1–v9
+// files still validate; only a file that actually omits a story title needs v10.
+export const SCHEMA_VERSION = 10;
 
 /** Most photos one place's gallery may hold (bounds the inline portable file). */
 export const MAX_PHOTOS_PER_VISIT = 48;
