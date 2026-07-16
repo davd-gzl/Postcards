@@ -11,6 +11,7 @@ import { Backup } from "../backup/Backup";
 import { SyncSection } from "./SyncSection";
 import { Attribution } from "../../ui/Attribution";
 import { formatInt } from "../../lib/format/format";
+import { downloadFullCities, fullCitiesEnabled } from "../../lib/reference/referenceData";
 import { useT } from "../../lib/i18n";
 
 // Publish mode is loaded on demand (it pulls in the site renderer + crypto).
@@ -53,8 +54,19 @@ export function SettingsScreen() {
   );
   const [confirmReset, setConfirmReset] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  // The full world city list (~17 MB) is a one-tap download, not bundled.
+  const [citiesDl, setCitiesDl] = useState<"idle" | "busy" | "done">(
+    fullCitiesEnabled() ? "done" : "idle",
+  );
   const resetRef = useRef<HTMLDivElement>(null);
   useModalKeys(resetRef, () => setConfirmReset(false), { enabled: confirmReset });
+
+  async function onDownloadCities() {
+    setCitiesDl("busy");
+    const ok = await downloadFullCities();
+    setCitiesDl(ok ? "done" : "idle");
+    showToast(ok ? t("settings.cities.toast.done") : t("settings.cities.toast.failed"));
+  }
 
   // Deletes ONLY map caches and map view preferences. Your places, journal and
   // backups are untouched (they live in IndexedDB, not the tile cache).
@@ -226,6 +238,36 @@ export function SettingsScreen() {
             })}
           </ul>
           <p className="muted small">{t("settings.offline.sizeNote")}</p>
+
+          {/* The full world city list — bundled app keeps only the top 10k; the
+              long tail (small towns & villages) is a one-tap ~17 MB download,
+              cached offline like a tile pack. */}
+          <div className="region-row cities-pack">
+            <span className="region-emoji" aria-hidden>
+              🏙️
+            </span>
+            <span className="region-name">
+              {t("settings.cities.title")}
+              <span className="muted small"> {t("settings.cities.meta")}</span>
+            </span>
+            {citiesDl === "done" ? (
+              <span className="muted small" role="status">
+                ✓ {t("settings.cities.downloaded")}
+              </span>
+            ) : (
+              <button
+                className="mini-btn"
+                type="button"
+                disabled={citiesDl === "busy"}
+                onClick={() => void onDownloadCities()}
+              >
+                {citiesDl === "busy"
+                  ? t("settings.cities.downloading")
+                  : `⬇ ${t("settings.cities.download")}`}
+              </button>
+            )}
+          </div>
+
           <button className="link-danger" type="button" onClick={() => setConfirmReset(true)}>
             {t("settings.offline.reset")}
           </button>

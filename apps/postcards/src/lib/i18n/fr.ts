@@ -87,6 +87,13 @@ export const fr: Messages = {
   "settings.offline.redownload": "Retélécharger",
   "settings.offline.sizeNote":
     "Les tailles sont des estimations (~18 Ko par tuile). Les tuiles restent dans le cache de votre navigateur pendant ~30 jours d'inactivité ; parcourir une zone sur la carte en ligne la garde aussi disponible hors ligne.",
+  "settings.cities.title": "Liste mondiale des villes",
+  "settings.cities.meta": "~17 Mo · ajoute ~125k villages et petites villes à la recherche",
+  "settings.cities.download": "Télécharger",
+  "settings.cities.downloading": "Téléchargement…",
+  "settings.cities.downloaded": "Téléchargé",
+  "settings.cities.toast.done": "Liste complète des villes téléchargée — chaque ville est désormais consultable hors ligne.",
+  "settings.cities.toast.failed": "Impossible de télécharger la liste complète. Vérifiez votre connexion et réessayez.",
   "settings.offline.reset": "Réinitialiser les cartes hors ligne…",
   "settings.offline.resetAria": "Réinitialiser les cartes hors ligne",
   "settings.offline.resetTitle": "Réinitialiser les cartes hors ligne ?",

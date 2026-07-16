@@ -88,6 +88,13 @@ export const ko: Messages = {
   "settings.offline.redownload": "다시 내려받기",
   "settings.offline.sizeNote":
     "용량은 추정치입니다(타일당 약 18 KB). 타일은 사용하지 않으면 브라우저 캐시에 약 30일간 남아 있으며, 온라인 지도에서 어떤 지역을 둘러보면 그 지역도 오프라인에서 사용할 수 있게 됩니다.",
+  "settings.cities.title": "전 세계 도시 목록",
+  "settings.cities.meta": "~17 MB · 약 12.5만 개의 소도시·마을을 검색에 추가",
+  "settings.cities.download": "다운로드",
+  "settings.cities.downloading": "다운로드 중…",
+  "settings.cities.downloaded": "다운로드됨",
+  "settings.cities.toast.done": "전체 도시 목록을 다운로드했습니다 — 이제 모든 도시를 오프라인에서 검색할 수 있습니다.",
+  "settings.cities.toast.failed": "전체 도시 목록을 다운로드하지 못했습니다. 연결을 확인하고 다시 시도하세요.",
   "settings.offline.reset": "오프라인 지도 초기화…",
   "settings.offline.resetAria": "오프라인 지도 초기화",
   "settings.offline.resetTitle": "오프라인 지도를 초기화할까요?",

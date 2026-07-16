@@ -75,11 +75,13 @@ for (const c of allCities) {
   });
 }
 cities.sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
-// Two tiers: a small CORE file (major cities) that the app blocks on at startup,
-// and the FULL world gazetteer streamed in the background once the UI is up —
-// 17 MB must never sit on the first-paint critical path.
-const CORE_POPULATION = 15000;
-const core = cities.filter((c) => (c.population ?? 0) >= CORE_POPULATION);
+// Two tiers: a small CORE file — the world's top CORE_COUNT cities by population —
+// that the app bundles + precaches and blocks on at startup, and the FULL world
+// gazetteer (~135k) that is downloaded ON DEMAND (like an offline map pack), never
+// bundled and never auto-fetched. Keeping only the top 10k in the app keeps the
+// install small; the long tail is a one-tap download in Settings.
+const CORE_COUNT = 10000;
+const core = cities.slice(0, CORE_COUNT); // already population-descending
 writeFileSync(join(refDir, "cities.json"), JSON.stringify(core) + "\n");
 writeFileSync(join(refDir, "cities-all.json"), JSON.stringify(cities) + "\n");
 console.log(`core cities: ${core.length} | full: ${cities.length}`);

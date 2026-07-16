@@ -33,6 +33,22 @@ const CITIES_URL = `${import.meta.env.BASE_URL}reference/cities.json`;
 const CITIES_ALL_URL = `${import.meta.env.BASE_URL}reference/cities-all.json`;
 /** Fired on window when the full gazetteer replaces the core one. */
 export const GAZETTEER_UPGRADED_EVENT = "postcards:gazetteer-upgraded";
+// The full 135k gazetteer is downloaded ON DEMAND (like an offline map pack), not
+// bundled and not auto-fetched — the app ships only the top-10k core. This flag
+// records the user's one-tap opt-in; once set, later launches re-load the full set
+// straight from the service-worker cache (offline-friendly). Default off.
+const FULL_CITIES_KEY = "postcards-full-cities";
+function fullCitiesOptedIn(): boolean {
+  try {
+    return localStorage.getItem(FULL_CITIES_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+/** Has the user opted into (downloaded) the full world city list? */
+export function fullCitiesEnabled(): boolean {
+  return fullCitiesOptedIn();
+}
 const SUBDIVISIONS_URL = `${import.meta.env.BASE_URL}reference/subdivisions.json`;
 const AIRPORTS_URL = `${import.meta.env.BASE_URL}reference/airports.json`;
 const HERITAGE_URL = `${import.meta.env.BASE_URL}reference/heritage.json`;
@@ -322,8 +338,10 @@ export async function initReferenceData(): Promise<ReferenceData> {
       languages as Record<string, Language[]>,
       articleNames as Record<string, string>,
     );
-    // Fire-and-forget: the full 135k-city set streams in behind the UI.
-    void upgradeToFullGazetteer(ref as ReferenceDataImpl);
+    // The full 135k-city set is NOT auto-fetched — it's a one-tap download in
+    // Settings (like a tile pack). Only re-load it here if the user already opted
+    // in on a previous run; then it comes straight from the SW cache.
+    if (fullCitiesOptedIn()) void upgradeToFullGazetteer(ref as ReferenceDataImpl);
     return ref;
   } catch {
     console.warn("Postcards: reference data failed to load; continuing without cities.");
@@ -385,12 +403,39 @@ async function loadFullGazetteer(): Promise<IndexedCity[] | null> {
  */
 async function upgradeToFullGazetteer(impl: ReferenceDataImpl): Promise<void> {
   await whenIdle();
+  await applyFullGazetteer(impl);
+}
+
+/** Fetch + swap in the full gazetteer (shared by the opted-in auto-load and the
+ *  explicit Settings download). Returns true when the bigger set is now live. */
+async function applyFullGazetteer(impl: ReferenceDataImpl): Promise<boolean> {
   const cities = await loadFullGazetteer();
   if (cities && cities.length > impl.allCities().length) {
     impl.replaceCities(cities, true);
     generation++;
     window.dispatchEvent(new Event(GAZETTEER_UPGRADED_EVENT));
+    return true;
   }
+  return false;
+}
+
+/**
+ * User-triggered download of the full world city list (~17 MB) — the "rest" that
+ * isn't bundled with the app. Records the opt-in (so future launches re-load it
+ * from cache), fetches + swaps the set in, and resolves true on success. A no-op
+ * that returns true if the full set is already loaded. Never throws.
+ */
+export async function downloadFullCities(): Promise<boolean> {
+  try {
+    localStorage.setItem(FULL_CITIES_KEY, "1");
+  } catch {
+    /* private mode: the download still works this session, just isn't remembered */
+  }
+  const impl = instance as ReferenceDataImpl | null;
+  if (!impl) return false;
+  // Already the full set? (core is 10k; the full set is ~135k.)
+  if (impl.allCities().length >= 100_000) return true;
+  return applyFullGazetteer(impl);
 }
 
 // Bumped when the full gazetteer replaces the core set, so React consumers can
