@@ -94,6 +94,13 @@ export const en = {
   "settings.offline.redownload": "Re-download",
   "settings.offline.sizeNote":
     "Sizes are estimates (~18 KB per tile). Tiles live in your browser's cache for ~30 days of non-use; browsing an area on the online map also keeps it available offline.",
+  "settings.cities.title": "Full world city list",
+  "settings.cities.meta": "~17 MB · adds ~125k smaller towns & villages to search",
+  "settings.cities.download": "Download",
+  "settings.cities.downloading": "Downloading…",
+  "settings.cities.downloaded": "Downloaded",
+  "settings.cities.toast.done": "Full city list downloaded — every town is now searchable offline.",
+  "settings.cities.toast.failed": "Couldn't download the full city list. Check your connection and try again.",
   "settings.offline.reset": "Reset offline maps…",
   "settings.offline.resetAria": "Reset offline maps",
   "settings.offline.resetTitle": "Reset offline maps?",
