@@ -72,9 +72,11 @@ export const en = {
   "settings.language.title": "Language",
   "settings.language.desc":
     "Choose the app's language. Place, country and city names keep their own language.",
+  "settings.places.title": "Places",
   "settings.scope.title": "What counts as a country",
   "settings.scope.desc":
     "Used everywhere a country is counted: totals, the passport, per-continent progress.",
+  "settings.map.advanced": "More map options & offline packs",
   "settings.detailedMap.title": "Detailed map",
   "settings.detailedMap.desc":
     "The detailed OpenStreetMap map is on by default; it fetches map tiles from OpenStreetMap when you're online. Turn it off to use the plain offline map only, so the app makes no network requests at all. Either way, no personal data ever leaves your device.",

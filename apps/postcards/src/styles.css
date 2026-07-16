@@ -2356,6 +2356,33 @@ h1.brand {
   margin: 0 0 4px;
   font-size: 15px;
 }
+/* Progressive disclosure for advanced/bulky settings (offline map packs, marker
+   cap) so the page reads light. Collapsed by default; the summary is a calm,
+   tappable row. */
+.settings-details {
+  margin-top: 8px;
+  border-top: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+  padding-top: 8px;
+}
+.settings-details > summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--accent, inherit);
+  font-size: 13px;
+  padding: 4px 0;
+  user-select: none;
+}
+.settings-details > summary::-webkit-details-marker {
+  display: none;
+}
+.settings-details > summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+.settings-details[open] > summary::before {
+  content: "▾ ";
+}
 /* Device sync (spec 013): keep the button and the last-synced note on one baseline. */
 .sync-actions {
   align-items: center;

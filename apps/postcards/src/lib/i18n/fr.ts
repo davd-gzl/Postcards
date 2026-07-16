@@ -65,9 +65,11 @@ export const fr: Messages = {
   "settings.language.title": "Langue",
   "settings.language.desc":
     "Choisissez la langue de l'application. Les noms de lieux, de pays et de villes gardent leur propre langue.",
+  "settings.places.title": "Lieux",
   "settings.scope.title": "Ce qui compte comme un pays",
   "settings.scope.desc":
     "Utilisé partout où un pays est compté : totaux, passeport, progression par continent.",
+  "settings.map.advanced": "Plus d'options de carte et cartes hors ligne",
   "settings.detailedMap.title": "Carte détaillée",
   "settings.detailedMap.desc":
     "La carte détaillée OpenStreetMap est activée par défaut ; elle récupère les tuiles depuis OpenStreetMap lorsque vous êtes en ligne. Désactivez-la pour n'utiliser que la carte hors ligne simple, afin que l'appli ne fasse aucune requête réseau. Dans tous les cas, aucune donnée personnelle ne quitte votre appareil.",
