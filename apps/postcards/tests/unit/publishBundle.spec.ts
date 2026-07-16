@@ -82,6 +82,52 @@ describe("buildJourney (trips-driven)", () => {
     expect(j.steps.map((s) => s.place.name)).toEqual(["Paris", "Cairo"]);
   });
 
+  it("falls back to VISITED places when there are no trips and no stories", () => {
+    // A user who only marks places visited (never logs a trip or writes a story)
+    // must still get a non-empty map — otherwise Publish shows nothing.
+    const visit = (place: PlaceRef, date: string | null, status: Visit["status"]): Visit => ({
+      visitId: "v-" + place.id,
+      place,
+      status,
+      favorite: false,
+      date,
+      note: null,
+      photos: [],
+      addedAt: NOW,
+      updatedAt: NOW,
+    });
+    const visits = [
+      visit(cairo, "2026-06-01", "visited"),
+      visit(paris, "2026-05-01", "visited"),
+      visit(rome, null, "wishlist"), // a place you WANT to go — excluded
+    ];
+    const j = buildJourney({ visits, trips: [], stories: [], resolveCoords }, { title: "Been" });
+    expect(j.steps.map((s) => s.place.name)).toEqual(["Paris", "Cairo"]);
+    expect(j.steps.some((s) => s.place.name === "Rome")).toBe(false);
+  });
+
+  it("prefers stories over the visited-places fallback when both exist", () => {
+    const stories: Story[] = [
+      { storyId: "s1", place: paris, date: "2026-05-01", title: "Paris", text: "", addedAt: NOW },
+    ];
+    const visits: Visit[] = [
+      {
+        visitId: "v1",
+        place: cairo,
+        status: "visited",
+        favorite: false,
+        date: "2026-06-01",
+        note: null,
+        photos: [],
+        addedAt: NOW,
+        updatedAt: NOW,
+      },
+    ];
+    const j = buildJourney({ visits, trips: [], stories, resolveCoords }, { title: "Mix" });
+    // Stories win — the visited-only fallback never runs, so Cairo is not added.
+    expect(j.steps.map((s) => s.place.name)).toEqual(["Paris"]);
+  });
+
   it("honors a tripIds selection and a date range", () => {
     const trips = [
       trip("t1", paris, rome, "flight", "2026-05-02"),

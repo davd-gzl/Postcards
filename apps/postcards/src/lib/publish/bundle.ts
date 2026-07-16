@@ -125,7 +125,18 @@ export function buildJourney(input: JourneyInput, sel: JourneySelection): Publis
     const ordered = stories
       .filter((s) => inRange(s.date, sel.dateFrom, sel.dateTo))
       .sort((a, b) => a.date.localeCompare(b.date));
-    for (const s of ordered) makeStep(s.place, s.date, null);
+    if (ordered.length > 0) {
+      for (const s of ordered) makeStep(s.place, s.date, null);
+    } else {
+      // No trips AND no stories — plot the places you've been so the map isn't
+      // empty (and a visits-only user can still publish "everywhere I've been").
+      // Wishlist places are excluded — this is where you HAVE been.
+      const been = visits
+        .filter((v) => v.status === "visited")
+        .filter((v) => inRange(v.date ?? null, sel.dateFrom, sel.dateTo))
+        .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+      for (const v of been) makeStep(v.place, v.date ?? null, null);
+    }
   }
 
   // Totals: distinct countries, place count, and the great-circle length of the route.
