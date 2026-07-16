@@ -11,6 +11,14 @@ _Last reconciled: 2026-07-16._
 
 ## Done (verified)
 
+- ✅ Offline base map recoloured — soft-blue sea, warm land, defined coastlines &
+  borders (was near-white land on near-white sea = blank). _Screenshot._
+- ✅ Journal composer no longer opens by default — open it from the toolbar or by
+  long-pressing the page. _Screenshot: closed by default → long-press opens._
+- ✅ "Load guide overviews automatically when online" — verified already wired
+  (`GuideButton` auto-loads on open when the toggle is on, online, not Offline
+  mode). No change needed; likely looked inert due to toggle-off / offline / a
+  stale build.
 - ✅ Top-bar "● Online" chip is now a real **toggle button** — click it to flip
   Offline mode (label/dot follow the mode, aria-pressed, tooltip). _Screenshot,
   online↔offline._ (Earlier I'd wrongly moved the *map* layer button; the ask was
@@ -39,6 +47,21 @@ _Last reconciled: 2026-07-16._
 - 💬 Other downloadable packs (besides the ~17 MB full city list): **offline map
   regions** (save OSM tiles for a trip) and **community place packs** — both in
   Settings.
+
+## Needs a decision from you
+
+- ❓ **GitHub sync via OAuth.** A pure serverless PWA can't complete GitHub OAuth
+  in-browser: the Web flow needs a client secret, and the Device flow's token
+  exchange isn't CORS-enabled — both require a backend/proxy, which conflicts
+  with the "no server, fully decentralized" constitution. Today's on-device
+  Personal Access Token is the backend-free option. Options to choose from:
+  (a) keep the PAT but smooth its UX (guided scopes, validation, a "create
+  token" deep link); (b) OAuth Device flow via a small user-hosted/community
+  CORS proxy (opt-in, off by default); (c) relax the constitution to allow one
+  tiny serverless token-exchange function.
+- ❓ Curated **data-pack catalog** — a few ready-made, provenance-tagged packs
+  (metros, national parks, more monuments) installable in one tap, instead of
+  today's paste-a-URL-only flow. (Offered; awaiting go-ahead.)
 
 ## Open
 
