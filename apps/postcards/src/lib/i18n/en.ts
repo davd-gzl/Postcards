@@ -429,6 +429,7 @@ export const en = {
   "journal.toast.readImgErr": "Couldn't read that image.",
   "journal.toast.updated": 'Updated "{title}"',
   "journal.toast.added": 'Added "{title}"',
+  "journal.toast.draftRecovered": "Recovered your unsaved draft.",
   "journal.toast.removed": 'Removed "{title}"',
   "journal.toast.exportErr": "Couldn't build the journal file. Your data is unchanged.",
   "journal.geo.unavailableDevice": "Location is not available on this device.",

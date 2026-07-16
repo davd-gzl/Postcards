@@ -31,7 +31,9 @@ export function journalToMarkdown(stories: Story[], ref: ReferenceData): string 
   for (const s of stories) {
     const country = ref.countryByIso2(s.place.countryId)?.name ?? s.place.countryId;
     lines.push("");
-    lines.push(`## ${md(s.title)}`);
+    // Image-only / text-only entries have no title — fall back to the place name
+    // (same convention as the feed) so the heading is never an empty "## ".
+    lines.push(`## ${md(s.title.trim() || s.place.name)}`);
     lines.push("");
     lines.push(`_${md(formatDate(s.date))} — ${md(s.place.name)}, ${md(country)}_`);
     if (s.text) {

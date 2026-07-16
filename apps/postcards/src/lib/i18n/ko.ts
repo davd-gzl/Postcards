@@ -423,6 +423,7 @@ export const ko: Messages = {
   "journal.toast.readImgErr": "이미지를 읽을 수 없습니다.",
   "journal.toast.updated": "\"{title}\" 업데이트됨",
   "journal.toast.added": "\"{title}\" 추가됨",
+  "journal.toast.draftRecovered": "저장하지 않은 초안을 복구했습니다.",
   "journal.toast.removed": "\"{title}\" 삭제됨",
   "journal.toast.exportErr": "일지 파일을 만들 수 없습니다. 데이터는 변경되지 않았습니다.",
   "journal.geo.unavailableDevice": "이 기기에서는 위치를 사용할 수 없습니다.",
