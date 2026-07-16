@@ -55,4 +55,54 @@ describe("GitHubTarget", () => {
     expect(() => new GitHubTarget({ owner: "", repo: "r", branch: "b", token: "t" })).toThrow();
     expect(() => new GitHubTarget({ owner: "o", repo: "r", branch: "b", token: "" })).toThrow();
   });
+
+  describe("GitHub Pages", () => {
+    it("builds the project-site URL and the user-site URL", () => {
+      expect(new GitHubTarget({ ...cfg, fetchFn: mockFetch(() => new Response("")) }).pagesSiteUrl()).toBe(
+        "https://davd-gzl.github.io/postcards/",
+      );
+      expect(
+        new GitHubTarget({
+          ...cfg,
+          repo: "davd-gzl.github.io",
+          fetchFn: mockFetch(() => new Response("")),
+        }).pagesSiteUrl(),
+      ).toBe("https://davd-gzl.github.io/");
+    });
+
+    it("returns the site URL without creating when Pages is already on", async () => {
+      let posted = false;
+      const fetchFn = mockFetch((_url, init) => {
+        if (init?.method === "POST") {
+          posted = true;
+          return new Response("{}", { status: 201 });
+        }
+        return new Response(JSON.stringify({ html_url: "x" }), { status: 200 }); // already enabled
+      });
+      const url = await new GitHubTarget({ ...cfg, fetchFn }).enablePages();
+      expect(url).toBe("https://davd-gzl.github.io/postcards/");
+      expect(posted).toBe(false);
+    });
+
+    it("creates Pages (sourced from the publish branch root) when it is off", async () => {
+      let body: Record<string, unknown> | null = null;
+      const fetchFn = mockFetch((url, init) => {
+        if (init?.method === "POST") {
+          body = JSON.parse(String(init.body));
+          return new Response("{}", { status: 201 });
+        }
+        expect(url).toContain("/repos/davd-gzl/postcards/pages");
+        return new Response("Not Found", { status: 404 }); // not enabled yet
+      });
+      const url = await new GitHubTarget({ ...cfg, fetchFn }).enablePages();
+      expect(url).toBe("https://davd-gzl.github.io/postcards/");
+      expect(body).toEqual({ source: { branch: "gh-pages", path: "/" } });
+    });
+
+    it("returns null (no throw) when the token cannot manage Pages", async () => {
+      const fetchFn = mockFetch(() => new Response("Forbidden", { status: 403 }));
+      const url = await new GitHubTarget({ ...cfg, fetchFn }).enablePages();
+      expect(url).toBeNull();
+    });
+  });
 });

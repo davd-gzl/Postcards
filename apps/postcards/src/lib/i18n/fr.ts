@@ -725,6 +725,10 @@ export const fr: Messages = {
   "publish.toast.missingFields":
     "Renseignez le propriétaire, le dépôt, la branche et un jeton pour pousser vers GitHub.",
   "publish.toast.pushed": "Poussé vers {owner}/{repo} — GitHub Pages se mettra à jour sous peu.",
+  "publish.toast.pushedLive": "Publié — GitHub Pages est activé et construit votre site.",
+  "publish.liveSitePrefix": "Votre site :",
+  "publish.liveSiteNote":
+    "GitHub Pages peut prendre une minute pour la première construction. Si le lien renvoie une 404, ouvrez une fois Réglages → Pages du dépôt pour terminer l'activation.",
   "publish.toast.pushErr": "L'envoi vers GitHub a échoué. Le téléchargement local fonctionne toujours.",
 
   // ── About / "How it works" ───────────────────────────────────────────────

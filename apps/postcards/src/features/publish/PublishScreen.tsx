@@ -77,6 +77,9 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
     branch: "main",
     token: "",
   });
+  // The public URL a successful push publishes to (GitHub Pages). Shown as a
+  // clickable link so the user can jump straight to their live site.
+  const [liveUrl, setLiveUrl] = useState<string | null>(null);
 
   // Ordered trips (newest first) for the "one trip" picker.
   const tripOptions = useMemo(
@@ -200,7 +203,21 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
         ],
         `Publish "${title.trim()}" via Postcards`,
       );
-      showToast(t("publish.toast.pushed", { owner: gh.owner.trim(), repo: gh.repo.trim() }));
+      // Best-effort: switch on GitHub Pages so the site goes live without a trip
+      // to the repo's Settings. Returns null when the token can't manage Pages —
+      // then we fall back to the "pushed" toast (the README covers manual setup).
+      let siteUrl: string | null = null;
+      try {
+        siteUrl = await target.enablePages();
+      } catch {
+        siteUrl = null;
+      }
+      setLiveUrl(siteUrl ?? target.pagesSiteUrl());
+      showToast(
+        siteUrl
+          ? t("publish.toast.pushedLive")
+          : t("publish.toast.pushed", { owner: gh.owner.trim(), repo: gh.repo.trim() }),
+      );
     } catch (e) {
       showToast(e instanceof Error ? e.message : t("publish.toast.pushErr"));
     } finally {
@@ -520,6 +537,16 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
                   {busy ? t("publish.pushing") : t("publish.push")}
                 </button>
               </div>
+              {liveUrl && (
+                <p className="muted small publish-live">
+                  {t("publish.liveSitePrefix")}{" "}
+                  <a href={liveUrl} target="_blank" rel="noreferrer noopener">
+                    {liveUrl}
+                  </a>
+                  <br />
+                  {t("publish.liveSiteNote")}
+                </p>
+              )}
             </div>
           )}
         </div>

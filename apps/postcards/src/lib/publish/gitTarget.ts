@@ -192,4 +192,38 @@ export class GitHubTarget implements PublishTarget {
       throw new Error(`GitHub write failed for ${path} (${res.status})${detail}.`);
     }
   }
+
+  /** The public GitHub Pages URL this repo serves at once Pages is enabled.
+   *  A `<owner>.github.io` repo is served at the root; every other repo is a
+   *  project site at `https://<owner>.github.io/<repo>/`. */
+  pagesSiteUrl(): string {
+    if (/^[^/]+\.github\.io$/i.test(this.cfg.repo)) return `https://${this.cfg.repo}/`;
+    return `https://${this.cfg.owner}.github.io/${this.cfg.repo}/`;
+  }
+
+  /**
+   * Best-effort: turn on GitHub Pages for the target branch (served from `/`), so
+   * a published journey goes live without the user visiting the repo's Settings →
+   * Pages. Returns the site URL when Pages is on (or was just enabled), or null
+   * when this token can't manage Pages — a fine-grained PAT scoped only to
+   * `contents:write` cannot, and that's fine: the caller falls back to the
+   * in-export README's manual instructions. Never throws for the permission case.
+   */
+  async enablePages(): Promise<string | null> {
+    const url = `${this.apiBase}/repos/${this.cfg.owner}/${this.cfg.repo}/pages`;
+    // Already enabled? (GET needs only read access; 200 => on, 404 => off.)
+    const cur = await this.fetchFn(url, { headers: this.headers(), referrerPolicy: "no-referrer" });
+    if (cur.ok) return this.pagesSiteUrl();
+    if (cur.status !== 404) return null; // 403/401: token can't manage Pages.
+    // Not enabled yet — create it, sourced from our publish branch's root.
+    const res = await this.fetchFn(url, {
+      method: "POST",
+      referrerPolicy: "no-referrer",
+      headers: { ...this.headers(), "Content-Type": "application/json" },
+      body: JSON.stringify({ source: { branch: this.cfg.branch, path: "/" } }),
+    });
+    // 201 created, or 409 if a concurrent enable won the race — both mean "on".
+    if (res.ok || res.status === 409) return this.pagesSiteUrl();
+    return null;
+  }
 }
