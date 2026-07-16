@@ -22,10 +22,13 @@ export type ImportResult =
     }
   | { ok: false; error: string };
 
-/** Reject absurdly large inputs before parsing (main-thread DoS guard). Generous
- *  enough for photo-rich gallery files (postcards are embedded, downscaled) — this
- *  is a safety ceiling, not a schema rule, so the user's own backup always restores. */
-const MAX_IMPORT_CHARS = 256_000_000;
+/** Reject absurdly large inputs before parsing (main-thread DoS guard). Still
+ *  generous for photo-rich gallery files (postcards are embedded, downscaled) — a
+ *  safety ceiling, not a schema rule, so a genuine backup restores — but halved
+ *  from the old 256 MB so a hostile file can't OOM a memory-constrained mobile
+ *  WebView on import (or on every device-sync pull, which runs this same parser).
+ *  Element-count caps in models.ts bound the record arrays independently. */
+const MAX_IMPORT_CHARS = 128_000_000;
 
 /**
  * Parse + validate + sanitize an imported file (Constitution VI: data is inert).

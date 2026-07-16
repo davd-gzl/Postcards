@@ -105,7 +105,7 @@ export class GitHubTarget implements PublishTarget {
   private async currentSha(path: string): Promise<string | null> {
     const res = await this.fetchFn(
       `${this.contentsUrl(path)}?ref=${encodeURIComponent(this.cfg.branch)}`,
-      { headers: this.headers() },
+      { headers: this.headers(), referrerPolicy: "no-referrer" },
     );
     if (res.status === 404) return null;
     if (!res.ok) {
@@ -121,6 +121,7 @@ export class GitHubTarget implements PublishTarget {
       const sha = await this.currentSha(file.path);
       const res = await this.fetchFn(this.contentsUrl(file.path), {
         method: "PUT",
+        referrerPolicy: "no-referrer",
         headers: { ...this.headers(), "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
@@ -145,7 +146,7 @@ export class GitHubTarget implements PublishTarget {
   async getFile(path: string): Promise<{ content: string; version: string } | null> {
     const res = await this.fetchFn(
       `${this.contentsUrl(path)}?ref=${encodeURIComponent(this.cfg.branch)}`,
-      { headers: this.headers() },
+      { headers: this.headers(), referrerPolicy: "no-referrer" },
     );
     if (res.status === 404) return null;
     if (!res.ok) {
