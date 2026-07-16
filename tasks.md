@@ -85,6 +85,10 @@ mode, so it's high-value and not much extra surface. Recommendation:
       keyboard handling) — verify config + platforms.
 - [ ] BUG: long-press to add a place → the add-place modal is BROKEN on mobile. Fix the overlay/dialog
       sizing/positioning on small screens.
+- [ ] BUG/UX: the Publish PREVIEW feels weird on mobile, and tapping a city in it "reopens the app"
+      (the iframe escapes to top-navigation). Sandbox the preview iframe so links/taps stay INSIDE it
+      (no allow-top-navigation), size it well on mobile (proper scroll / a phone-ish frame or a
+      full-screen preview), and make city taps behave within the preview. (PublishScreen preview iframe.)
 - [ ] **Do all remaining backlog items, integrated** (below).
 - [ ] **Launch a workflow** on "whatever could be upgraded" → implement top picks.
 
