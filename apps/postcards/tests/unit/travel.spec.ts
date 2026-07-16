@@ -88,6 +88,38 @@ describe("trips are portable (round-trip + backward compatible)", () => {
     if (result.ok) expect(result.trips).toEqual(trips);
   });
 
+  it("round-trips an optional trip name (folder label), sanitizing it", () => {
+    const named = { ...trip(airportRef("CDG"), airportRef("JFK")), name: "Japan 2024" };
+    const result = importFile(serializeFile([], [named]));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.trips[0]!.name).toBe("Japan 2024");
+      expect(result.trips).toEqual([named]);
+    }
+    // A formula-prefixed name is neutralised to inert text on parse.
+    const evil = { ...trip(airportRef("CDG"), airportRef("JFK")), name: "=Japan 2024" };
+    const parsed = PostcardsFileSchema.safeParse({
+      format: "postcards",
+      schemaVersion: 7,
+      exportedAt: new Date().toISOString(),
+      visits: [],
+      trips: [evil],
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.trips[0]!.name).toBe("Japan 2024");
+  });
+
+  it("adds no `name` key to a trip that has none (byte-identical round-trip)", () => {
+    const trips = [trip(airportRef("CDG"), airportRef("JFK"))];
+    const result = importFile(serializeFile([], trips));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // The optional field is never injected — an un-named trip stays un-named.
+      expect("name" in result.trips[0]!).toBe(false);
+      expect(result.trips).toEqual(trips);
+    }
+  });
+
   it("imports an older file with no trips as an empty travel log", () => {
     const text = JSON.stringify({
       format: "postcards",

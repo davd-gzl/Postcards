@@ -1,15 +1,15 @@
 // Render a PUBLISHED journey to ONE self-contained HTML document — the "book"
-// a visitor discovers (Polarsteps-style): a cover, a route map, and one
-// photo-led page per step, paged left→right.
+// a visitor discovers: an editorial cover, a hand-drawn-feeling route map that
+// labels every city, and one photo-led page per step, paged left→right.
 //
 // Constitution guarantees baked into this output:
 //   • INERT — all story text and captions are placed with textContent (never
-//     innerHTML), and the embedded JSON escapes "<" so it can never break the
-//     <script> boundary. A shared page can't form raw HTML, a script, or a
-//     tracking pixel.
-//   • PRIVATE / OFFLINE — everything (CSS, JS, data, photos) is inlined. There
-//     is NO external URL of any kind: no CDN, no web font, no map tile, no
-//     analytics. Photos are already inline data: URLs and are embedded as-is.
+//     innerHTML), map labels are escaped, and the embedded JSON escapes "<" so it
+//     can never break the <script> boundary. A shared page can't form raw HTML, a
+//     script, or a tracking pixel.
+//   • PRIVATE / OFFLINE — everything (CSS, JS, data, photos, the map) is inlined.
+//     There is NO external URL of any kind: no CDN, no web font (system stack
+//     only), no map tile, no analytics, and the inline SVG carries no xmlns URL.
 //     The reader makes ZERO network requests and leaks nothing.
 //   • ZERO-KNOWLEDGE PASSPHRASE — when `opts.encrypted` is given instead of a
 //     plain journey, only the AES-GCM envelope ships. A tiny inline decrypt
@@ -63,120 +63,154 @@ function jsonForScript(v: unknown): string {
 }
 
 // ---------------------------------------------------------------------------
-// Inline styles — theme-aware (light + dark via prefers-color-scheme, with an
-// explicit toggle), accessible focus rings, reduced-motion honoured. No web
-// fonts (system stack), no external asset of any kind.
+// Inline styles — an editorial "paper & ink" travel-blog look. Theme-aware
+// (light + dark via prefers-color-scheme, with an explicit toggle), accessible
+// focus rings, reduced-motion honoured. Self-hostable fonts only: a refined
+// system serif for display and a humanist system sans for body — no web font,
+// no external asset of any kind.
 // ---------------------------------------------------------------------------
 const READER_CSS = `
 :root{
-  --pc-bg:#f4f2ee; --pc-surface:#ffffff; --pc-elev:#faf8f4;
-  --pc-text:#1a1b1e; --pc-muted:#585a61; --pc-border:#e3ded4;
-  --pc-accent:#4338ca; --pc-accent-ink:#ffffff; --pc-ocean:#e8ecf5;
+  --pc-serif:Georgia,"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua","Times New Roman",serif;
+  --pc-sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --pc-bg:#f6f1e7; --pc-surface:#fffdf8; --pc-elev:#efe7d6;
+  --pc-text:#241f18; --pc-muted:#6c6354; --pc-border:#e5dcc8;
+  --pc-accent:#a4381c; --pc-accent-ink:#fff7ef; --pc-gold:#8a6a2c;
+  --pc-ocean:#e2e8e2; --pc-map-paper:#e8ebe0; --pc-map-ink:#3b392f; --pc-map-grat:#cdd3c4;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --pc-bg:#121317; --pc-surface:#1c1e24; --pc-elev:#232631;
-    --pc-text:#eceef3; --pc-muted:#a6aab4; --pc-border:#2e313a;
-    --pc-accent:#a5b4fc; --pc-accent-ink:#17181c; --pc-ocean:#1a2030;
+    --pc-bg:#15130f; --pc-surface:#1d1a15; --pc-elev:#26211a;
+    --pc-text:#efe8da; --pc-muted:#a89e8b; --pc-border:#332d22;
+    --pc-accent:#e3855d; --pc-accent-ink:#1b130d; --pc-gold:#cba85f;
+    --pc-ocean:#171b18; --pc-map-paper:#191d17; --pc-map-ink:#d6d1c2; --pc-map-grat:#2c3026;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --pc-bg:#121317; --pc-surface:#1c1e24; --pc-elev:#232631;
-  --pc-text:#eceef3; --pc-muted:#a6aab4; --pc-border:#2e313a;
-  --pc-accent:#a5b4fc; --pc-accent-ink:#17181c; --pc-ocean:#1a2030;
+  --pc-bg:#15130f; --pc-surface:#1d1a15; --pc-elev:#26211a;
+  --pc-text:#efe8da; --pc-muted:#a89e8b; --pc-border:#332d22;
+  --pc-accent:#e3855d; --pc-accent-ink:#1b130d; --pc-gold:#cba85f;
+  --pc-ocean:#171b18; --pc-map-paper:#191d17; --pc-map-ink:#d6d1c2; --pc-map-grat:#2c3026;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
 body{
   background:var(--pc-bg); color:var(--pc-text);
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  line-height:1.55; -webkit-text-size-adjust:100%;
+  font-family:var(--pc-sans); line-height:1.62; -webkit-text-size-adjust:100%;
 }
 .pc-shell{min-height:100%; display:flex; flex-direction:column}
-.pc-app{flex:1; width:100%; max-width:760px; margin:0 auto; padding:0 16px 96px; position:relative}
-.pc-loading{color:var(--pc-muted); text-align:center; padding:56px 0}
+.pc-app{flex:1; width:100%; max-width:720px; margin:0 auto; padding:0 20px 104px; position:relative}
+.pc-loading{color:var(--pc-muted); text-align:center; padding:56px 0; font-style:italic}
 .pc-noscript{max-width:520px; margin:56px auto; padding:18px 20px; border:1px solid var(--pc-border);
   background:var(--pc-surface); border-radius:14px; text-align:center}
-:focus-visible{outline:3px solid var(--pc-accent); outline-offset:2px; border-radius:6px}
+:focus-visible{outline:3px solid var(--pc-accent); outline-offset:3px; border-radius:6px}
+
+/* Small caps eyebrow / kicker used across cover, map, steps */
+.pc-kicker{margin:0 0 10px; font-size:12px; font-weight:700; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--pc-accent)}
+.pc-folio{margin:34px 0 0; text-align:center; font-size:12px; letter-spacing:.32em;
+  color:var(--pc-muted); font-variant-numeric:tabular-nums}
 
 /* Header: progress + counter + theme toggle */
 .pc-head{position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:12px;
-  padding:12px 16px; background:color-mix(in srgb, var(--pc-bg) 88%, transparent);
-  backdrop-filter:saturate(1.2) blur(6px); border-bottom:1px solid var(--pc-border)}
-.pc-progress{flex:1; height:6px; background:var(--pc-border); border-radius:99px; overflow:hidden}
-.pc-progress-bar{height:100%; width:0; background:var(--pc-accent); transition:width .25s ease}
+  padding:12px 16px; background:color-mix(in srgb, var(--pc-bg) 86%, transparent);
+  backdrop-filter:saturate(1.2) blur(7px); border-bottom:1px solid var(--pc-border)}
+.pc-progress{flex:1; height:5px; background:var(--pc-border); border-radius:99px; overflow:hidden}
+.pc-progress-bar{height:100%; width:0; background:var(--pc-accent); transition:width .3s ease}
 .pc-counter{font-size:13px; color:var(--pc-muted); font-variant-numeric:tabular-nums; white-space:nowrap}
 .pc-theme{border:1px solid var(--pc-border); background:var(--pc-surface); color:var(--pc-text);
   border-radius:99px; width:34px; height:34px; font-size:16px; cursor:pointer; line-height:1}
 .pc-theme:hover{background:var(--pc-elev)}
 
 /* Spreads */
-.pc-spread{padding:28px 4px 8px; animation:pc-in .28s ease both}
+.pc-spread{padding:30px 2px 8px; animation:pc-in .32s ease both}
 .pc-spread[hidden]{display:none}
-@keyframes pc-in{from{opacity:0; transform:translateX(14px)} to{opacity:1; transform:none}}
+@keyframes pc-in{from{opacity:0; transform:translateX(16px)} to{opacity:1; transform:none}}
 
 /* Cover */
-.pc-cover{text-align:center; padding-top:40px}
-.pc-cover-kicker{letter-spacing:.14em; text-transform:uppercase; font-size:12px; color:var(--pc-muted); margin:0 0 10px}
-.pc-cover h1{font-size:clamp(28px,7vw,44px); line-height:1.1; margin:0 0 8px; font-weight:800}
-.pc-cover-sub{font-size:18px; color:var(--pc-muted); margin:0 0 6px}
-.pc-cover-dates{font-size:15px; color:var(--pc-muted); margin:0 0 26px}
-.pc-totals{display:flex; justify-content:center; flex-wrap:wrap; gap:14px}
+.pc-cover{text-align:center; padding-top:22px}
+.pc-cover-hero{position:relative; width:100%; aspect-ratio:16/10; margin:0 0 26px;
+  border-radius:18px; overflow:hidden; background:var(--pc-elev); border:1px solid var(--pc-border);
+  box-shadow:0 18px 40px -24px rgba(0,0,0,.5)}
+.pc-cover-hero img{width:100%; height:100%; object-fit:cover; display:block}
+.pc-cover-hero.is-empty{display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(120% 120% at 30% 20%, var(--pc-elev), var(--pc-surface))}
+.pc-cover-hero-glyph{font-size:64px; opacity:.6}
+.pc-cover-title{font-family:var(--pc-serif); font-weight:700; font-size:clamp(30px,7.6vw,50px);
+  line-height:1.08; letter-spacing:-.01em; margin:0 0 12px}
+.pc-cover-sub{font-family:var(--pc-serif); font-style:italic; font-size:19px; color:var(--pc-muted); margin:0 0 8px}
+.pc-cover-dates{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--pc-muted); margin:0 0 26px}
+.pc-totals{display:flex; justify-content:center; flex-wrap:wrap; gap:12px}
 .pc-total{background:var(--pc-surface); border:1px solid var(--pc-border); border-radius:14px;
-  padding:14px 20px; min-width:104px; box-shadow:0 1px 2px rgba(0,0,0,.04)}
-.pc-total-n{font-size:26px; font-weight:800; font-variant-numeric:tabular-nums}
-.pc-total-l{font-size:12px; color:var(--pc-muted); text-transform:uppercase; letter-spacing:.06em}
-.pc-cover-hint{margin-top:30px; color:var(--pc-muted); font-size:14px}
+  padding:14px 20px; min-width:104px; box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.pc-total-n{font-family:var(--pc-serif); font-size:27px; font-weight:700; font-variant-numeric:tabular-nums}
+.pc-total-l{font-size:11px; color:var(--pc-muted); text-transform:uppercase; letter-spacing:.1em}
+.pc-cover-hint{margin-top:30px; color:var(--pc-muted); font-size:14px; font-style:italic}
+.pc-colophon{margin:16px auto 0; max-width:420px; color:var(--pc-muted); font-size:12px;
+  padding-top:16px; border-top:1px solid var(--pc-border)}
 
 /* Map */
-.pc-mapwrap h2, .pc-step h2{font-size:22px; margin:0 0 12px}
-.pc-map{background:var(--pc-ocean); border:1px solid var(--pc-border); border-radius:16px; overflow:hidden}
+.pc-mapwrap h2, .pc-step h2{font-family:var(--pc-serif); font-weight:700; font-size:25px; margin:0 0 14px; letter-spacing:-.01em}
+.pc-map{position:relative; background:var(--pc-map-paper); border:1px solid var(--pc-border);
+  border-radius:16px; overflow:hidden; box-shadow:inset 0 0 60px -30px rgba(0,0,0,.4)}
+.pc-map::after{content:""; position:absolute; inset:0; pointer-events:none; border-radius:16px;
+  background:radial-gradient(130% 120% at 50% 45%, transparent 58%, rgba(60,45,20,.14))}
 .pc-map-svg{display:block; width:100%; height:auto}
-.pc-map-bg{fill:var(--pc-ocean)}
-.pc-grat line{stroke:var(--pc-border); stroke-width:.6}
-.pc-legs line{stroke-width:2.2; stroke-linecap:round; fill:none}
-.pc-pt{fill:var(--pc-accent); stroke:var(--pc-surface); stroke-width:1.4}
-.pc-legend{display:flex; flex-wrap:wrap; gap:10px 16px; margin:14px 2px 0; font-size:13px; color:var(--pc-muted)}
-.pc-legend span{display:inline-flex; align-items:center; gap:6px}
-.pc-swatch{width:16px; height:3px; border-radius:2px; display:inline-block}
+.pc-map-bg{fill:var(--pc-map-paper)}
+.pc-grat line{stroke:var(--pc-map-grat); stroke-width:.7}
+.pc-leg{fill:none; stroke-width:2.4; stroke-linecap:round}
+.pc-leg-halo{fill:none; stroke:var(--pc-map-paper); stroke-width:5.2; stroke-linecap:round; opacity:.85}
+.pc-pt{fill:var(--pc-accent); stroke:var(--pc-map-paper); stroke-width:1.4}
+.pc-pt-ring{fill:none; stroke:var(--pc-map-ink); stroke-width:1.4; opacity:.45}
+.pc-map-label{font-family:var(--pc-sans); font-size:11.5px; font-weight:600; fill:var(--pc-map-ink);
+  paint-order:stroke; stroke:var(--pc-map-paper); stroke-width:3px; stroke-linejoin:round; stroke-linecap:round}
+.pc-compass-face{fill:var(--pc-map-paper); stroke:var(--pc-map-ink); stroke-width:1; opacity:.85}
+.pc-compass-n{fill:var(--pc-accent)}
+.pc-compass-s{fill:var(--pc-map-ink); opacity:.55}
+.pc-compass-label{font-family:var(--pc-sans); font-size:10px; font-weight:700; fill:var(--pc-map-ink)}
+.pc-legend{display:flex; flex-wrap:wrap; gap:9px 16px; margin:14px 2px 0; font-size:13px; color:var(--pc-muted)}
+.pc-legend span{display:inline-flex; align-items:center; gap:7px}
+.pc-swatch{width:18px; height:3px; border-radius:2px; display:inline-block}
+.pc-dot{width:11px; height:11px; border-radius:99px; display:inline-block; border:1.5px solid var(--pc-map-paper)}
 .pc-attrib{margin:14px 2px 0; font-size:12px; color:var(--pc-muted)}
 
 /* Step page */
 .pc-hero{position:relative; width:100%; aspect-ratio:3/2; border-radius:16px; overflow:hidden;
-  background:var(--pc-elev); border:1px solid var(--pc-border)}
+  background:var(--pc-elev); border:1px solid var(--pc-border); box-shadow:0 14px 34px -24px rgba(0,0,0,.5)}
 .pc-hero img{width:100%; height:100%; object-fit:cover; display:block}
 .pc-hero-empty{display:flex; align-items:center; justify-content:center; height:100%;
-  background:linear-gradient(135deg,var(--pc-elev),var(--pc-surface)); flex-direction:column; gap:8px}
-.pc-hero-empty .pc-flag{font-size:52px}
-.pc-hero-empty .pc-place{color:var(--pc-muted); font-size:15px}
+  background:radial-gradient(120% 120% at 30% 20%, var(--pc-elev), var(--pc-surface)); flex-direction:column; gap:8px}
+.pc-hero-empty .pc-flag{font-size:56px}
+.pc-hero-empty .pc-place{color:var(--pc-muted); font-size:15px; font-style:italic}
 .pc-badge{position:absolute; top:12px; left:12px; background:var(--pc-accent); color:var(--pc-accent-ink);
-  border-radius:99px; padding:6px 12px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px}
-.pc-step-meta{display:flex; align-items:baseline; flex-wrap:wrap; gap:6px 12px; margin:16px 0 4px}
+  border-radius:99px; padding:6px 13px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:6px;
+  box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.pc-step-meta{display:flex; align-items:baseline; flex-wrap:wrap; gap:6px 12px; margin:18px 0 4px}
 .pc-step h2{margin:0}
-.pc-step-date{color:var(--pc-muted); font-size:15px}
-.pc-story-title{font-size:17px; margin:16px 0 6px}
-.pc-story-text{white-space:pre-wrap; margin:0; font-size:16px}
-.pc-gallery{display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:8px; margin-top:18px}
+.pc-step-date{color:var(--pc-muted); font-size:14px; letter-spacing:.06em; text-transform:uppercase}
+.pc-story-title{font-family:var(--pc-serif); font-size:19px; font-weight:700; margin:18px 0 6px}
+.pc-story-text{white-space:pre-wrap; margin:0; font-size:16.5px; line-height:1.72}
+.pc-gallery{display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:8px; margin-top:20px}
 .pc-thumb{padding:0; border:1px solid var(--pc-border); border-radius:10px; overflow:hidden; cursor:pointer;
   background:var(--pc-elev); aspect-ratio:1; display:block}
 .pc-thumb img{width:100%; height:100%; object-fit:cover; display:block}
 
 /* Nav */
 .pc-nav{position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center; gap:12px;
-  padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:color-mix(in srgb, var(--pc-bg) 88%, transparent);
-  backdrop-filter:blur(6px); border-top:1px solid var(--pc-border)}
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:color-mix(in srgb, var(--pc-bg) 86%, transparent);
+  backdrop-filter:blur(7px); border-top:1px solid var(--pc-border)}
 .pc-btn{border:1px solid var(--pc-border); background:var(--pc-surface); color:var(--pc-text);
-  border-radius:99px; padding:10px 20px; font-size:15px; font-weight:600; cursor:pointer; min-width:120px}
+  border-radius:99px; padding:10px 22px; font-size:15px; font-weight:600; cursor:pointer; min-width:122px}
 .pc-btn:hover:not(:disabled){background:var(--pc-elev)}
 .pc-btn:disabled{opacity:.4; cursor:default}
 .pc-btn-primary{background:var(--pc-accent); color:var(--pc-accent-ink); border-color:transparent}
 
 /* Passphrase gate */
 .pc-gate{max-width:420px; margin:64px auto 0; text-align:center}
-.pc-gate-title{font-size:24px; margin:0 0 8px}
+.pc-gate-title{font-family:var(--pc-serif); font-size:26px; margin:0 0 8px}
 .pc-gate-note{color:var(--pc-muted); margin:0 0 22px}
 .pc-gate-label{display:block; text-align:left; font-size:13px; color:var(--pc-muted); margin-bottom:16px}
 .pc-gate-input{width:100%; margin-top:6px; padding:12px 14px; font-size:16px; border-radius:12px;
@@ -184,14 +218,14 @@ body{
 .pc-gate-msg{color:var(--pc-accent); min-height:22px; margin:16px 0 0; font-weight:600}
 
 /* Footer */
-.pc-foot{max-width:760px; margin:0 auto; padding:20px 16px 84px; color:var(--pc-muted);
+.pc-foot{max-width:720px; margin:0 auto; padding:22px 20px 96px; color:var(--pc-muted);
   font-size:13px; text-align:center; border-top:1px solid var(--pc-border)}
 
 /* Lightbox */
-.pc-lightbox{position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.86); display:flex;
+.pc-lightbox{position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.88); display:flex;
   flex-direction:column; align-items:center; justify-content:center; padding:20px}
 .pc-lb-img{max-width:100%; max-height:78vh; object-fit:contain; border-radius:8px}
-.pc-lb-cap{color:#f0f0f0; margin-top:12px; font-size:14px; text-align:center; max-width:640px}
+.pc-lb-cap{color:#f0f0f0; margin-top:12px; font-size:14px; text-align:center; max-width:640px; font-style:italic}
 .pc-lb-nav{position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,.14);
   color:#fff; border:0; font-size:30px; width:52px; height:52px; border-radius:99px; cursor:pointer}
 .pc-lb-prev{left:16px} .pc-lb-next{right:16px}
@@ -216,7 +250,8 @@ const READER_JS = `
   "use strict";
   var MODE_GLYPH={flight:"✈️",train:"🚆",bus:"🚌",ferry:"⛴️",car:"🚗",other:"•"};
   var MODE_LABEL={flight:"Flight",train:"Train",bus:"Bus",ferry:"Ferry",car:"Car",other:"Travel"};
-  var MODE_COLOR={flight:"#4338ca",train:"#15803d",bus:"#b45309",ferry:"#0369a1",car:"#be185d",other:"#6b7280"};
+  var MODE_COLOR={flight:"#4f46e5",train:"#15803d",bus:"#b45309",ferry:"#0369a1",car:"#be185d",other:"#78716c"};
+  var START_COLOR="#0e7490", END_COLOR="#b3401f";
 
   function el(tag,props,kids){
     var e=document.createElement(tag);
@@ -232,6 +267,8 @@ const READER_JS = `
       e.appendChild(typeof c==="string"?document.createTextNode(c):c);}}
     return e;
   }
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+  function pad2(n){n=String(n); return n.length<2?"0"+n:n;}
   function fmtInt(n){try{return new Intl.NumberFormat().format(Math.round(n));}catch(_e){return String(Math.round(n));}}
   function fmtDate(iso){
     if(!iso) return "";
@@ -261,69 +298,162 @@ const READER_JS = `
     }).then(function(buf){ return JSON.parse(new TextDecoder().decode(buf)); });
   }
 
-  // --- route map (inline SVG, trusted markup, no user text) ---
-  function mapSvg(steps){
-    var W=720,H=360,s="";
-    s+='<svg class="pc-map-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Route map of the journey">';
-    s+='<rect class="pc-map-bg" x="0" y="0" width="'+W+'" height="'+H+'"/>';
-    var g="",lon,lat;
-    for(lon=-180;lon<=180;lon+=30){var x=(lon+180)/360*W; g+='<line x1="'+x.toFixed(1)+'" y1="0" x2="'+x.toFixed(1)+'" y2="'+H+'"/>';}
-    for(lat=-90;lat<=90;lat+=30){var y=(90-lat)/180*H; g+='<line x1="0" y1="'+y.toFixed(1)+'" x2="'+W+'" y2="'+y.toFixed(1)+'"/>';}
-    s+='<g class="pc-grat">'+g+'</g>';
-    function px(st){return {x:(st.lon+180)/360*W, y:(90-st.lat)/180*H};}
-    var seg="";
-    for(var i=1;i<steps.length;i++){
-      if(!steps[i].arriveBy) continue;
-      if(Math.abs(steps[i].lon-steps[i-1].lon)>180) continue;
-      var a=px(steps[i-1]),b=px(steps[i]);
-      var col=MODE_COLOR[steps[i].arriveBy]||MODE_COLOR.other;
-      seg+='<line x1="'+a.x.toFixed(1)+'" y1="'+a.y.toFixed(1)+'" x2="'+b.x.toFixed(1)+'" y2="'+b.y.toFixed(1)+'" stroke="'+col+'"/>';
+  // --- route map (inline SVG string; user place names are escaped) ---
+  // Fits a Web-Mercator projection to the journey's own bounds so every city
+  // spreads out and its label is readable — a travel map, not a world diagram.
+  function niceStep(span,target){
+    var raw=(span||1)/Math.max(1,target);
+    var pw=Math.pow(10,Math.floor(Math.log(raw)/Math.LN10));
+    var steps=[1,2,5,10];
+    for(var i=0;i<steps.length;i++){ if(steps[i]*pw>=raw) return steps[i]*pw; }
+    return 10*pw;
+  }
+  function mercY(lat){var la=Math.max(-85,Math.min(85,lat)); return Math.log(Math.tan(Math.PI/4+la*Math.PI/360));}
+  function invMercY(y){return (2*Math.atan(Math.exp(y))-Math.PI/2)*180/Math.PI;}
+
+  function placeLabel(cx,cy,name,placed,W,H){
+    var fs=11.5, w=Math.min(150,(name?name.length:0)*fs*0.56)+6, h=fs+5;
+    var cands=[
+      {tx:cx+9,ty:cy+4,anchor:"start",bx:cx+7,by:cy-h/2,ex:cx+7+w,ey:cy+h/2},
+      {tx:cx-9,ty:cy+4,anchor:"end",bx:cx-7-w,by:cy-h/2,ex:cx-7,ey:cy+h/2},
+      {tx:cx,ty:cy-9,anchor:"middle",bx:cx-w/2,by:cy-9-h,ex:cx+w/2,ey:cy-5},
+      {tx:cx,ty:cy+16,anchor:"middle",bx:cx-w/2,by:cy+7,ex:cx+w/2,ey:cy+7+h}
+    ];
+    for(var c=0;c<cands.length;c++){
+      var k=cands[c];
+      if(k.bx<3||k.ex>W-3||k.by<3||k.ey>H-3) continue;
+      var hit=false;
+      for(var q=0;q<placed.length;q++){var r=placed[q];
+        if(k.bx<r.ex&&k.ex>r.bx&&k.by<r.ey&&k.ey>r.by){hit=true;break;}}
+      if(!hit){placed.push(k); return k;}
     }
-    s+='<g class="pc-legs">'+seg+'</g>';
-    var pts="";
-    for(var j=0;j<steps.length;j++){var p=px(steps[j]); pts+='<circle class="pc-pt" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="4"/>';}
-    s+='<g class="pc-pts">'+pts+'</g></svg>';
+    placed.push(cands[0]); return cands[0];
+  }
+
+  function mapSvg(steps){
+    var W=760,H=440,PAD=56;
+    var X=[],Y=[];
+    for(var i=0;i<steps.length;i++){X.push(steps[i].lon*Math.PI/180); Y.push(mercY(steps[i].lat));}
+    var minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+    for(i=0;i<X.length;i++){minX=Math.min(minX,X[i]);maxX=Math.max(maxX,X[i]);minY=Math.min(minY,Y[i]);maxY=Math.max(maxY,Y[i]);}
+    if(!isFinite(minX)){minX=-Math.PI;maxX=Math.PI;minY=-1.4;maxY=1.4;}
+    var spanX=(maxX-minX)||0.5, spanY=(maxY-minY)||0.5;
+    minX-=spanX*0.18; maxX+=spanX*0.18; minY-=spanY*0.24; maxY+=spanY*0.24;
+    spanX=maxX-minX; spanY=maxY-minY;
+    var scale=Math.min((W-2*PAD)/spanX,(H-2*PAD)/spanY);
+    var midX=(minX+maxX)/2, midY=(minY+maxY)/2;
+    function sx(x){return W/2+(x-midX)*scale;}
+    function sy(y){return H/2-(y-midY)*scale;}
+    function pt(idx){return {x:sx(X[idx]),y:sy(Y[idx])};}
+
+    var s="";
+    s+='<svg class="pc-map-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Route map of the journey, showing each city">';
+    s+='<rect class="pc-map-bg" x="0" y="0" width="'+W+'" height="'+H+'"/>';
+
+    // Graticule fitted to the visible region (a refined faint grid = "a map").
+    var lonMin=minX*180/Math.PI, lonMax=maxX*180/Math.PI;
+    var latMin=invMercY(minY), latMax=invMercY(maxY);
+    var g="";
+    var lonStep=niceStep(lonMax-lonMin,6), la0=Math.ceil(lonMin/lonStep)*lonStep;
+    for(var lo=la0; lo<=lonMax+1e-6; lo+=lonStep){var gx=sx(lo*Math.PI/180); g+='<line x1="'+gx.toFixed(1)+'" y1="0" x2="'+gx.toFixed(1)+'" y2="'+H+'"/>';}
+    var latStep=niceStep(latMax-latMin,4), lt0=Math.ceil(latMin/latStep)*latStep;
+    for(var lt=lt0; lt<=latMax+1e-6; lt+=latStep){var gy=sy(mercY(lt)); g+='<line x1="0" y1="'+gy.toFixed(1)+'" x2="'+W+'" y2="'+gy.toFixed(1)+'"/>';}
+    s+='<g class="pc-grat">'+g+'</g>';
+
+    // Route legs — a smooth curved arc per hop, mode-coloured (flight/ferry dashed).
+    var legs="";
+    for(i=1;i<steps.length;i++){
+      if(Math.abs(steps[i].lon-steps[i-1].lon)>180) continue;
+      var a=pt(i-1), b=pt(i);
+      var mx=(a.x+b.x)/2, my=(a.y+b.y)/2, dx=b.x-a.x, dy=b.y-a.y;
+      var len=Math.sqrt(dx*dx+dy*dy)||1, off=Math.min(48,len*0.16);
+      var qx=(mx+(-dy/len)*off).toFixed(1), qy=(my+(dx/len)*off).toFixed(1);
+      var d='M'+a.x.toFixed(1)+' '+a.y.toFixed(1)+' Q'+qx+' '+qy+' '+b.x.toFixed(1)+' '+b.y.toFixed(1);
+      var mode=steps[i].arriveBy, col=MODE_COLOR[mode]||MODE_COLOR.other;
+      var dash=mode==="flight"?"7 6":(mode==="ferry"?"1.5 7":"");
+      legs+='<path class="pc-leg-halo" d="'+d+'"/>';
+      legs+='<path class="pc-leg" d="'+d+'" stroke="'+col+'"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>';
+    }
+    s+='<g>'+legs+'</g>';
+
+    // Compass rose (top-right). Seed its box so labels never collide with it.
+    var ccx=W-42, ccy=50, rr=17;
+    s+='<g transform="translate('+ccx+' '+ccy+')">';
+    s+='<circle class="pc-compass-face" r="'+rr+'"/>';
+    s+='<polygon class="pc-compass-n" points="0,-'+rr+' 4,1 0,4 -4,1"/>';
+    s+='<polygon class="pc-compass-s" points="0,'+rr+' 4,-1 0,-4 -4,-1"/>';
+    s+='<text class="pc-compass-label" x="0" y="-'+(rr+4)+'" text-anchor="middle">N</text>';
+    s+='</g>';
+
+    // City pins: a dot per stop, endpoints emphasised, plus a placed label.
+    var dots="", labels="", placed=[{bx:ccx-rr-4,by:ccy-rr-12,ex:ccx+rr+4,ey:ccy+rr+4}];
+    for(i=0;i<steps.length;i++){
+      var p=pt(i), isStart=i===0, isEnd=i===steps.length-1;
+      if(isStart||isEnd){
+        dots+='<circle class="pc-pt-ring" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="7.5"/>';
+        dots+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="4.6" fill="'+(isEnd?END_COLOR:START_COLOR)+'" stroke="var(--pc-map-paper)" stroke-width="1.6"/>';
+      }else{
+        dots+='<circle class="pc-pt" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.6"/>';
+      }
+      var box=placeLabel(p.x,p.y,steps[i].place.name,placed,W,H);
+      labels+='<text class="pc-map-label" x="'+box.tx.toFixed(1)+'" y="'+box.ty.toFixed(1)+'" text-anchor="'+box.anchor+'">'+esc(steps[i].place.name)+'</text>';
+    }
+    s+='<g>'+dots+'</g><g>'+labels+'</g></svg>';
     return s;
   }
 
-  function reduced(){try{return window.matchMedia("(prefers-reduced-motion:reduce)").matches;}catch(_e){return false;}}
-
   var state={spreads:[],idx:0,journey:null};
+
+  function coverPhoto(j){
+    for(var i=0;i<(j.steps||[]).length;i++){var ph=j.steps[i].photos; if(ph&&ph.length) return ph[0];}
+    return null;
+  }
 
   function buildCover(j){
     var sec=el("section",{className:"pc-spread pc-cover","aria-label":"Cover",tabIndex:-1});
-    sec.appendChild(el("p",{className:"pc-cover-kicker",textContent:"A Postcards journey"}));
-    sec.appendChild(el("h1",{textContent:j.title||"A journey"}));
+    var hero=coverPhoto(j);
+    var fig=el("div",{className:"pc-cover-hero"+(hero?"":" is-empty")});
+    if(hero){ fig.appendChild(el("img",{src:hero.src,alt:hero.caption||("Cover photo — "+(j.title||"a journey")),decoding:"async"})); }
+    else { fig.appendChild(el("span",{className:"pc-cover-hero-glyph","aria-hidden":"true",textContent:"🧭"})); }
+    sec.appendChild(fig);
+    sec.appendChild(el("p",{className:"pc-kicker",textContent:"A Postcards journey"}));
+    sec.appendChild(el("h1",{className:"pc-cover-title",textContent:j.title||"A journey"}));
     if(j.subtitle) sec.appendChild(el("p",{className:"pc-cover-sub",textContent:j.subtitle}));
     var dr=j.dateRange||{};
     if(dr.start){
-      var range=dr.end&&dr.end!==dr.start?fmtDate(dr.start)+" – "+fmtDate(dr.end):fmtDate(dr.start);
+      var range=dr.end&&dr.end!==dr.start?fmtDate(dr.start)+" — "+fmtDate(dr.end):fmtDate(dr.start);
       sec.appendChild(el("p",{className:"pc-cover-dates",textContent:range}));
     }
     var t=j.totals||{countries:0,places:0,distanceKm:0};
     var totals=el("div",{className:"pc-totals",role:"list"});
     function total(n,l){return el("div",{className:"pc-total",role:"listitem"},[
       el("div",{className:"pc-total-n",textContent:n}), el("div",{className:"pc-total-l",textContent:l})]);}
+    totals.appendChild(total(fmtInt(t.places), t.places===1?"stop":"stops"));
     totals.appendChild(total(fmtInt(t.countries), t.countries===1?"country":"countries"));
     totals.appendChild(total(fmtInt(t.distanceKm)+" km","travelled"));
-    totals.appendChild(total(fmtInt(t.places), t.places===1?"place":"places"));
     sec.appendChild(totals);
-    sec.appendChild(el("p",{className:"pc-cover-hint",textContent:"Use the arrow keys, swipe, or the buttons below to read on →"}));
+    sec.appendChild(el("p",{className:"pc-cover-hint",textContent:"Turn the page — arrow keys, swipe, or the buttons below →"}));
+    sec.appendChild(el("p",{className:"pc-colophon",textContent:"A private travel journal, published with Postcards."}));
     return sec;
   }
 
   function buildMap(j){
     var sec=el("section",{className:"pc-spread pc-mapwrap","aria-label":"Journey map",tabIndex:-1});
-    sec.appendChild(el("h2",{textContent:"The journey"}));
+    sec.appendChild(el("p",{className:"pc-kicker",textContent:"The route"}));
+    sec.appendChild(el("h2",{textContent:"Where the journey went"}));
     sec.appendChild(el("div",{className:"pc-map",html:mapSvg(j.steps)}));
     var used={};
     for(var i=0;i<j.steps.length;i++){var m=j.steps[i].arriveBy; if(m) used[m]=true;}
-    var legend=el("div",{className:"pc-legend"});
+    var legend=el("div",{className:"pc-legend","aria-label":"Map legend"});
+    function dotItem(color,label){var sp=el("span",{},[el("i",{className:"pc-dot"}),label]); sp.firstChild.style.background=color; return sp;}
+    function lineItem(color,label){var sp=el("span",{},[el("i",{className:"pc-swatch"}),label]); sp.firstChild.style.background=color; return sp;}
+    if(j.steps.length>1){
+      legend.appendChild(dotItem(START_COLOR,"Start"));
+      legend.appendChild(dotItem(END_COLOR,"End"));
+    }
     var order=["flight","train","bus","ferry","car","other"];
     for(var k=0;k<order.length;k++){ if(!used[order[k]]) continue;
-      var sw=el("span",{},[el("i",{className:"pc-swatch"}), MODE_LABEL[order[k]]]);
-      sw.firstChild.style.background=MODE_COLOR[order[k]];
-      legend.appendChild(sw);
+      legend.appendChild(lineItem(MODE_COLOR[order[k]],MODE_LABEL[order[k]]));
     }
     if(legend.childNodes.length) sec.appendChild(legend);
     sec.appendChild(el("p",{className:"pc-attrib",textContent:document.body.getAttribute("data-attrib")||""}));
@@ -332,6 +462,7 @@ const READER_JS = `
 
   function buildStep(step,n,total){
     var sec=el("section",{className:"pc-spread pc-step","aria-label":"Stop "+n+" of "+total+": "+step.place.name,tabIndex:-1});
+    sec.appendChild(el("p",{className:"pc-kicker",textContent:"Stop "+n+" of "+total}));
     var hero=el("div",{className:"pc-hero"});
     if(step.arriveBy){
       hero.appendChild(el("span",{className:"pc-badge"},[MODE_GLYPH[step.arriveBy]||"•"," ",MODE_LABEL[step.arriveBy]||"Travel"]));
@@ -438,8 +569,10 @@ const READER_JS = `
     var spreads=[buildCover(journey)];
     if(journey.steps&&journey.steps.length) spreads.push(buildMap(journey));
     for(var i=0;i<(journey.steps||[]).length;i++) spreads.push(buildStep(journey.steps[i],i+1,journey.steps.length));
+    // Page folios — a small editorial "03 / 12" at the foot of every spread.
+    for(var f=0;f<spreads.length;f++) spreads[f].appendChild(el("p",{className:"pc-folio","aria-hidden":"true",textContent:pad2(f+1)+" / "+pad2(spreads.length)}));
     state.spreads=spreads;
-    for(var k=0;k<spreads.length;k++) stage.appendChild(spreads[k]);
+    for(var kk=0;kk<spreads.length;kk++) stage.appendChild(spreads[kk]);
     prog.setAttribute("aria-valuemax",String(spreads.length));
 
     var nav=el("nav",{className:"pc-nav","aria-label":"Pages"});

@@ -26,7 +26,12 @@ export const FORMAT = "postcards" as const;
 // record (the newest-wins merge comparator) and an optional top-level `tombstones`
 // array (deletion markers). Both are additive & optional, so v1–v5 files import
 // unchanged; an older build opening a v6 sync file gets the graceful "update" prompt.
-export const SCHEMA_VERSION = 6;
+// v7 adds an optional `name` (folder label, e.g. "Japan 2024") on a trip: a short
+// label that groups legs and titles a published site. Additive & optional exactly
+// like `updatedAt` — never injected on parse — so v1–v6 files import unchanged and
+// round-trip byte-identically; an older build opening a v7 file gets the same
+// graceful "update" prompt on the (harmless) unknown value only if it were required.
+export const SCHEMA_VERSION = 7;
 
 /** Most photos one place's gallery may hold (bounds the inline portable file). */
 export const MAX_PHOTOS_PER_VISIT = 48;

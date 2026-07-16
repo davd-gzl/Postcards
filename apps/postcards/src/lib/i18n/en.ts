@@ -287,6 +287,9 @@ export const en = {
   "travel.totalsForAria": "Travel totals for {period}",
   "travel.totalsAria": "Travel totals",
   "travel.editingNote": "Editing a trip",
+  "travel.nameOptional": "Trip name (optional)",
+  "travel.namePlaceholder": "e.g. Japan 2024",
+  "travel.folderUnfiled": "Other trips",
   "travel.from": "From",
   "travel.to": "To",
   "travel.modeLabel": "Mode",
@@ -506,6 +509,15 @@ export const en = {
   "search.addChip": "Add",
   "search.addOwn": "Not here? Add “{q}” as your own place",
   "search.notInData": "“{q}” isn't in the loaded data.",
+
+  // ── Publish mode (scope selector) ────────────────────────────────────────
+  "publish.scope.all": "Everything",
+  "publish.scope.trip": "One trip",
+  "publish.scope.range": "A date range",
+  "publish.scope.byTrip": "By trip",
+  "publish.byTripLabel": "Trip name (folder)",
+  "publish.pickFolder": "Pick a trip name…",
+  "publish.noNamedTrips": "No named trips yet",
 
   // ── Misc shared ──────────────────────────────────────────────────────────
   "common.undo": "Undo",

@@ -19,10 +19,12 @@ interface TripsState {
     date?: string | null;
     carrier?: string | null;
     note?: string | null;
+    /** Optional folder label (e.g. "Japan 2024"); omitted when empty. */
+    name?: string | null;
   }) => Promise<Trip>;
   updateTrip: (
     tripId: string,
-    changes: Partial<Pick<Trip, "from" | "to" | "mode" | "date" | "carrier" | "note">>,
+    changes: Partial<Pick<Trip, "from" | "to" | "mode" | "date" | "carrier" | "note" | "name">>,
   ) => Promise<void>;
   removeTrip: (tripId: string) => Promise<void>;
   setAll: (trips: Trip[]) => Promise<void>;
@@ -36,7 +38,7 @@ export const useTrips = create<TripsState>((set, get) => ({
     const trips = (await db.getAllTrips()).map(backfillUpdatedAt);
     set({ trips, loaded: true });
   },
-  async addTrip({ from, to, mode = "flight", date = null, carrier = null, note = null }) {
+  async addTrip({ from, to, mode = "flight", date = null, carrier = null, note = null, name = null }) {
     const at = new Date().toISOString();
     const trip: Trip = {
       tripId: uuid(),
@@ -46,6 +48,9 @@ export const useTrips = create<TripsState>((set, get) => ({
       date,
       carrier,
       note,
+      // Only carry `name` when set — keep photo-less/label-less trips clean and
+      // never store an empty/undefined key (mirrors the schema's optional field).
+      ...(name && name.trim() ? { name: name.trim() } : {}),
       addedAt: at,
       updatedAt: at,
     };
@@ -57,6 +62,13 @@ export const useTrips = create<TripsState>((set, get) => ({
     const existing = get().trips.find((t) => t.tripId === tripId);
     if (!existing) return;
     const updated: Trip = { ...existing, ...changes, updatedAt: stampNow() };
+    // Normalize an edited folder label: trim it, and drop the key entirely when
+    // cleared so we never persist an empty `name` (the schema forbids it).
+    if ("name" in changes) {
+      const nm = changes.name?.trim();
+      if (nm) updated.name = nm;
+      else delete updated.name;
+    }
     set({ trips: get().trips.map((t) => (t.tripId === tripId ? updated : t)) });
     await db.putTrip(updated);
   },

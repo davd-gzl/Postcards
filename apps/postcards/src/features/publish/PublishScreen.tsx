@@ -15,9 +15,10 @@ import { coordsOf } from "../travel/distance";
 import { download } from "../../lib/download";
 import { countryFlag, formatDate, formatInt, formatKm } from "../../lib/format/format";
 import { MODE_GLYPH } from "../travel/modes";
+import { useT } from "../../lib/i18n";
 import type { Trip } from "../../lib/schema/models";
 
-type Scope = "all" | "trip" | "range";
+type Scope = "all" | "trip" | "folder" | "range";
 
 /** A short human label for a trip in the picker: "✈️ Paris → Rome · 2 May 2026". */
 function tripLabel(t: Trip): string {
@@ -39,6 +40,7 @@ function tripLabel(t: Trip): string {
  * always-available local download — remove it and download still works fully.
  */
 export function PublishScreen({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const stories = useStories((s) => s.stories);
   const trips = useTrips((s) => s.trips);
@@ -54,6 +56,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
 
   const [scope, setScope] = useState<Scope>("all");
   const [tripId, setTripId] = useState<string>("");
+  const [folderName, setFolderName] = useState<string>("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [title, setTitle] = useState("My travels");
@@ -78,6 +81,21 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
     [trips],
   );
 
+  // Distinct trip names ("folders") for the "By trip" scope, sorted for a stable
+  // picker. Picking one gathers every leg that shares the name.
+  const folders = useMemo(() => {
+    const names = new Set<string>();
+    for (const tr of trips) {
+      const nm = tr.name?.trim();
+      if (nm) names.add(nm);
+    }
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [trips]);
+  const folderTripIds = useMemo(
+    () => trips.filter((tr) => (tr.name?.trim() ?? "") === folderName).map((tr) => tr.tripId),
+    [trips, folderName],
+  );
+
   const resolveCoords: JourneyInput["resolveCoords"] = useMemo(
     () => (place) => coordsOf(place, ref),
     [ref],
@@ -89,11 +107,25 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
       title: title.trim() || "My travels",
       subtitle: subtitle.trim() || undefined,
       ...(scope === "trip" && tripId ? { tripIds: [tripId] } : {}),
+      ...(scope === "folder" && folderName ? { tripIds: folderTripIds } : {}),
       ...(scope === "range" && dateFrom ? { dateFrom } : {}),
       ...(scope === "range" && dateTo ? { dateTo } : {}),
     };
     return buildJourney({ visits, trips, stories, resolveCoords }, sel);
-  }, [visits, trips, stories, resolveCoords, scope, tripId, dateFrom, dateTo, title, subtitle]);
+  }, [
+    visits,
+    trips,
+    stories,
+    resolveCoords,
+    scope,
+    tripId,
+    folderName,
+    folderTripIds,
+    dateFrom,
+    dateTo,
+    title,
+    subtitle,
+  ]);
 
   const empty = journey.steps.length === 0;
   const canExport = !empty && !!title.trim() && !busy;
@@ -186,9 +218,10 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
           <div className="btn-row" role="radiogroup" aria-label="Publish scope">
             {(
               [
-                ["all", "Everything"],
-                ["trip", "One trip"],
-                ["range", "A date range"],
+                ["all", t("publish.scope.all")],
+                ["trip", t("publish.scope.trip")],
+                ["folder", t("publish.scope.byTrip")],
+                ["range", t("publish.scope.range")],
               ] as [Scope, string][]
             ).map(([id, label]) => (
               <button
@@ -219,6 +252,35 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
                 {tripOptions.map((t) => (
                   <option key={t.tripId} value={t.tripId}>
                     {tripLabel(t)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {scope === "folder" && (
+            <label className="picker-label" htmlFor="publish-folder">
+              {t("publish.byTripLabel")}
+              <select
+                id="publish-folder"
+                className="select"
+                value={folderName}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  setFolderName(name);
+                  // The site title defaults to the trip name — but never clobber a
+                  // title the author has already customised.
+                  setTitle((prev) =>
+                    !prev.trim() || prev.trim() === "My travels" ? name : prev,
+                  );
+                }}
+              >
+                <option value="" disabled>
+                  {folders.length ? t("publish.pickFolder") : t("publish.noNamedTrips")}
+                </option>
+                {folders.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
                   </option>
                 ))}
               </select>

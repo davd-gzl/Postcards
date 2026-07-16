@@ -281,6 +281,9 @@ export const ko: Messages = {
   "travel.totalsForAria": "{period} 이동 합계",
   "travel.totalsAria": "이동 합계",
   "travel.editingNote": "이동 편집 중",
+  "travel.nameOptional": "여행 이름 (선택)",
+  "travel.namePlaceholder": "예: 일본 2024",
+  "travel.folderUnfiled": "기타 여행",
   "travel.from": "출발",
   "travel.to": "도착",
   "travel.modeLabel": "수단",
@@ -500,6 +503,15 @@ export const ko: Messages = {
   "search.addChip": "추가",
   "search.addOwn": "여기에 없나요? “{q}”을(를) 내 장소로 추가하세요",
   "search.notInData": "“{q}”은(는) 로드된 데이터에 없습니다.",
+
+  // ── Publish mode (scope selector) ────────────────────────────────────────
+  "publish.scope.all": "전체",
+  "publish.scope.trip": "여행 하나",
+  "publish.scope.range": "기간",
+  "publish.scope.byTrip": "여행별",
+  "publish.byTripLabel": "여행 이름 (폴더)",
+  "publish.pickFolder": "여행 이름 선택…",
+  "publish.noNamedTrips": "이름 있는 여행 없음",
 
   // ── Misc shared ──────────────────────────────────────────────────────────
   "common.undo": "실행 취소",

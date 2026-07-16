@@ -33,9 +33,11 @@ interface TripFields {
   mode: TravelMode;
   date: string;
   note: string;
+  /** Optional folder label that groups legs of the same journey (e.g. "Japan 2024"). */
+  name: string;
 }
 
-const EMPTY_FIELDS: TripFields = { from: null, to: null, mode: "flight", date: "", note: "" };
+const EMPTY_FIELDS: TripFields = { from: null, to: null, mode: "flight", date: "", note: "", name: "" };
 
 /**
  * The add/edit form. Its fields are local state so keystrokes re-render only
@@ -59,16 +61,29 @@ function TripForm({
   const [mode, setMode] = useState<TravelMode>(initial.mode);
   const [date, setDate] = useState(initial.date);
   const [note, setNote] = useState(initial.note);
+  const [name, setName] = useState(initial.name);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!from || !to) return;
-    onSave({ from, to, mode, date, note });
+    onSave({ from, to, mode, date, note, name });
   }
 
   return (
     <form className="trip-form" onSubmit={onSubmit}>
       {editing && <p className="editing-note">{t("travel.editingNote")}</p>}
+      <label className="picker-label" htmlFor="trip-name">
+        {t("travel.nameOptional")}
+        <input
+          id="trip-name"
+          className="select"
+          type="text"
+          maxLength={80}
+          placeholder={t("travel.namePlaceholder")}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </label>
       <PlacePicker label={t("travel.from")} value={from} onPick={setFrom} />
       <PlacePicker label={t("travel.to")} value={to} onPick={setTo} />
       <div className="trip-form-row">
@@ -156,6 +171,26 @@ export function TravelScreen() {
     [filtered],
   );
 
+  // Group legs into folders by their trip name (keeping the newest-first order
+  // within each folder). Named folders appear first, in order of their newest
+  // leg; anything without a name falls into a final "unfiled" bucket. When no
+  // trip carries a name we skip headers entirely and render one flat list.
+  const groups = useMemo(() => {
+    const named = new Map<string, Trip[]>();
+    const unfiled: Trip[] = [];
+    for (const trip of sorted) {
+      const nm = trip.name?.trim();
+      if (nm) {
+        const list = named.get(nm);
+        if (list) list.push(trip);
+        else named.set(nm, [trip]);
+      } else {
+        unfiled.push(trip);
+      }
+    }
+    return { named: [...named.entries()], unfiled, hasNames: named.size > 0 };
+  }, [sorted]);
+
   function pickYear(y: YearFilter) {
     setTripPeriod(y, "all"); // month options depend on the year; reset to avoid a stale one
   }
@@ -185,16 +220,17 @@ export function TravelScreen() {
 
   function startEdit(t: Trip) {
     loadForm(
-      { from: t.from, to: t.to, mode: t.mode, date: t.date ?? "", note: t.note ?? "" },
+      { from: t.from, to: t.to, mode: t.mode, date: t.date ?? "", note: t.note ?? "", name: t.name ?? "" },
       t.tripId,
     );
     document.querySelector(".trip-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
-  async function saveTrip({ from, to, mode, date, note }: TripFields) {
+  async function saveTrip({ from, to, mode, date, note, name }: TripFields) {
     if (!from || !to) return;
     const prev = useTrips.getState().trips;
-    const fields = { from, to, mode, date: date || null, note: note.trim() || null };
+    // `name` is stamped like the other fields; an emptied label clears the folder.
+    const fields = { from, to, mode, date: date || null, note: note.trim() || null, name: name.trim() || undefined };
     if (editingId) {
       await updateTrip(editingId, fields);
       showToast(t("travel.toast.updated", { from: endpointLabel(from), to: endpointLabel(to) }), () => setAll(prev));
@@ -251,6 +287,7 @@ export function TravelScreen() {
         mode: "flight",
         date: leg.date,
         note: leg.flight ? `Flight ${leg.flight}` : "",
+        name: "",
       });
       const missing = [!leg.from && leg.codes[0], !leg.to && leg.codes[1]].filter(Boolean);
       showToast(
@@ -289,6 +326,53 @@ export function TravelScreen() {
         skipped: skipped.length ? t("travel.toast.scanSkipped", { list: skipped.join(", ") }) : "",
       }),
       () => setAll(prev),
+    );
+  }
+
+  /** One trip row — shared by the flat list and the per-folder lists. */
+  function renderTripRow(trip: Trip) {
+    const km = tripDistanceKm(trip, ref);
+    const label = `${endpointLabel(trip.from)} → ${endpointLabel(trip.to)}`;
+    return (
+      <li
+        key={trip.tripId}
+        className={"city-row compact" + (editingId === trip.tripId ? " selected" : "")}
+      >
+        <button
+          className="city-focus"
+          type="button"
+          title={t("travel.editTitle", { label })}
+          onClick={() => startEdit(trip)}
+        >
+          <CityLine
+            flag={MODE_GLYPH[trip.mode]}
+            name={label}
+            sub={
+              <>
+                {km == null ? "" : `· ${formatKm(km)}`}
+                {trip.date ? ` · ${formatDate(trip.date)}` : ""}
+                {trip.note ? ` · ${trip.note}` : ""}
+              </>
+            }
+          />
+        </button>
+        <button
+          className="link"
+          type="button"
+          onClick={() => startEdit(trip)}
+          aria-label={t("travel.editAria", { label })}
+        >
+          {t("common.edit")}
+        </button>
+        <button
+          className="link-danger"
+          type="button"
+          onClick={() => removeWithUndo(trip.tripId, label)}
+          aria-label={t("travel.removeAria", { label })}
+        >
+          {t("common.remove")}
+        </button>
+      </li>
     );
   }
 
@@ -396,51 +480,28 @@ export function TravelScreen() {
             {t("travel.showAll")}
           </button>
         </p>
-      ) : (
+      ) : !groups.hasNames ? (
         <ul className="city-list" style={{ marginTop: 12 }}>
-          {sorted.map((trip) => {
-            const km = tripDistanceKm(trip, ref);
-            const label = `${endpointLabel(trip.from)} → ${endpointLabel(trip.to)}`;
-            return (
-              <li key={trip.tripId} className={"city-row compact" + (editingId === trip.tripId ? " selected" : "")}>
-                <button
-                  className="city-focus"
-                  type="button"
-                  title={t("travel.editTitle", { label })}
-                  onClick={() => startEdit(trip)}
-                >
-                  <CityLine
-                    flag={MODE_GLYPH[trip.mode]}
-                    name={label}
-                    sub={
-                      <>
-                        {km == null ? "" : `· ${formatKm(km)}`}
-                        {trip.date ? ` · ${formatDate(trip.date)}` : ""}
-                        {trip.note ? ` · ${trip.note}` : ""}
-                      </>
-                    }
-                  />
-                </button>
-                <button
-                  className="link"
-                  type="button"
-                  onClick={() => startEdit(trip)}
-                  aria-label={t("travel.editAria", { label })}
-                >
-                  {t("common.edit")}
-                </button>
-                <button
-                  className="link-danger"
-                  type="button"
-                  onClick={() => removeWithUndo(trip.tripId, label)}
-                  aria-label={t("travel.removeAria", { label })}
-                >
-                  {t("common.remove")}
-                </button>
-              </li>
-            );
-          })}
+          {sorted.map((trip) => renderTripRow(trip))}
         </ul>
+      ) : (
+        <div className="trip-folders" style={{ marginTop: 12 }}>
+          {groups.named.map(([folder, list]) => (
+            <section className="trip-folder" key={`f:${folder}`} aria-label={folder}>
+              <h3 className="trip-folder-name">
+                <span aria-hidden>🗂️</span> {folder}{" "}
+                <span className="muted small">({list.length})</span>
+              </h3>
+              <ul className="city-list">{list.map((trip) => renderTripRow(trip))}</ul>
+            </section>
+          ))}
+          {groups.unfiled.length > 0 && (
+            <section className="trip-folder" aria-label={t("travel.folderUnfiled")}>
+              <h3 className="trip-folder-name">{t("travel.folderUnfiled")}</h3>
+              <ul className="city-list">{groups.unfiled.map((trip) => renderTripRow(trip))}</ul>
+            </section>
+          )}
+        </div>
       )}
     </section>
   );
