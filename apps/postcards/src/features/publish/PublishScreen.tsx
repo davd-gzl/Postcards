@@ -148,9 +148,9 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
     try {
       const html = await buildHtml();
       download("index.html", html, "text/html");
-      showToast("Saved index.html — drop it on any host, or open it straight from the folder.");
+      showToast(t("publish.toast.saved"));
     } catch {
-      showToast("Couldn't build the site. Your data is unchanged.");
+      showToast(t("publish.toast.buildErr"));
     } finally {
       setBusy(false);
     }
@@ -159,7 +159,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
   async function onPushGitHub() {
     if (!canExport) return;
     if (!gh.owner.trim() || !gh.repo.trim() || !gh.branch.trim() || !gh.token.trim()) {
-      showToast("Fill in owner, repo, branch and a token to push to GitHub.");
+      showToast(t("publish.toast.missingFields"));
       return;
     }
     setBusy(true);
@@ -179,9 +179,9 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
         ],
         `Publish "${title.trim()}" via Postcards`,
       );
-      showToast(`Pushed to ${gh.owner.trim()}/${gh.repo.trim()} — GitHub Pages will update shortly.`);
+      showToast(t("publish.toast.pushed", { owner: gh.owner.trim(), repo: gh.repo.trim() }));
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "GitHub push failed. Local download still works.");
+      showToast(e instanceof Error ? e.message : t("publish.toast.pushErr"));
     } finally {
       setBusy(false);
     }
@@ -207,22 +207,23 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="publish-head">
-          <h2 id="publish-title">Publish a shareable site</h2>
-          <button className="btn-ghost" type="button" onClick={onClose} aria-label="Close publish">
-            Close
+          <h2 id="publish-title">{t("settings.publish.title")}</h2>
+          <button
+            className="btn-ghost"
+            type="button"
+            onClick={onClose}
+            aria-label={t("publish.closeAria")}
+          >
+            {t("common.close")}
           </button>
         </div>
 
-        <p className="muted small">
-          Turn a slice of your journal into a self-contained, read-only travel-blog website — a
-          route map and a dated feed of posts you can re-publish as the trip unfolds (or the classic
-          paged book). It runs offline from a single file and makes no network requests.
-        </p>
+        <p className="muted small">{t("publish.intro")}</p>
 
         {/* Scope */}
         <fieldset className="publish-fieldset">
-          <legend>What to publish</legend>
-          <div className="btn-row" role="radiogroup" aria-label="Publish scope">
+          <legend>{t("publish.whatToPublish")}</legend>
+          <div className="btn-row" role="radiogroup" aria-label={t("publish.scopeAria")}>
             {(
               [
                 ["all", t("publish.scope.all")],
@@ -246,7 +247,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
 
           {scope === "trip" && (
             <label className="picker-label" htmlFor="publish-trip">
-              Trip
+              {t("publish.tripField")}
               <select
                 id="publish-trip"
                 className="select"
@@ -254,7 +255,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setTripId(e.target.value)}
               >
                 <option value="" disabled>
-                  {tripOptions.length ? "Pick a trip…" : "No trips logged yet"}
+                  {tripOptions.length ? t("publish.pickTrip") : t("publish.noTrips")}
                 </option>
                 {tripOptions.map((t) => (
                   <option key={t.tripId} value={t.tripId}>
@@ -297,7 +298,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
           {scope === "range" && (
             <div className="trip-form-row">
               <label className="picker-label" htmlFor="publish-from">
-                From
+                {t("travel.from")}
                 <input
                   id="publish-from"
                   className="select"
@@ -307,7 +308,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
                 />
               </label>
               <label className="picker-label" htmlFor="publish-to">
-                To
+                {t("travel.to")}
                 <input
                   id="publish-to"
                   className="select"
@@ -322,9 +323,9 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
 
         {/* Details */}
         <fieldset className="publish-fieldset">
-          <legend>Cover</legend>
+          <legend>{t("publish.cover")}</legend>
           <label className="picker-label" htmlFor="publish-name">
-            Title
+            {t("journal.titleField")}
             <input
               id="publish-name"
               ref={firstFieldRef}
@@ -333,11 +334,11 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
               maxLength={120}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Three weeks around the Mediterranean"
+              placeholder={t("publish.titlePlaceholder")}
             />
           </label>
           <label className="picker-label" htmlFor="publish-sub">
-            Subtitle (optional)
+            {t("publish.subtitle")}
             <input
               id="publish-sub"
               className="select"
@@ -345,7 +346,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
               maxLength={160}
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
-              placeholder="Ferries, trains & a lot of gelato"
+              placeholder={t("publish.subtitlePlaceholder")}
             />
           </label>
         </fieldset>
@@ -379,9 +380,9 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
 
         {/* Protection */}
         <fieldset className="publish-fieldset">
-          <legend>Protection (optional)</legend>
+          <legend>{t("publish.protection")}</legend>
           <label className="picker-label" htmlFor="publish-pass">
-            Passphrase
+            {t("publish.passphrase")}
             <input
               id="publish-pass"
               className="select"
@@ -389,35 +390,30 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
               autoComplete="new-password"
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
-              placeholder="Leave empty for a public site"
+              placeholder={t("publish.passphrasePlaceholder")}
             />
           </label>
           <p className="muted small">
-            {passphrase.trim()
-              ? "The journey is encrypted (AES-GCM) in your browser; visitors must type this passphrase to read it. Share the passphrase separately — it is never written into the file, and a lost passphrase cannot be recovered."
-              : "Empty = anyone with the link can read it. Set a passphrase to lock the whole site on a public host."}
+            {passphrase.trim() ? t("publish.encryptedNote") : t("publish.publicNote")}
           </p>
         </fieldset>
 
         {/* Live summary */}
         <div className="publish-summary" role="status" aria-live="polite">
           {empty ? (
-            <p className="muted small">
-              Nothing in this selection yet. Log a trip or a story in scope — an empty site can't be
-              built.
-            </p>
+            <p className="muted small">{t("publish.emptySelection")}</p>
           ) : (
             <div className="publish-totals">
               <span className="publish-total">
                 <strong>{formatInt(journey.totals.places)}</strong>{" "}
-                {journey.totals.places === 1 ? "stop" : "stops"}
+                {t.plural("publish.stops", journey.totals.places)}
               </span>
               <span className="publish-total">
                 <strong>{formatInt(journey.totals.countries)}</strong>{" "}
-                {journey.totals.countries === 1 ? "country" : "countries"}
+                {t.plural("publish.countries", journey.totals.countries)}
               </span>
               <span className="publish-total">
-                <strong>{formatKm(journey.totals.distanceKm)}</strong> travelled
+                <strong>{formatKm(journey.totals.distanceKm)}</strong> {t("stats.travel.travelled")}
               </span>
               {journey.dateRange.start && (
                 <span className="publish-total publish-total-dates">
@@ -445,16 +441,12 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        <p className="muted small">
-          Photos ship inline and were already re-encoded on capture, so no EXIF/GPS or camera data
-          is included. Story text and captions are escaped to inert text — a shared page can never
-          run a script.
-        </p>
+        <p className="muted small">{t("publish.photosNote")}</p>
 
         {/* Export */}
         <div className="publish-actions">
           <button className="btn" type="button" disabled={!canExport} onClick={onDownload}>
-            {busy ? "Building…" : "⬇ Download index.html"}
+            {busy ? t("publish.building") : t("publish.download")}
           </button>
           <button
             className="btn-ghost"
@@ -463,14 +455,14 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
             aria-pressed={preview}
             onClick={() => setPreview((p) => !p)}
           >
-            {preview ? "Hide preview" : "Preview"}
+            {preview ? t("publish.hidePreview") : t("publish.preview")}
           </button>
         </div>
 
         {preview && !empty && (
           <div className="publish-preview">
             <iframe
-              title="Preview of the published site"
+              title={t("publish.previewTitle")}
               className="publish-preview-frame"
               sandbox="allow-scripts"
               srcDoc={previewHtml}
@@ -486,15 +478,11 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
             aria-expanded={ghOpen}
             onClick={() => setGhOpen((v) => !v)}
           >
-            {ghOpen ? "▾" : "▸"} Push to GitHub Pages (optional)
+            {ghOpen ? "▾" : "▸"} {t("publish.ghToggle")}
           </button>
           {ghOpen && (
             <div className="publish-github-body">
-              <p className="muted small">
-                One optional target. Paste a fine-grained token with contents write access; it is
-                kept only in memory and never saved or bundled. Download above always works without
-                this.
-              </p>
+              <p className="muted small">{t("publish.ghNote")}</p>
               <GitHubConnectorFields
                 idPrefix="gh"
                 value={gh}
@@ -503,7 +491,7 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
               />
               <div className="publish-actions">
                 <button className="btn" type="button" disabled={!canExport} onClick={onPushGitHub}>
-                  {busy ? "Pushing…" : "Push to GitHub"}
+                  {busy ? t("publish.pushing") : t("publish.push")}
                 </button>
               </div>
             </div>

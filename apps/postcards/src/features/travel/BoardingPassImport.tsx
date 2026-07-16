@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { parseBcbp, type BcbpResult } from "../../lib/bcbp/parse";
+import { useT } from "../../lib/i18n";
 
 // Read a boarding pass: scan its barcode from a photo (where the browser's
 // BarcodeDetector supports PDF417/Aztec/QR) or paste the code. Everything is
@@ -28,6 +29,7 @@ export function BoardingPassImport({
   onOpenChange: (open: boolean) => void;
   onResult: (r: BcbpResult) => void;
 }) {
+  const t = useT();
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -36,7 +38,7 @@ export function BoardingPassImport({
   function apply(raw: string) {
     const result = parseBcbp(raw);
     if (!result) {
-      setError("That doesn't look like a boarding-pass code. Paste the full code, or try a clearer photo.");
+      setError(t("boardingPass.errInvalid"));
       return;
     }
     setError(null);
@@ -59,19 +61,19 @@ export function BoardingPassImport({
       const codes = await detector.detect(bitmap);
       const raw = codes[0]?.rawValue;
       if (!raw) {
-        setError("Couldn't read a barcode in that photo — try a sharper, straight-on shot.");
+        setError(t("boardingPass.errNoBarcode"));
         return;
       }
       apply(raw);
     } catch {
-      setError("Couldn't scan that photo on this device. You can paste the code instead.");
+      setError(t("boardingPass.errScanFailed"));
     }
   }
 
   if (!open) {
     return (
       <button className="btn-ghost pass-open" type="button" onClick={() => onOpenChange(true)}>
-        ✈ Add from a boarding pass
+        ✈ {t("boardingPass.open")}
       </button>
     );
   }
@@ -79,15 +81,15 @@ export function BoardingPassImport({
   return (
     <div className="pass-panel">
       <div className="pass-panel-head">
-        <strong>From a boarding pass</strong>
+        <strong>{t("boardingPass.heading")}</strong>
         <button className="link" type="button" onClick={() => onOpenChange(false)}>
-          Close
+          {t("common.close")}
         </button>
       </div>
       {canScan && (
         <>
           <button className="btn-ghost" type="button" onClick={() => fileRef.current?.click()}>
-            📷 Scan a photo of the pass
+            📷 {t("boardingPass.scan")}
           </button>
           <input
             ref={fileRef}
@@ -98,11 +100,11 @@ export function BoardingPassImport({
             style={{ display: "none" }}
             aria-hidden="true"
           />
-          <p className="muted small">or paste the code below</p>
+          <p className="muted small">{t("boardingPass.orPaste")}</p>
         </>
       )}
       <label className="picker-label" htmlFor="pass-code">
-        Boarding-pass code
+        {t("boardingPass.codeLabel")}
         <textarea
           id="pass-code"
           className="pass-textarea"
@@ -113,7 +115,7 @@ export function BoardingPassImport({
         />
       </label>
       <button className="btn" type="button" disabled={!text.trim()} onClick={() => apply(text)}>
-        Read pass
+        {t("boardingPass.read")}
       </button>
       {error && (
         <p className="notice notice-err" role="status">
@@ -121,7 +123,7 @@ export function BoardingPassImport({
         </p>
       )}
       <p className="muted small">
-        Parsed on your device — the ticket is never uploaded. We read the from/to airports and date.
+        {t("boardingPass.privacy")}
       </p>
     </div>
   );

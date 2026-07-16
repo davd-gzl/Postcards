@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useModalKeys } from "../lib/hooks/useModalKeys";
+import { useT } from "../lib/i18n";
 
 /**
  * "How it works": a short, plain-language summary of what Postcards is,
@@ -7,6 +8,7 @@ import { useModalKeys } from "../lib/hooks/useModalKeys";
  * Opened from the top bar.
  */
 export function AboutModal({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -26,41 +28,34 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
         ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="about-title">How Postcards works</h2>
-        <p className="about-lede">
-          A simple, private way to remember the places you have been.
-        </p>
+        <h2 id="about-title">{t("about.title")}</h2>
+        <p className="about-lede">{t("about.lede")}</p>
 
         <div className="about-grid">
         <div className="about-item">
           <span className="about-emoji" aria-hidden>🗺️</span>
           <div>
-            <h3>What it is</h3>
-            <p>
-              Log the cities, countries, airports and monuments you have visited; see them on a
-              map. It keeps memories, not travel plans.
-            </p>
+            <h3>{t("about.whatItIs.title")}</h3>
+            <p>{t("about.whatItIs.body")}</p>
           </div>
         </div>
 
         <div className="about-item">
           <span className="about-emoji" aria-hidden>🔒</span>
           <div>
-            <h3>Your data</h3>
-            <p>
-              Everything stays on this device. No account; no tracking. Export one file from
-              Settings; bring it back on any device.
-            </p>
+            <h3>{t("about.yourData.title")}</h3>
+            <p>{t("about.yourData.body")}</p>
           </div>
         </div>
 
         <div className="about-item">
           <span className="about-emoji" aria-hidden>📴</span>
           <div>
-            <h3>Offline</h3>
+            <h3>{t("about.offline.title")}</h3>
             <p>
-              The app works with no connection. To keep maps for later, download the world or a
-              region in <em>Settings, Offline maps</em>; areas you browse online are kept too.
+              {t("about.offline.bodyPre")}
+              <em>{t("about.offline.bodyEm")}</em>
+              {t("about.offline.bodyPost")}
             </p>
           </div>
         </div>
@@ -68,21 +63,20 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
         <div className="about-item">
           <span className="about-emoji" aria-hidden>🌍</span>
           <div>
-            <h3>Where facts come from</h3>
-            <p>
-              Maps and place facts come from open sources: OpenStreetMap, Natural Earth, GeoNames
-              and UNESCO. The app never invents data.
-            </p>
+            <h3>{t("about.facts.title")}</h3>
+            <p>{t("about.facts.body")}</p>
           </div>
         </div>
 
         </div>
         <p className="muted small about-foot">
-          Press <kbd>?</kbd> to see keyboard shortcuts.
+          {t("about.footPre")}
+          <kbd>?</kbd>
+          {t("about.footPost")}
         </p>
 
         <button ref={closeRef} className="btn" type="button" onClick={onClose}>
-          Got it
+          {t("about.gotIt")}
         </button>
       </div>
     </div>

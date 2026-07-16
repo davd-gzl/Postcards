@@ -11,6 +11,7 @@ import { StateToggles } from "../visits/StateToggles";
 import { PhotoGallery } from "../visits/PhotoGallery";
 import { GuideSection } from "../guides/GuideButton";
 import { CityLine } from "../../ui/CityLine";
+import { useT } from "../../lib/i18n";
 
 /** Wikipedia article URL for a title (link only — nothing is fetched). */
 function wikipediaUrl(title: string): string {
@@ -21,6 +22,7 @@ function wikipediaUrl(title: string): string {
  *  The note saves on blur so IndexedDB isn't rewritten per keystroke. */
 function VisitDetails({ visitId, date, note }: { visitId: string; date: string | null; note: string | null }) {
   const setDetails = useVisits((s) => s.setDetails);
+  const t = useT();
   const [draft, setDraft] = useState(note ?? "");
   // A different visit (or an import) swapped in under the same mount.
   const lastVisit = useRef(visitId);
@@ -31,7 +33,7 @@ function VisitDetails({ visitId, date, note }: { visitId: string; date: string |
   return (
     <div className="visit-details">
       <label className="visit-field">
-        <span className="muted small">Visited on</span>
+        <span className="muted small">{t("city.visitDate")}</span>
         <input
           type="date"
           className="select"
@@ -40,11 +42,11 @@ function VisitDetails({ visitId, date, note }: { visitId: string; date: string |
         />
       </label>
       <label className="visit-field visit-note">
-        <span className="muted small">Note</span>
+        <span className="muted small">{t("city.note")}</span>
         <input
           type="text"
           className="select"
-          placeholder="A memory, a tip, who you were with…"
+          placeholder={t("city.notePlaceholder")}
           maxLength={2000}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -62,6 +64,7 @@ function VisitDetails({ visitId, date, note }: { visitId: string; date: string |
  * don't know, it says so honestly and points to the add-your-own flow.
  */
 export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => void }) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const stories = useStories((s) => s.stories);
@@ -85,7 +88,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
   const customPlace =
     liveCustom ?? (lastCustom.current?.id === cityId ? lastCustom.current.place : null);
 
-  const name = city?.name ?? monument?.name ?? customPlace?.name ?? "Unknown place";
+  const name = city?.name ?? monument?.name ?? customPlace?.name ?? t("city.unknownPlace");
   const cc = city?.countryIso2 ?? monument?.countryIso2 ?? customPlace?.countryId ?? "";
   const country = ref.countryByIso2(cc);
   const region = city?.subdivisionId ? ref.subdivisionById(city.subdivisionId)?.name : null;
@@ -127,7 +130,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
   return (
     <div className="screen city-page">
       <button className="mini-btn back-btn" type="button" onClick={onBack}>
-        ← Back
+        ← {t("city.back")}
       </button>
 
       <header className="city-hero">
@@ -139,8 +142,8 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
           <p className="muted">
             {country?.name ?? cc}
             {region ? ` - ${region}` : ""}
-            {monument ? " · UNESCO World Heritage Site" : ""}
-            {customPlace ? " · your own place" : ""}
+            {monument ? ` · ${t("city.tag.heritage")}` : ""}
+            {customPlace ? ` · ${t("city.tag.ownPlace")}` : ""}
           </p>
         </div>
         {place && <StateToggles place={place} />}
@@ -149,7 +152,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
       <div className="city-facts">
         {city?.population != null && (
           <span className="fact">
-            <strong>{formatInt(city.population)}</strong> people
+            <strong>{formatInt(city.population)}</strong> {t("city.fact.people")}
           </span>
         )}
         {lat != null && lon != null && (
@@ -158,25 +161,23 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
               <strong>
                 {lat.toFixed(3)}, {lon.toFixed(3)}
               </strong>{" "}
-              lat, lon
+              {t("city.fact.latLon")}
             </span>
             <button className="mini-btn" type="button" onClick={() => flyTo(lon, lat)}>
-              Show on map
+              {t("city.showOnMap")}
             </button>
           </>
         )}
         {visit?.date && (
           <span className="fact">
-            visited <strong>{formatDate(visit.date)}</strong>
+            {t("city.fact.visited")} <strong>{formatDate(visit.date)}</strong>
           </span>
         )}
       </div>
 
       {!city && !monument && !customPlace && (
         <p className="notice">
-          This place isn't in the loaded reference data, and you haven't created it yourself yet.
-          Search for it on the Map tab — if it's missing there too, use “Add it yourself” under the
-          search box.{" "}
+          {t("city.notInData")}{" "}
           <button
             className="mini-btn"
             type="button"
@@ -185,14 +186,14 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
               useUi.getState().focusSearch();
             }}
           >
-            Search on the map
+            {t("city.searchOnMap")}
           </button>
         </p>
       )}
 
       {visit && (
         <section className="city-section">
-          <h3>Your postcard</h3>
+          <h3>{t("city.section.postcard")}</h3>
           <div className="city-gallery-row">
             <PhotoGallery visitId={visit.visitId} photos={visit.photos ?? []} placeName={name} />
           </div>
@@ -204,7 +205,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
 
       {place && (placeStories.length > 0 || visit?.status === "visited") && (
         <section className="city-section">
-          <h3>Journal</h3>
+          <h3>{t("journal.title")}</h3>
           {placeStories.length > 0 && (
             <ul className="city-list">
               {placeStories.map((s) => (
@@ -222,7 +223,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
             style={placeStories.length ? { marginTop: 6 } : undefined}
             onClick={() => openJournalDraft(place)}
           >
-            ＋ Story
+            ＋ {t("city.addStory")}
           </button>
         </section>
       )}
@@ -231,7 +232,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
 
       {place && (
         <section className="city-section">
-          <h3>Learn & explore</h3>
+          <h3>{t("city.section.learn")}</h3>
           <div className="city-links">
             <a
               className="mini-btn"
@@ -261,19 +262,19 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
             )}
           </div>
           <p className="muted small">
-            Links open in your browser — nothing is fetched until you tap one.
+            {t("city.linksNote")}
           </p>
         </section>
       )}
 
       {nearby.monuments.length > 0 && (
         <section className="city-section">
-          <h3>World Heritage nearby</h3>
+          <h3>{t("city.section.heritageNearby")}</h3>
           <ul className="city-list">
             {nearby.monuments.map((h) => (
               <li key={h.id} className="city-row compact">
                 <button className="city-focus" type="button" onClick={() => flyTo(h.lon, h.lat)}>
-                  <CityLine flag="🏛️" name={h.name} sub={<>· {formatKm(h.km)} away</>} />
+                  <CityLine flag="🏛️" name={h.name} sub={<>· {t("city.away", { km: formatKm(h.km) })}</>} />
                 </button>
                 <StateToggles
                   place={{ kind: "heritage", id: h.id, name: h.name, countryId: h.countryIso2 }}
@@ -286,7 +287,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
 
       {nearby.airports.length > 0 && (
         <section className="city-section">
-          <h3>Nearest airports</h3>
+          <h3>{t("city.section.airportsNearby")}</h3>
           <ul className="city-list">
             {nearby.airports.map((a) => (
               <li key={a.id} className="city-row compact">
@@ -294,7 +295,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
                   <CityLine
                     flag="✈️"
                     name={`${a.name} (${a.id})`}
-                    sub={<>· {formatKm(a.km)} away</>}
+                    sub={<>· {t("city.away", { km: formatKm(a.km) })}</>}
                   />
                 </button>
                 <StateToggles

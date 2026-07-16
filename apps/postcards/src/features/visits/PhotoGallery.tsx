@@ -4,6 +4,7 @@ import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { fileToPostcard } from "../../lib/image/downscale";
 import { MAX_PHOTOS_PER_VISIT } from "../../lib/schema/helpers";
+import { useT } from "../../lib/i18n";
 import type { Photo } from "../../lib/schema/models";
 
 /**
@@ -22,6 +23,7 @@ export function PhotoGallery({
   photos: Photo[];
   placeName: string;
 }) {
+  const t = useT();
   const addPhotos = useVisits((s) => s.addPhotos);
   const removePhoto = useVisits((s) => s.removePhoto);
   const setPhotoCaption = useVisits((s) => s.setPhotoCaption);
@@ -97,7 +99,7 @@ export function PhotoGallery({
     if (!picked.length) return;
     const room = MAX_PHOTOS_PER_VISIT - count;
     if (room <= 0) {
-      showToast(`This gallery is full (${MAX_PHOTOS_PER_VISIT} photos).`);
+      showToast(t("photo.toast.full", { max: MAX_PHOTOS_PER_VISIT }));
       return;
     }
     const files = picked.slice(0, room);
@@ -112,9 +114,9 @@ export function PhotoGallery({
       await addPhotos(visitId, added);
       setIndex(count + files.length - 1); // jump to the newest
       setOpen(true);
-      if (picked.length > room) showToast(`Added ${room} — the gallery is now full.`);
+      if (picked.length > room) showToast(t("photo.toast.addedRoom", { count: room }));
     } catch {
-      showToast("Couldn't read that image.");
+      showToast(t("journal.toast.readImgErr"));
     } finally {
       setBusy(false);
     }
@@ -138,7 +140,7 @@ export function PhotoGallery({
           type="button"
           className="postcard-thumb"
           onClick={() => setOpen(true)}
-          aria-label={`View ${count} photo${count === 1 ? "" : "s"} of ${placeName}`}
+          aria-label={t.plural("photo.viewAria", count, { place: placeName })}
         >
           <img src={photos[0]!.src} alt="" />
           {count > 1 && <span className="postcard-count" aria-hidden>{count}</span>}
@@ -150,9 +152,9 @@ export function PhotoGallery({
           className="mini-btn"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
-          aria-label={`Add a photo for ${placeName}`}
+          aria-label={t("photo.addAria", { place: placeName })}
         >
-          {busy ? "…" : <>📷 <span className="row-btn-label">Photos</span></>}
+          {busy ? "…" : <>📷 <span className="row-btn-label">{t("photo.photos")}</span></>}
         </button>
       )}
 
@@ -162,7 +164,7 @@ export function PhotoGallery({
           ref={dialogRef}
           role="dialog"
           aria-modal="true"
-          aria-label={`Photos of ${placeName}`}
+          aria-label={t("photo.dialogAria", { place: placeName })}
           onClick={() => setOpen(false)}
         >
           <div className="lightbox-stage" onClick={(e) => e.stopPropagation()}>
@@ -170,7 +172,7 @@ export function PhotoGallery({
               <button
                 type="button"
                 className="lightbox-nav prev"
-                aria-label="Previous photo"
+                aria-label={t("journal.prevPhoto")}
                 onClick={() => {
                   commitCaption();
                   setIndex((i) => (i - 1 + count) % count);
@@ -179,12 +181,12 @@ export function PhotoGallery({
                 ‹
               </button>
             )}
-            <img className="lightbox-img" src={current.src} alt={current.caption ?? `Photo of ${placeName}`} />
+            <img className="lightbox-img" src={current.src} alt={current.caption ?? t("photo.altOf", { place: placeName })} />
             {count > 1 && (
               <button
                 type="button"
                 className="lightbox-nav next"
-                aria-label="Next photo"
+                aria-label={t("journal.nextPhoto")}
                 onClick={() => {
                   commitCaption();
                   setIndex((i) => (i + 1) % count);
@@ -202,8 +204,8 @@ export function PhotoGallery({
                 type="text"
                 value={captionValue}
                 maxLength={300}
-                placeholder="Add a caption (the monument, the view, …)"
-                aria-label={`Caption for photo ${safeIndex + 1} of ${placeName}`}
+                placeholder={t("photo.captionPlaceholder")}
+                aria-label={t("photo.captionAria", { n: safeIndex + 1, place: placeName })}
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={commitCaption}
                 onKeyDown={(e) => {
@@ -224,10 +226,10 @@ export function PhotoGallery({
                 type="button"
                 className="mini-btn"
                 disabled={busy || atCap}
-                title={atCap ? `Gallery is full (${MAX_PHOTOS_PER_VISIT})` : undefined}
+                title={atCap ? t("photo.fullTitle", { max: MAX_PHOTOS_PER_VISIT }) : undefined}
                 onClick={() => inputRef.current?.click()}
               >
-                ＋ Add
+                ＋ {t("photo.add")}
               </button>
               <button
                 type="button"
@@ -240,13 +242,13 @@ export function PhotoGallery({
                   const prev = useVisits.getState().visits.find((v) => v.visitId === visitId);
                   await removePhoto(visitId, safeIndex);
                   if (count <= 1) setOpen(false);
-                  if (prev) showToast("Removed photo", () => restoreVisit(prev));
+                  if (prev) showToast(t("photo.toast.removed"), () => restoreVisit(prev));
                 }}
               >
-                Remove
+                {t("common.remove")}
               </button>
               <button ref={closeRef} type="button" className="btn-ghost" onClick={() => setOpen(false)}>
-                Close
+                {t("common.close")}
               </button>
             </div>
           </div>
