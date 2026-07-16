@@ -13,6 +13,7 @@ import { CountryScreen } from "../features/country/CountryScreen";
 import { PlaceSearch } from "../features/visits/PlaceSearch";
 import { ShortcutsHelp } from "../ui/ShortcutsHelp";
 import { AboutModal } from "../ui/AboutModal";
+import { IntroScreen } from "../ui/IntroScreen";
 import { Toast } from "../ui/Toast";
 import { ConnectionStatus } from "../ui/ConnectionStatus";
 import { MapIcon, ChartIcon, ListIcon, RouteIcon, BookIcon, GearIcon, InfoIcon } from "../ui/icons";
@@ -61,16 +62,16 @@ export function App() {
   const countryPageId = useUi((s) => s.countryPageId);
   const [showHelp, setShowHelp] = useState(false);
   const { canInstall, install } = useInstallPrompt();
-  const [showAbout, setShowAbout] = useState(introUnseen);
-  // Marks the intro as seen (first-run auto-open) and closes it — whether it was
-  // opened automatically or from the top bar, dismissing it never shows it again.
-  const closeAbout = () => {
+  const [showAbout, setShowAbout] = useState(false);
+  // First-run welcome page (separate from the top-bar "How it works" modal).
+  const [showIntro, setShowIntro] = useState(introUnseen);
+  const closeIntro = () => {
     try {
       localStorage.setItem(INTRO_KEY, "1");
     } catch {
       /* private mode: not persisted */
     }
-    setShowAbout(false);
+    setShowIntro(false);
   };
   const mainRef = useRef<HTMLElement>(null);
   // Once the map has rendered it never unmounts again (see <main> below);
@@ -347,7 +348,8 @@ export function App() {
       <Toast />
 
       {showHelp && <ShortcutsHelp onClose={() => setShowHelp(false)} />}
-      {showAbout && <AboutModal onClose={closeAbout} />}
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+      {showIntro && <IntroScreen onClose={closeIntro} />}
     </div>
   );
 }

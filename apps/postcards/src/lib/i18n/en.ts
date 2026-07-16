@@ -806,6 +806,22 @@ export const en = {
   "about.footPost": " to see keyboard shortcuts.",
   "about.gotIt": "Got it",
 
+  // ── First-run intro ──────────────────────────────────────────────────────
+  "intro.title": "Postcards",
+  "intro.lede": "Remember everywhere you've been. Private, offline, and yours.",
+  "intro.map.title": "Detailed map",
+  "intro.map.desc": "Real streets & labels, streamed when you want them.",
+  "intro.cities.title": "Full city list",
+  "intro.cities.desc": "Every town and village (~17 MB), searchable offline.",
+  "intro.enable": "Enable",
+  "intro.on": "On",
+  "intro.get": "Get",
+  "intro.getting": "Getting…",
+  "intro.saved": "Saved",
+  "intro.more": "More offline maps & place packs live in Settings.",
+  "intro.start": "Get started",
+  "intro.skip": "Skip",
+
   // ── Misc shared ──────────────────────────────────────────────────────────
   "common.undo": "Undo",
   "common.retry": "Retry",
