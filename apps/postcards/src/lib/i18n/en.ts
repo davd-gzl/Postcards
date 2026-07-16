@@ -608,6 +608,138 @@ export const en = {
   "sync.privacy":
     "Privacy: no server, no account, no telemetry. Your data leaves this device only when you sync, and only to the git remote you set here. The connection uses the remote's own transport security (HTTPS). The token is stored on this device only — never inside the synced file.",
 
+  // ── City screen (per-place page) ─────────────────────────────────────────
+  "city.back": "Back",
+  "city.unknownPlace": "Unknown place",
+  "city.tag.heritage": "UNESCO World Heritage Site",
+  "city.tag.ownPlace": "your own place",
+  "city.fact.people": "people",
+  "city.fact.latLon": "lat, lon",
+  "city.showOnMap": "Show on map",
+  "city.fact.visited": "visited",
+  "city.visitDate": "Visited on",
+  "city.note": "Note",
+  "city.notePlaceholder": "A memory, a tip, who you were with…",
+  "city.notInData":
+    "This place isn't in the loaded reference data, and you haven't created it yourself yet. Search for it on the Map tab — if it's missing there too, use “Add it yourself” under the search box.",
+  "city.searchOnMap": "Search on the map",
+  "city.section.postcard": "Your postcard",
+  "city.addStory": "Story",
+  "city.section.learn": "Learn & explore",
+  "city.linksNote": "Links open in your browser — nothing is fetched until you tap one.",
+  "city.section.heritageNearby": "World Heritage nearby",
+  "city.section.airportsNearby": "Nearest airports",
+  "city.away": "{km} away",
+
+  // ── Country screen (per-country page) ────────────────────────────────────
+  "country.unknownCode": "Unknown country code “{iso2}”.",
+  "country.fact.citiesTowns": "cities & towns",
+  "country.fact.regions": "regions",
+  "country.fact.sitesLandmarks": "sites & landmarks",
+  "country.section.coverage": "Your coverage",
+  "country.ofCities": "of cities ({visited}/{total})",
+  "country.ofRegions": "of regions ({visited}/{total})",
+  "country.ofSites": "of sites ({visited}/{total})",
+  "country.regionsToVisit": "Regions still to visit:",
+  "country.section.citiesTowns": "Cities & towns",
+
+  // ── Photo gallery ────────────────────────────────────────────────────────
+  "photo.toast.full": "This gallery is full ({max} photos).",
+  "photo.toast.addedRoom": "Added {count} — the gallery is now full.",
+  "photo.viewAria_one": "View {count} photo of {place}",
+  "photo.viewAria_other": "View {count} photos of {place}",
+  "photo.addAria": "Add a photo for {place}",
+  "photo.photos": "Photos",
+  "photo.dialogAria": "Photos of {place}",
+  "photo.altOf": "Photo of {place}",
+  "photo.captionPlaceholder": "Add a caption (the monument, the view, …)",
+  "photo.captionAria": "Caption for photo {n} of {place}",
+  "photo.fullTitle": "Gallery is full ({max})",
+  "photo.add": "Add",
+  "photo.toast.removed": "Removed photo",
+
+  // ── Boarding pass import ─────────────────────────────────────────────────
+  "boardingPass.errInvalid":
+    "That doesn't look like a boarding-pass code. Paste the full code, or try a clearer photo.",
+  "boardingPass.errNoBarcode":
+    "Couldn't read a barcode in that photo — try a sharper, straight-on shot.",
+  "boardingPass.errScanFailed":
+    "Couldn't scan that photo on this device. You can paste the code instead.",
+  "boardingPass.open": "Add from a boarding pass",
+  "boardingPass.heading": "From a boarding pass",
+  "boardingPass.scan": "Scan a photo of the pass",
+  "boardingPass.orPaste": "or paste the code below",
+  "boardingPass.codeLabel": "Boarding-pass code",
+  "boardingPass.read": "Read pass",
+  "boardingPass.privacy":
+    "Parsed on your device — the ticket is never uploaded. We read the from/to airports and date.",
+
+  // ── Publish mode (non-scope strings) ─────────────────────────────────────
+  "publish.closeAria": "Close publish",
+  "publish.intro":
+    "Turn a slice of your journal into a self-contained, read-only travel-blog website — a route map and a dated feed of posts you can re-publish as the trip unfolds (or the classic paged book). It runs offline from a single file and makes no network requests.",
+  "publish.whatToPublish": "What to publish",
+  "publish.scopeAria": "Publish scope",
+  "publish.tripField": "Trip",
+  "publish.pickTrip": "Pick a trip…",
+  "publish.noTrips": "No trips logged yet",
+  "publish.cover": "Cover",
+  "publish.titlePlaceholder": "Three weeks around the Mediterranean",
+  "publish.subtitle": "Subtitle (optional)",
+  "publish.subtitlePlaceholder": "Ferries, trains & a lot of gelato",
+  "publish.protection": "Protection (optional)",
+  "publish.passphrase": "Passphrase",
+  "publish.passphrasePlaceholder": "Leave empty for a public site",
+  "publish.encryptedNote":
+    "The journey is encrypted (AES-GCM) in your browser; visitors must type this passphrase to read it. Share the passphrase separately — it is never written into the file, and a lost passphrase cannot be recovered.",
+  "publish.publicNote":
+    "Empty = anyone with the link can read it. Set a passphrase to lock the whole site on a public host.",
+  "publish.emptySelection":
+    "Nothing in this selection yet. Log a trip or a story in scope — an empty site can't be built.",
+  "publish.stops_one": "stop",
+  "publish.stops_other": "stops",
+  "publish.countries_one": "country",
+  "publish.countries_other": "countries",
+  "publish.photosNote":
+    "Photos ship inline and were already re-encoded on capture, so no EXIF/GPS or camera data is included. Story text and captions are escaped to inert text — a shared page can never run a script.",
+  "publish.building": "Building…",
+  "publish.download": "⬇ Download index.html",
+  "publish.hidePreview": "Hide preview",
+  "publish.preview": "Preview",
+  "publish.previewTitle": "Preview of the published site",
+  "publish.ghToggle": "Push to GitHub Pages (optional)",
+  "publish.ghNote":
+    "One optional target. Paste a fine-grained token with contents write access; it is kept only in memory and never saved or bundled. Download above always works without this.",
+  "publish.pushing": "Pushing…",
+  "publish.push": "Push to GitHub",
+  "publish.toast.saved":
+    "Saved index.html — drop it on any host, or open it straight from the folder.",
+  "publish.toast.buildErr": "Couldn't build the site. Your data is unchanged.",
+  "publish.toast.missingFields": "Fill in owner, repo, branch and a token to push to GitHub.",
+  "publish.toast.pushed": "Pushed to {owner}/{repo} — GitHub Pages will update shortly.",
+  "publish.toast.pushErr": "GitHub push failed. Local download still works.",
+
+  // ── About / "How it works" ───────────────────────────────────────────────
+  "about.title": "How Postcards works",
+  "about.lede": "A simple, private way to remember the places you have been.",
+  "about.whatItIs.title": "What it is",
+  "about.whatItIs.body":
+    "Log the cities, countries, airports and monuments you have visited; see them on a map. It keeps memories, not travel plans.",
+  "about.yourData.title": "Your data",
+  "about.yourData.body":
+    "Everything stays on this device. No account; no tracking. Export one file from Settings; bring it back on any device.",
+  "about.offline.title": "Offline",
+  "about.offline.bodyPre":
+    "The app works with no connection. To keep maps for later, download the world or a region in ",
+  "about.offline.bodyEm": "Settings, Offline maps",
+  "about.offline.bodyPost": "; areas you browse online are kept too.",
+  "about.facts.title": "Where facts come from",
+  "about.facts.body":
+    "Maps and place facts come from open sources: OpenStreetMap, Natural Earth, GeoNames and UNESCO. The app never invents data.",
+  "about.footPre": "Press ",
+  "about.footPost": " to see keyboard shortcuts.",
+  "about.gotIt": "Got it",
+
   // ── Misc shared ──────────────────────────────────────────────────────────
   "common.undo": "Undo",
   "common.retry": "Retry",

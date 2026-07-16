@@ -144,10 +144,12 @@ tombstones, converges). Remaining is the UX:
 
 ## i18n
 
-- [x] Add languages: **French** and **Korean** — DONE. Zero-dep i18n layer (428 keys, typed
-      en/fr/ko with compile-time key parity), useT hook, language switcher, locale-aware Intl
-      formatting. ~80% of user-facing strings translated (detail pages / publish-sync flows / a few
-      modals flagged for follow-up). +14 tests.
+- [x] Add languages: **French** and **Korean** — DONE. Zero-dep i18n layer (typed en/fr/ko with
+      compile-time key parity), useT hook, language switcher, locale-aware Intl formatting. +14 tests.
+- [x] **Final translation pass** (per "translate at the end") — DONE. Real fr/ko for every deferred
+      placeholder (blog/map/sync/journal, ~132 values) + extracted & translated City/Country/Photo/
+      BoardingPass/Publish/About screens (~208 more values). **610 keys each, exact parity.** Only
+      ShortcutsHelp (interleaved <kbd>) + the "My travels" default-title sentinel left in English.
 
 ## Investigations / answers
 

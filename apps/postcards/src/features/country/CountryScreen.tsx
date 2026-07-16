@@ -8,6 +8,7 @@ import { countryFlag, formatInt, formatPercent } from "../../lib/format/format";
 import { StateToggles } from "../visits/StateToggles";
 import { GuideSection } from "../guides/GuideButton";
 import { CityLine } from "../../ui/CityLine";
+import { useT } from "../../lib/i18n";
 
 const PAGE = 50;
 
@@ -17,6 +18,7 @@ const PAGE = 50;
  * sites — and how much of it you've seen.
  */
 export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => void }) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   // The full-gazetteer upgrade grows this country's city list + denominators.
   const gazGen = useGazetteerGeneration();
@@ -38,9 +40,9 @@ export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => vo
     return (
       <div className="screen city-page">
         <button className="mini-btn back-btn" type="button" onClick={onBack}>
-          ← Back
+          ← {t("city.back")}
         </button>
-        <p className="notice">Unknown country code “{iso2}”.</p>
+        <p className="notice">{t("country.unknownCode", { iso2 })}</p>
       </div>
     );
   }
@@ -57,7 +59,7 @@ export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => vo
   return (
     <div className="screen city-page">
       <button className="mini-btn back-btn" type="button" onClick={onBack}>
-        ← Back
+        ← {t("city.back")}
       </button>
 
       <header className="city-hero">
@@ -76,46 +78,46 @@ export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => vo
 
       <div className="city-facts">
         <span className="fact">
-          <strong>{formatInt(country.cityCount)}</strong> cities & towns
+          <strong>{formatInt(country.cityCount)}</strong> {t("country.fact.citiesTowns")}
         </span>
         <span className="fact">
-          <strong>{formatInt(country.subdivisionCount)}</strong> regions
+          <strong>{formatInt(country.subdivisionCount)}</strong> {t("country.fact.regions")}
         </span>
         {sites.length > 0 && (
           <span className="fact">
-            <strong>{formatInt(sites.length)}</strong> sites & landmarks
+            <strong>{formatInt(sites.length)}</strong> {t("country.fact.sitesLandmarks")}
           </span>
         )}
         {cities.length > 0 && (
           <button className="mini-btn" type="button" onClick={showOnMap}>
-            Show on map
+            {t("city.showOnMap")}
           </button>
         )}
       </div>
 
       <section className="city-section">
-        <h3>Your coverage</h3>
+        <h3>{t("country.section.coverage")}</h3>
         <div className="city-facts">
           <span className="fact">
-            <strong>{formatPercent(cov.cityPct)}</strong> of cities ({cov.citiesVisited}/
-            {cov.citiesTotal})
+            <strong>{formatPercent(cov.cityPct)}</strong>{" "}
+            {t("country.ofCities", { visited: cov.citiesVisited, total: cov.citiesTotal })}
           </span>
           <span className="fact">
-            <strong>{formatPercent(cov.regionPct)}</strong> of regions ({cov.regionsVisited}/
-            {cov.regionsTotal})
+            <strong>{formatPercent(cov.regionPct)}</strong>{" "}
+            {t("country.ofRegions", { visited: cov.regionsVisited, total: cov.regionsTotal })}
           </span>
           {cov.heritageTotal > 0 && (
             <span className="fact">
-              <strong>{formatPercent(cov.heritagePct)}</strong> of sites ({cov.heritageVisited}/
-              {cov.heritageTotal})
+              <strong>{formatPercent(cov.heritagePct)}</strong>{" "}
+              {t("country.ofSites", { visited: cov.heritageVisited, total: cov.heritageTotal })}
             </span>
           )}
         </div>
         {detail.regionsRemainingNames.length > 0 && (
           <p className="muted small">
-            Regions still to visit: {detail.regionsRemainingNames.slice(0, 12).join(", ")}
+            {t("country.regionsToVisit")} {detail.regionsRemainingNames.slice(0, 12).join(", ")}
             {detail.regionsRemainingNames.length > 12
-              ? ` +${detail.regionsRemainingNames.length - 12} more`
+              ? ` ${t("common.moreCount", { count: detail.regionsRemainingNames.length - 12 })}`
               : ""}
           </p>
         )}
@@ -125,7 +127,7 @@ export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => vo
 
       {sites.length > 0 && (
         <section className="city-section">
-          <h3>Sites & landmarks</h3>
+          <h3>{t("stats.country.metricSites")}</h3>
           <ul className="city-list">
             {sites.slice(0, shownSites).map((h) => (
               <li key={h.id} className="city-row compact">
@@ -145,14 +147,14 @@ export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => vo
           {sites.length > shownSites && (
             <div className="list-pager">
               <span className="muted small">
-                Showing {shownSites} of {formatInt(sites.length)}
+                {t("journal.showingCount", { shown: shownSites, total: formatInt(sites.length) })}
               </span>
               <button
                 className="mini-btn"
                 type="button"
                 onClick={() => setShownSites((n) => n + PAGE)}
               >
-                Show {Math.min(PAGE, sites.length - shownSites)} more
+                {t("journal.showMore", { count: Math.min(PAGE, sites.length - shownSites) })}
               </button>
             </div>
           )}
@@ -160,7 +162,7 @@ export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => vo
       )}
 
       <section className="city-section">
-        <h3>Cities & towns</h3>
+        <h3>{t("country.section.citiesTowns")}</h3>
         <ul className="city-list">
           {cities.slice(0, shown).map((c) => {
             const region = c.subdivisionId ? ref.subdivisionById(c.subdivisionId)?.name : null;
@@ -177,7 +179,9 @@ export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => vo
                     sub={
                       <>
                         {region ? `· ${region}` : ""}
-                        {c.population != null ? ` · ${formatInt(c.population)} people` : ""}
+                        {c.population != null
+                          ? ` · ${t("map.cityPeople", { count: formatInt(c.population) })}`
+                          : ""}
                       </>
                     }
                   />
@@ -192,10 +196,10 @@ export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => vo
         {cities.length > shown && (
           <div className="list-pager">
             <span className="muted small">
-              Showing the {shown} most populous of {formatInt(cities.length)}
+              {t("map.pagerMostPopulous", { shown, total: formatInt(cities.length) })}
             </span>
             <button className="mini-btn" type="button" onClick={() => setShown((n) => n + PAGE)}>
-              Show {Math.min(PAGE, cities.length - shown)} more
+              {t("journal.showMore", { count: Math.min(PAGE, cities.length - shown) })}
             </button>
           </div>
         )}
