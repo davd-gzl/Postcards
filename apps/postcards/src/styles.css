@@ -1767,6 +1767,52 @@ h1.brand {
   padding: 2px 4px;
 }
 
+/* "New version — reload" banner (PWA update prompt). Sits at the top so it's
+   distinct from the bottom toast, and never over the bottom nav. */
+.update-banner {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(92vw, 460px);
+  background: #1f232c;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 8px 10px 8px 16px;
+  box-shadow: var(--shadow);
+}
+.update-banner-msg {
+  font-size: 14px;
+  white-space: nowrap;
+}
+.update-banner-reload {
+  background: var(--accent, #6366f1);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.update-banner-reload:hover {
+  filter: brightness(1.08);
+}
+.update-banner-dismiss {
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
 /* Segmented control (Places views, city filter) */
 .segmented {
   display: flex;

@@ -836,6 +836,10 @@ export const en = {
   "intro.start": "Get started",
   "intro.skip": "Skip",
 
+  // ── App update prompt ────────────────────────────────────────────────────
+  "update.available": "A new version is available.",
+  "update.reload": "Reload",
+
   // ── Misc shared ──────────────────────────────────────────────────────────
   "common.undo": "Undo",
   "common.retry": "Retry",

@@ -15,6 +15,7 @@ import { ShortcutsHelp } from "../ui/ShortcutsHelp";
 import { AboutModal } from "../ui/AboutModal";
 import { IntroScreen } from "../ui/IntroScreen";
 import { Toast } from "../ui/Toast";
+import { UpdateBanner } from "../ui/UpdateBanner";
 import { ConnectionStatus } from "../ui/ConnectionStatus";
 import { MapIcon, ChartIcon, ListIcon, RouteIcon, BookIcon, GearIcon, InfoIcon } from "../ui/icons";
 import { useState } from "react";
@@ -346,6 +347,7 @@ export function App() {
       </main>
 
       <Toast />
+      <UpdateBanner />
 
       {showHelp && <ShortcutsHelp onClose={() => setShowHelp(false)} />}
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
