@@ -980,6 +980,22 @@ export function MapView({
     }
   }
 
+  // The visited/wishlist toggle also prunes YOUR personal city markers so the map
+  // matches the list: "Visited" hides the ⚑ wish-to-go pins (only your flags
+  // remain), "Hide visited" hides the flags (only your wishes remain). Composed
+  // with the mode gate — city markers exist only in All/Cities modes — and always
+  // re-applied after applyMode (which blanket-reveals both layers).
+  function applyPersonalMarkerFilter(map: MlMap) {
+    const modeAllowsCities = modeRef.current === "all" || modeRef.current === "cities";
+    const f = cityFilterRef.current;
+    const showVisited = modeAllowsCities && f !== "unvisited";
+    const showWish = modeAllowsCities && f !== "visited";
+    if (map.getLayer("cities-visited"))
+      map.setLayoutProperty("cities-visited", "visibility", showVisited ? "visible" : "none");
+    if (map.getLayer("cities-wishlist"))
+      map.setLayoutProperty("cities-wishlist", "visibility", showWish ? "visible" : "none");
+  }
+
   // The in-view city dots, recomputed straight off the LIVE camera. Driven by
   // the map's own move/moveend (and the filter/period/gazetteer effects) rather
   // than a React `viewCities` prop, so on a zoom-OUT the dots repaint promptly
@@ -1174,6 +1190,7 @@ export function MapView({
         loadGeometry(map);
         loadPhysicalWater(map);
         applyMode(map, mode);
+        applyPersonalMarkerFilter(map);
         // The full-gazetteer dot field: built only if the Towns toggle is
         // already on (applyAllCityDots self-gates — it's off by default, so
         // most sessions never pay for it), and even then at idle — YOUR flags
@@ -1485,7 +1502,10 @@ export function MapView({
   // The list filter (all / hide-visited / visited) narrows the in-view dots too.
   useEffect(() => {
     const map = mapRef.current;
-    if (map && loadedRef.current) applyInViewCities(map);
+    if (map && loadedRef.current) {
+      applyInViewCities(map);
+      applyPersonalMarkerFilter(map); // show/hide your flags vs ⚑ wishes to match
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityFilter]);
 
@@ -1523,6 +1543,7 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
     applyMode(map, mode);
+    applyPersonalMarkerFilter(map); // applyMode blanket-reveals cities — re-prune
     applyAllCityDots(map); // build the towns dot field on toggle-on (no-op otherwise)
     applyViewportPoi(map); // repopulate/clear the capped POI for the new mode/cap
     applyInViewCities(map); // a new marker cap changes how many dots the view holds
