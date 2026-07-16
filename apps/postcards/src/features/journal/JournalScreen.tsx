@@ -585,6 +585,16 @@ export function JournalScreen() {
     setDayChoice(false);
   }
 
+  // The composer sits BELOW the feed/calendar now (your memories come first), so
+  // opening it from a top button has to bring it into view.
+  function scrollToComposer() {
+    requestAnimationFrame(() =>
+      document
+        .querySelector(".journal-composer")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+    );
+  }
+
   function openComposer(prefill?: PlaceRef, dateStr?: string) {
     setEditingId(null);
     setPlace(prefill ?? null);
@@ -597,6 +607,7 @@ export function JournalScreen() {
     setGeoMsg(null);
     setDayChoice(false);
     setComposerOpen(true);
+    scrollToComposer();
   }
 
   /** Anything typed that a reset would lose. */
@@ -611,8 +622,10 @@ export function JournalScreen() {
       setDayChoice(true);
       return;
     }
-    if (composerOpen && dirty) setDate(today());
-    else openComposer(undefined, today());
+    if (composerOpen && dirty) {
+      setDate(today());
+      scrollToComposer();
+    } else openComposer(undefined, today());
   }
 
   /** A day picked near midnight: same rule — keep the writing, set the date. */
@@ -651,11 +664,7 @@ export function JournalScreen() {
     setNearby(null);
     setGeoMsg(null);
     setComposerOpen(true);
-    requestAnimationFrame(() =>
-      document
-        .querySelector(".journal-composer")
-        ?.scrollIntoView({ behavior: "smooth", block: "center" }),
-    );
+    scrollToComposer();
   }
 
   // Restore a cached draft on mount, so quitting the page mid-writing picks up
@@ -918,205 +927,6 @@ export function JournalScreen() {
           </button>
         </div>
       )}
-      {composerOpen && (
-        <form
-          className={"trip-form journal-composer" + (dirty || editingId ? " journal-composer-busy" : "")}
-          onSubmit={onSubmit}
-        >
-          {editingId && <p className="editing-note">{t("journal.editingNote")}</p>}
-          <div className="trip-form-row">
-            <label className="picker-label" htmlFor="story-place">
-              {t("journal.place")}
-              <select
-                id="story-place"
-                className="select"
-                value={place ? placeKey(place) : ""}
-                onChange={(e) => {
-                  setPlace(placeOptions.find((p) => placeKey(p) === e.target.value) ?? null);
-                  setNearby(null);
-                }}
-              >
-                <option value="" disabled>
-                  {visitedPlaces.length ? t("journal.pickPlace") : t("journal.noVisited")}
-                </option>
-                {placeOptions.map((p) => (
-                  <option key={placeKey(p)} value={placeKey(p)}>
-                    {countryFlag(p.countryId)} {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="picker-label" htmlFor="story-date">
-              {t("journal.date")}
-              <input
-                id="story-date"
-                className="select"
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </label>
-          </div>
-          <div>
-            <button className="mini-btn" type="button" disabled={locating} onClick={findNearby}>
-              📍 {locating ? t("journal.locating") : t("journal.nearMe")}
-            </button>{" "}
-            <span className="muted small" role="status">
-              {geoMsg}
-            </span>
-          </div>
-          {nearby && (
-            <div className="btn-row" role="group" aria-label={t("journal.nearYouAria")}>
-              {nearby.map(({ city, km }) => (
-                <button
-                  key={city.id}
-                  className="mini-btn"
-                  type="button"
-                  aria-label={t("journal.writeAboutAria", { city: city.name, km: formatKm(km) })}
-                  onClick={() => {
-                    // Only fills the Place field — nothing gets marked as visited.
-                    setPlace({
-                      kind: "city",
-                      id: city.id,
-                      name: city.name,
-                      countryId: city.countryIso2,
-                    });
-                    setNearby(null);
-                    setGeoMsg(null);
-                  }}
-                >
-                  {countryFlag(city.countryIso2)} {city.name} · {formatKm(km)}
-                </button>
-              ))}
-            </div>
-          )}
-          <label className="picker-label" htmlFor="story-title">
-            {t("journal.titleField")}
-            <input
-              id="story-title"
-              className="select"
-              type="text"
-              maxLength={200}
-              placeholder={t("journal.titlePlaceholder")}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </label>
-          <label className="picker-label" htmlFor="story-text">
-            {t("journal.story")}
-            <textarea
-              id="story-text"
-              className="select journal-textarea"
-              rows={6}
-              maxLength={8000}
-              placeholder={t("journal.storyPlaceholder")}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-            />
-          </label>
-          <label className="picker-label" htmlFor="story-folder">
-            {t("journal.folder")}
-            <input
-              id="story-folder"
-              className="select"
-              type="text"
-              maxLength={80}
-              list="journal-folder-suggestions"
-              placeholder={t("journal.folderPlaceholder")}
-              value={folder}
-              onChange={(e) => setFolder(e.target.value)}
-            />
-          </label>
-          {/* Proposed folders (existing + this story's place/country/trip), a native
-              accessible combobox: type a new folder or pick a suggestion, empty = none. */}
-          {folderSuggs.length > 0 && (
-            <datalist id="journal-folder-suggestions">
-              {folderSuggs.map((f) => (
-                <option key={f} value={f} />
-              ))}
-            </datalist>
-          )}
-
-          <input
-            ref={photoInput}
-            type="file"
-            accept="image/*"
-            multiple
-            hidden
-            onChange={onPickPhotos}
-            aria-hidden
-            tabIndex={-1}
-          />
-          {photos.length > 0 && (
-            <ul className="journal-photo-edit-list">
-              {photos.map((p, i) => (
-                <li key={i} className="journal-photo-edit">
-                  <img src={p.src} alt="" loading="lazy" decoding="async" />
-                  <input
-                    className="caption-input"
-                    type="text"
-                    maxLength={300}
-                    placeholder={t("journal.captionPlaceholder")}
-                    aria-label={t("journal.captionAria", { n: i + 1 })}
-                    value={p.caption ?? ""}
-                    onChange={(e) =>
-                      setPhotos((prev) =>
-                        prev.map((q, j) =>
-                          j === i ? { ...q, caption: e.target.value || null } : q,
-                        ),
-                      )
-                    }
-                  />
-                  <button
-                    className="link-danger"
-                    type="button"
-                    aria-label={t("journal.removePhotoAria", { n: i + 1 })}
-                    onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))}
-                  >
-                    {t("common.remove")}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div>
-            <button
-              className="mini-btn"
-              type="button"
-              disabled={busy || photos.length >= MAX_PHOTOS_PER_STORY}
-              title={
-                photos.length >= MAX_PHOTOS_PER_STORY
-                  ? t("journal.storyFullTitle", { max: MAX_PHOTOS_PER_STORY })
-                  : undefined
-              }
-              onClick={() => photoInput.current?.click()}
-            >
-              {busy ? "…" : `📷 ${t("journal.addPhotos")}`}
-            </button>
-          </div>
-
-          <div className="trip-form-actions">
-            <button
-              className="btn"
-              type="submit"
-              // A story needs a place + date and SOMETHING to say — a title, some
-              // text, or at least one photo (an image-only entry is allowed).
-              disabled={
-                !place ||
-                !date ||
-                !(sanitizeText(title, 200) || sanitizeText(text, 8000) || photos.length)
-              }
-            >
-              {editingId ? t("journal.saveChanges") : t("journal.saveStory")}
-            </button>
-            <button className="btn-ghost" type="button" onClick={resetForm}>
-              {t("common.cancel")}
-            </button>
-          </div>
-        </form>
-      )}
-
       {stories.length > 0 && <p className="muted small">{t("journal.exportNote")}</p>}
 
       {stories.length === 0 ? (
@@ -1339,6 +1149,205 @@ export function JournalScreen() {
           </>
           )}
         </>
+      )}
+
+      {composerOpen && (
+        <form
+          className={"trip-form journal-composer" + (dirty || editingId ? " journal-composer-busy" : "")}
+          onSubmit={onSubmit}
+        >
+          {editingId && <p className="editing-note">{t("journal.editingNote")}</p>}
+          <div className="trip-form-row">
+            <label className="picker-label" htmlFor="story-place">
+              {t("journal.place")}
+              <select
+                id="story-place"
+                className="select"
+                value={place ? placeKey(place) : ""}
+                onChange={(e) => {
+                  setPlace(placeOptions.find((p) => placeKey(p) === e.target.value) ?? null);
+                  setNearby(null);
+                }}
+              >
+                <option value="" disabled>
+                  {visitedPlaces.length ? t("journal.pickPlace") : t("journal.noVisited")}
+                </option>
+                {placeOptions.map((p) => (
+                  <option key={placeKey(p)} value={placeKey(p)}>
+                    {countryFlag(p.countryId)} {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="picker-label" htmlFor="story-date">
+              {t("journal.date")}
+              <input
+                id="story-date"
+                className="select"
+                type="date"
+                required
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </label>
+          </div>
+          <div>
+            <button className="mini-btn" type="button" disabled={locating} onClick={findNearby}>
+              📍 {locating ? t("journal.locating") : t("journal.nearMe")}
+            </button>{" "}
+            <span className="muted small" role="status">
+              {geoMsg}
+            </span>
+          </div>
+          {nearby && (
+            <div className="btn-row" role="group" aria-label={t("journal.nearYouAria")}>
+              {nearby.map(({ city, km }) => (
+                <button
+                  key={city.id}
+                  className="mini-btn"
+                  type="button"
+                  aria-label={t("journal.writeAboutAria", { city: city.name, km: formatKm(km) })}
+                  onClick={() => {
+                    // Only fills the Place field — nothing gets marked as visited.
+                    setPlace({
+                      kind: "city",
+                      id: city.id,
+                      name: city.name,
+                      countryId: city.countryIso2,
+                    });
+                    setNearby(null);
+                    setGeoMsg(null);
+                  }}
+                >
+                  {countryFlag(city.countryIso2)} {city.name} · {formatKm(km)}
+                </button>
+              ))}
+            </div>
+          )}
+          <label className="picker-label" htmlFor="story-title">
+            {t("journal.titleField")}
+            <input
+              id="story-title"
+              className="select"
+              type="text"
+              maxLength={200}
+              placeholder={t("journal.titlePlaceholder")}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </label>
+          <label className="picker-label" htmlFor="story-text">
+            {t("journal.story")}
+            <textarea
+              id="story-text"
+              className="select journal-textarea"
+              rows={6}
+              maxLength={8000}
+              placeholder={t("journal.storyPlaceholder")}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
+          </label>
+          <label className="picker-label" htmlFor="story-folder">
+            {t("journal.folder")}
+            <input
+              id="story-folder"
+              className="select"
+              type="text"
+              maxLength={80}
+              list="journal-folder-suggestions"
+              placeholder={t("journal.folderPlaceholder")}
+              value={folder}
+              onChange={(e) => setFolder(e.target.value)}
+            />
+          </label>
+          {/* Proposed folders (existing + this story's place/country/trip), a native
+              accessible combobox: type a new folder or pick a suggestion, empty = none. */}
+          {folderSuggs.length > 0 && (
+            <datalist id="journal-folder-suggestions">
+              {folderSuggs.map((f) => (
+                <option key={f} value={f} />
+              ))}
+            </datalist>
+          )}
+
+          <input
+            ref={photoInput}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={onPickPhotos}
+            aria-hidden
+            tabIndex={-1}
+          />
+          {photos.length > 0 && (
+            <ul className="journal-photo-edit-list">
+              {photos.map((p, i) => (
+                <li key={i} className="journal-photo-edit">
+                  <img src={p.src} alt="" loading="lazy" decoding="async" />
+                  <input
+                    className="caption-input"
+                    type="text"
+                    maxLength={300}
+                    placeholder={t("journal.captionPlaceholder")}
+                    aria-label={t("journal.captionAria", { n: i + 1 })}
+                    value={p.caption ?? ""}
+                    onChange={(e) =>
+                      setPhotos((prev) =>
+                        prev.map((q, j) =>
+                          j === i ? { ...q, caption: e.target.value || null } : q,
+                        ),
+                      )
+                    }
+                  />
+                  <button
+                    className="link-danger"
+                    type="button"
+                    aria-label={t("journal.removePhotoAria", { n: i + 1 })}
+                    onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))}
+                  >
+                    {t("common.remove")}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div>
+            <button
+              className="mini-btn"
+              type="button"
+              disabled={busy || photos.length >= MAX_PHOTOS_PER_STORY}
+              title={
+                photos.length >= MAX_PHOTOS_PER_STORY
+                  ? t("journal.storyFullTitle", { max: MAX_PHOTOS_PER_STORY })
+                  : undefined
+              }
+              onClick={() => photoInput.current?.click()}
+            >
+              {busy ? "…" : `📷 ${t("journal.addPhotos")}`}
+            </button>
+          </div>
+
+          <div className="trip-form-actions">
+            <button
+              className="btn"
+              type="submit"
+              // A story needs a place + date and SOMETHING to say — a title, some
+              // text, or at least one photo (an image-only entry is allowed).
+              disabled={
+                !place ||
+                !date ||
+                !(sanitizeText(title, 200) || sanitizeText(text, 8000) || photos.length)
+              }
+            >
+              {editingId ? t("journal.saveChanges") : t("journal.saveStory")}
+            </button>
+            <button className="btn-ghost" type="button" onClick={resetForm}>
+              {t("common.cancel")}
+            </button>
+          </div>
+        </form>
       )}
     </section>
   );
