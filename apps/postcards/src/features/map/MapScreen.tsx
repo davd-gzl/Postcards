@@ -733,7 +733,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                   setLayersOpen(false);
                 }}
               >
-                🎚 {t("map.filterButton")}
+                {t("map.filterButton")}
               </button>
               {filterOpen && (
                 <div
@@ -883,18 +883,25 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                   ⤳ {t(BASEMAP_LABEL_KEY[nextBasemap])}
                 </button>
               )}
-              {!onlineMap && !offlineMode && (
-                // Explicit one-tap consent to stream OpenStreetMap tiles — the map
-                // ships offline (zero egress) until the user asks for detail here.
-                // Withheld entirely under Offline mode (the master override).
+              {!offlineMode && (
+                // Two-way toggle: stream OpenStreetMap tiles, or go back to the
+                // zero-egress offline map. The map ships offline (no requests)
+                // until you turn this on. Withheld entirely under Offline mode
+                // (the master override), where the map is forced offline.
                 <button
-                  className="map-btn"
+                  className={"map-btn" + (onlineMap ? " on" : "")}
                   type="button"
-                  title={t("map.online.enableHint")}
+                  aria-pressed={onlineMap}
+                  title={onlineMap ? t("map.online.disableHint") : t("map.online.enableHint")}
                   onClick={() => {
-                    setOnlineMap(true);
-                    setBasemap("osm");
-                    savePref(BASEMAP_KEY, "osm");
+                    const next = !onlineMap;
+                    setOnlineMap(next);
+                    if (next) {
+                      setBasemap("osm");
+                      savePref(BASEMAP_KEY, "osm");
+                    }
+                    // Going offline: effectiveBasemap forces the offline base, so
+                    // no tiles are fetched — nothing else to do.
                   }}
                 >
                   🌐 {t("map.online.enable")}

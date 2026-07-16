@@ -475,6 +475,8 @@ export const ko: Messages = {
   "map.online.enable": "상세 지도",
   "map.online.enableHint":
     "OpenStreetMap에서 상세 타일을 스트리밍합니다. 네트워크를 사용하며 IP와 지도 보기가 OpenStreetMap에 공유됩니다 — 여기를 누르기 전까지 지도는 완전히 오프라인으로 유지됩니다.",
+  "map.online.disableHint":
+    "상세 지도가 켜져 있습니다. 탭하면 오프라인 지도로 돌아갑니다 — 네트워크 없음, 기기를 떠나는 것도 없음.",
   "map.consent.title": "상세 세계 지도를 볼까요?",
   "map.consent.body":
     "OpenStreetMap에서 실제 도로와 라벨을 스트리밍합니다. 지도 보기만 공유되며 — 나머지는 모두 이 기기에 남습니다.",

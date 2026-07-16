@@ -134,6 +134,10 @@ The interface MUST be fast, keyboard-driven, accessible, and free of clutter ("n
   keyboard shortcuts for power users.
 - The app MUST meet recognized accessibility standards (target WCAG 2.1 AA): full keyboard
   operability, screen-reader labels, sufficient contrast, respects reduced-motion.
+- Every interactive control MUST carry discoverable hover/focus info — a `title` (plus a
+  matching `aria-label` whenever the control is icon-only or its purpose is not fully
+  self-evident) — so its function is clear on hover and to assistive tech. A toggle's tooltip
+  MUST reflect its current state and what activating it will do.
 - The UI MUST adapt sensibly to the region being viewed (naming, scripts, units) without
   assuming one locale.
 - Performance is a feature: interactions on a typical dataset MUST feel instantaneous.
