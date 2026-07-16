@@ -462,12 +462,15 @@ const MODE_LAYERS: Record<Exclude<MapMode, "all">, string[]> = {
 };
 
 // Theme colours for the offline overview base (kept out of the render body).
+// Land and sea must read as clearly DIFFERENT — a near-white land on a near-white
+// sea looked blank. This matches the published-reader route map: a soft-blue sea,
+// a warm land, and a defined coastline, so the offline base looks like a map.
 function themeColors(dark: boolean) {
   return {
-    ocean: dark ? "#0d1016" : "#eaf0f6",
-    land: dark ? "#1b1f29" : "#f4f6f9",
-    landLine: dark ? "#2b313d" : "#d6dce4",
-    river: dark ? "#38506b" : "#a9c2dc",
+    ocean: dark ? "#0f1d2a" : "#d9e6f1",
+    land: dark ? "#20271d" : "#eef1e5",
+    landLine: dark ? "#3a462f" : "#b7c1a8",
+    river: dark ? "#38506b" : "#8fb4d6",
   };
 }
 

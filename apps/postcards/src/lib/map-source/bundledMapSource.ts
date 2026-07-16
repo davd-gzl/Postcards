@@ -91,7 +91,9 @@ const OVERVIEW_STYLE: ResolvedMapStyle = {
     version: 8,
     name: "Postcards world overview",
     sources: {},
-    layers: [{ id: "background", type: "background", paint: { "background-color": "#eaf0f6" } }],
+    // Soft-blue sea (matches MapView's themeColors ocean); the light/dark theme
+    // effect repaints this at runtime, this is just the first-paint value.
+    layers: [{ id: "background", type: "background", paint: { "background-color": "#d9e6f1" } }],
   },
   attribution: "Boundaries © Natural Earth (public domain)",
 };
