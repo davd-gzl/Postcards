@@ -694,6 +694,8 @@ export const en = {
     "The journey is encrypted (AES-GCM) in your browser; visitors must type this passphrase to read it. Share the passphrase separately — it is never written into the file, and a lost passphrase cannot be recovered.",
   "publish.publicNote":
     "Empty = anyone with the link can read it. Set a passphrase to lock the whole site on a public host.",
+  "publish.passphraseTooShort":
+    "Use at least {n} characters — a published file can be cracked offline, so longer is safer.",
   "publish.emptySelection":
     "Nothing in this selection yet. Log a trip or a story in scope — an empty site can't be built.",
   "publish.stops_one": "stop",

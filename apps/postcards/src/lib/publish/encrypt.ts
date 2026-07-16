@@ -27,9 +27,27 @@ export interface EncryptedEnvelope {
   ct: string;
 }
 
-const ITERATIONS = 250_000;
+// A published envelope is a PUBLIC static file, so cracking is fully offline and
+// GPU-parallel — the KDF cost is the whole defence. 600k SHA-256 iterations meets
+// current OWASP guidance (was 250k). The count is recorded in `iter` so older
+// files still open at their original cost; new files use this.
+const ITERATIONS = 600_000;
+// Reject a hand-tampered `iter` that would either weaken the KDF to nothing or
+// hang the reader's tab for minutes. Bounds the offline work either way.
+const MIN_ITERATIONS = 100_000;
+const MAX_ITERATIONS = 10_000_000;
+// A short passphrase against any KDF falls in seconds offline — the most likely
+// real-world break of a "locked" journal. Enforce a floor in the crypto layer as
+// a backstop to the UI's own guard + strength meter.
+export const MIN_PASSPHRASE_LENGTH = 8;
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
+
+/** Clamp a recorded/user-supplied iteration count into a sane range. */
+function clampIterations(iter: unknown): number {
+  const n = typeof iter === "number" && Number.isFinite(iter) ? iter : ITERATIONS;
+  return Math.min(MAX_ITERATIONS, Math.max(MIN_ITERATIONS, Math.round(n)));
+}
 
 function toBase64(bytes: Uint8Array): string {
   let bin = "";
@@ -71,6 +89,9 @@ async function deriveKey(passphrase: string, salt: Uint8Array, iterations: numbe
 /** Encrypt any JSON-serializable value with a passphrase. */
 export async function encryptJson(data: unknown, passphrase: string): Promise<EncryptedEnvelope> {
   if (!passphrase) throw new Error("A passphrase is required to encrypt.");
+  if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
+    throw new Error(`Use a passphrase of at least ${MIN_PASSPHRASE_LENGTH} characters.`);
+  }
   const salt = globalThis.crypto.getRandomValues(new Uint8Array(SALT_BYTES));
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(IV_BYTES));
   const key = await deriveKey(passphrase, salt, ITERATIONS);
@@ -108,7 +129,9 @@ export async function decryptJson<T = unknown>(env: EncryptedEnvelope, passphras
   const salt = fromBase64(env.salt);
   const iv = fromBase64(env.iv);
   const ct = fromBase64(env.ct);
-  const key = await deriveKey(passphrase, salt, env.iter || ITERATIONS);
+  // Clamp the recorded iteration count: a tampered file could set it to 1 (no
+  // KDF) or 9e9 (hang the tab). deriveKey then runs bounded work either way.
+  const key = await deriveKey(passphrase, salt, clampIterations(env.iter));
   let plainBuf: ArrayBuffer;
   try {
     plainBuf = await subtle().decrypt({ name: "AES-GCM", iv: iv as BufferSource }, key, ct as BufferSource);
