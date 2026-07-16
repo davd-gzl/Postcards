@@ -439,6 +439,9 @@ export const fr: Messages = {
   "map.basemap.simple": "Carte simple (hors ligne)",
   "map.basemap.osm": "Carte détaillée",
   "map.basemap.detail": "Rues hors ligne",
+  "map.online.enable": "Carte détaillée",
+  "map.online.enableHint":
+    "Diffuser les tuiles détaillées depuis OpenStreetMap. Cela utilise le réseau et partage votre IP et votre vue de carte avec OpenStreetMap — la carte reste entièrement hors ligne jusqu'à ce que vous appuyiez ici.",
   "map.dividerAria": "Redimensionner la liste (glissez, ou utilisez les flèches)",
   "map.dividerTitle": "Glissez pour redimensionner la liste",
   "map.list.aria": "Villes dans la vue",
