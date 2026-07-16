@@ -413,6 +413,7 @@ export const fr: Messages = {
   "journal.searchLabel": "Rechercher des entrées par ville",
   "journal.searchPlaceholder": "Rechercher une ville…",
   "journal.searchClear": "Effacer la recherche",
+  "journal.pressHint": "Astuce : appui long sur la page pour créer une entrée.",
   "journal.editAria": "Modifier le récit {title}",
   "journal.removeAria": "Retirer le récit {title}",
   "journal.showingCount": "{shown} sur {total} affichés",

@@ -412,6 +412,7 @@ export const ko: Messages = {
   "journal.searchLabel": "도시로 기록 검색",
   "journal.searchPlaceholder": "도시 검색…",
   "journal.searchClear": "검색 지우기",
+  "journal.pressHint": "팁: 페이지를 길게 누르면 새 기록을 시작합니다.",
   "journal.editAria": "{title} 기록 편집",
   "journal.removeAria": "{title} 기록 삭제",
   "journal.showingCount": "{total}개 중 {shown}개 표시",
