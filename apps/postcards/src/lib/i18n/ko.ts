@@ -800,6 +800,22 @@ export const ko: Messages = {
   "about.footPost": " 키를 누르면 키보드 단축키를 볼 수 있습니다.",
   "about.gotIt": "확인",
 
+  // ── First-run intro ──────────────────────────────────────────────────────
+  "intro.title": "Postcards",
+  "intro.lede": "다녀온 모든 곳을 기억하세요. 비공개, 오프라인, 온전히 당신의 것.",
+  "intro.map.title": "상세 지도",
+  "intro.map.desc": "실제 도로와 라벨을 원할 때 스트리밍합니다.",
+  "intro.cities.title": "전체 도시 목록",
+  "intro.cities.desc": "모든 도시와 마을(~17MB), 오프라인 검색.",
+  "intro.enable": "켜기",
+  "intro.on": "켜짐",
+  "intro.get": "받기",
+  "intro.getting": "받는 중…",
+  "intro.saved": "저장됨",
+  "intro.more": "더 많은 오프라인 지도와 장소 팩은 설정에 있습니다.",
+  "intro.start": "시작하기",
+  "intro.skip": "건너뛰기",
+
   // ── Misc shared ──────────────────────────────────────────────────────────
   "common.undo": "실행 취소",
   "common.retry": "다시 시도",

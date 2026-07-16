@@ -807,6 +807,22 @@ export const fr: Messages = {
   "about.footPost": " pour voir les raccourcis clavier.",
   "about.gotIt": "Compris",
 
+  // ── First-run intro ──────────────────────────────────────────────────────
+  "intro.title": "Postcards",
+  "intro.lede": "Souvenez-vous de partout où vous êtes allé. Privé, hors ligne, à vous.",
+  "intro.map.title": "Carte détaillée",
+  "intro.map.desc": "Vraies rues et libellés, diffusés quand vous le souhaitez.",
+  "intro.cities.title": "Liste complète des villes",
+  "intro.cities.desc": "Chaque ville et village (~17 Mo), recherche hors ligne.",
+  "intro.enable": "Activer",
+  "intro.on": "Activé",
+  "intro.get": "Obtenir",
+  "intro.getting": "En cours…",
+  "intro.saved": "Enregistré",
+  "intro.more": "D'autres cartes hors ligne et packs de lieux dans les Réglages.",
+  "intro.start": "Commencer",
+  "intro.skip": "Passer",
+
   // ── Misc shared ──────────────────────────────────────────────────────────
   "common.undo": "Annuler",
   "common.retry": "Réessayer",
