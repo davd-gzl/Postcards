@@ -51,11 +51,18 @@ export const PlaceRefSchema = z
 // strict RFC-4122 form (Zod 4 tightened .uuid()); just a bounded non-empty id.
 const idString = z.string().min(1).max(100);
 
-/** A bounded, inert inline image data URL (never an external link). */
+/** A bounded, inert inline image data URL (never an external link). Constrained
+ *  to RASTER subtypes: `data:image/svg+xml` can carry <script>, so even though
+ *  photos are only ever rendered via <img src> today (inert), we refuse SVG at
+ *  the door so a future CSS-background/`<use>`/innerHTML render path can never
+ *  turn a stored photo into script. The app only ever produces jpeg/png/webp. */
 const photoDataUrl = z
   .string()
   .max(6_000_000)
-  .refine((s) => s.startsWith("data:image/"), "photo must be an inline image data URL");
+  .refine(
+    (s) => /^data:image\/(png|jpe?g|webp|gif|avif);/i.test(s),
+    "photo must be an inline raster image data URL",
+  );
 
 /**
  * One photo in a place's gallery: the inline image + an optional short caption
@@ -254,16 +261,20 @@ export const PostcardsFileSchema = z
     format: z.literal(FORMAT),
     schemaVersion: z.number().int().min(1),
     exportedAt: z.string().datetime({ offset: true }),
-    visits: z.array(VisitSchema),
+    // Element caps bound a hostile/oversized file (which the SAME parser runs on
+    // every device-sync pull, so an unbounded array would re-OOM the WebView each
+    // pull). The limits sit far above any real journal so a genuine backup always
+    // restores — they only stop a "millions of empty records" denial-of-service.
+    visits: z.array(VisitSchema).max(200_000),
     // Additive & optional: files predating the travel log import unchanged.
-    trips: z.array(TripSchema).optional().default([]),
+    trips: z.array(TripSchema).max(200_000).optional().default([]),
     // Additive & optional: files predating the journal import unchanged.
-    stories: z.array(StorySchema).optional().default([]),
+    stories: z.array(StorySchema).max(200_000).optional().default([]),
     // Additive & optional: deletion markers for device sync (spec 013). A plain
     // backup carries none; a sync file carries the current, un-retired set. Left
     // undefaulted so a normal export stays free of an empty `tombstones` key.
-    tombstones: z.array(SyncTombstoneSchema).optional(),
-    referenceSources: z.array(ReferenceSourceSchema).optional().default([]),
+    tombstones: z.array(SyncTombstoneSchema).max(500_000).optional(),
+    referenceSources: z.array(ReferenceSourceSchema).max(10_000).optional().default([]),
   })
   .strict();
 

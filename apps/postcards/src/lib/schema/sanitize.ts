@@ -7,19 +7,27 @@ const FORMULA_PREFIXES = new Set(["=", "+", "-", "@"]);
 
 /**
  * Remove characters that are invisible or can spoof text direction:
- * - C0/C1 control characters (except newline 10 and tab 9),
- * - zero-width characters (U+200B–200D, U+FEFF),
+ * - C0 AND C1 control characters (0x00–0x1F, 0x7F, 0x80–0x9F; except tab 9 / LF 10),
+ * - zero-width characters (U+200B–200D, U+2060 word joiner, U+FEFF),
+ * - directional marks (U+200E LRM, U+200F RLM, U+061C ALM),
  * - Unicode bidirectional overrides/isolates (U+202A–202E, U+2066–2069)
  *   — the "Trojan Source" class of visual-spoofing attacks.
+ * All sinks are JSX/textContent (inert), so this is export-fidelity / anti-spoof
+ * hardening, not an in-app injection fix.
  */
 function stripControlChars(input: string): string {
   let out = "";
   for (const ch of input) {
     const code = ch.codePointAt(0)!;
-    const isC0C1 = (code >= 0 && code <= 31 && code !== 9 && code !== 10) || code === 127;
-    const isZeroWidth = code === 0x200b || code === 0x200c || code === 0x200d || code === 0xfeff;
+    const isC0C1 =
+      (code >= 0 && code <= 31 && code !== 9 && code !== 10) ||
+      code === 127 ||
+      (code >= 0x80 && code <= 0x9f);
+    const isZeroWidth =
+      code === 0x200b || code === 0x200c || code === 0x200d || code === 0x2060 || code === 0xfeff;
+    const isDirMark = code === 0x200e || code === 0x200f || code === 0x061c; // LRM / RLM / ALM
     const isBidi = (code >= 0x202a && code <= 0x202e) || (code >= 0x2066 && code <= 0x2069);
-    if (!isC0C1 && !isZeroWidth && !isBidi) out += ch;
+    if (!isC0C1 && !isZeroWidth && !isDirMark && !isBidi) out += ch;
   }
   return out;
 }
