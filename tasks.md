@@ -50,16 +50,16 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 ## Add-place
 
-- [ ] Auto-select the country from the coordinates (nearest gazetteer city) so adding a place
-      is just naming the city — country pre-filled but still editable. (`AddPlaceForm`, new `countryAtPoint` helper)
+- [x] Auto-select the country from the coordinates (nearest gazetteer city, `countryAtPoint`) so
+      adding a place is just naming the spot — country pre-fills from a typed/dropped point, still
+      editable, blank in open ocean. DONE.
 
 ## Publish mode — follow-up (v2)
 
-- [ ] Name a trip (like a folder) + select it when publishing (optional `name` on trips,
-      TravelScreen field, "By trip" scope in PublishScreen, title from the name). (in progress)
-- [ ] Redesign the published site to look crafted/editorial (typography, palette, photo-forward,
-      cover) — less "AI-looking" — with a map that labels EACH city; stays fully self-contained
-      (inline only, zero external requests). (in progress)
+- [x] Name a trip (folder) + "By trip" publish scope (optional `name` on trips, TravelScreen field
+      + folder grouping, PublishScreen selector, title from the name). DONE.
+- [x] Editorial published site (paper/ink, serif+sans, cover) + a fitted map labeling EACH city
+      (pins + names, curved route, compass/legend) — self-contained, zero external requests. DONE.
 
 ## UX / behaviour batch
 

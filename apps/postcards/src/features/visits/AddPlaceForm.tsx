@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import { countryAtPoint } from "../../lib/reference/countryAtPoint";
 import { useVisits } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { sanitizeText } from "../../lib/schema/sanitize";
@@ -29,6 +30,10 @@ export function AddPlaceForm({
   const addVisit = useVisits((s) => s.addVisit);
   const [name, setName] = useState(initialName);
   const [cc, setCc] = useState(initialCountry ?? "");
+  // Once you pick a country by hand we stop auto-filling it; until then a valid
+  // coordinate (typed, or dropped on the map) resolves the country for you — the
+  // point of "add a place" is naming the spot, not hunting for its country.
+  const [ccTouched, setCcTouched] = useState(!!initialCountry);
   const [coords, setCoords] = useState(
     initialCoords ? `${initialCoords.lat.toFixed(5)}, ${initialCoords.lon.toFixed(5)}` : "",
   );
@@ -40,6 +45,15 @@ export function AddPlaceForm({
     const lon = Number(m[2]);
     return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 ? { lat, lon } : null;
   }, [coords]);
+
+  // The country of the nearest gazetteer city to the entered point (offline).
+  const autoCc = useMemo(
+    () => (parsed ? countryAtPoint(ref.allCities(), parsed.lat, parsed.lon) : null),
+    [parsed, ref],
+  );
+  useEffect(() => {
+    if (autoCc && !ccTouched) setCc(autoCc);
+  }, [autoCc, ccTouched]);
 
   // Sanitize like the portable-file schema will — a name that collapses to
   // empty (e.g. "===") must not be savable, or the export wouldn't restore.
@@ -94,7 +108,10 @@ export function AddPlaceForm({
           className="select"
           value={cc}
           aria-label={t("addPlace.country")}
-          onChange={(e) => setCc(e.target.value)}
+          onChange={(e) => {
+            setCcTouched(true);
+            setCc(e.target.value);
+          }}
         >
           <option value="">{t("addPlace.countryOption")}</option>
           <option value="ZZ">🌊 {t("addPlace.noCountry")}</option>
