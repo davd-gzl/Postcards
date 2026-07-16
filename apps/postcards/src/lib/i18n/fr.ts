@@ -694,6 +694,8 @@ export const fr: Messages = {
     "Le voyage est chiffré (AES-GCM) dans votre navigateur ; les visiteurs doivent taper cette phrase secrète pour le lire. Partagez la phrase secrète séparément — elle n'est jamais écrite dans le fichier, et une phrase secrète perdue ne peut pas être récupérée.",
   "publish.publicNote":
     "Vide = toute personne ayant le lien peut le lire. Définissez une phrase secrète pour verrouiller tout le site sur un hébergeur public.",
+  "publish.passphraseTooShort":
+    "Utilisez au moins {n} caractères — un fichier publié peut être attaqué hors ligne, donc plus c'est long, plus c'est sûr.",
   "publish.emptySelection":
     "Rien dans cette sélection pour l'instant. Enregistrez un voyage ou un récit dans la portée — un site vide ne peut pas être construit.",
   "publish.stops_one": "étape",

@@ -7,7 +7,7 @@ import { useToast } from "../../lib/store/useToast";
 import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { buildJourney, type JourneyInput, type PublishedJourney } from "../../lib/publish/bundle";
 import { renderReaderHtml } from "../../lib/publish/renderReader";
-import { encryptJson } from "../../lib/publish/encrypt";
+import { encryptJson, MIN_PASSPHRASE_LENGTH } from "../../lib/publish/encrypt";
 import { GitHubTarget } from "../../lib/publish/gitTarget";
 import { GitHubConnectorFields, type GitHubConnectorValue } from "../../ui/GitHubConnectorFields";
 import { HOSTING_README } from "../../lib/publish/hosting";
@@ -132,12 +132,31 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
 
   const empty = journey.steps.length === 0;
   const canExport = !empty && !!title.trim() && !busy;
+  // A published encrypted file is a public static blob — crackable offline — so a
+  // short passphrase is the likeliest real break. Warn (and the crypto layer
+  // hard-refuses) below the floor.
+  const passNorm = passphrase.normalize("NFC").trim();
+  const passTooShort = passNorm.length > 0 && passNorm.length < MIN_PASSPHRASE_LENGTH;
 
   /** Build the final self-contained HTML (encrypted when a passphrase is set). */
   async function buildHtml(): Promise<string> {
-    if (passphrase.trim()) {
-      const env = await encryptJson(journey, passphrase);
+    // Normalise ONCE and use the SAME value for the encrypt decision and the
+    // encryption itself. Before, the decision used passphrase.trim() but the
+    // encrypt used the raw value: a spaces-only box silently published PLAINTEXT,
+    // and surrounding spaces produced a file that could never be unlocked.
+    const pass = passphrase.normalize("NFC").trim();
+    if (pass) {
+      if (pass.length < MIN_PASSPHRASE_LENGTH) {
+        throw new Error(`Use a passphrase of at least ${MIN_PASSPHRASE_LENGTH} characters.`);
+      }
+      const env = await encryptJson(journey, pass);
       return renderReaderHtml(null, { encrypted: env, layout });
+    }
+    // A box that is present but only whitespace is a mistake — refuse rather than
+    // silently publish the journal in the clear. An empty box is the intended
+    // open-journal path.
+    if (passphrase.length > 0) {
+      throw new Error("That passphrase is only spaces — clear it to publish openly, or enter a real one.");
     }
     return renderReaderHtml(journey, { layout });
   }
@@ -149,8 +168,10 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
       const html = await buildHtml();
       download("index.html", html, "text/html");
       showToast(t("publish.toast.saved"));
-    } catch {
-      showToast(t("publish.toast.buildErr"));
+    } catch (e) {
+      // Surface a passphrase guard ("at least 8 characters", "only spaces")
+      // instead of a generic failure, so the user can act on it.
+      showToast(e instanceof Error ? e.message : t("publish.toast.buildErr"));
     } finally {
       setBusy(false);
     }
@@ -396,6 +417,11 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
           <p className="muted small">
             {passphrase.trim() ? t("publish.encryptedNote") : t("publish.publicNote")}
           </p>
+          {passTooShort && (
+            <p className="small" role="alert" style={{ color: "var(--danger, #c0392b)" }}>
+              {t("publish.passphraseTooShort", { n: MIN_PASSPHRASE_LENGTH })}
+            </p>
+          )}
         </fieldset>
 
         {/* Live summary */}

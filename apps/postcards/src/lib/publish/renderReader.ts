@@ -365,7 +365,10 @@ const READER_JS = `
   }
   function decrypt(env,pass){
     var iv=b64(env.iv), ct=b64(env.ct), salt=b64(env.salt);
-    return deriveKey(pass,salt,env.iter||250000).then(function(key){
+    // Clamp a tampered iteration count so a hostile file can't hang the visitor's
+    // tab (iter: 9e9) or gut the KDF (iter: 1). Mirrors encrypt.ts clampIterations.
+    var iter=Math.min(10000000,Math.max(100000,(+env.iter)||250000));
+    return deriveKey(pass,salt,iter).then(function(key){
       return crypto.subtle.decrypt({name:"AES-GCM",iv:iv},key,ct);
     }).then(function(buf){ return JSON.parse(new TextDecoder().decode(buf)); });
   }
@@ -826,7 +829,9 @@ const READER_JS = `
     form.appendChild(label); form.appendChild(btn); form.appendChild(msg);
     form.addEventListener("submit",function(e){
       e.preventDefault(); msg.textContent=""; btn.disabled=true; btn.textContent="Unlocking…";
-      decrypt(env,input.value).then(function(journey){start(journey);}).catch(function(){
+      // Normalise identically to the author side (encrypt.ts / PublishScreen):
+      // NFC + trim, so a copy-pasted passphrase with stray spaces still unlocks.
+      decrypt(env,input.value.normalize("NFC").trim()).then(function(journey){start(journey);}).catch(function(){
         btn.disabled=false; btn.textContent="Unlock"; msg.textContent="Wrong passphrase, or the file is damaged.";
         input.focus(); input.select();
       });
