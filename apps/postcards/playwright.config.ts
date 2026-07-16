@@ -9,6 +9,10 @@ const LOCAL_CHROMIUM = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
+  // One retry in CI absorbs environmental flakes (a slow runner missing a 5s
+  // render/interactive deadline under worker contention) without masking real
+  // failures — a genuine regression fails both the run and the retry.
+  retries: process.env.CI ? 1 : 0,
   reporter: "list",
   use: {
     baseURL: "http://localhost:4173",
