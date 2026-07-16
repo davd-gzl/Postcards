@@ -98,6 +98,18 @@ EVERYWHERE (tab switches, list scroll, filters, opening a place, toggles).
       sizes) mirroring the tile download UX. Honors local-first/offline; shrinks the install.
       (vite-plugin-pwa precache config, lib/reference loaders, gazetteerWorker, a data-cache seam, Settings.)
 
+## Community data packs (shareable, add-by-link)
+
+- [ ] Let anyone create + share a data pack, and add one by pasting a **raw file URL or a GitHub link**
+      (auto-convert github.com/blob → raw). The app FETCHES (same seam as downloadable packs), VALIDATES
+      + SANITIZES it (inert — Zod schema, never executed), CACHES it offline, MERGES it via the reference
+      seam (supplemental gazetteer / stations / intra-city / moments / etc.), and shows its named
+      source + license (provenance). A documented, versioned pack format (schema + a "how to make a
+      pack" doc). Manage packs in Settings (list / update / remove / re-fetch), each labelled by origin.
+      Convenience: GitHub-link handling, maybe a small curated index of known packs (opt-in, just links).
+      Constitution: decentralized (any URL, no central server), local-first (cached, offline after),
+      privacy (explicit action), inert + provenance-tagged. Builds on the downloadable-data cache seam.
+
 ## Whole-app optimization (loop-review)
 
 - [ ] Iterative review-and-optimize pass over the whole codebase (correctness, perf, simplification,
