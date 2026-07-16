@@ -68,6 +68,14 @@ mode, so it's high-value and not much extra surface. Recommendation:
 - [x] Editorial published site (paper/ink, serif+sans, cover) + a fitted map labeling EACH city
       (pins + names, curved route, compass/legend) — self-contained, zero external requests. DONE.
 
+## Map
+
+- [ ] Filter the map by DATE — a year (+ "Any year" / "No date") filter that shows only the
+      places visited in that period (visited markers + country shading + the in-view list), matching
+      the existing year-filter UX in Places/Journal/Trips; align with the trip-arc period filter.
+      (MapScreen filter UI, MapView visited painting, reuse `distinctYearsDesc`.) — queued after the
+      blog agent (shares the i18n catalogs).
+
 ## UX / behaviour batch
 
 - [x] City name never cropped; on hover show full name (tooltip) — shared CityLine + picker/passport/airports
