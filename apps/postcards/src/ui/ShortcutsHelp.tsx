@@ -1,11 +1,19 @@
 import { useEffect, useRef } from "react";
+import { useModalKeys } from "../lib/hooks/useModalKeys";
 
 /** Minimal keyboard-shortcuts overlay (opened with "?"). */
 export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    // Opened by a keypress (no trigger button to remember), so capture whatever
+    // had focus and restore it on close — focus must not drop to the page top.
+    const prev = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
+    return () => prev?.focus?.();
   }, []);
+  // Trap Tab within the dialog and close on Escape (parity with AboutModal).
+  useModalKeys(dialogRef, onClose);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -14,6 +22,7 @@ export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label="Keyboard shortcuts"
+        ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
       >
         <h2>Keyboard shortcuts</h2>

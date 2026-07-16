@@ -121,9 +121,14 @@ export function App() {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName)) return;
+      // While any modal/lightbox/map-popup/dirty-composer layer is open, single-
+      // key shortcuts are inert (Escape above still closes the layer) — a shortcut
+      // must never navigate the tab behind an open dialog or pull focus out of it.
+      if (document.querySelector(DIALOG_LAYER_SELECTOR)) return;
 
       if (e.key === "/") {
-        useUi.getState().setTab("map");
+        // Focus the always-present top-bar search WITHOUT changing tabs or
+        // closing an open city/country page — picking a result navigates itself.
         useUi.getState().focusSearch();
         e.preventDefault();
         return;
@@ -190,7 +195,9 @@ export function App() {
   }, []);
 
   const currentTab = TABS.find((x) => x.id === tab);
-  const currentLabel = currentTab ? t(currentTab.label) : "";
+  // Settings isn't in TABS (it's the top-bar gear), so fall back to its label —
+  // otherwise the live region announces a bare " section" with no name.
+  const currentLabel = currentTab ? t(currentTab.label) : tab === "settings" ? t("topbar.settings") : "";
 
   return (
     <div className="app">

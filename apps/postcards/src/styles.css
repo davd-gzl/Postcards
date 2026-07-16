@@ -393,7 +393,10 @@ h1.brand {
 /* Non-blocking loading / retry hint centred over the map. */
 .map-status {
   position: absolute;
-  top: 12px;
+  /* Below the mode switcher (All / Cities / …), which sits ~10–46px from the top
+     — the pill's opaque background used to cover the centre mode buttons and
+     intercept their taps. */
+  top: 52px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 6;
@@ -3181,6 +3184,22 @@ button.brand:focus-visible {
   .map-ctl-right .layers-panel {
     top: calc(100% + 8px);
     bottom: auto;
+  }
+}
+@media (max-width: 899.98px) {
+  /* On a phone the map can be short (default 34vh, or dragged shorter), so a
+     popover anchored to the button clips off the top edge. Float it as a
+     viewport bottom sheet instead — always fully on-screen above the tab bar,
+     and internally scrollable regardless of the map's height. */
+  .map-ctl-right .layers-panel {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-height: min(60vh, calc(100dvh - 160px));
+    z-index: 30;
   }
 }
 
