@@ -93,6 +93,7 @@ export const en = {
   "settings.offline.title": "Offline maps",
   "settings.offline.desc":
     "Save the detailed OpenStreetMap map for offline use: download the whole world or a single region, with the real size shown up front. Packs cover overview zoom (countries, big cities); street-level areas you browse online are kept offline automatically. Tiles come from OpenStreetMap and are fetched only when you tap Download.",
+  "settings.offline.offlineNote": "Downloads are off while Offline mode is on — turn it off to save maps or the full city list.",
   "settings.offline.tileMeta": "{tiles} tiles · ≈{mb} MB",
   "settings.offline.cappedSuffix": " (capped)",
   "settings.offline.savedSuffix": " · saved {date}",
@@ -233,6 +234,7 @@ export const en = {
   "places.year.noDate": "No date",
   "places.visited.empty":
     "Nothing yet. Add places from the map or the search bar — visiting a city also collects its country.",
+  "places.noMatch": "Nothing matches your filter.",
   "places.favorites.empty": "No favorites yet. Tap the heart on a visited place and it lands here.",
   "places.wishlist.empty":
     "No wishes yet. Find a place and tap the ⚑ to add it to your someday list.",
@@ -497,6 +499,8 @@ export const en = {
   "map.list.inView": "{count} in view",
   "map.list.visited": "· {count} visited",
   "map.list.poiEmpty": "Nothing in this view — pan or zoom the map.",
+  "map.poiNoneVisited": "None of these are marked visited yet.",
+  "map.poiAllVisited": "You've visited all of these in view.",
   "map.filterAria": "Filter",
   "map.filterCitiesAria": "Filter cities",
   "map.filter.all": "All",

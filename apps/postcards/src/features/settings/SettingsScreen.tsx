@@ -213,6 +213,7 @@ export function SettingsScreen() {
             </select>
           </label>
           <p className="muted small">{t("settings.offline.desc")}</p>
+          {offlineMode && <p className="muted small">{t("settings.offline.offlineNote")}</p>}
           <ul className="region-list">
             {OFFLINE_REGIONS.map((r) => {
               const est = estimates[r.id]!;
@@ -234,7 +235,12 @@ export function SettingsScreen() {
                     </span>
                   </span>
                   {p == null ? (
-                    <button className="mini-btn" type="button" onClick={() => void download(r)}>
+                    <button
+                      className="mini-btn"
+                      type="button"
+                      disabled={offlineMode}
+                      onClick={() => void download(r)}
+                    >
                       {savedAt[r.id]
                         ? `⟳ ${t("settings.offline.redownload")}`
                         : `⬇ ${t("settings.offline.download")}`}
@@ -278,7 +284,7 @@ export function SettingsScreen() {
               <button
                 className="mini-btn"
                 type="button"
-                disabled={citiesDl === "busy"}
+                disabled={offlineMode || citiesDl === "busy"}
                 onClick={() => void onDownloadCities()}
               >
                 {citiesDl === "busy"

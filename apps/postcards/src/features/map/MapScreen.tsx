@@ -483,6 +483,16 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     // folder ARE deps so the "seen" counts re-derive when the selection changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, bounds, ref, dateFilter, folder]);
+  // The monument/airport list AFTER the visited/hide-visited filter — hoisted so
+  // the list can show an honest empty message when the filter matches nothing
+  // (before, the chips floated above a blank void and it read as broken).
+  const shownPoi = useMemo(
+    () =>
+      poi
+        ? poi.items.filter((x) => (cityFilter === "all" ? true : cityFilter === "visited" ? x.seen : !x.seen))
+        : [],
+    [poi, cityFilter],
+  );
 
   // Trip arcs honour the SAME map filter as the places: a trip shows only when
   // its date is in the window AND (if a folder is chosen) its name is that
@@ -964,27 +974,29 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                 </button>
               ))}
             </div>
-            <ul className="city-list">
-              {poi.items
-                .filter((x) =>
-                  cityFilter === "all" ? true : cityFilter === "visited" ? x.seen : !x.seen,
-                )
-                .map((x) => (
-                <li key={x.key} className="city-row compact">
-                  <button
-                    className="city-focus"
-                    type="button"
-                    title={t("stats.records.showOnMap", { name: x.name })}
-                    onClick={() => focusCity({ lon: x.lon, lat: x.lat })}
-                  >
-                    <CityLine flag={x.flag} name={x.name} sub={<>· {x.sub}</>} />
-                  </button>
-                  {/* The row itself only zooms the map; details live behind 📖. */}
-                  {x.page && <GuideButton place={x.place} />}
-                  <StateToggles place={x.place} />
-                </li>
+            {shownPoi.length === 0 ? (
+              <p className="muted empty">
+                {cityFilter === "visited" ? t("map.poiNoneVisited") : t("map.poiAllVisited")}
+              </p>
+            ) : (
+              <ul className="city-list">
+                {shownPoi.map((x) => (
+                  <li key={x.key} className="city-row compact">
+                    <button
+                      className="city-focus"
+                      type="button"
+                      title={t("stats.records.showOnMap", { name: x.name })}
+                      onClick={() => focusCity({ lon: x.lon, lat: x.lat })}
+                    >
+                      <CityLine flag={x.flag} name={x.name} sub={<>· {x.sub}</>} />
+                    </button>
+                    {/* The row itself only zooms the map; details live behind 📖. */}
+                    {x.page && <GuideButton place={x.place} />}
+                    <StateToggles place={x.place} />
+                  </li>
                 ))}
-            </ul>
+              </ul>
+            )}
             {poi.total > poi.items.length && (
               <p className="muted small">
                 {t("map.poiShowing", { shown: poi.items.length, total: poi.total })}

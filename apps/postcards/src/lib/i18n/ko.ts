@@ -87,6 +87,7 @@ export const ko: Messages = {
   "settings.offline.title": "오프라인 지도",
   "settings.offline.desc":
     "상세 OpenStreetMap 지도를 오프라인용으로 저장하세요: 전 세계 또는 한 지역을 실제 용량을 미리 보고 내려받을 수 있습니다. 패키지는 개요 확대 수준(국가, 대도시)을 포함하며, 온라인에서 둘러본 거리 수준 지역은 자동으로 오프라인에 보관됩니다. 타일은 OpenStreetMap에서 제공되며 내려받기를 누를 때만 가져옵니다.",
+  "settings.offline.offlineNote": "오프라인 모드에서는 다운로드가 비활성화됩니다 — 지도나 전체 도시 목록을 저장하려면 모드를 끄세요.",
   "settings.offline.tileMeta": "타일 {tiles}개 · 약 {mb} MB",
   "settings.offline.cappedSuffix": " (상한 적용됨)",
   "settings.offline.savedSuffix": " · {date}에 저장됨",
@@ -227,6 +228,7 @@ export const ko: Messages = {
   "places.year.noDate": "날짜 없음",
   "places.visited.empty":
     "아직 없습니다. 지도나 검색창에서 장소를 추가하세요 — 도시를 방문하면 해당 국가도 함께 수집됩니다.",
+  "places.noMatch": "필터와 일치하는 항목이 없습니다.",
   "places.favorites.empty": "아직 즐겨찾기가 없습니다. 방문한 장소의 하트를 누르면 여기에 나타납니다.",
   "places.wishlist.empty":
     "아직 가고 싶은 곳이 없습니다. 장소를 찾아 ⚑를 눌러 언젠가 갈 목록에 추가하세요.",
@@ -491,6 +493,8 @@ export const ko: Messages = {
   "map.list.inView": "화면 안 {count}개",
   "map.list.visited": "· {count}개 방문",
   "map.list.poiEmpty": "이 화면에는 아무것도 없습니다 — 지도를 이동하거나 확대/축소하세요.",
+  "map.poiNoneVisited": "아직 방문함으로 표시된 항목이 없습니다.",
+  "map.poiAllVisited": "화면에 보이는 항목을 모두 방문했습니다.",
   "map.filterAria": "필터",
   "map.filterCitiesAria": "도시 필터",
   "map.filter.all": "전체",
