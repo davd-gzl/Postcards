@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { JSDOM, VirtualConsole } from "jsdom";
 import { renderReaderHtml } from "../../src/lib/publish/renderReader";
 import { encryptJson } from "../../src/lib/publish/encrypt";
 import type { PublishedJourney } from "../../src/lib/publish/bundle";
@@ -41,6 +42,21 @@ const journey: PublishedJourney = {
 /** Any absolute/external URL scheme that would mean a network request. data: is inline and allowed. */
 const EXTERNAL_URL = /\b(?:https?:|wss?:)\/\//i;
 
+/** Boot the emitted reader inside a fresh JSDOM realm and wait for the runtime to render. */
+async function mount(html: string): Promise<JSDOM> {
+  // Swallow jsdom "not implemented" notices (e.g. window.scrollTo) — they are
+  // expected and must not fail the test.
+  const virtualConsole = new VirtualConsole();
+  const dom = new JSDOM(html, { runScripts: "dangerously", pretendToBeVisual: true, virtualConsole });
+  const start = Date.now();
+  // The reader boots on DOMContentLoaded; poll until it has swapped in its chrome.
+  while (Date.now() - start < 2000) {
+    if (dom.window.document.querySelector(".pc-head, .pc-gate")) break;
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  return dom;
+}
+
 describe("renderReaderHtml (plain journey)", () => {
   const html = renderReaderHtml(journey);
 
@@ -65,6 +81,8 @@ describe("renderReaderHtml (plain journey)", () => {
     expect(EXTERNAL_URL.test(html)).toBe(false);
     expect(html).not.toContain("//cdn");
     expect(html).not.toContain("<link");
+    // The inline SVG must not carry the xmlns URL (it would be a network hint).
+    expect(html).not.toContain("www.w3.org");
     // Inline photo data URLs are fine and expected.
     expect(html).toContain("data:image/png;base64,AAAA");
   });
@@ -91,6 +109,72 @@ describe("renderReaderHtml (plain journey)", () => {
   });
 });
 
+describe("renderReaderHtml (mounted book structure)", () => {
+  it("renders a cover, a map, and one photo-led page per step", async () => {
+    const dom = await mount(renderReaderHtml(journey));
+    const doc = dom.window.document;
+    // Boot succeeded (loading placeholder replaced by the reader chrome).
+    expect(doc.querySelector(".pc-head")).toBeTruthy();
+    // Cover + map + one page per step.
+    expect(doc.querySelectorAll(".pc-cover").length).toBe(1);
+    expect(doc.querySelectorAll(".pc-mapwrap").length).toBe(1);
+    expect(doc.querySelectorAll(".pc-step").length).toBe(journey.steps.length);
+    // Editorial furniture: a cover hero, kickers, and a folio on every spread.
+    expect(doc.querySelector(".pc-cover-hero")).toBeTruthy();
+    expect(doc.querySelectorAll(".pc-folio").length).toBe(2 + journey.steps.length);
+    dom.window.close();
+  });
+
+  it("draws a labeled pin for every city, plus a compass and a legend", async () => {
+    const dom = await mount(renderReaderHtml(journey));
+    const doc = dom.window.document;
+    const labels = [...doc.querySelectorAll(".pc-map .pc-map-label")].map((n) => n.textContent);
+    // One readable label per city, carrying the place names.
+    expect(labels.length).toBe(journey.steps.length);
+    expect(new Set(labels)).toEqual(new Set(["Paris", "Rome", "Cairo"]));
+    // A dot (marker) per city — at least one circle per stop is drawn.
+    expect(doc.querySelectorAll(".pc-map svg circle").length).toBeGreaterThanOrEqual(journey.steps.length);
+    // The curved route + a compass + a legend make it read like a travel map.
+    expect(doc.querySelectorAll(".pc-map svg path.pc-leg").length).toBeGreaterThan(0);
+    expect(doc.querySelector(".pc-compass-label")).toBeTruthy();
+    expect(doc.querySelector(".pc-legend")).toBeTruthy();
+    dom.window.close();
+  });
+
+  it("pages forward with the Next button", async () => {
+    const dom = await mount(renderReaderHtml(journey));
+    const doc = dom.window.document;
+    const cover = doc.querySelector(".pc-cover") as HTMLElement;
+    const counter = doc.querySelector(".pc-counter") as HTMLElement;
+    expect(cover.hidden).toBe(false);
+    expect(counter.textContent).toBe("1 / 5"); // cover + map + 3 steps
+    (doc.querySelector(".pc-btn-primary") as HTMLButtonElement).click();
+    expect(counter.textContent).toBe("2 / 5");
+    expect(cover.hidden).toBe(true);
+    expect((doc.querySelector(".pc-mapwrap") as HTMLElement).hidden).toBe(false);
+    dom.window.close();
+  });
+
+  it("escapes a malicious place name in the map label (inert markup)", async () => {
+    const evil: PublishedJourney = {
+      ...journey,
+      steps: [
+        {
+          ...journey.steps[0]!,
+          place: { ...journey.steps[0]!.place, name: "<img src=x onerror=alert(1)>" },
+        },
+      ],
+    };
+    const dom = await mount(renderReaderHtml(evil));
+    const doc = dom.window.document;
+    // No injected <img> smuggled through the SVG label.
+    expect(doc.querySelector(".pc-map img")).toBeNull();
+    const label = doc.querySelector(".pc-map .pc-map-label");
+    expect(label?.textContent).toContain("<img");
+    dom.window.close();
+  });
+});
+
 describe("renderReaderHtml (encrypted)", () => {
   it("ships only the envelope — no plaintext of the journey leaks", async () => {
     const env = await encryptJson(journey, "correct horse battery staple");
@@ -110,5 +194,17 @@ describe("renderReaderHtml (encrypted)", () => {
     expect(html).not.toContain("correct horse battery staple");
     // The ciphertext envelope is embedded.
     expect(html).toContain(env.ct.slice(0, 16));
+  });
+
+  it("mounts to a passphrase gate, not the book", async () => {
+    const env = await encryptJson(journey, "correct horse battery staple");
+    const dom = await mount(renderReaderHtml(null, { encrypted: env }));
+    const doc = dom.window.document;
+    expect(doc.querySelector(".pc-gate")).toBeTruthy();
+    expect(doc.querySelector("input[type=password]")).toBeTruthy();
+    // The book itself is not rendered until unlocked.
+    expect(doc.querySelector(".pc-cover")).toBeNull();
+    expect(doc.querySelector(".pc-map-label")).toBeNull();
+    dom.window.close();
   });
 });

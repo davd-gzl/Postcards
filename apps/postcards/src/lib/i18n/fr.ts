@@ -282,6 +282,9 @@ export const fr: Messages = {
   "travel.totalsForAria": "Totaux des trajets pour {period}",
   "travel.totalsAria": "Totaux des trajets",
   "travel.editingNote": "Modification d'un trajet",
+  "travel.nameOptional": "Nom du voyage (facultatif)",
+  "travel.namePlaceholder": "ex. Japon 2024",
+  "travel.folderUnfiled": "Autres voyages",
   "travel.from": "De",
   "travel.to": "À",
   "travel.modeLabel": "Mode",
@@ -501,6 +504,15 @@ export const fr: Messages = {
   "search.addChip": "Ajouter",
   "search.addOwn": "Pas ici ? Ajoutez « {q} » comme votre propre lieu",
   "search.notInData": "« {q} » n'est pas dans les données chargées.",
+
+  // ── Publish mode (scope selector) ────────────────────────────────────────
+  "publish.scope.all": "Tout",
+  "publish.scope.trip": "Un trajet",
+  "publish.scope.range": "Une période",
+  "publish.scope.byTrip": "Par voyage",
+  "publish.byTripLabel": "Nom du voyage (dossier)",
+  "publish.pickFolder": "Choisir un nom de voyage…",
+  "publish.noNamedTrips": "Aucun voyage nommé",
 
   // ── Misc shared ──────────────────────────────────────────────────────────
   "common.undo": "Annuler",

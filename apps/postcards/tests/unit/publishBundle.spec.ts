@@ -108,6 +108,30 @@ describe("buildJourney (trips-driven)", () => {
   });
 });
 
+// The PublishScreen "By trip" (folder) scope resolves a trip NAME to the set of
+// tripIds sharing it, then feeds those to buildJourney. This verifies that path.
+describe("buildJourney (by trip name / folder selection)", () => {
+  it("gathers every leg that shares a trip name into one ordered journey", () => {
+    const trips: Trip[] = [
+      { ...trip("t1", paris, rome, "flight", "2026-05-02"), name: "Japan 2024" },
+      { ...trip("t2", rome, cairo, "ferry", "2026-05-06"), name: "Summer road trip" },
+      { ...trip("t3", cairo, paris, "flight", "2026-05-10"), name: "Japan 2024" },
+    ];
+    const folder = "Japan 2024";
+    // Same resolution the screen performs: name -> the legs that carry it.
+    const tripIds = trips.filter((t) => (t.name ?? "") === folder).map((t) => t.tripId);
+    expect(tripIds).toEqual(["t1", "t3"]);
+
+    const j = buildJourney(
+      { visits: [], trips, stories: [], resolveCoords },
+      { title: folder, tripIds },
+    );
+    // Only the two "Japan 2024" legs contribute — the "Summer road trip" leg is excluded.
+    expect(j.steps.map((s) => s.place.name)).toEqual(["Paris", "Rome", "Cairo", "Paris"]);
+    expect(j.title).toBe("Japan 2024");
+  });
+});
+
 // A visit's photos also flow into its place's step even without a story.
 describe("buildJourney (visit photos)", () => {
   it("pulls visit photos onto the matching step", () => {

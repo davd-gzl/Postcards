@@ -127,6 +127,26 @@ export const TravelModeSchema = z.enum(["flight", "train", "bus", "ferry", "car"
 export const TripSchema = z
   .object({
     tripId: idString,
+    /**
+     * Optional short trip/folder label (e.g. "Japan 2024") that groups legs under
+     * one name and titles a published site. Additive & optional exactly like
+     * `updatedAt`: absent on older files and NOT injected on parse (the transform
+     * returns `undefined`, so no `name` key is written), which keeps v1–v6 files
+     * validating and round-tripping byte-identically. Sanitized to inert text when
+     * present; a value that sanitizes away is dropped rather than stored empty.
+     */
+    name: z
+      .string()
+      .max(80)
+      // `.transform` BEFORE `.optional` keeps the KEY optional (name?: string) so
+      // existing trips without a name still typecheck and round-trip byte-identically;
+      // the transform runs only when a value is present, sanitizing it to inert text
+      // and dropping it entirely if it sanitizes away.
+      .transform((v) => {
+        const s = sanitizeText(v, 80);
+        return s.length ? s : undefined;
+      })
+      .optional(),
     from: PlaceRefSchema,
     to: PlaceRefSchema,
     mode: TravelModeSchema.optional().default("flight"),
