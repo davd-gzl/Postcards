@@ -86,13 +86,10 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 ## Map
 
-- [ ] Filter the map by DATE — a year (+ "Any year" / "No date") filter that shows only the
-      places visited in that period (visited markers + country shading + the in-view list), matching
-      the existing year-filter UX in Places/Journal/Trips; align with the trip-arc period filter.
-      (MapScreen filter UI, MapView visited painting, reuse `distinctYearsDesc`.) — queued after the blog agent.
-- [ ] Remove the map "▲ Show list / ▼ Show map" toggle (`.list-expand`, MapScreen.tsx:697) — the
-      divider/slider already docks the list, so it's redundant. Drop the button + `listTall` state +
-      `.list-tall` CSS. — queued after the blog agent.
+- [x] Filter the map by DATE — a year chip filter (Any / each visited year / No date) driving
+      visited markers + country shading + the in-view list AND the trip arcs from ONE shared
+      selection (the useUi tripYear). DONE (+ mapDateFilter tests).
+- [x] Removed the map "Show list / Show map" toggle (+ listTall state + .list-tall CSS + dead i18n keys). DONE.
 
 ## Sync — the ideal frictionless flow (user vision)
 
