@@ -18,6 +18,7 @@ import { ConnectionStatus } from "../ui/ConnectionStatus";
 import { MapIcon, ChartIcon, ListIcon, RouteIcon, BookIcon, GearIcon, InfoIcon } from "../ui/icons";
 import { useState } from "react";
 import { useInstallPrompt } from "../lib/hooks/useInstallPrompt";
+import { useAutoSync } from "../lib/hooks/useAutoSync";
 import { useT, type MessageKey } from "../lib/i18n";
 
 // Code-split MapLibre so it loads only when the map is shown.
@@ -62,6 +63,9 @@ export function App() {
     void useTrips.getState().load();
     void useStories.getState().load();
   }, []);
+
+  // Opt-in background device sync (spec 013). No-op unless the user turned it on.
+  useAutoSync();
 
   // Move focus to the content region on tab change and when a city/country
   // detail page opens or closes — both swap out <main> (skip initial mount).

@@ -528,6 +528,70 @@ export const en = {
   "publish.layout.bookHint":
     "A paged book — a cover, the route map, and one photo-led page per stop, turned start to finish.",
 
+  // ── GitHub connector (shared by Publish + Sync) ──────────────────────────
+  "connector.owner": "Owner",
+  "connector.repo": "Repo",
+  "connector.branch": "Branch",
+  "connector.token": "Token",
+  "connector.tokenHint":
+    "Fine-grained token · Contents: Read and write · this repo only. Stored on this device, never exported.",
+  "connector.noTokenTitle": "You don't need a token at all.",
+  "connector.noTokenBody":
+    "Prefer no accounts? Use Download to get the single file and host it yourself — git push to GitHub Pages, Netlify, Nextcloud, or even copy it to a USB stick. The token below is only for letting the app push for you.",
+  "connector.guide.summary": "How to create a token (step by step)",
+  "connector.guide.step1":
+    "Create a repository for it — e.g. at github.com/new. Keep it public for a shareable site, or private for your data.",
+  "connector.guide.step2":
+    "At github.com/settings/tokens, create a fine-grained personal access token. Repository access: only that one repo. Permissions: Contents → Read and write. Nothing else.",
+  "connector.guide.step3":
+    "Paste the token here, then sync or publish. The app pushes for you and your data lives in the repo (for GitHub Pages, at username.github.io/repo).",
+  "connector.guide.reassure":
+    "The token is kept on this device only. It is never written into any export, backup, or the synced file, and never sent anywhere but your git remote.",
+
+  // ── Device sync (spec 013) ───────────────────────────────────────────────
+  "sync.title": "Sync across your devices",
+  "sync.desc":
+    "Keep your visits, trips and journal the same on your phone and laptop through a git repo you own — no server, no account. Each device pulls the shared file, merges it record-by-record (newest edit wins, deletions stick), and pushes it back.",
+  "sync.connected": "Connected to {owner}/{repo} ({branch}).",
+  "sync.disconnected": "Not connected. Fill in the repo and token below to connect this device.",
+  "sync.now": "Sync now",
+  "sync.syncing": "Syncing…",
+  "sync.disconnect": "Disconnect",
+  "sync.downloadData": "Download data file",
+  "sync.downloadDone": "Saved places.postcards.json — you can host or git push it yourself.",
+  "sync.lastSynced": "Last synced {when}",
+  "sync.missingFields": "Fill in owner, repo, branch and a token to sync.",
+  "sync.auto.toggle": "Sync automatically in the background",
+  "sync.auto.desc":
+    "Off by default. When on, Postcards pulls on launch and when you return to the app, and pushes your changes a few seconds after you make them — only while online, and only to the remote you set here. Turning this on once is your consent for that; it stays off until you do.",
+  "sync.status.created": "Created the file on the remote and pushed your data.",
+  "sync.status.nothing": "Already in sync — nothing changed.",
+  "sync.status.synced": "Synced. {summary}.",
+  "sync.summary.places": "Places",
+  "sync.summary.trips": "Trips",
+  "sync.summary.stories": "Stories",
+  "sync.log.title": "Recent syncs",
+  "sync.log.empty": "No syncs yet.",
+  "sync.log.clear": "Clear history",
+  "sync.log.changed": "Synced: +{added} added · ~{updated} updated · −{removed} removed",
+  "sync.log.created": "Created the remote file and pushed your data.",
+  "sync.log.blocked":
+    "Skipped: the remote holds far fewer records — {removed} of {local} here would be removed. Confirm to apply.",
+  "sync.log.auth":
+    "Sync failed: the token was rejected. Check its repository access and that it grants Contents: Read and write.",
+  "sync.log.network": "Sync failed: couldn't reach the remote. Check your connection and try again.",
+  "sync.log.race": "Sync failed: another device kept changing the remote. Try again.",
+  "sync.log.malformed":
+    "Sync stopped: the remote file was invalid and was not applied. Your data is unchanged.",
+  "sync.log.failed": "Sync failed. Your data on this device is unchanged.",
+  "sync.guard.title": "The remote has far fewer records",
+  "sync.guard.body":
+    "Syncing now would remove {removed} of {local} records on this device, because the remote holds much less data — it may have been reset or emptied. Nothing has changed yet.",
+  "sync.guard.apply": "Apply anyway",
+  "sync.guard.skip": "Skip for now",
+  "sync.privacy":
+    "Privacy: no server, no account, no telemetry. Your data leaves this device only when you sync, and only to the git remote you set here. The connection uses the remote's own transport security (HTTPS). The token is stored on this device only — never inside the synced file.",
+
   // ── Misc shared ──────────────────────────────────────────────────────────
   "common.undo": "Undo",
   "common.retry": "Retry",
