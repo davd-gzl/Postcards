@@ -11,6 +11,7 @@ import {
   type WikiFullText,
 } from "../../lib/wikivoyage";
 import type { PlaceRef } from "../../lib/schema/models";
+import { useOnlineStatus } from "../../lib/hooks/useOnlineStatus";
 import { useT } from "../../lib/i18n";
 
 const KIND_GROUP: Record<string, string> = {
@@ -111,6 +112,7 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
   // show. So autoLoad collapses to false whenever Offline mode is on.
   const offlineMode = useSettings((s) => s.offlineMode);
   const autoLoad = useSettings((s) => s.autoLoadGuides && !s.offlineMode);
+  const online = useOnlineStatus();
   const { countryIso2, countryName, cityName, summaryTitle, searchQuery } = names;
   // Built lazily here — rows with a closed modal do no guide work at all.
   const links = useMemo(
@@ -237,7 +239,9 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
 
       <div className="guide-overviews">
         {!overview && state === "loading" && (
-          <p className="muted small guide-loading">Loading overview…</p>
+          <p className="muted small guide-loading" role="status" aria-live="polite">
+            Loading overview…
+          </p>
         )}
         {!overview && state === "idle" && !autoLoad && !offlineMode && (
           <button type="button" className="btn-ghost guide-overview-btn" onClick={loadOverview}>
@@ -278,8 +282,9 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
           <figure className="guide-card">
             {/* The photo is a remote Wikimedia URL (only the text is saved on
                 device), so rendering it fetches from the network — withheld under
-                Offline mode so a saved overview stays truly self-contained. */}
-            {photo && !offlineMode && (
+                Offline mode AND when the device is simply offline, where it would
+                otherwise render as a broken-image icon over the saved text. */}
+            {photo && !offlineMode && online && (
               <img
                 className="guide-photo"
                 src={photo}
@@ -309,7 +314,9 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
           </button>
         )}
         {fullState === "loading" && (
-          <p className="muted small guide-loading">Loading the full guide…</p>
+          <p className="muted small guide-loading" role="status" aria-live="polite">
+            Loading the full guide…
+          </p>
         )}
         {fullState === "empty" && (
           <p className="muted small">

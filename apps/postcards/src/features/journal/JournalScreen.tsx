@@ -73,6 +73,14 @@ function boundaryDays(): { iso: string; hint: "today" | "newDay" | "yesterday" }
 /** The city page serves these kinds — a story's place name links there. */
 const CITY_PAGE_KINDS: PlaceRef["kind"][] = ["city", "heritage", "custom"];
 
+/** Fold case and strip accents so "medellin" finds "Medellín" (search compare). */
+function norm(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
 /** The feed pages like the other long lists in the app. */
 const FEED_PAGE = 20;
 
@@ -478,6 +486,9 @@ export function JournalScreen() {
   // Feed filters: by destination / country / folder, and by year (the "blog" views).
   const [filterSel, setFilterSel] = useState("all");
   const [yearSel, setYearSel] = useState("all");
+  // Free-text search over a story's city/place name (and its country), accent- and
+  // case-insensitive. Refines BOTH the feed and the calendar so the two agree.
+  const [query, setQuery] = useState("");
   // Feed vs month-calendar view, the calendar's visible month ("YYYY-MM"), and an
   // optional single-day filter set by tapping a calendar day.
   const [view, setView] = useState<"feed" | "calendar">("feed");
@@ -561,22 +572,33 @@ export function JournalScreen() {
     () => stories.filter(matchesPlaceFilter),
     [stories, matchesPlaceFilter],
   );
-  const filtered = useMemo(() => {
+  // Layer the text search on top of the place filter: match the story's place name
+  // or its country name (accent-insensitive). Empty query is a no-op passthrough.
+  const searched = useMemo(() => {
+    const needle = norm(query.trim());
+    if (!needle) return placeFiltered;
     return placeFiltered.filter((s) => {
+      if (norm(s.place.name).includes(needle)) return true;
+      const cn = s.place.countryId ? ref.countryByIso2(s.place.countryId)?.name : null;
+      return cn ? norm(cn).includes(needle) : false;
+    });
+  }, [placeFiltered, query, ref]);
+  const filtered = useMemo(() => {
+    return searched.filter((s) => {
       // A tapped calendar day pins the feed to that exact day (supersedes the year).
       if (daySel) return s.date === daySel;
       if (yearSel === "none" && s.date) return false;
       if (yearSel !== "all" && yearSel !== "none" && s.date?.slice(0, 4) !== yearSel) return false;
       return true;
     });
-  }, [placeFiltered, yearSel, daySel]);
+  }, [searched, yearSel, daySel]);
 
-  // Per-day colour/count for the calendar — derived only from the place-filtered
-  // stories (month navigation handles time). Colour is keyed to the day's dominant
-  // place's continent via the shared reference lookup.
+  // Per-day colour/count for the calendar — derived from the place- AND search-
+  // filtered stories (month navigation handles time). Colour is keyed to the day's
+  // dominant place's continent via the shared reference lookup.
   const dayIndex = useMemo(
-    () => storyDayIndex(placeFiltered, (iso2) => ref.continentOf(iso2)),
-    [placeFiltered, ref],
+    () => storyDayIndex(searched, (iso2) => ref.continentOf(iso2)),
+    [searched, ref],
   );
 
   // Folders to propose while composing: existing folders + this story's place,
@@ -993,6 +1015,41 @@ export function JournalScreen() {
           </div>
 
           {stories.length > 1 && (
+            <div className="journal-search-row">
+              <span className="journal-search-ico" aria-hidden>
+                🔍
+              </span>
+              <label className="sr-only" htmlFor="journal-search">
+                {t("journal.searchLabel")}
+              </label>
+              <input
+                id="journal-search"
+                className="select journal-search-input"
+                type="search"
+                value={query}
+                placeholder={t("journal.searchPlaceholder")}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setDaySel(null);
+                  setFeedShown(FEED_PAGE);
+                }}
+              />
+              {query && (
+                <button
+                  className="link journal-search-clear"
+                  type="button"
+                  aria-label={t("journal.searchClear")}
+                  onClick={() => {
+                    setQuery("");
+                    setFeedShown(FEED_PAGE);
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
+          {stories.length > 1 && (
             <div className="journal-filters">
               <label className="picker-label">
                 {t("journal.show")}
@@ -1097,6 +1154,7 @@ export function JournalScreen() {
                   setFilterSel("all");
                   setYearSel("all");
                   setDaySel(null);
+                  setQuery("");
                 }}
               >
                 {t("journal.clearFilters")}

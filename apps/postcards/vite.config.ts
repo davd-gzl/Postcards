@@ -1,7 +1,15 @@
 /// <reference types="vitest/config" />
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+
+// Single source of truth for the shown app version: package.json. Injected at
+// build time (see `define` below) so the About screen never drifts from the
+// released package version and no runtime import of package.json is bundled.
+const pkg = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+) as { version: string };
 
 // Web-first: this same build is the self-hostable website (PWA) and the payload
 // Capacitor wraps into native iOS/Android. No Google, no backend.
@@ -12,6 +20,9 @@ export default defineConfig({
   // VITE_BASE=/Postcards/ so asset URLs, the PWA manifest scope and the service
   // worker all resolve correctly there.
   base: process.env.VITE_BASE || "/",
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [
     react(),
     VitePWA({

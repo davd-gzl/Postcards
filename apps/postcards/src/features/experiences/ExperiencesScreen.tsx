@@ -88,9 +88,15 @@ export function ExperiencesScreen({ embedded }: { embedded?: boolean } = {}) {
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const [list, setList] = useState<Experience[]>(() => cache ?? []);
+  const [loading, setLoading] = useState(!cache);
 
   useEffect(() => {
-    if (!cache) void loadExperiences().then(setList);
+    if (!cache) {
+      void loadExperiences()
+        .then(setList)
+        .finally(() => setLoading(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const lived = useMemo(
@@ -115,6 +121,8 @@ export function ExperiencesScreen({ embedded }: { embedded?: boolean } = {}) {
         </span>
       </div>
       <p className="muted small">{t("moments.desc")}</p>
+      {loading && <p className="muted empty">{t("moments.loading")}</p>}
+      {!loading && list.length === 0 && <p className="muted empty">{t("moments.loadError")}</p>}
       {groups.map((cont) => (
         <section key={cont.continent} className="moment-continent">
           <ContinentHeading className="moment-continent-head">{cont.continent}</ContinentHeading>

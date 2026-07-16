@@ -409,6 +409,9 @@ export const ko: Messages = {
   "journal.noDate": "날짜 없음",
   "journal.noMatch": "이 필터에 맞는 기록이 없습니다.",
   "journal.clearFilters": "필터 지우기",
+  "journal.searchLabel": "도시로 기록 검색",
+  "journal.searchPlaceholder": "도시 검색…",
+  "journal.searchClear": "검색 지우기",
   "journal.editAria": "{title} 기록 편집",
   "journal.removeAria": "{title} 기록 삭제",
   "journal.showingCount": "{total}개 중 {shown}개 표시",
@@ -545,6 +548,8 @@ export const ko: Messages = {
   "moments.desc":
     "장소가 아니라 세계의 순간들: 특정한 곳에서만 경험할 수 있는 것들. 경험한 것을 체크하고, 꿈꾸는 것을 표시하세요. 각 항목은 그것이 일어나는 몇몇 장소로 연결됩니다; 하나를 누르면 지도에서 볼 수 있습니다. 출신 대륙과 국가별로 묶여 있으며, 국경이 없는 것은 “전 세계”에 있습니다.",
   "moments.placesFor": "{name}의 장소:",
+  "moments.loading": "모먼트 불러오는 중…",
+  "moments.loadError": "모먼트를 불러올 수 없습니다 — 나중에 다시 시도하세요.",
 
   // ── Inline state toggles ─────────────────────────────────────────────────
   "states.statusAria": "{name} 상태",
@@ -798,13 +803,22 @@ export const ko: Messages = {
     "모든 기능이 기본적으로 오프라인에서 작동합니다. 설정에서 더 많은 것을 선택할 수 있습니다: 상세 온라인 지도, 여행용으로 저장하는 오프라인 지도 지역, 전 세계 도시 전체 목록(소도시와 마을 포함), 커뮤니티 장소 팩. 모두 선택 사항이며 삭제 가능하고 — 저절로 다운로드되는 것은 없습니다.",
   "about.footPre": " ",
   "about.footPost": " 키를 누르면 키보드 단축키를 볼 수 있습니다.",
+  "about.version": "버전 {version}",
   "about.gotIt": "확인",
 
   // ── First-run intro ──────────────────────────────────────────────────────
   "intro.title": "Postcards",
   "intro.lede": "다녀온 모든 곳을 기억하세요. 비공개, 오프라인, 온전히 당신의 것.",
+  "intro.mode.title": "연결",
+  "intro.mode.online": "온라인",
+  "intro.mode.offline": "오프라인",
+  "intro.mode.onlineDesc": "더 풍부하게: 지도 타일, 장소 사진, 가이드 — 무엇을 불러올지 직접 선택합니다.",
+  "intro.mode.offlineDesc": "완전히 자체 완결 — 어떤 것도 기기를 떠나지 않습니다.",
   "intro.map.title": "상세 지도",
   "intro.map.desc": "실제 도로와 라벨을 원할 때 스트리밍합니다.",
+  "intro.offline.title": "여행용 오프라인 지도",
+  "intro.offline.desc": "지역을 저장해 신호 없이도 지도가 작동하게 합니다.",
+  "intro.offline.action": "설정",
   "intro.cities.title": "전체 도시 목록",
   "intro.cities.desc": "모든 도시와 마을(~17MB), 오프라인 검색.",
   "intro.enable": "켜기",

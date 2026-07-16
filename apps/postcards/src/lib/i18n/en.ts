@@ -415,6 +415,9 @@ export const en = {
   "journal.noDate": "No date",
   "journal.noMatch": "No stories match this filter.",
   "journal.clearFilters": "Clear filters",
+  "journal.searchLabel": "Search entries by city",
+  "journal.searchPlaceholder": "Search a city…",
+  "journal.searchClear": "Clear search",
   "journal.editAria": "Edit story {title}",
   "journal.removeAria": "Remove story {title}",
   "journal.showingCount": "Showing {shown} of {total}",
@@ -551,6 +554,8 @@ export const en = {
   "moments.desc":
     'World moments, not places: things you can only live somewhere. Check the ones you have lived; flag the ones you dream of. Each links to a few places where it happens; tap one to see it on the map. Grouped by home continent and country; borderless ones sit under "Across the world".',
   "moments.placesFor": "Places for {name}:",
+  "moments.loading": "Loading moments…",
+  "moments.loadError": "Couldn't load moments — try again later.",
 
   // ── Inline state toggles ─────────────────────────────────────────────────
   "states.statusAria": "{name} status",
@@ -804,13 +809,22 @@ export const en = {
     "Everything works offline out of the box. In Settings you can opt into more: the detailed online map, offline map regions to save for a trip, the full world city list (small towns and villages), and community place packs. All optional, all removable — nothing downloads on its own.",
   "about.footPre": "Press ",
   "about.footPost": " to see keyboard shortcuts.",
+  "about.version": "Version {version}",
   "about.gotIt": "Got it",
 
   // ── First-run intro ──────────────────────────────────────────────────────
   "intro.title": "Postcards",
   "intro.lede": "Remember everywhere you've been. Private, offline, and yours.",
+  "intro.mode.title": "Connection",
+  "intro.mode.online": "Online",
+  "intro.mode.offline": "Offline",
+  "intro.mode.onlineDesc": "Richer: live map tiles, place photos and guides — you pick what loads.",
+  "intro.mode.offlineDesc": "Fully self-contained — nothing ever leaves your device.",
   "intro.map.title": "Detailed map",
   "intro.map.desc": "Real streets & labels, streamed when you want them.",
+  "intro.offline.title": "Offline map for a trip",
+  "intro.offline.desc": "Save map areas so the map works with no signal.",
+  "intro.offline.action": "Set up",
   "intro.cities.title": "Full city list",
   "intro.cities.desc": "Every town and village (~17 MB), searchable offline.",
   "intro.enable": "Enable",

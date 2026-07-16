@@ -90,6 +90,8 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
         <button ref={closeRef} className="btn" type="button" onClick={onClose}>
           {t("about.gotIt")}
         </button>
+
+        <p className="muted small about-version">{t("about.version", { version: __APP_VERSION__ })}</p>
       </div>
     </div>
   );

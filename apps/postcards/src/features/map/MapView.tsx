@@ -1037,7 +1037,10 @@ export function MapView({
   function applyPersonalMarkerFilter(map: MlMap) {
     const modeAllowsCities = modeRef.current === "all" || modeRef.current === "cities";
     const f = cityFilterRef.current;
-    const showVisited = modeAllowsCities && f !== "unvisited";
+    // Your visited FLAGS always stay on the map — "Hide visited" only narrows the
+    // in-view LIST, it never strips your flags. Only the ⚑ wishlist markers are
+    // pruned, and only under "Visited" (where you're focused on where you've been).
+    const showVisited = modeAllowsCities;
     const showWish = modeAllowsCities && f !== "visited";
     if (map.getLayer("cities-visited"))
       map.setLayoutProperty("cities-visited", "visibility", showVisited ? "visible" : "none");

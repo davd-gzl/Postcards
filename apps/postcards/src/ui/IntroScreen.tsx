@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Globe } from "./Globe";
 import { useSettings } from "../lib/store/useSettings";
+import { useUi } from "../lib/store/useUi";
 import { useToast } from "../lib/store/useToast";
 import { downloadFullCities, fullCitiesEnabled } from "../lib/reference/referenceData";
 import { useT } from "../lib/i18n";
@@ -15,6 +16,7 @@ export function IntroScreen({ onClose }: { onClose: () => void }) {
   const onlineMap = useSettings((s) => s.onlineMap);
   const offlineMode = useSettings((s) => s.offlineMode);
   const setOnlineMap = useSettings((s) => s.setOnlineMap);
+  const setOfflineMode = useSettings((s) => s.setOfflineMode);
   const showToast = useToast((s) => s.show);
   const startRef = useRef<HTMLButtonElement>(null);
 
@@ -55,6 +57,40 @@ export function IntroScreen({ onClose }: { onClose: () => void }) {
       <p className="intro-lede">{t("intro.lede")}</p>
 
       <ul className="intro-list">
+        {/* The single most important choice, made explicit up front: is Postcards
+            allowed online (richer) or fully self-contained (nothing leaves the
+            device)? Everything below adapts to the mode picked here. */}
+        <li className="intro-row intro-mode-row">
+          <div className="intro-row-text">
+            <span className="intro-row-title">
+              {offlineMode ? "📴" : "🌐"} {t("intro.mode.title")}
+            </span>
+            <span className="intro-row-desc">
+              {offlineMode ? t("intro.mode.offlineDesc") : t("intro.mode.onlineDesc")}
+            </span>
+          </div>
+          <div className="intro-seg" role="group" aria-label={t("intro.mode.title")}>
+            <button
+              type="button"
+              className={"intro-seg-btn" + (!offlineMode ? " is-on" : "")}
+              aria-pressed={!offlineMode}
+              title={t("intro.mode.onlineDesc")}
+              onClick={() => setOfflineMode(false)}
+            >
+              {t("intro.mode.online")}
+            </button>
+            <button
+              type="button"
+              className={"intro-seg-btn" + (offlineMode ? " is-on" : "")}
+              aria-pressed={offlineMode}
+              title={t("intro.mode.offlineDesc")}
+              onClick={() => setOfflineMode(true)}
+            >
+              {t("intro.mode.offline")}
+            </button>
+          </div>
+        </li>
+
         {!offlineMode && (
           <li className="intro-row">
             <div className="intro-row-text">
@@ -74,6 +110,26 @@ export function IntroScreen({ onClose }: { onClose: () => void }) {
             </button>
           </li>
         )}
+
+        {/* Offline map for a trip — the actual region download lives in Settings
+            (it needs a map to pick an area), so surface it here and jump there. */}
+        <li className="intro-row">
+          <div className="intro-row-text">
+            <span className="intro-row-title">🗺️ {t("intro.offline.title")}</span>
+            <span className="intro-row-desc">{t("intro.offline.desc")}</span>
+          </div>
+          <button
+            className="intro-get"
+            type="button"
+            title={t("intro.offline.desc")}
+            onClick={() => {
+              useUi.getState().setTab("settings");
+              onClose();
+            }}
+          >
+            {t("intro.offline.action")}
+          </button>
+        </li>
 
         <li className="intro-row">
           <div className="intro-row-text">
