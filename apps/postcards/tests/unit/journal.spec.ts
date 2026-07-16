@@ -57,6 +57,26 @@ describe("journal round-trip", () => {
     if (result.ok) expect(result.stories).toEqual([]);
   });
 
+  it("round-trips a story WITH a folder label (grouping preserved)", () => {
+    const original = [{ ...story(), folder: "Japan 2024" }];
+    const result = importFile(serializeFile([], [], original));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.stories).toEqual(original);
+  });
+
+  it("omits the folder key when a story has none (byte-identical, back-compatible)", () => {
+    const s = story();
+    expect("folder" in s).toBe(false);
+    // The export must not introduce a folder key for a folder-less story…
+    const json = serializeFile([], [], [s]);
+    expect(json).not.toContain('"folder"');
+    // …and the schema parse must not inject one either (older files unchanged).
+    expect(StorySchema.parse(s).folder).toBeUndefined();
+    const result = importFile(json);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.stories[0]).toEqual(s);
+  });
+
   it("merges duplicate story ids on import (last-wins, like trips)", () => {
     const dup = story();
     const text = JSON.stringify({
@@ -103,6 +123,13 @@ describe("StorySchema (strict, sanitized)", () => {
   it("caps a story's gallery at 24 photos", () => {
     const photos = Array.from({ length: 25 }, () => ({ src: dataUrl, caption: null }));
     expect(StorySchema.safeParse({ ...story(), photos }).success).toBe(false);
+  });
+
+  it("sanitizes a folder label, and drops one that sanitizes away (never stored empty)", () => {
+    // A leading formula char is neutralized like every other stored string.
+    expect(StorySchema.parse({ ...story(), folder: "=Japan 2024" }).folder).toBe("Japan 2024");
+    // "===" sanitizes to "" → the optional folder is dropped, not stored empty.
+    expect(StorySchema.parse({ ...story(), folder: "===" }).folder).toBeUndefined();
   });
 });
 

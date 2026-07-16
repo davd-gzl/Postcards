@@ -16,7 +16,18 @@ import type { Photo, PlaceRef, Story } from "../../lib/schema/models";
 import { sanitizeText } from "../../lib/schema/sanitize";
 import { journalToMarkdown, JOURNAL_EXPORT_FILENAME } from "./exportJournalMd";
 import { download } from "../../lib/download";
-import { useT, type MessageKey } from "../../lib/i18n";
+import { useT, useLocale, type MessageKey } from "../../lib/i18n";
+import { folderSuggestions, distinctFolders, matchesFolder } from "./folders";
+import {
+  addMonths,
+  hexToRgba,
+  monthMatrix,
+  storyDayIndex,
+  ymOf,
+  FIRST_DAY_OF_WEEK,
+  type StoryDayCell,
+} from "./calendar";
+import { CONTINENT_ORDER, CONTINENT_FALLBACK, continentColor } from "../../lib/reference/continents";
 
 // Publish mode pulls in the site renderer + encryption + connector; load it
 // only when the user opens it, so the Journal's own path stays lean.
@@ -79,6 +90,7 @@ interface ComposerDraft {
   date: string;
   title: string;
   text: string;
+  folder: string;
 }
 
 const PLACE_KINDS: PlaceRef["kind"][] = ["country", "city", "airport", "heritage", "custom"];
@@ -103,9 +115,10 @@ function loadDraft(): ComposerDraft | null {
         ? p
         : null;
     const editingId = typeof d.editingId === "string" ? d.editingId : null;
+    const folder = typeof d.folder === "string" ? d.folder : "";
     // A blank draft would just pop an empty composer open — not worth restoring.
     if (!d.title.trim() && !d.text.trim() && !place && !editingId) return null;
-    return { editingId, place, date: d.date, title: d.title, text: d.text };
+    return { editingId, place, date: d.date, title: d.title, text: d.text, folder };
   } catch {
     return null;
   }
@@ -270,6 +283,157 @@ function StoryPhotos({ photos, title }: { photos: Photo[]; title: string }) {
 }
 
 /**
+ * A read-only month calendar of the journal. Each day with ≥1 entry is tinted by
+ * its dominant place's continent colour, alpha-scaled by the entry count; the day
+ * number and a count badge carry the same information without relying on colour
+ * (WCAG 2.1 AA). Days are buttons: one with entries filters the feed to that day,
+ * an empty one opens the composer pre-dated to it (handled by the parent).
+ */
+function JournalCalendar({
+  ym,
+  dayIndex,
+  onPrev,
+  onNext,
+  onPick,
+}: {
+  ym: string;
+  dayIndex: Map<string, StoryDayCell>;
+  onPrev: () => void;
+  onNext: () => void;
+  onPick: (cell: StoryDayCell | undefined, iso: string) => void;
+}) {
+  const t = useT();
+  const locale = useLocale();
+  const weeks = useMemo(() => monthMatrix(ym), [ym]);
+  const [y, m] = ym.split("-").map(Number);
+  const caption = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(
+    new Date(y!, m! - 1, 1),
+  );
+  // Localized weekday abbreviations, ordered from FIRST_DAY_OF_WEEK (2023-01-01 is a Sunday).
+  const weekdays = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
+    return Array.from({ length: 7 }, (_, i) =>
+      fmt.format(new Date(Date.UTC(2023, 0, 1 + ((FIRST_DAY_OF_WEEK + i) % 7)))),
+    );
+  }, [locale]);
+  // Legend: only the continents actually present this month (canonical order),
+  // plus a neutral "Elsewhere" bucket when a day's country has no continent.
+  const legend = useMemo(() => {
+    const present = new Set<string>();
+    let hasOther = false;
+    for (const week of weeks)
+      for (const day of week) {
+        if (!day.inMonth) continue;
+        const cell = dayIndex.get(day.iso);
+        if (!cell) continue;
+        if (cell.continent && (CONTINENT_ORDER as readonly string[]).includes(cell.continent))
+          present.add(cell.continent);
+        else hasOther = true;
+      }
+    const items: { label: string; color: string }[] = CONTINENT_ORDER.filter((c) =>
+      present.has(c),
+    ).map((c) => ({ label: c, color: continentColor(c) }));
+    if (hasOther) items.push({ label: t("journal.cal.legendOther"), color: CONTINENT_FALLBACK });
+    return items;
+  }, [weeks, dayIndex, t]);
+
+  return (
+    <div className="journal-cal">
+      <div className="journal-cal-head">
+        <button
+          className="mini-btn"
+          type="button"
+          aria-label={t("journal.cal.prevMonth")}
+          onClick={onPrev}
+        >
+          ‹
+        </button>
+        <span className="journal-cal-title" aria-live="polite">
+          {caption}
+        </span>
+        <button
+          className="mini-btn"
+          type="button"
+          aria-label={t("journal.cal.nextMonth")}
+          onClick={onNext}
+        >
+          ›
+        </button>
+      </div>
+      <table className="journal-cal-grid" aria-label={t("journal.cal.gridAria")}>
+        <caption className="sr-only">{caption}</caption>
+        <thead>
+          <tr>
+            {weekdays.map((w, i) => (
+              <th key={i} scope="col" abbr={w}>
+                {w}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {weeks.map((week, wi) => (
+            <tr key={wi}>
+              {week.map((day) =>
+                !day.inMonth ? (
+                  <td key={day.iso} className="journal-cal-pad" aria-hidden />
+                ) : (
+                  (() => {
+                    const cell = dayIndex.get(day.iso);
+                    const count = cell?.count ?? 0;
+                    const style = cell
+                      ? { backgroundColor: hexToRgba(cell.color, cell.intensity) }
+                      : undefined;
+                    const label = count
+                      ? t.plural("journal.cal.dayEntriesAria", count, { date: formatDate(day.iso) })
+                      : t("journal.cal.dayEmptyAria", { date: formatDate(day.iso) });
+                    return (
+                      <td key={day.iso} className="journal-cal-cell">
+                        <button
+                          type="button"
+                          className={"journal-cal-day" + (count ? " has-entries" : "")}
+                          style={style}
+                          aria-label={label}
+                          onClick={() => onPick(cell, day.iso)}
+                        >
+                          <span className="journal-cal-num" aria-hidden>
+                            {day.dayOfMonth}
+                          </span>
+                          {count > 1 && (
+                            <span className="journal-cal-badge" aria-hidden>
+                              {count}
+                            </span>
+                          )}
+                          {count === 1 && <span className="journal-cal-dot" aria-hidden />}
+                        </button>
+                      </td>
+                    );
+                  })()
+                ),
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {legend.length > 0 && (
+        <ul className="journal-cal-legend" aria-label={t("journal.cal.legendAria")}>
+          {legend.map((it) => (
+            <li key={it.label} className="journal-cal-legend-item">
+              <span
+                className="journal-cal-swatch"
+                style={{ backgroundColor: it.color }}
+                aria-hidden
+              />
+              {it.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
  * Journal — a mini travel blog of the places you've been. Stories are personal
  * data only (title, text, photos), stored on-device and carried in the same
  * portable file as everything else. The feed is newest-first; the composer
@@ -299,6 +463,7 @@ export function JournalScreen() {
   const [date, setDate] = useState(today());
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
+  const [folder, setFolder] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [busy, setBusy] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
@@ -310,9 +475,14 @@ export function JournalScreen() {
   const [locating, setLocating] = useState(false);
   const [feedShown, setFeedShown] = useState(FEED_PAGE);
   const [dayChoice, setDayChoice] = useState(false);
-  // Feed filters: by destination / country, and by year (the "blog" views).
+  // Feed filters: by destination / country / folder, and by year (the "blog" views).
   const [filterSel, setFilterSel] = useState("all");
   const [yearSel, setYearSel] = useState("all");
+  // Feed vs month-calendar view, the calendar's visible month ("YYYY-MM"), and an
+  // optional single-day filter set by tapping a calendar day.
+  const [view, setView] = useState<"feed" | "calendar">("feed");
+  const [calMonth, setCalMonth] = useState<string>(() => ymOf(today()));
+  const [daySel, setDaySel] = useState<string | null>(null);
 
   // Places you can write about: your visited list, sorted by name. A prefilled
   // or edited place that's no longer visited is kept as an extra option so the
@@ -348,15 +518,54 @@ export function JournalScreen() {
     return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [stories]);
   const storyYears = useMemo(() => distinctYearsDesc(stories), [stories]);
-  const filtered = useMemo(() => {
-    return stories.filter((s) => {
-      if (yearSel === "none" && s.date) return false;
-      if (yearSel !== "all" && yearSel !== "none" && s.date?.slice(0, 4) !== yearSel) return false;
+  const storyFolders = useMemo(() => distinctFolders(stories), [stories]);
+
+  // The place/country/folder part of the feed filter, shared by BOTH the feed and
+  // the calendar so the calendar respects the current place filter. Year and the
+  // single-day filter are layered on top separately (so you can filter place AND time).
+  const matchesPlaceFilter = useMemo(
+    () => (s: Story) => {
       if (filterSel.startsWith("c:")) return s.place.countryId === filterSel.slice(2);
       if (filterSel.startsWith("p:")) return placeKey(s.place) === filterSel.slice(2);
+      if (filterSel.startsWith("f:")) return matchesFolder(s, filterSel.slice(2));
+      return true;
+    },
+    [filterSel],
+  );
+  const placeFiltered = useMemo(
+    () => stories.filter(matchesPlaceFilter),
+    [stories, matchesPlaceFilter],
+  );
+  const filtered = useMemo(() => {
+    return placeFiltered.filter((s) => {
+      // A tapped calendar day pins the feed to that exact day (supersedes the year).
+      if (daySel) return s.date === daySel;
+      if (yearSel === "none" && s.date) return false;
+      if (yearSel !== "all" && yearSel !== "none" && s.date?.slice(0, 4) !== yearSel) return false;
       return true;
     });
-  }, [stories, filterSel, yearSel]);
+  }, [placeFiltered, yearSel, daySel]);
+
+  // Per-day colour/count for the calendar — derived only from the place-filtered
+  // stories (month navigation handles time). Colour is keyed to the day's dominant
+  // place's continent via the shared reference lookup.
+  const dayIndex = useMemo(
+    () => storyDayIndex(placeFiltered, (iso2) => ref.continentOf(iso2)),
+    [placeFiltered, ref],
+  );
+
+  // Folders to propose while composing: existing folders + this story's place,
+  // country, and any matching trip name (all pre-sanitized, deduped).
+  const folderSuggs = useMemo(
+    () =>
+      folderSuggestions(stories, {
+        place,
+        countryName: place ? (ref.countryByIso2(place.countryId)?.name ?? null) : null,
+        date,
+        trips,
+      }),
+    [stories, place, date, trips, ref],
+  );
 
   // Closes the composer without touching the draft cache: Escape/Cancel must
   // not lose writing — the draft comes back on the next visit. Keystrokes
@@ -369,6 +578,7 @@ export function JournalScreen() {
     setDate(today());
     setTitle("");
     setText("");
+    setFolder("");
     setPhotos([]);
     setNearby(null);
     setGeoMsg(null);
@@ -381,6 +591,7 @@ export function JournalScreen() {
     setDate(dateStr ?? today());
     setTitle("");
     setText("");
+    setFolder("");
     setPhotos([]);
     setNearby(null);
     setGeoMsg(null);
@@ -414,12 +625,28 @@ export function JournalScreen() {
     }
   }
 
+  /**
+   * A calendar day was activated. A day WITH entries pins the feed to that day
+   * (and switches to the feed so the entries are visible); an EMPTY day opens the
+   * composer pre-dated to it (reusing the composer + draft cache via pickDay).
+   */
+  function pickCalendarDay(cell: StoryDayCell | undefined, iso: string) {
+    if (cell) {
+      setDaySel(iso);
+      setFeedShown(FEED_PAGE);
+      setView("feed");
+    } else {
+      pickDay(iso);
+    }
+  }
+
   function startEdit(s: Story) {
     setEditingId(s.storyId);
     setPlace(s.place);
     setDate(s.date);
     setTitle(s.title);
     setText(s.text);
+    setFolder(s.folder ?? "");
     setPhotos(s.photos ?? []);
     setNearby(null);
     setGeoMsg(null);
@@ -442,6 +669,7 @@ export function JournalScreen() {
     setDate(draft.date || today());
     setTitle(draft.title);
     setText(draft.text);
+    setFolder(draft.folder);
     if (draft.editingId) hydratePhotosFor.current = draft.editingId;
     setComposerOpen(true);
   }, []);
@@ -482,11 +710,11 @@ export function JournalScreen() {
   useEffect(() => {
     if (!composerOpen) return;
     if (!title.trim() && !text.trim() && !place && !editingId) return;
-    pendingDraft.current = { editingId, place, date, title, text };
+    pendingDraft.current = { editingId, place, date, title, text, folder };
     const timer = setTimeout(flushDraft, 400);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [composerOpen, editingId, place, date, title, text]);
+  }, [composerOpen, editingId, place, date, title, text, folder]);
 
   // Flush the pending draft whenever the writing could otherwise be lost:
   // app backgrounded or closed (visibilitychange/pagehide), or this screen
@@ -543,6 +771,16 @@ export function JournalScreen() {
     useUi.setState({ journalDraftRequest: null });
   }, [draftRequest?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Keep the calendar's visible month in step with the year filter: choosing a
+  // specific year jumps the calendar into it (keeping the month number), so place
+  // and time stay consistent between the feed and the calendar.
+  useEffect(() => {
+    if (yearSel !== "all" && yearSel !== "none" && calMonth.slice(0, 4) !== yearSel) {
+      setCalMonth(`${yearSel}-${calMonth.slice(5, 7)}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yearSel]);
+
   // Escape closes the composer (keyboard-first) — but only when there's
   // something to close: the always-open blank form must not swallow the
   // Escape/Back that navigates away from the Journal.
@@ -594,11 +832,15 @@ export function JournalScreen() {
       ...p,
       caption: p.caption?.trim() ? p.caption.trim() : null,
     }));
+    // Sanitize the folder label to inert text (same rule as title/text) before it
+    // is stored; an empty result clears the folder (the store drops the key).
+    const cleanFolder = sanitizeText(folder, 80);
     const fields = {
       place,
       date,
       title: cleanTitle,
       text: sanitizeText(text, 8000),
+      folder: cleanFolder,
       photos: cleanPhotos,
     };
     if (editingId) {
@@ -769,6 +1011,28 @@ export function JournalScreen() {
               onChange={(e) => setText(e.target.value)}
             />
           </label>
+          <label className="picker-label" htmlFor="story-folder">
+            {t("journal.folder")}
+            <input
+              id="story-folder"
+              className="select"
+              type="text"
+              maxLength={80}
+              list="journal-folder-suggestions"
+              placeholder={t("journal.folderPlaceholder")}
+              value={folder}
+              onChange={(e) => setFolder(e.target.value)}
+            />
+          </label>
+          {/* Proposed folders (existing + this story's place/country/trip), a native
+              accessible combobox: type a new folder or pick a suggestion, empty = none. */}
+          {folderSuggs.length > 0 && (
+            <datalist id="journal-folder-suggestions">
+              {folderSuggs.map((f) => (
+                <option key={f} value={f} />
+              ))}
+            </datalist>
+          )}
 
           <input
             ref={photoInput}
@@ -854,6 +1118,26 @@ export function JournalScreen() {
         </p>
       ) : (
         <>
+          {/* Feed vs month-calendar view. Both honour the place filter above. */}
+          <div className="journal-viewtabs btn-row" role="group" aria-label={t("journal.viewAria")}>
+            <button
+              type="button"
+              className={"mini-btn" + (view === "feed" ? " mini-on" : "")}
+              aria-pressed={view === "feed"}
+              onClick={() => setView("feed")}
+            >
+              {t("journal.viewFeed")}
+            </button>
+            <button
+              type="button"
+              className={"mini-btn" + (view === "calendar" ? " mini-on" : "")}
+              aria-pressed={view === "calendar"}
+              onClick={() => setView("calendar")}
+            >
+              🗓️ {t("journal.viewCalendar")}
+            </button>
+          </div>
+
           {stories.length > 1 && (
             <div className="journal-filters">
               <label className="picker-label">
@@ -863,6 +1147,7 @@ export function JournalScreen() {
                   value={filterSel}
                   onChange={(e) => {
                     setFilterSel(e.target.value);
+                    setDaySel(null);
                     setFeedShown(FEED_PAGE);
                   }}
                 >
@@ -885,6 +1170,15 @@ export function JournalScreen() {
                       ))}
                     </optgroup>
                   )}
+                  {storyFolders.length > 0 && (
+                    <optgroup label={t("journal.byFolder")}>
+                      {storyFolders.map((f) => (
+                        <option key={f} value={`f:${f}`}>
+                          🗂️ {f}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </label>
               {storyYears.length > 0 && (
@@ -895,6 +1189,7 @@ export function JournalScreen() {
                     value={yearSel}
                     onChange={(e) => {
                       setYearSel(e.target.value);
+                      setDaySel(null);
                       setFeedShown(FEED_PAGE);
                     }}
                   >
@@ -910,7 +1205,35 @@ export function JournalScreen() {
               )}
             </div>
           )}
-          {filtered.length === 0 ? (
+          {/* A calendar day tap pins the feed to that day; a clearable chip shows it. */}
+          {daySel && view === "feed" && (
+            <div className="journal-dayfilter">
+              <span className="mini-btn mini-on">
+                📅 {t("journal.daySelected", { date: formatDate(daySel) })}
+              </span>
+              <button
+                className="link"
+                type="button"
+                aria-label={t("journal.clearDayAria")}
+                onClick={() => {
+                  setDaySel(null);
+                  setFeedShown(FEED_PAGE);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {view === "calendar" ? (
+            <JournalCalendar
+              ym={calMonth}
+              dayIndex={dayIndex}
+              onPrev={() => setCalMonth((mth) => addMonths(mth, -1))}
+              onNext={() => setCalMonth((mth) => addMonths(mth, 1))}
+              onPick={pickCalendarDay}
+            />
+          ) : filtered.length === 0 ? (
             <p className="muted empty">
               {t("journal.noMatch")}{" "}
               <button
@@ -919,6 +1242,7 @@ export function JournalScreen() {
                 onClick={() => {
                   setFilterSel("all");
                   setYearSel("all");
+                  setDaySel(null);
                 }}
               >
                 {t("journal.clearFilters")}
@@ -944,6 +1268,24 @@ export function JournalScreen() {
                     <span className="journal-place">
                       {countryFlag(s.place.countryId)} {s.place.name}
                     </span>
+                  )}
+                  {s.folder && (
+                    <>
+                      <span aria-hidden>·</span>
+                      <button
+                        className="link journal-folder-tag"
+                        type="button"
+                        aria-label={t("journal.byFolder") + ": " + s.folder}
+                        onClick={() => {
+                          setFilterSel(`f:${s.folder}`);
+                          setDaySel(null);
+                          setView("feed");
+                          setFeedShown(FEED_PAGE);
+                        }}
+                      >
+                        🗂️ {s.folder}
+                      </button>
+                    </>
                   )}
                 </header>
                 <h3 className="journal-title">{s.title}</h3>

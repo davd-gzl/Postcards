@@ -31,7 +31,12 @@ export const FORMAT = "postcards" as const;
 // like `updatedAt` — never injected on parse — so v1–v6 files import unchanged and
 // round-trip byte-identically; an older build opening a v7 file gets the same
 // graceful "update" prompt on the (harmless) unknown value only if it were required.
-export const SCHEMA_VERSION = 7;
+// v8 adds an optional `folder` (label, e.g. "Japan 2024") on a journal story: a short
+// label that groups stories in the feed, mirroring a trip's `name`. Additive & optional
+// exactly like `name`/`updatedAt` — never injected on parse — so v1–v7 files import
+// unchanged and round-trip byte-identically; an older build opening a v8 file gets the
+// same graceful "update" prompt.
+export const SCHEMA_VERSION = 8;
 
 /** Most photos one place's gallery may hold (bounds the inline portable file). */
 export const MAX_PHOTOS_PER_VISIT = 48;

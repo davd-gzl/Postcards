@@ -76,13 +76,13 @@ mode, so it's high-value and not much extra surface. Recommendation:
 
 ## Journal
 
-- [ ] **Calendar view** — a month calendar where each day with an entry is coloured (e.g. tinted by
-      the entry's place/country, intensity by count); tap a day to see/add its entries. Plus filters
-      by **place** and **time/period** (extend the existing place + year filters). (`JournalScreen`,
-      new calendar component; reuse `distinctYearsDesc`.)
-- [ ] **Journal folders** — an optional folder/collection on stories, with **proposed folders at
-      creation** (suggest existing folders + the current trip/place context). Mirror the trip-folder
-      pattern; sanitized/inert like other text. Filter the feed by folder.
+- [x] **Calendar view** — Feed/Calendar toggle; a month grid tinting each entry-day by its dominant
+      place's continent (alpha by count), with count badges + aria labels (not colour-only); tap a
+      day to pin the feed to it, an empty day opens the composer pre-dated. Respects the place + year
+      filters. DONE (accessible table, +tests).
+- [x] **Journal folders** — optional `folder` on stories (additive, sanitized, schema v7→v8), a
+      datalist combobox in the composer with proposed folders (existing + place/country/trip context),
+      a "By folder" feed filter, folder tag on cards. DONE (+tests).
 
 ## Map
 
