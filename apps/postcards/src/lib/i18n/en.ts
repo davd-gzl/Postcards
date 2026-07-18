@@ -278,6 +278,11 @@ export const en = {
   // ── Backup / your data ───────────────────────────────────────────────────
   "backup.aria": "Backup and restore",
   "backup.title": "Your data",
+  "durability.protected": "Saved on this device",
+  "durability.atRisk": "This browser could clear your data — keep a backup",
+  "durability.neverBackedUp": "no backup yet",
+  "durability.backedUpToday": "backed up today",
+  "durability.backedUpDays": "backed up {days}d ago",
   "backup.reminder.never": "You haven't backed up yet — a lost phone loses your travels.",
   "backup.reminder.days_one": "It's been {count} day since your last backup.",
   "backup.reminder.days_other": "It's been {count} days since your last backup.",

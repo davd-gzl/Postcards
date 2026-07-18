@@ -10,6 +10,7 @@ import { backfillUpdatedAt } from "../../lib/schema/helpers";
 import { replaceAllPortable } from "../../lib/db/visitsDb";
 import { toMarkdown } from "./exportMarkdown";
 import { download } from "../../lib/download";
+import { DurabilityNote } from "../../ui/DurabilityNote";
 import {
   markBackedUp,
   isBackupDue,
@@ -210,6 +211,8 @@ export function Backup() {
       <div className="section-head">
         <h2>{t("backup.title")}</h2>
       </div>
+
+      <DurabilityNote />
 
       {reminderDue && (
         <div className="backup-reminder" role="status">
