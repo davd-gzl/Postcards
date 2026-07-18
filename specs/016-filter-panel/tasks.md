@@ -76,10 +76,10 @@ Paths are under `apps/postcards/`. `[P]` = parallelizable (different file, no in
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T026 [P] Labelled empty state when the combined filter matches nothing (names active filters + Clear all) on both map list and Places (`MapScreen.tsx`, `PlacesScreen.tsx`) + i18n
+- [X] T026 [P] Labelled empty state: the FilterSummary (chips + Clear all) sits above the list on both screens, so an emptied list always names its active filters and offers one-tap Clear; the map's empty line switches to `filter.emptyFiltered` when a non-status narrowing emptied it, Places keeps its filter-aware `places.noMatch`
 - [X] T027 [P] Extend `tests/e2e/a11y.spec.ts` to open the Filter panel and assert no serious axe violations (WCAG 2.1 AA); Escape close verified (keyboard trap + focus-restore implemented per contracts/panel-a11y.md)
-- [ ] T028 [P] Perf sanity: confirm toggling any dimension re-filters the in-view/list set with no perceptible lag (memoise on `(state, list)`) — note in quickstart
-- [ ] T029 [P] Update `docs/USER-STORIES.md` (new "Filter panel" epic → done) and `BACKLOG.md`; confirm i18n key parity (en/fr/ko equal)
+- [X] T028 [P] Perf: filtering is memoised on the filter fields (map snapshot recomputes on viewport/filter change only; Places `filterVisits` is a keyed `useCallback` + per-view `useMemo`); predicates are pure — noted in quickstart
+- [X] T029 [P] Updated `docs/USER-STORIES.md` ("Epic D — One Filter panel") and `BACKLOG.md` (Feature 016); i18n parity holds (tsc enforces en/fr/ko key equality)
 - [ ] T030 Run full verify (`tsc` + `vitest` + `playwright`) and screenshot the panel + summary; commit and deploy to both branches; confirm CI Tests + Pages green
 
 ---
