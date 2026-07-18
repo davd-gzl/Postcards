@@ -7,7 +7,21 @@ exists. See `AGENTS.md` for the working agreement.
 
 Status: 🔲 open · 🔧 in progress · ✅ done (verified) · 💬 answered (no code) · 🧊 deferred
 
-_Last reconciled: 2026-07-16._
+_Last reconciled: 2026-07-17._
+
+## Feature 015 — coherent & efficient redesign (spec-driven)
+
+Spec/plan/tasks in `specs/015-coherent-efficient/`. Shipping theme by theme, each
+screenshot-verified + all gates green + deployed to both branches.
+
+- ✅ **US1 — one clean Online/Offline mode**: removed the map's detailed-map
+  button; grouped all online controls in Settings ("🌐 Online features"); Offline
+  mode = zero app-initiated requests (new e2e, SC-001). _Verified._
+- ✅ **US7 — durable long-term memory**: request persistent storage on first data;
+  protection indicator + last-backup read in Settings (reuses the existing backup
+  reminder). Fixes the "browser reset lost everything" risk. _Verified._
+- 🔲 Next: US2 show-a-friend nav · US3 journal parity · US4 sharing (QR/file/
+  publish, GitHub demoted) · US5 onboarding · US6 speed/mobile · US8 native.
 
 ## Done (verified)
 
