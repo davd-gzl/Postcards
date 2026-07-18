@@ -1334,6 +1334,53 @@ h1.brand {
   background: transparent;
   opacity: 0.5;
 }
+/* "By city size" distribution: one stacked bar split by population band, with a
+   small legend. Segment flex-grow is the raw count, so widths read as shares. */
+.size-bar {
+  display: flex;
+  height: 16px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--bg-sub, rgba(128, 128, 128, 0.14));
+  gap: 2px;
+}
+.size-seg {
+  min-width: 4px;
+}
+.seg-mega {
+  background: #3b82f6;
+}
+.seg-large {
+  background: #f59e0b;
+}
+.seg-small {
+  background: #94a3b8;
+}
+.size-legend {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 13.5px;
+}
+.size-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+.size-legend strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.size-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  flex: none;
+}
 .continents-touched {
   margin: 8px 0 0;
   font-size: 12.5px;
