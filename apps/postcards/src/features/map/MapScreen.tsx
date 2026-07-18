@@ -870,11 +870,16 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           </p>
         ) : snapshot.length === 0 ? (
           <p className="muted empty">
-            {cityFilter === "unvisited"
-              ? t("map.emptyAllVisited")
-              : cityFilter === "wishlist"
-                ? t("map.emptyNoWishlist")
-                : t("map.emptyNoVisited")}
+            {/* A population / date / folder narrowing emptied the list → name it
+                (the chip summary above carries the one-tap Clear all). Otherwise
+                fall back to the friendly status-specific line. */}
+            {mapChips.some((c) => c.field !== "status")
+              ? t("filter.emptyFiltered")
+              : cityFilter === "unvisited"
+                ? t("map.emptyAllVisited")
+                : cityFilter === "wishlist"
+                  ? t("map.emptyNoWishlist")
+                  : t("map.emptyNoVisited")}
           </p>
         ) : (
           <ul className="city-list">

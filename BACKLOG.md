@@ -7,7 +7,27 @@ exists. See `AGENTS.md` for the working agreement.
 
 Status: 🔲 open · 🔧 in progress · ✅ done (verified) · 💬 answered (no code) · 🧊 deferred
 
-_Last reconciled: 2026-07-17._
+_Last reconciled: 2026-07-18._
+
+## Feature 016 — unified Filter panel (spec-driven)
+
+Spec/plan/tasks in `specs/016-filter-panel/`. "Put every filter in one screen and
+extend it, instead of adding buttons everywhere." One `useFilters` store + pure
+`applyFilters` predicates read by the map and Places; each user story shipped as
+its own verified commit to both branches.
+
+- ✅ **US1 — one place to slice the map.** A single **Filter** button opens one
+  focus-trapped panel with status, people, date, folder, sort and the place-kind
+  mode; the map's markers, list and counters read the shared store; all inline
+  map controls removed. _Verified (tsc + unit + e2e + screenshots), CI green._
+- ✅ **US2 — active-filter chips + Clear all.** Removable chips above the list; the
+  Filter button wears a dot and announces the active count. _Verified._
+- ✅ **US3 — the same filter on Places.** Places opens the same panel (no Status,
+  no map Mode) and filters via shared predicates; population gates cities only
+  (D4); favourites still float to the top. _Verified._
+- ✅ **US4 — room to grow.** A "More" section adds Favourites-only, Has photo, Has
+  note and a Continent picker on the record-based screens — extending the one
+  panel, not the header. _Verified._
 
 ## Feature 015 — coherent & efficient redesign (spec-driven)
 

@@ -41,6 +41,20 @@ npx playwright test a11y                           # WCAG 2.1 AA gate incl. open
 8. **Perf** (SC-003): With the full gazetteer loaded, toggling any dimension updates the
    list with no perceptible lag.
 
+## Perf note (SC-003)
+
+Filtering stays O(n) over the in-view / saved set and is memoised on the filter
+fields, so toggling a dimension re-derives only the affected list:
+
+- **Map** (`MapScreen.tsx`): the in-view working set is capped (`IN_VIEW_CAP`,
+  population-presorted) and the filtered snapshot recomputes only when the viewport
+  or a filter field changes — a toggle never rescans the 135k gazetteer.
+- **Places** (`PlacesScreen.tsx`): `filterVisits` is a `useCallback` keyed on the
+  shared filter fields + the name query, and each view's rows are a `useMemo`, so a
+  toggle re-filters once, not per row read.
+- Predicates in `applyFilters.ts` are pure and allocation-light (a single
+  `Intl.Collator`, hoisted); no I/O, no store reads.
+
 ## Expected outcome
 
 All automated checks green; every manual scenario behaves as described; the Map and

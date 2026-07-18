@@ -102,6 +102,30 @@ The stats screen must show more at a glance and stop being noisy.
 
 ---
 
+## Epic D — One Filter panel (`specs/016-filter-panel/`)
+
+Every place/list filter used to be sprinkled across the Map and Places headers —
+status buttons, a population row, an A–Z toggle, a date/folder popover, a
+place-kind mode selector. Consolidated into a single, extensible surface.
+
+- ✅ **D1 — One place to slice the map.** A single **Filter** button opens one
+  focus-trapped panel hosting every dimension: status, people (population), date
+  (any / year / from–to / undated), folder, sort, and the map's place-kind mode.
+  The map's markers, in-view list and counters read one shared `useFilters` store,
+  so they can never disagree; the old inline controls are gone. (spec 016 US1)
+- ✅ **D2 — See what's active, clear in one tap.** Active filters render as
+  removable chips above the list with a Clear all; the Filter button wears a dot
+  and announces the active count. (spec 016 US2)
+- ✅ **D3 — The same filter everywhere.** Places reads the SAME shared state via
+  pure predicates — minus Status (its tabs own it) and the map-only Mode. A
+  population threshold gates cities only, never airports/monuments (the D4 rule).
+  (spec 016 US3)
+- ✅ **D4 — Room to grow.** The panel extends *inside itself*, not by new header
+  buttons: a "More" section adds Favourites-only, Has photo, Has note and a
+  Continent picker on the record-based screens. (spec 016 US4)
+
+---
+
 ## How to use this file
 
 - When the owner articulates a new want, **add it here first** (as a story with an
