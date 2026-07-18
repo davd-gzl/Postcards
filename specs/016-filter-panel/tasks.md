@@ -60,9 +60,9 @@ Paths are under `apps/postcards/`. `[P]` = parallelizable (different file, no in
 
 **Independent test**: set filters on the map; open Places → Visited; same Filter reflects them; list agrees; population hides only cities below threshold.
 
-- [ ] T020 [US3] In `src/features/visits/PlacesScreen.tsx`, add the same **Filter** button + `FilterPanel` + `FilterSummary`; filter the Visited/Want-list rows via `placeMatches(...)` from the shared store (keep the name search box as-is)
-- [ ] T021 [US3] Apply `sortPlaces` and the D4 population rule in `PlacesScreen.tsx` so non-city places pass the population gate exactly as on the map
-- [ ] T022 [US3] E2E: set filters on map, navigate to Places, assert the panel + list reflect the same state and non-city places are unaffected by a population threshold
+- [X] T020 [US3] In `src/features/visits/PlacesScreen.tsx`, add the same **Filter** button + `FilterPanel` (showStatus=false) + `FilterSummary` (excludes status/mode); filter the Visited/Favorites/Want-list rows via `placeMatches(...)` from the shared store (kept the name search box; folded the old year chips into the panel's Date section)
+- [X] T021 [US3] Apply `sortPlaces` and the D4 population rule in `PlacesScreen.tsx` so non-city places pass the population gate exactly as on the map (favourites still float to the top via a stable pass)
+- [X] T022 [US3] E2E `tests/e2e/filter-panel.spec.ts`: the same panel opens on Places (no Status/Mode sections), population hides a small city but not the airport (D4), and the summary chip reflects it
 
 ## Phase 6: User Story 4 — Room to grow (P3)
 

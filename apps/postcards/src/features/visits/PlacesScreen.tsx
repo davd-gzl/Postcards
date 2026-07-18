@@ -16,6 +16,10 @@ import { GuideButton } from "../guides/GuideButton";
 import { PassportScreen } from "../passport/PassportScreen";
 import { ExperiencesScreen } from "../experiences/ExperiencesScreen";
 import { ListPager } from "../../ui/ListPager";
+import { useFilters, currentFilters } from "../../lib/store/useFilters";
+import { placeMatches, sortPlaces, activeChips } from "../filter/applyFilters";
+import { FilterPanel } from "../../ui/FilterPanel";
+import { FilterSummary } from "../../ui/FilterSummary";
 import { useT, type TFunction } from "../../lib/i18n";
 
 // Everything place-shaped lives here, one view each — including Favorites (its
@@ -249,9 +253,10 @@ export function PlacesScreen() {
   const visits = useVisits((s) => s.visits);
 
   const scope = useSettings((s) => s.countryScope);
+  const filters = useFilters();
   const [view, setView] = useState<View>(loadView);
   const [filter, setFilter] = useState("");
-  const [year, setYear] = useState<string | null>(null); // e.g. "2024"; null = all
+  const [filterOpen, setFilterOpen] = useState(false);
   const [shown, setShown] = useState(100);
   const q = filter.trim().toLowerCase();
 
@@ -306,14 +311,33 @@ export function PlacesScreen() {
     return { sub, explicit };
   }, [visits]);
 
+  // Places owns status via its tabs; every OTHER dimension (date / folder /
+  // population / sort / growth) comes from the ONE shared filter store, so the
+  // map and Places never disagree (spec 016 US3). The name box is separate.
+  const listState = useMemo(
+    () => ({ ...currentFilters(filters), status: "all" as const }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      filters.date,
+      filters.folder,
+      filters.minPop,
+      filters.sort,
+      filters.favoritesOnly,
+      filters.hasPhoto,
+      filters.hasNote,
+      filters.continent,
+    ],
+  );
   const filterVisits = useCallback(
     (list: Visit[]) => {
       const byName = !q ? list : list.filter((v) => v.place.name.toLowerCase().includes(q));
-      if (!year) return byName;
-      if (year === "undated") return byName.filter((v) => !v.date);
-      return byName.filter((v) => v.date?.startsWith(year));
+      const narrowed = byName.filter((v) => placeMatches(v, ref, listState));
+      const sorted = sortPlaces(narrowed, ref, listState);
+      // Keep favourites floated to the top (Places' standing promise) — a stable
+      // pass, so the chosen sort still orders within the favourites and the rest.
+      return [...sorted].sort((a, b) => Number(b.favorite) - Number(a.favorite));
     },
-    [q, year],
+    [q, ref, listState],
   );
   // Each list view reads its filtered rows three times per render (the slice
   // and two length checks) — filter once, and only when the inputs change.
@@ -332,6 +356,33 @@ export function PlacesScreen() {
     }
     return { list: [...ys].sort().reverse(), undated };
   }, [visits]);
+
+  // Folders in use, for the shared panel's folder picker.
+  const folderOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const v of visits) if (v.folder) set.add(v.folder);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [visits]);
+
+  // The active dimensions Places actually acts on (status + map mode are excluded —
+  // status is the tab, mode is map-only). Drives the Filter button's badge.
+  const placesFilterChips = useMemo(
+    () => activeChips(currentFilters(filters), t).filter((c) => c.field !== "status" && c.field !== "mode"),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      filters.date,
+      filters.folder,
+      filters.minPop,
+      filters.sort,
+      filters.favoritesOnly,
+      filters.hasPhoto,
+      filters.hasNote,
+      filters.continent,
+      t,
+    ],
+  );
+  const placesFilterActive = placesFilterChips.length > 0;
+  const isListView = view === "visited" || view === "favorites" || view === "wishlist";
 
   const countryRows = useMemo(() => {
     const all = ref.countries.filter((c) => inScope(c.sovereignty, scope));
@@ -384,7 +435,6 @@ export function PlacesScreen() {
     setView(id);
     saveView(id);
     setFilter("");
-    setYear(null);
     setShown(100);
   }
 
@@ -447,26 +497,32 @@ export function PlacesScreen() {
           />
         )}
 
+      {/* The ONE Filter (spec 016 US3): the same panel the map uses, minus status
+          (the tabs above own it) and mode (map-only). Date / folder / population /
+          sort / growth are shared, so both screens agree. */}
+      {isListView && (
+        <div className="places-filter-row">
+          <button
+            type="button"
+            className={"chip filter-open-chip" + (placesFilterActive ? " chip-on" : "")}
+            aria-haspopup="dialog"
+            aria-expanded={filterOpen}
+            aria-label={
+              placesFilterActive
+                ? `${t("filter.open")} · ${t("filter.activeAria", { count: placesFilterChips.length })}`
+                : t("filter.open")
+            }
+            onClick={() => setFilterOpen(true)}
+          >
+            ⚙ {t("filter.open")}
+            {placesFilterActive ? ` · ${placesFilterChips.length}` : ""}
+          </button>
+          <FilterSummary exclude={["status", "mode"]} />
+        </div>
+      )}
+
       {view === "visited" && (
         <>
-          {(years.list.length > 1 || (years.list.length === 1 && years.undated)) && (
-            <div className="segmented wrap year-filter" role="group" aria-label={t("places.yearFilterAria")}>
-              {[null, ...years.list, ...(years.undated ? ["undated"] : [])].map((y) => (
-                <button
-                  key={y ?? "all"}
-                  type="button"
-                  aria-pressed={year === y}
-                  className={year === y ? "seg-on" : ""}
-                  onClick={() => {
-                    setYear(y);
-                    setShown(100);
-                  }}
-                >
-                  {y === null ? t("places.year.all") : y === "undated" ? t("places.year.noDate") : y}
-                </button>
-              ))}
-            </div>
-          )}
           {visited.length === 0 && (
             <p className="muted empty">
               <span className="empty-emoji" aria-hidden>
@@ -692,6 +748,14 @@ export function PlacesScreen() {
       {view === "moments" && <ExperiencesScreen embedded />}
 
       {view === "passport" && <PassportScreen embedded />}
+
+      <FilterPanel
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        folders={folderOptions}
+        years={years}
+        showStatus={false}
+      />
     </section>
   );
 }

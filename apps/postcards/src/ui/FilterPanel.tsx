@@ -21,6 +21,7 @@ export function FilterPanel({
   folders,
   years,
   showMode = false,
+  showStatus = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -30,6 +31,8 @@ export function FilterPanel({
   years: { list: string[]; undated: boolean };
   /** Map-only: show the place-kind mode section (cities / monuments / airports). */
   showMode?: boolean;
+  /** Places owns status via its tabs, so it hides the panel's Status section. */
+  showStatus?: boolean;
 }) {
   const t = useT();
   const f = useFilters();
@@ -126,22 +129,24 @@ export function FilterPanel({
         )}
 
         {/* Status */}
-        <div className="filter-section">
-          <span className="filter-section-title">{t("filter.status.title")}</span>
-          <div className="segmented wrap" role="group" aria-label={t("filter.status.title")}>
-            {STATUS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                aria-pressed={f.status === s}
-                className={f.status === s ? "seg-on" : ""}
-                onClick={() => f.set({ status: s })}
-              >
-                {t(`filter.status.${s}` as const)}
-              </button>
-            ))}
+        {showStatus && (
+          <div className="filter-section">
+            <span className="filter-section-title">{t("filter.status.title")}</span>
+            <div className="segmented wrap" role="group" aria-label={t("filter.status.title")}>
+              {STATUS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  aria-pressed={f.status === s}
+                  className={f.status === s ? "seg-on" : ""}
+                  onClick={() => f.set({ status: s })}
+                >
+                  {t(`filter.status.${s}` as const)}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* People (population) */}
         <div className="filter-section">
