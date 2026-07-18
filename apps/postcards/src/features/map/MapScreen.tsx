@@ -16,9 +16,10 @@ import { StatStrip } from "../stats/StatStrip";
 import { MapView, hasSavedCamera, type Basemap, type MapFocus, type MapFit, type MapMode } from "./MapView";
 import { tripArcs } from "./visitedLayers";
 import { dateBuckets, mapDateMatches, yearRange, rangeExactYear, type MapDate } from "../travel/period";
-import { citiesInView, type Bounds } from "./viewport";
+import { citiesInView, type Bounds, type CityFilter } from "./viewport";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import type { City } from "../../lib/reference/types";
+import { placeKey } from "../../lib/schema/helpers";
 import { CityLine } from "../../ui/CityLine";
 import { MoreButton } from "../../ui/MoreButton";
 import { useT, type MessageKey } from "../../lib/i18n";
@@ -31,7 +32,6 @@ const PAGE = 30;
 const IN_VIEW_CAP = 2000;
 const POI_LIST_CAP = 50;
 const collator = new Intl.Collator(); // hoisted: per-pair localeCompare over 135k rows janks pans
-type CityFilter = "all" | "unvisited" | "visited";
 const BASEMAP_KEY = "postcards-basemap";
 const GLOBE_KEY = "postcards-globe";
 const FILTER_KEY = "postcards-city-filter";
@@ -127,7 +127,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const [addPlaceAt, setAddPlaceAt] = useState<{ lon: number; lat: number } | null>(null);
   const [addPlaceOpen, setAddPlaceOpen] = useState(false);
   const [cityFilter, setCityFilter] = useState<CityFilter>(() =>
-    loadPref(FILTER_KEY, (v) => (v === "unvisited" || v === "visited" ? v : "all")),
+    loadPref(FILTER_KEY, (v) =>
+      v === "unvisited" || v === "visited" || v === "wishlist" ? v : "all",
+    ),
   );
   // The map's own date + folder filter (session state, map-local — no longer tied
   // to the Trips tab's period, so it can be as precise as a single day). A year
@@ -381,28 +383,35 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const [shown, setShown] = useState(PAGE);
   const [sortAZ, setSortAZ] = useState(false);
   useEffect(() => {
-    const ids = visitedCityIdsNow();
+    // Three explicit personal buckets in view (date/folder window applied): the
+    // cities you've VISITED, the ones on your WANT list, and everything else.
+    const cityVisits = useVisits
+      .getState()
+      .visits.filter((v) => v.place.kind === "city" && visitPasses(v));
+    const visitedIds = new Set(
+      cityVisits.filter((v) => v.status === "visited").map((v) => v.place.id),
+    );
+    const wishlistIds = new Set(
+      cityVisits.filter((v) => v.status === "wishlist").map((v) => v.place.id),
+    );
     const arr = folder
-      ? // A folder is selected → the list is YOUR folder's cities in view (the
-        // browse dots are hidden too), so it matches the pruned markers.
-        inView.filter((c) => ids.has(c.id))
+      ? // A folder is selected → the list is YOUR folder's cities in view (any
+        // status), matching the pruned markers.
+        inView.filter((c) => visitedIds.has(c.id) || wishlistIds.has(c.id))
       : cityFilter === "all"
         ? inView
-        : inView.filter((c) => ids.has(c.id) === (cityFilter === "visited"));
+        : cityFilter === "visited"
+          ? inView.filter((c) => visitedIds.has(c.id))
+          : cityFilter === "wishlist"
+            ? inView.filter((c) => wishlistIds.has(c.id))
+            : // "unvisited" = neither visited nor on the want list.
+              inView.filter((c) => !visitedIds.has(c.id) && !wishlistIds.has(c.id));
     setSnapshot(sortAZ ? [...arr].sort((a, b) => collator.compare(a.name, b.name)) : arr);
     setShown(PAGE);
     // visitedCityIds deliberately NOT a dependency — see comment above. The date
     // window / folder ARE: a new selection re-partitions the list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView, cityFilter, sortAZ, dateFilter, folder]);
-  function visitedCityIdsNow(): Set<string> {
-    return new Set(
-      useVisits
-        .getState()
-        .visits.filter((v) => v.place.kind === "city" && visitPasses(v))
-        .map((v) => v.place.id),
-    );
-  }
   const visible = useMemo(() => snapshot.slice(0, shown), [snapshot, shown]);
   const visitedInView = useMemo(
     () => inView.reduce((n, c) => n + (visitedCityIds.has(c.id) ? 1 : 0), 0),
@@ -478,13 +487,20 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // The monument/airport list AFTER the visited/hide-visited filter — hoisted so
   // the list can show an honest empty message when the filter matches nothing
   // (before, the chips floated above a blank void and it read as broken).
-  const shownPoi = useMemo(
-    () =>
-      poi
-        ? poi.items.filter((x) => (cityFilter === "all" ? true : cityFilter === "visited" ? x.seen : !x.seen))
-        : [],
-    [poi, cityFilter],
-  );
+  const shownPoi = useMemo(() => {
+    if (!poi) return [];
+    if (cityFilter === "all") return poi.items;
+    const wishKeys = new Set(
+      visits.filter((v) => v.status === "wishlist").map((v) => placeKey(v.place)),
+    );
+    return poi.items.filter((x) =>
+      cityFilter === "visited"
+        ? x.seen
+        : cityFilter === "wishlist"
+          ? wishKeys.has(placeKey(x.place))
+          : !x.seen && !wishKeys.has(placeKey(x.place)),
+    );
+  }, [poi, cityFilter, visits]);
 
   // Trip arcs honour the SAME map filter as the places: a trip shows only when
   // its date is in the window AND (if a folder is chosen) its name is that
@@ -911,7 +927,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           ) : (
             <>
             <div className="segmented list-filter" role="group" aria-label={t("map.filterAria")}>
-              {(["all", "unvisited", "visited"] as CityFilter[]).map((f) => (
+              {(["all", "visited", "wishlist", "unvisited"] as CityFilter[]).map((f) => (
                 <button
                   key={f}
                   type="button"
@@ -919,13 +935,23 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                   className={cityFilter === f ? "seg-on" : ""}
                   onClick={() => changeFilter(f)}
                 >
-                  {f === "all" ? t("map.filter.all") : f === "unvisited" ? t("map.filter.hideVisited") : t("map.filter.visited")}
+                  {f === "all"
+                    ? t("map.filter.all")
+                    : f === "visited"
+                      ? t("map.filter.visited")
+                      : f === "wishlist"
+                        ? t("map.filter.wishlist")
+                        : t("map.filter.hideVisited")}
                 </button>
               ))}
             </div>
             {shownPoi.length === 0 ? (
               <p className="muted empty">
-                {cityFilter === "visited" ? t("map.poiNoneVisited") : t("map.poiAllVisited")}
+                {cityFilter === "visited"
+                  ? t("map.poiNoneVisited")
+                  : cityFilter === "wishlist"
+                    ? t("map.poiNoneWishlist")
+                    : t("map.poiAllVisited")}
               </p>
             ) : (
               <ul className="city-list">
@@ -956,7 +982,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
         ) : (
         <>
         <div className="segmented list-filter" role="group" aria-label={t("map.filterCitiesAria")}>
-          {(["all", "unvisited", "visited"] as CityFilter[]).map((f) => (
+          {(["all", "visited", "wishlist", "unvisited"] as CityFilter[]).map((f) => (
             <button
               key={f}
               type="button"
@@ -964,7 +990,13 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
               className={cityFilter === f ? "seg-on" : ""}
               onClick={() => changeFilter(f)}
             >
-              {f === "all" ? t("map.filter.all") : f === "unvisited" ? t("map.filter.hideVisited") : t("map.filter.visited")}
+              {f === "all"
+                ? t("map.filter.all")
+                : f === "visited"
+                  ? t("map.filter.visited")
+                  : f === "wishlist"
+                    ? t("map.filter.wishlist")
+                    : t("map.filter.hideVisited")}
             </button>
           ))}
           <button
@@ -987,7 +1019,11 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           </p>
         ) : snapshot.length === 0 ? (
           <p className="muted empty">
-            {cityFilter === "unvisited" ? t("map.emptyAllVisited") : t("map.emptyNoVisited")}
+            {cityFilter === "unvisited"
+              ? t("map.emptyAllVisited")
+              : cityFilter === "wishlist"
+                ? t("map.emptyNoWishlist")
+                : t("map.emptyNoVisited")}
           </p>
         ) : (
           <ul className="city-list">

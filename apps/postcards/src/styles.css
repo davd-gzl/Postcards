@@ -1842,41 +1842,6 @@ h1.brand {
   cursor: pointer;
 }
 
-/* One-tap "show a friend" launcher — a compact, horizontally-scrollable chip row. */
-.quick-views {
-  flex: 0 0 auto; /* never grow/stretch inside the map's flex column */
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
-}
-.quick-views::-webkit-scrollbar {
-  display: none;
-}
-.quick-chip {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 13px;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  cursor: pointer;
-}
-.quick-chip:hover {
-  background: var(--bg-sub);
-  border-color: var(--accent);
-}
 /* Segmented control (Places views, city filter) */
 .segmented {
   display: flex;
