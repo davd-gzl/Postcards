@@ -4033,6 +4033,58 @@ button.brand:focus-visible {
   background: rgba(255, 255, 255, 0.06);
   color: rgba(234, 240, 255, 0.75);
 }
+/* On/off toggle switch — the intro's single control type, so every optional
+   feature reads the same: flip to activate, flip back to deactivate. */
+.intro-switch {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  cursor: pointer;
+}
+.intro-switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.intro-switch-track {
+  box-sizing: border-box;
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.intro-switch-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.18s ease;
+}
+.intro-switch input:checked + .intro-switch-track {
+  background: rgba(120, 160, 255, 0.9);
+  border-color: rgba(150, 185, 255, 0.9);
+}
+.intro-switch input:checked + .intro-switch-track .intro-switch-thumb {
+  transform: translateX(20px);
+}
+.intro-switch input:focus-visible + .intro-switch-track {
+  outline: 2px solid rgba(150, 185, 255, 0.9);
+  outline-offset: 2px;
+}
+.intro-switch.is-disabled,
+.intro-switch.is-disabled input {
+  cursor: default;
+}
 /* Online / Offline segmented control on the intro. */
 .intro-seg {
   flex: none;
