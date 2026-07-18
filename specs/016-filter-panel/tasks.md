@@ -33,8 +33,8 @@ Paths are under `apps/postcards/`. `[P]` = parallelizable (different file, no in
 
 **Independent test**: Open Map → Filter, set status=Want list + People=1M+ + year=2024, close; list + counters match; no inline status/population/sort controls remain.
 
-- [ ] T009 [US1] Build `src/ui/FilterPanel.tsx` — a focus-trapped `role="dialog"` sheet rendering sections for status, People (population), date (any/year/range/undated), folder, sort, and map mode; reads/writes `useFilters`; Escape + scrim close; focus restore (contracts/panel-a11y.md)
-- [ ] T010 [US1] Add panel styles to `src/styles.css` (`.filter-panel`, sections, segmented reuse, scrim) — theme-aware, mobile one-hand reachable
+- [X] T009 [US1] Build `src/ui/FilterPanel.tsx` — a focus-trapped `role="dialog"` sheet rendering sections for status, People (population), date (any/year/range/undated), folder, sort, and map mode; reads/writes `useFilters`; Escape + scrim close; focus restore (contracts/panel-a11y.md)
+- [X] T010 [US1] Add panel styles to `src/styles.css` (`.filter-panel`, sections, segmented reuse, scrim) — theme-aware, mobile one-hand reachable
 - [ ] T011 [US1] In `src/features/map/MapScreen.tsx`, replace the local `cityFilter`/`minPop`/`sortAZ` state and the inline status segmented + People row + A–Z button with a single **Filter** button that opens `FilterPanel`; read all values from `useFilters`
 - [ ] T012 [US1] Point the map date/folder + mode controls at `useFilters` (fold the existing date/folder popover contents into the panel) in `src/features/map/MapScreen.tsx`
 - [ ] T013 [US1] Ensure `MapView`/`viewport.ts` receive filter values from the shared store (adapt existing `cityFilter`/`minPop` props to `useFilters.getState()`), so markers + list + counters agree
