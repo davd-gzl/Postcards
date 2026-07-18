@@ -364,6 +364,16 @@ export function PlacesScreen() {
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [visits]);
 
+  // Continents your places sit in, for the growth "continent" picker.
+  const continentOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const v of visits) {
+      const c = ref.continentOf(v.place.countryId);
+      if (c) set.add(c);
+    }
+    return [...set].sort();
+  }, [visits, ref]);
+
   // The active dimensions Places actually acts on (status + map mode are excluded —
   // status is the tab, mode is map-only). Drives the Filter button's badge.
   const placesFilterChips = useMemo(
@@ -755,6 +765,8 @@ export function PlacesScreen() {
         folders={folderOptions}
         years={years}
         showStatus={false}
+        showGrowth
+        continents={continentOptions}
       />
     </section>
   );

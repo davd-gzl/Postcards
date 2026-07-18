@@ -119,3 +119,35 @@ test("Places shares the same Filter panel; population gates cities only (D4)", a
   // The shared summary reflects it.
   await expect(page.locator(".filter-summary")).toContainText("1M+");
 });
+
+test("Places grows: Favorites-only narrows to starred places (spec 016 US4)", async ({ page }) => {
+  await page.goto("/");
+
+  // Two visited cities.
+  await page.getByLabel("Search a city or country").fill("Paris");
+  await page.getByRole("button", { name: /Mark .*Paris.* visited/ }).first().click();
+  await page.getByLabel("Search a city or country").fill("Tokyo");
+  await page.getByRole("button", { name: /Mark .*Tokyo.* visited/ }).first().click();
+  // Clear + dismiss the search so its dropdown can't overlay the list below.
+  await page.getByLabel("Search a city or country").fill("");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Places", exact: true }).click();
+  const list = page.locator(".city-list").first();
+  await expect(list.getByText(/Paris/)).toBeVisible();
+  await expect(list.getByText(/Tokyo/)).toBeVisible();
+
+  // Star Paris.
+  await page.getByRole("button", { name: "Favorite Paris" }).click();
+
+  // Open the panel → the growth "More" section → Favorites only.
+  await page.locator(".places-filter-row").getByRole("button", { name: /Filter/ }).click();
+  const panel = page.getByRole("dialog", { name: "Filters" });
+  await panel.getByRole("button", { name: /Favorites only/ }).click();
+  await panel.getByRole("button", { name: "Done" }).click();
+
+  // Only the starred city remains; the chip shows it.
+  await expect(list.getByText(/Paris/)).toBeVisible();
+  await expect(list.getByText(/Tokyo/)).toHaveCount(0);
+  await expect(page.locator(".filter-summary")).toContainText("Favorites only");
+});

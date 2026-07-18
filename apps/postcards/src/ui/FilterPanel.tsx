@@ -22,6 +22,8 @@ export function FilterPanel({
   years,
   showMode = false,
   showStatus = true,
+  showGrowth = false,
+  continents = [],
 }: {
   open: boolean;
   onClose: () => void;
@@ -33,6 +35,11 @@ export function FilterPanel({
   showMode?: boolean;
   /** Places owns status via its tabs, so it hides the panel's Status section. */
   showStatus?: boolean;
+  /** Show the growth dimensions (favourites-only / has-photo / has-note / continent).
+   *  These act on saved records, so only the record-based screens (Places) opt in. */
+  showGrowth?: boolean;
+  /** Continents present in the user's data, for the continent picker ("" = all). */
+  continents?: string[];
 }) {
   const t = useT();
   const f = useFilters();
@@ -254,6 +261,57 @@ export function FilterPanel({
             ))}
           </div>
         </div>
+
+        {/* More (growth dimensions) — record-based screens only */}
+        {showGrowth && (
+          <div className="filter-section">
+            <span className="filter-section-title">{t("filter.more.title")}</span>
+            <div className="segmented wrap" role="group" aria-label={t("filter.more.title")}>
+              <button
+                type="button"
+                aria-pressed={f.favoritesOnly}
+                className={f.favoritesOnly ? "seg-on" : ""}
+                onClick={() => f.set({ favoritesOnly: !f.favoritesOnly })}
+              >
+                ♥ {t("filter.favoritesOnly")}
+              </button>
+              <button
+                type="button"
+                aria-pressed={f.hasPhoto}
+                className={f.hasPhoto ? "seg-on" : ""}
+                onClick={() => f.set({ hasPhoto: !f.hasPhoto })}
+              >
+                📷 {t("filter.hasPhoto")}
+              </button>
+              <button
+                type="button"
+                aria-pressed={f.hasNote}
+                className={f.hasNote ? "seg-on" : ""}
+                onClick={() => f.set({ hasNote: !f.hasNote })}
+              >
+                📝 {t("filter.hasNote")}
+              </button>
+            </div>
+            {continents.length > 0 && (
+              <label className="picker-label filter-continent" htmlFor="filter-continent">
+                <span className="filter-section-title">{t("filter.continent.title")}</span>
+                <select
+                  id="filter-continent"
+                  className="select"
+                  value={f.continent}
+                  onChange={(e) => f.set({ continent: e.target.value })}
+                >
+                  <option value="">{t("filter.continent.all")}</option>
+                  {continents.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+        )}
 
         <div className="filter-panel-foot">
           <button type="button" className="link" onClick={() => f.clearAll()}>

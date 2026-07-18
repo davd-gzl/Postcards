@@ -1248,6 +1248,9 @@ h1.brand {
   flex: 1;
   margin: 0;
 }
+.filter-continent {
+  margin-top: 10px;
+}
 .filter-panel-foot {
   display: flex;
   justify-content: flex-end;

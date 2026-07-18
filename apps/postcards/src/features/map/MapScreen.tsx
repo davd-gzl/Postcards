@@ -22,7 +22,7 @@ import type { City } from "../../lib/reference/types";
 import { placeKey } from "../../lib/schema/helpers";
 import { CityLine } from "../../ui/CityLine";
 import { MoreButton } from "../../ui/MoreButton";
-import { useFilters, isDefault, currentFilters } from "../../lib/store/useFilters";
+import { useFilters, currentFilters, type FilterState } from "../../lib/store/useFilters";
 import { activeChips } from "../filter/applyFilters";
 import { FilterPanel } from "../../ui/FilterPanel";
 import { FilterSummary } from "../../ui/FilterSummary";
@@ -38,6 +38,15 @@ const POI_LIST_CAP = 50;
 const collator = new Intl.Collator(); // hoisted: per-pair localeCompare over 135k rows janks pans
 const BASEMAP_KEY = "postcards-basemap";
 const GLOBE_KEY = "postcards-globe";
+// The growth dimensions filter SAVED records (favourite / photo / note / continent),
+// so they belong to the record-based screens (Places). The map neither exposes them
+// in its panel nor counts them in its badge/summary.
+const MAP_HIDDEN_FIELDS: (keyof FilterState)[] = [
+  "favoritesOnly",
+  "hasPhoto",
+  "hasNote",
+  "continent",
+];
 
 // i18n key for each basemap's label (translated at the call site).
 const BASEMAP_LABEL_KEY: Record<Basemap, MessageKey> = {
@@ -335,9 +344,15 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     }
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [visits, trips]);
-  // Any non-default dimension → the Filter button wears a dot and the summary shows.
-  const filterActive = !isDefault(filters);
-  const activeCount = filterActive ? activeChips(currentFilters(filters), t).length : 0;
+  // The map acts on status / people / date / folder / sort / mode — but NOT the
+  // growth dimensions (favourites-only / has-photo / has-note / continent filter
+  // saved records; see Places). So they don't count toward the map's badge or its
+  // summary chips.
+  const mapChips = activeChips(currentFilters(filters), t).filter(
+    (c) => !MAP_HIDDEN_FIELDS.includes(c.field),
+  );
+  const filterActive = mapChips.length > 0;
+  const activeCount = mapChips.length;
   // A short human label for the active window (for the trip-arc period tag etc.).
   const exactYear = dateFilter.mode === "range" ? rangeExactYear(dateFilter) : null;
   const periodTag =
@@ -803,7 +818,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           </span>
         </div>
 
-        <FilterSummary />
+        <FilterSummary exclude={MAP_HIDDEN_FIELDS} />
 
         {poi ? (
           poi.items.length === 0 ? (
