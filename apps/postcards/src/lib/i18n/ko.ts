@@ -272,6 +272,11 @@ export const ko: Messages = {
   // ── Backup / your data ───────────────────────────────────────────────────
   "backup.aria": "백업 및 복원",
   "backup.title": "내 데이터",
+  "durability.protected": "이 기기에 저장됨",
+  "durability.atRisk": "이 브라우저가 데이터를 지울 수 있습니다 — 백업을 유지하세요",
+  "durability.neverBackedUp": "백업 없음",
+  "durability.backedUpToday": "오늘 백업함",
+  "durability.backedUpDays": "{days}일 전 백업",
   "backup.reminder.never": "아직 백업하지 않았습니다 — 휴대폰을 잃어버리면 여행 기록도 사라집니다.",
   "backup.reminder.days_one": "마지막 백업 이후 {count}일이 지났습니다.",
   "backup.reminder.days_other": "마지막 백업 이후 {count}일이 지났습니다.",

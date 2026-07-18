@@ -272,6 +272,11 @@ export const fr: Messages = {
   // ── Backup / your data ───────────────────────────────────────────────────
   "backup.aria": "Sauvegarde et restauration",
   "backup.title": "Vos données",
+  "durability.protected": "Enregistré sur cet appareil",
+  "durability.atRisk": "Ce navigateur pourrait effacer vos données — gardez une sauvegarde",
+  "durability.neverBackedUp": "aucune sauvegarde",
+  "durability.backedUpToday": "sauvegardé aujourd'hui",
+  "durability.backedUpDays": "sauvegardé il y a {days} j",
   "backup.reminder.never": "Vous n'avez pas encore sauvegardé — un téléphone perdu efface vos voyages.",
   "backup.reminder.days_one": "Cela fait {count} jour depuis votre dernière sauvegarde.",
   "backup.reminder.days_other": "Cela fait {count} jours depuis votre dernière sauvegarde.",

@@ -1592,6 +1592,24 @@ h1.brand {
   border-radius: var(--radius);
   background: var(--accent-soft);
 }
+/* Long-term-memory protection status (durable storage + last backup). */
+.durability-note {
+  margin: 2px 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.durability-note.is-ok {
+  color: var(--muted);
+}
+.durability-note.is-warn {
+  color: #b45309;
+  font-weight: 600;
+}
+@media (prefers-color-scheme: dark) {
+  .durability-note.is-warn {
+    color: #fbbf24;
+  }
+}
 .backup-reminder-text {
   flex: 1;
   min-width: 200px;

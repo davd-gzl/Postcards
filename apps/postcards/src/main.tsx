@@ -4,6 +4,7 @@ import { App } from "./app/App";
 import { initReferenceData } from "./lib/reference/referenceData";
 import { useUpdate } from "./lib/store/useUpdate";
 import { useSettings } from "./lib/store/useSettings";
+import { initDurability } from "./lib/db/initDurability";
 import "@fontsource-variable/inter"; // self-hosted (OFL) — no font CDN
 import "@fontsource-variable/space-grotesk"; // display face for the wordmark, headings & figures (OFL)
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -52,6 +53,10 @@ if ("serviceWorker" in navigator) {
 
 const el = document.getElementById("root");
 if (!el) throw new Error("Root element not found");
+
+// Durable "long-term memory": subscribe to the data stores BEFORE they hydrate so
+// we can request persistent storage on first real data and track backup freshness.
+initDurability();
 
 // Load the bundled reference gazetteer (local, SW-cached) before first render
 // so every screen can read it synchronously.
