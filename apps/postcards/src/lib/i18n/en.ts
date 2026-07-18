@@ -83,6 +83,9 @@ export const en = {
   "settings.scope.desc":
     "Used everywhere a country is counted: totals, the passport, per-continent progress.",
   "settings.map.advanced": "More map options & offline packs",
+  "settings.map.optimize": "Show one city per area",
+  "settings.map.optimizeDesc":
+    "Keeps the map fast: shows just the biggest visited city in each region. Your favorites and own places always stay. Turn off to show every city.",
   "settings.map.title": "Map",
   "settings.online.title": "Online features",
   "settings.online.desc": "Everything that reaches the internet, in one place. Enable only what you want.",

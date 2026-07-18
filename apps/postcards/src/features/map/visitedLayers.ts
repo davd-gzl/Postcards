@@ -58,6 +58,52 @@ export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureC
   return { type: "FeatureCollection", features };
 }
 
+/**
+ * "Optimize the map" reduction for the visited-city markers (Settings → Map →
+ * "Show one city per area"). A traveller with hundreds of visited cities makes a
+ * dense country an unreadable, laggy pile of flags; this keeps just one
+ * representative per area so the map stays fast and legible, without deleting any
+ * data — turning the toggle off restores every flag.
+ *
+ * Rules, in order:
+ * - **Custom points and favourites are always kept** — they are explicit personal
+ *   marks; collapsing one away would hide a place the user deliberately flagged
+ *   (matches the marker-cap rule "your own places are never hidden").
+ * - Among the remaining real cities, keep only the **most-populous** one in each
+ *   area, where an area is `country + subdivision` (state/province/region). Cities
+ *   with no subdivision in the dataset share their country's bucket.
+ *
+ * Pure over the FeatureCollection built by {@link visitedCityPoints}, so it reads
+ * only the `cc` / `region` / `pop` / `custom` / `fav` properties set there.
+ */
+export function optimizeVisitedPoints(
+  fc: FeatureCollection<Point>,
+): FeatureCollection<Point> {
+  const kept: Feature<Point>[] = [];
+  // area key -> index into `kept` of the current biggest city representing it.
+  const repForArea = new Map<string, number>();
+  const popOf = (f: Feature<Point>): number => {
+    const p = f.properties?.pop;
+    return typeof p === "number" ? p : 0;
+  };
+  for (const f of fc.features) {
+    const p = f.properties ?? {};
+    if (p.custom === 1 || p.fav === 1) {
+      kept.push(f); // always shown — never collapsed into an area
+      continue;
+    }
+    const area = `${p.cc ?? ""}::${p.region ?? ""}`;
+    const at = repForArea.get(area);
+    if (at === undefined) {
+      repForArea.set(area, kept.length);
+      kept.push(f);
+    } else if (popOf(f) > popOf(kept[at]!)) {
+      kept[at] = f; // a bigger city takes over as this area's representative
+    }
+  }
+  return { type: "FeatureCollection", features: kept };
+}
+
 /** Point features for wish-to-go cities (drawn as distinct wish markers). */
 export function wishlistCityPoints(visits: Visit[], ref: ReferenceData): FeatureCollection<Point> {
   const features: Feature<Point>[] = [];

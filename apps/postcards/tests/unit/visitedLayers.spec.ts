@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
+import type { Feature, FeatureCollection, Point } from "geojson";
 import { getReferenceData } from "../../src/lib/reference/referenceData";
-import { visitedCityPoints, tripArcs } from "../../src/features/map/visitedLayers";
+import {
+  visitedCityPoints,
+  optimizeVisitedPoints,
+  tripArcs,
+} from "../../src/features/map/visitedLayers";
 import type { PlaceRef, Trip, Visit } from "../../src/lib/schema/models";
 import { haversineKm } from "../../src/features/travel/distance";
 
@@ -33,6 +38,66 @@ describe("map layers", () => {
   it("tags each point with its country code for the flag marker", () => {
     const fc = visitedCityPoints(visits, ref);
     expect(fc.features[0]!.properties?.cc).toBe("FR");
+  });
+});
+
+describe("optimize visited points (one city per area)", () => {
+  // Minimal feature carrying only what the reducer reads.
+  const pt = (
+    name: string,
+    props: { cc?: string; region?: string; pop?: number; custom?: number; fav?: number },
+  ): Feature<Point> => ({
+    type: "Feature",
+    geometry: { type: "Point", coordinates: [0, 0] },
+    properties: { name, cc: "FR", region: "", pop: 0, custom: 0, fav: 0, ...props },
+  });
+  const fc = (features: Feature<Point>[]): FeatureCollection<Point> => ({
+    type: "FeatureCollection",
+    features,
+  });
+  const names = (out: FeatureCollection<Point>) =>
+    out.features.map((f) => f.properties?.name).sort();
+
+  it("keeps only the most-populous city in an area", () => {
+    const out = optimizeVisitedPoints(
+      fc([
+        pt("Big", { region: "IDF", pop: 2_000_000 }),
+        pt("Small", { region: "IDF", pop: 5_000 }),
+        pt("Mid", { region: "IDF", pop: 40_000 }),
+      ]),
+    );
+    expect(out.features).toHaveLength(1);
+    expect(out.features[0]!.properties?.name).toBe("Big");
+  });
+
+  it("treats country + subdivision as the area (same region name, different country stays)", () => {
+    const out = optimizeVisitedPoints(
+      fc([
+        pt("A", { cc: "FR", region: "West", pop: 100 }),
+        pt("B", { cc: "US", region: "West", pop: 100 }),
+      ]),
+    );
+    expect(names(out)).toEqual(["A", "B"]);
+  });
+
+  it("always keeps favourites and custom points, even when a bigger city shares the area", () => {
+    const out = optimizeVisitedPoints(
+      fc([
+        pt("Capital", { region: "IDF", pop: 2_000_000 }),
+        pt("MyFavVillage", { region: "IDF", pop: 200, fav: 1 }),
+        pt("MyPin", { region: "IDF", pop: 0, custom: 1 }),
+      ]),
+    );
+    // Biggest area rep + the favourite + the custom pin all survive.
+    expect(names(out)).toEqual(["Capital", "MyFavVillage", "MyPin"]);
+  });
+
+  it("leaves a set that is already one-per-area untouched", () => {
+    const input = fc([
+      pt("Paris", { region: "IDF", pop: 2_000_000 }),
+      pt("Lyon", { region: "ARA", pop: 500_000 }),
+    ]);
+    expect(names(optimizeVisitedPoints(input))).toEqual(["Lyon", "Paris"]);
   });
 });
 

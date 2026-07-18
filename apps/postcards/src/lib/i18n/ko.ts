@@ -77,6 +77,9 @@ export const ko: Messages = {
   "settings.scope.desc":
     "국가를 세는 모든 곳에 사용됩니다: 합계, 여권, 대륙별 진행률.",
   "settings.map.advanced": "추가 지도 옵션 및 오프라인 팩",
+  "settings.map.optimize": "지역당 도시 하나만 표시",
+  "settings.map.optimizeDesc":
+    "지도를 빠르게 유지합니다: 각 지역에서 방문한 가장 큰 도시만 표시합니다. 즐겨찾기와 내 장소는 항상 표시됩니다. 모든 도시를 보려면 끄세요.",
   "settings.map.title": "지도",
   "settings.online.title": "온라인 기능",
   "settings.online.desc": "인터넷을 사용하는 모든 것을 한곳에. 원하는 것만 켜세요.",
