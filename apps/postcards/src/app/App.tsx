@@ -16,7 +16,6 @@ import { AboutModal } from "../ui/AboutModal";
 import { IntroScreen } from "../ui/IntroScreen";
 import { Toast } from "../ui/Toast";
 import { UpdateBanner } from "../ui/UpdateBanner";
-import { QuickViews } from "../ui/QuickViews";
 import { ConnectionStatus } from "../ui/ConnectionStatus";
 import { MapIcon, ChartIcon, ListIcon, RouteIcon, BookIcon, GearIcon, InfoIcon } from "../ui/icons";
 import { useState } from "react";
@@ -278,14 +277,6 @@ export function App() {
       <p className="sr-only" role="status" aria-live="polite">
         {t("nav.sectionStatus", { section: currentLabel })}
       </p>
-
-      {/* One-tap "show a friend" launcher — a full-width sub-bar under the top bar
-          on the browsing surfaces (kept OUT of the map's flush flex row). */}
-      {!cityPageId &&
-        !countryPageId &&
-        (tab === "map" || tab === "places" || tab === "stats" || tab === "trips") && (
-          <QuickViews />
-        )}
 
       <nav className="bottom-nav" aria-label={t("nav.sectionsAria")}>
         {TABS.map(({ id, label, Icon }) => (

@@ -136,7 +136,7 @@ export function citiesInView(
 }
 
 /** The list/marker filter the map screen shares between its list and its dots. */
-export type CityFilter = "all" | "unvisited" | "visited";
+export type CityFilter = "all" | "unvisited" | "visited" | "wishlist";
 
 /** Working set considered "in view" before the on-map marker cap — the same
  *  size the MapScreen list snapshots, so the map dots and the list stay in
@@ -160,8 +160,10 @@ export function markerCitiesInView(
   visitedIds?: ReadonlySet<string>,
 ): City[] {
   const inView = citiesInView(cities, bounds, IN_VIEW_CAP, true);
+  // "wishlist" doesn't prune the browse dots by visited-ness (wishlist places are
+  // painted as their own personal markers); it behaves like "all" for the dots.
   const filtered =
-    filter === "all" || !visitedIds
+    filter === "all" || filter === "wishlist" || !visitedIds
       ? inView
       : inView.filter((c) => visitedIds.has(c.id) === (filter === "visited"));
   const capN = Math.max(1, cap);
