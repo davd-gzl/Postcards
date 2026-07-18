@@ -13,17 +13,17 @@ Paths are under `apps/postcards/`. `[P]` = parallelizable (different file, no in
 
 ## Phase 1: Setup
 
-- [ ] T001 Create the shared filter module folder and a typed skeleton in `src/lib/filter/types.ts` (FilterState type, `DEFAULT_FILTERS`, `FilterStatus`/`SortOrder`/`MapMode` unions) per data-model.md
-- [ ] T002 [P] Add i18n key stubs for the panel (`filter.title`, `filter.status.*`, `filter.people.*`, `filter.date.*`, `filter.folder`, `filter.sort.*`, `filter.mode.*`, `filter.clearAll`, `filter.removeAria`, `filter.summaryAria`, `filter.emptyFiltered`) to `src/lib/i18n/en.ts`, `fr.ts`, `ko.ts` (compile-time parity — add to all three)
+- [X] T001 Create the shared filter module folder and a typed skeleton in `src/lib/filter/types.ts` (FilterState type, `DEFAULT_FILTERS`, `FilterStatus`/`SortOrder`/`MapMode` unions) per data-model.md
+- [X] T002 [P] Add i18n key stubs for the panel (`filter.title`, `filter.status.*`, `filter.people.*`, `filter.date.*`, `filter.folder`, `filter.sort.*`, `filter.mode.*`, `filter.clearAll`, `filter.removeAria`, `filter.summaryAria`, `filter.emptyFiltered`) to `src/lib/i18n/en.ts`, `fr.ts`, `ko.ts` (compile-time parity — add to all three)
 
 ## Phase 2: Foundational (blocking — all stories depend on this)
 
-- [ ] T003 Implement `isDefault`, `clearField`, `clearAll`, and per-field default helpers in `src/lib/filter/types.ts`
-- [ ] T004 Implement pure predicates in `src/lib/filter/applyFilters.ts`: `cityPasses(city, visitedSets, state)`, `placeMatches(visit, ref, state)`, `sortPlaces(list, state)` — population gates cities only (D4)
-- [ ] T005 Implement `activeChips(state, t)` deriving one `ActiveFilterChip` per non-default dimension in `src/lib/filter/applyFilters.ts`
-- [ ] T006 Create the shared store `src/lib/store/useFilters.ts` (state = FilterState, `set`, `clearField`, `clearAll`), hydrating/persisting preference dimensions (`status`, `minPop`, `sort`) to the existing localStorage keys; session dimensions in-memory
-- [ ] T007 [P] Unit test the predicates in `tests/unit/applyFilters.spec.ts` (status/pop/date/folder/growth truth table; D4 non-city pass-through; sort order)
-- [ ] T008 [P] Unit test `types`/store helpers in `tests/unit/filterState.spec.ts` (defaults, isDefault, clearField/clearAll, activeChips labels)
+- [X] T003 Implement `isDefault`, `clearField`, `clearAll`, and per-field default helpers in `src/lib/filter/types.ts`
+- [X] T004 Implement pure predicates in `src/lib/filter/applyFilters.ts`: `cityPasses(city, visitedSets, state)`, `placeMatches(visit, ref, state)`, `sortPlaces(list, state)` — population gates cities only (D4)
+- [X] T005 Implement `activeChips(state, t)` deriving one `ActiveFilterChip` per non-default dimension in `src/lib/filter/applyFilters.ts`
+- [X] T006 Create the shared store `src/lib/store/useFilters.ts` (state = FilterState, `set`, `clearField`, `clearAll`), hydrating/persisting preference dimensions (`status`, `minPop`, `sort`) to the existing localStorage keys; session dimensions in-memory
+- [X] T007 [P] Unit test the predicates in `tests/unit/applyFilters.spec.ts` (status/pop/date/folder/growth truth table; D4 non-city pass-through; sort order)
+- [X] T008 [P] Unit test `types`/store helpers in `tests/unit/filterState.spec.ts` (defaults, isDefault, clearField/clearAll, activeChips labels)
 
 **Checkpoint**: shared filter state + predicates exist and are unit-green before any screen wiring.
 
