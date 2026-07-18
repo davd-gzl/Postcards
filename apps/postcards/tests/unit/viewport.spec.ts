@@ -153,6 +153,24 @@ describe("markerCitiesInView", () => {
     expect(new Set(ids)).toEqual(new Set(["boston", "philly"]));
   });
 
+  it("minPopulation drops cities below the headcount", () => {
+    // boston (690k) falls below a 1M threshold; nyc + philly survive.
+    const ids = markerCitiesInView(set, usEast, 10, "all", undefined, 1_000_000).map((c) => c.id);
+    expect(new Set(ids)).toEqual(new Set(["nyc", "philly"]));
+  });
+
+  it("minPopulation combines with the status filter (AND)", () => {
+    const visited = new Set(["nyc", "boston"]);
+    // Of the visited cities (nyc, boston), only nyc clears the 1M threshold.
+    const ids = markerCitiesInView(set, usEast, 10, "visited", visited, 1_000_000).map((c) => c.id);
+    expect(ids).toEqual(["nyc"]);
+  });
+
+  it("minPopulation of 0 is a no-op (every in-view city kept)", () => {
+    const ids = markerCitiesInView(set, usEast, 10, "all", undefined, 0).map((c) => c.id);
+    expect(new Set(ids)).toEqual(new Set(["nyc", "boston", "philly"]));
+  });
+
   it("null bounds yields nothing", () => {
     expect(markerCitiesInView(set, null, 10)).toEqual([]);
   });
