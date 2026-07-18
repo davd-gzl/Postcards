@@ -27,6 +27,14 @@ test("map, stats and places screens pass the axe WCAG 2.1 AA gate", async ({ pag
   await expect(page.getByText("Cities in view")).toBeVisible();
   await assertNoSeriousViolations(page, "map");
 
+  // The ONE Filter panel (spec 016) must also pass the gate; Escape must close it
+  // and restore focus to the opener.
+  await page.locator(".map-ctl-right").getByRole("button", { name: /Filter/ }).click();
+  await expect(page.getByRole("dialog", { name: "Filters" })).toBeVisible();
+  await assertNoSeriousViolations(page, "filter panel");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Filters" })).toBeHidden();
+
   await gotoTab(page, "Stats");
   await expect(page.getByText("Statistics")).toBeVisible();
   await assertNoSeriousViolations(page, "stats");

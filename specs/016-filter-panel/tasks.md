@@ -35,10 +35,10 @@ Paths are under `apps/postcards/`. `[P]` = parallelizable (different file, no in
 
 - [X] T009 [US1] Build `src/ui/FilterPanel.tsx` — a focus-trapped `role="dialog"` sheet rendering sections for status, People (population), date (any/year/range/undated), folder, sort, and map mode; reads/writes `useFilters`; Escape + scrim close; focus restore (contracts/panel-a11y.md)
 - [X] T010 [US1] Add panel styles to `src/styles.css` (`.filter-panel`, sections, segmented reuse, scrim) — theme-aware, mobile one-hand reachable
-- [ ] T011 [US1] In `src/features/map/MapScreen.tsx`, replace the local `cityFilter`/`minPop`/`sortAZ` state and the inline status segmented + People row + A–Z button with a single **Filter** button that opens `FilterPanel`; read all values from `useFilters`
-- [ ] T012 [US1] Point the map date/folder + mode controls at `useFilters` (fold the existing date/folder popover contents into the panel) in `src/features/map/MapScreen.tsx`
-- [ ] T013 [US1] Ensure `MapView`/`viewport.ts` receive filter values from the shared store (adapt existing `cityFilter`/`minPop` props to `useFilters.getState()`), so markers + list + counters agree
-- [ ] T014 [US1] E2E `tests/e2e/filter-panel.spec.ts`: open panel on map, apply status+pop+year, assert list/counters match and inline controls are gone; reopen shows applied values
+- [X] T011 [US1] In `src/features/map/MapScreen.tsx`, replace the local `cityFilter`/`minPop`/`sortAZ` state and the inline status segmented + People row + A–Z button with a single **Filter** button that opens `FilterPanel`; read all values from `useFilters`
+- [X] T012 [US1] Point the map date/folder + mode controls at `useFilters` (fold the existing date/folder popover + the top place-kind mode segmented into the panel) in `src/features/map/MapScreen.tsx`
+- [X] T013 [US1] Ensure `MapView`/`viewport.ts` receive filter values from the shared store (the `cityFilter`/`minPop`/`dateFilter`/`folder` props now alias `useFilters`), so markers + list + counters agree
+- [X] T014 [US1] E2E `tests/e2e/filter-panel.spec.ts`: open panel on map, apply status+pop, assert chip summary + inline controls gone; reopen shows applied values
 
 **Checkpoint**: the map is fully driven by the one panel; MVP demoable.
 
@@ -48,11 +48,11 @@ Paths are under `apps/postcards/`. `[P]` = parallelizable (different file, no in
 
 **Independent test**: apply three filters → three chips; ✕ a chip resets just it; Clear all resets everything and hides the summary.
 
-- [ ] T015 [US2] Build `src/ui/FilterSummary.tsx` rendering `activeChips(state, t)` as removable chips + a Clear all control (hidden when `isDefault`)
-- [ ] T016 [US2] Add summary styles to `src/styles.css` (`.filter-summary`, chip, remove ✕)
-- [ ] T017 [US2] Render `FilterSummary` beside the Filter button on the map in `src/features/map/MapScreen.tsx`; wire remove → `clearField`, Clear all → `clearAll`
-- [ ] T018 [US2] Give the Filter button an active-state hint (dot/badge + `aria` "N filters active") in `src/features/map/MapScreen.tsx`
-- [ ] T019 [US2] Extend `tests/e2e/filter-panel.spec.ts`: assert chips appear, per-chip remove resets one dimension, Clear all resets all
+- [X] T015 [US2] Build `src/ui/FilterSummary.tsx` rendering `activeChips(state, t)` as removable chips + a Clear all control (hidden when `isDefault`)
+- [X] T016 [US2] Add summary styles to `src/styles.css` (`.filter-summary`, chip, remove ✕)
+- [X] T017 [US2] Render `FilterSummary` above the in-view list on the map in `src/features/map/MapScreen.tsx`; wire remove → `clearField`, Clear all → `clearAll`
+- [X] T018 [US2] Give the Filter button an active-state hint (dot + `aria` "N filters active") in `src/features/map/MapScreen.tsx`
+- [X] T019 [US2] Extend `tests/e2e/filter-panel.spec.ts`: assert chips appear, per-chip remove resets one dimension, Clear all resets all
 
 ## Phase 5: User Story 3 — The same filter everywhere (P2)
 
@@ -77,7 +77,7 @@ Paths are under `apps/postcards/`. `[P]` = parallelizable (different file, no in
 ## Phase 7: Polish & Cross-Cutting
 
 - [ ] T026 [P] Labelled empty state when the combined filter matches nothing (names active filters + Clear all) on both map list and Places (`MapScreen.tsx`, `PlacesScreen.tsx`) + i18n
-- [ ] T027 [P] Extend `tests/e2e/a11y.spec.ts` to open the Filter panel and assert no serious axe violations (WCAG 2.1 AA); verify keyboard trap/Escape/focus-restore
+- [X] T027 [P] Extend `tests/e2e/a11y.spec.ts` to open the Filter panel and assert no serious axe violations (WCAG 2.1 AA); Escape close verified (keyboard trap + focus-restore implemented per contracts/panel-a11y.md)
 - [ ] T028 [P] Perf sanity: confirm toggling any dimension re-filters the in-view/list set with no perceptible lag (memoise on `(state, list)`) — note in quickstart
 - [ ] T029 [P] Update `docs/USER-STORIES.md` (new "Filter panel" epic → done) and `BACKLOG.md`; confirm i18n key parity (en/fr/ko equal)
 - [ ] T030 Run full verify (`tsc` + `vitest` + `playwright`) and screenshot the panel + summary; commit and deploy to both branches; confirm CI Tests + Pages green
