@@ -35,6 +35,10 @@ const collator = new Intl.Collator(); // hoisted: per-pair localeCompare over 13
 const BASEMAP_KEY = "postcards-basemap";
 const GLOBE_KEY = "postcards-globe";
 const FILTER_KEY = "postcards-city-filter";
+const MINPOP_KEY = "postcards-city-minpop";
+// City population thresholds for the "by number of people" filter: 0 = any, then
+// 10k / 100k / 1M. Narrows both the map's browse dots and the in-view list.
+const POP_CHOICES = [0, 10_000, 100_000, 1_000_000] as const;
 
 // i18n key for each basemap's label (translated at the call site).
 const BASEMAP_LABEL_KEY: Record<Basemap, MessageKey> = {
@@ -131,6 +135,13 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     loadPref(FILTER_KEY, (v) =>
       v === "unvisited" || v === "visited" || v === "wishlist" ? v : "all",
     ),
+  );
+  // "Filter by number of people": the minimum city population to show (0 = any).
+  const [minPop, setMinPop] = useState<number>(() =>
+    loadPref(MINPOP_KEY, (v) => {
+      const n = Number(v);
+      return (POP_CHOICES as readonly number[]).includes(n) ? n : 0;
+    }),
   );
   // The map's own date + folder filter (session state, map-local — no longer tied
   // to the Trips tab's period, so it can be as precise as a single day). A year
@@ -407,12 +418,14 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             ? inView.filter((c) => wishlistIds.has(c.id))
             : // "unvisited" = neither visited nor on the want list.
               inView.filter((c) => !visitedIds.has(c.id) && !wishlistIds.has(c.id));
-    setSnapshot(sortAZ ? [...arr].sort((a, b) => collator.compare(a.name, b.name)) : arr);
+    // "By number of people" narrows the list in lock-step with the map dots.
+    const arrP = minPop > 0 ? arr.filter((c) => (c.population ?? 0) >= minPop) : arr;
+    setSnapshot(sortAZ ? [...arrP].sort((a, b) => collator.compare(a.name, b.name)) : arrP);
     setShown(PAGE);
     // visitedCityIds deliberately NOT a dependency — see comment above. The date
     // window / folder ARE: a new selection re-partitions the list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, cityFilter, sortAZ, dateFilter, folder]);
+  }, [inView, cityFilter, sortAZ, dateFilter, folder, minPop]);
   const visible = useMemo(() => snapshot.slice(0, shown), [snapshot, shown]);
   const visitedInView = useMemo(
     () => inView.reduce((n, c) => n + (visitedCityIds.has(c.id) ? 1 : 0), 0),
@@ -538,6 +551,11 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     savePref(FILTER_KEY, f);
   }
 
+  function changeMinPop(n: number) {
+    setMinPop(n);
+    savePref(MINPOP_KEY, String(n));
+  }
+
   // Everything of YOURS with coordinates — visited & wishlist cities, plus your
   // own custom points. This is what the first frame frames.
   const myPlaceCoords = useMemo(() => {
@@ -613,6 +631,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           focus={focus}
           fit={fit}
           cityFilter={cityFilter}
+          minPop={minPop}
           tripArcs={showTrips ? arcs : null}
           globe={globe}
           mode={mode}
@@ -1010,6 +1029,36 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           >
             {t("map.sortAZ")}
           </button>
+        </div>
+
+        <div className="pop-filter-row">
+          <span className="pop-filter-label" aria-hidden>
+            👥 {t("map.pop.heading")}
+          </span>
+          <div className="segmented" role="group" aria-label={t("map.filterPopAria")}>
+            {POP_CHOICES.map((n) => (
+              <button
+                key={n}
+                type="button"
+                aria-pressed={minPop === n}
+                className={minPop === n ? "seg-on" : ""}
+                title={
+                  n === 0
+                    ? t("map.pop.anyTitle")
+                    : t("map.pop.minTitle", { count: formatInt(n) })
+                }
+                onClick={() => changeMinPop(n)}
+              >
+                {n === 0
+                  ? t("map.pop.any")
+                  : n === 10_000
+                    ? t("map.pop.10k")
+                    : n === 100_000
+                      ? t("map.pop.100k")
+                      : t("map.pop.1m")}
+              </button>
+            ))}
+          </div>
         </div>
 
         {inView.length === 0 ? (

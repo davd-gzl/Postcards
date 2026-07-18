@@ -69,10 +69,11 @@ must not lag on a phone.
 
 - ✅ **B1 — Personal-status filter.** Map list filter is **All · Visited · Want list
   · Not visited** (visited / wishlist / neither).
-- 🔲 **B2 — Filter by population (number of people).** A "more detailed" filter: show
-  only cities above a population threshold (e.g. >10k, >100k, >1M). Applies to the
-  map list and Places; combinable with the status/date/folder filters. Keep this a
-  first-class, reusable filter dimension.
+- ✅ **B2 — Filter by population (number of people).** The map's city list + browse
+  dots gain a **👥 People** filter — **Any / 10k+ / 100k+ / 1M+** — that drops cities
+  below the threshold. Combines (AND) with the status filter and stays in lock-step
+  between the list and the map dots (shared `markerCitiesInView`). _(Places-list
+  parity can follow — this landed where density hurts most, the map.)_
 - ✅ **B3 — Lower the marker cap.** Default is now **25 on mobile / 100 on desktop**
   (was 250), and the Settings picker offers 25/50/100/200/400. Marked places are
   kept first, so the cap only ever thins browse markers, never your own. _(60a8367)_

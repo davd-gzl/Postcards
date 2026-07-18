@@ -663,6 +663,7 @@ export function MapView({
   focus,
   fit,
   cityFilter = "all",
+  minPop = 0,
   tripArcs,
   basemap = "simple",
   dark = false,
@@ -705,6 +706,9 @@ export function MapView({
    *  visited). The map recomputes the dot set straight off the live camera on
    *  every move, so it needs the filter here rather than a pre-filtered list. */
   cityFilter?: CityFilter;
+  /** Only draw in-view browse cities with at least this many people (0 = off).
+   *  Shares the value with the list so map dots and the list stay in lock-step. */
+  minPop?: number;
   tripArcs?: FeatureCollection<LineString> | null;
   basemap?: Basemap;
   dark?: boolean;
@@ -734,6 +738,8 @@ export function MapView({
   onBoundsRef.current = onBounds;
   const cityFilterRef = useRef(cityFilter);
   cityFilterRef.current = cityFilter;
+  const minPopRef = useRef(minPop);
+  minPopRef.current = minPop;
   const tripArcsRef = useRef(tripArcs);
   tripArcsRef.current = tripArcs;
   const reducedRef = useRef(reducedMotion);
@@ -1106,6 +1112,7 @@ export function MapView({
       maxMarkersRef.current,
       filter,
       visitedIds,
+      minPopRef.current,
     );
     (map.getSource("cities-inview") as GeoJSONSource | undefined)?.setData(inViewPoints(cities));
   }
@@ -1581,7 +1588,8 @@ export function MapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gazGen]);
 
-  // The list filter (all / hide-visited / visited) narrows the in-view dots too.
+  // The list filter (all / hide-visited / visited) and the population threshold
+  // both narrow the in-view dots too.
   useEffect(() => {
     const map = mapRef.current;
     if (map && loadedRef.current) {
@@ -1589,7 +1597,7 @@ export function MapView({
       applyPersonalMarkerFilter(map); // show/hide your flags vs ⚑ wishes to match
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cityFilter]);
+  }, [cityFilter, minPop]);
 
   useEffect(() => {
     const map = mapRef.current;

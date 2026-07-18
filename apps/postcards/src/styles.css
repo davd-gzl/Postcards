@@ -1166,6 +1166,25 @@ h1.brand {
 .list-filter {
   margin: 2px 0 10px;
 }
+/* "Filter by number of people" — a labelled population row under the status
+   filter. The label names the dimension so "10k+ / 100k+ / 1M+" reads as
+   population, not another status. */
+.pop-filter-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin: 0 0 10px;
+}
+.pop-filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pop-filter-row .segmented {
+  flex: 1 1 auto;
+}
 .city-focus {
   flex: 1;
   min-width: 0;

@@ -150,7 +150,9 @@ export const IN_VIEW_CAP = 2000;
  *
  * Pure and deterministic so the map can recompute it straight off the live
  * camera on every `moveend` — no React round-trip — and so it's unit-testable.
- * `visitedIds` is only consulted when a non-"all" filter is active.
+ * `visitedIds` is only consulted when a non-"all" filter is active. `minPopulation`
+ * (0 = off) drops any city below that headcount, so a dense view can be thinned to
+ * just the bigger cities.
  */
 export function markerCitiesInView(
   cities: City[],
@@ -158,14 +160,19 @@ export function markerCitiesInView(
   cap: number,
   filter: CityFilter = "all",
   visitedIds?: ReadonlySet<string>,
+  minPopulation = 0,
 ): City[] {
   const inView = citiesInView(cities, bounds, IN_VIEW_CAP, true);
   // "wishlist" doesn't prune the browse dots by visited-ness (wishlist places are
   // painted as their own personal markers); it behaves like "all" for the dots.
-  const filtered =
+  const byStatus =
     filter === "all" || filter === "wishlist" || !visitedIds
       ? inView
       : inView.filter((c) => visitedIds.has(c.id) === (filter === "visited"));
+  const filtered =
+    minPopulation > 0
+      ? byStatus.filter((c) => (c.population ?? 0) >= minPopulation)
+      : byStatus;
   const capN = Math.max(1, cap);
   if (filtered.length <= capN) return filtered;
   // `inView` is population-descending and the filter preserves order, so the
