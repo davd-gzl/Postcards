@@ -866,6 +866,8 @@ export const en = {
   "intro.offline.action": "Set up",
   "intro.cities.title": "Full city list",
   "intro.cities.desc": "Every town and village (~17 MB), searchable offline.",
+  "intro.optimize.title": "Fast map",
+  "intro.optimize.desc": "Lots of places? Show one city per area so the map stays smooth. Change any time in Settings → Optimisation.",
   "intro.enable": "Enable",
   "intro.on": "On",
   "intro.get": "Get",
