@@ -1,7 +1,9 @@
 # AGENTS.md — working agreement for Postcards
 
 Read this alongside `CLAUDE.md` (what the app is + its non-negotiable
-constitution) and `BACKLOG.md` (the tracked request list). This file is about
+constitution), `docs/USER-STORIES.md` (the durable record of what the owner wants
+built — read it to know the product direction; append to it when they articulate
+a new want), and `BACKLOG.md` (the tracked request list). This file is about
 *how to work* so nothing the user asks for gets silently dropped.
 
 App lives in `apps/postcards/`. Run all tooling from there.
