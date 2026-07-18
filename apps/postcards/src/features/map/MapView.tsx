@@ -16,7 +16,12 @@ import { useUi } from "../../lib/store/useUi";
 import { useT } from "../../lib/i18n";
 import { visitedCountryIds } from "../stats/computeStats";
 import { mapDateMatches, type MapDate } from "../travel/period";
-import { airportPoints, visitedCityPoints, wishlistCityPoints } from "./visitedLayers";
+import {
+  airportPoints,
+  optimizeVisitedPoints,
+  visitedCityPoints,
+  wishlistCityPoints,
+} from "./visitedLayers";
 import { prefetchAroundBounds, prefetchAroundPoint, OSM_TILE_TEMPLATE } from "../../lib/offline/tiles";
 import { markerCitiesInView, type Bounds, type CityFilter } from "./viewport";
 import type { City } from "../../lib/reference/types";
@@ -667,6 +672,7 @@ export function MapView({
   showTowns = false,
   showCountries = false,
   maxMarkers = 250,
+  optimizeMarkers = false,
   dateFilter = { mode: "all" },
   folder = "",
   onBaseUnavailable,
@@ -680,6 +686,9 @@ export function MapView({
   showCountries?: boolean;
   /** Cap on airport/monument markers drawn in the current view (anti-blanket). */
   maxMarkers?: number;
+  /** "Optimize the map": collapse visited cities to one representative (the most
+   *  populous) per area, keeping every custom point and favourite. Off = show all. */
+  optimizeMarkers?: boolean;
   /** Date filter for YOUR places: any date, undated-only, or a precise [from,to]
    *  range (a year chip is just a whole-year range). Narrows the visited/wishlist
    *  /airport markers, the visited-country shading and the browsable-POI "seen"
@@ -744,6 +753,8 @@ export function MapView({
   modeRef.current = mode;
   const maxMarkersRef = useRef(maxMarkers);
   maxMarkersRef.current = maxMarkers;
+  const optimizeMarkersRef = useRef(optimizeMarkers);
+  optimizeMarkersRef.current = optimizeMarkers;
   // The active date + folder filter for YOUR places. Read from refs so the
   // imperative painters use the latest value without re-subscribing.
   const dateRef = useRef(dateFilter);
@@ -925,16 +936,22 @@ export function MapView({
     const vis = visitsRef.current.filter((v) => visitMatches(v));
     const markerKey = (v: Visit) =>
       `${v.place.kind}:${v.place.id}:${v.status}:${v.favorite ? 1 : 0}`;
-    const citiesKey = vis
-      .filter(
-        (v) => v.status !== "wishlist" && (v.place.kind === "city" || v.place.kind === "custom"),
-      )
-      .map(markerKey)
-      .sort()
-      .join("|");
+    // The optimize flag is folded into the key so toggling "one city per area"
+    // rebuilds the source even when the visit set itself is unchanged.
+    const citiesKey =
+      (optimizeMarkersRef.current ? "opt|" : "all|") +
+      vis
+        .filter(
+          (v) => v.status !== "wishlist" && (v.place.kind === "city" || v.place.kind === "custom"),
+        )
+        .map(markerKey)
+        .sort()
+        .join("|");
     if (citiesKey !== lastCitiesKey.current) {
       lastCitiesKey.current = citiesKey;
-      const fc = visitedCityPoints(vis, ref);
+      const fc = optimizeMarkersRef.current
+        ? optimizeVisitedPoints(visitedCityPoints(vis, ref))
+        : visitedCityPoints(vis, ref);
       (map.getSource("cities") as GeoJSONSource | undefined)?.setData(fc);
       // Warm the flag images up front — a later zoom-out must not have to fetch
       // any visited flag's image before it can paint (the "load in late" bug).
@@ -1614,6 +1631,16 @@ export function MapView({
     applyInViewCities(map); // a new marker cap changes how many dots the view holds
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, showTowns, maxMarkers]);
+
+  // Toggling "show one city per area" rebuilds the visited-city source: the
+  // optimize flag is part of applyVisited's cities key, so this just re-runs it
+  // (only the cities branch actually re-tiles; the others keep their keys).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    applyVisited(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [optimizeMarkers]);
 
   useEffect(() => {
     const map = mapRef.current;

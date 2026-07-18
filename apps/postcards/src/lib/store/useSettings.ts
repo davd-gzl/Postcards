@@ -11,6 +11,7 @@ const SCOPE_KEY = "postcards-country-scope";
 const AUTO_GUIDES_KEY = "postcards-auto-guides";
 const ONLINE_MAP_KEY = "postcards-online-map";
 const MAX_MARKERS_KEY = "postcards-max-markers";
+const OPTIMIZE_MARKERS_KEY = "postcards-optimize-markers";
 const THEME_KEY = "postcards-theme";
 const LOCALE_KEY = "postcards-locale";
 const AUTO_SYNC_KEY = "postcards-auto-sync";
@@ -60,6 +61,14 @@ function writeLocal(key: string, value: string): void {
 function loadMaxMarkers(): number {
   const n = Number(readLocal(MAX_MARKERS_KEY));
   return (MARKER_CAP_CHOICES as readonly number[]).includes(n) ? n : defaultMaxMarkers();
+}
+
+// "Show one city per area" — collapse visited cities to the most-populous one per
+// area (country + subdivision), keeping every custom point and favourite. OFF by
+// default (show every visited city); a deliberate opt-in for travellers whose
+// dense maps lag. Only a stored "1" turns it on.
+function loadOptimizeMarkers(): boolean {
+  return readLocal(OPTIMIZE_MARKERS_KEY) === "1";
 }
 
 function loadScope(): CountryScope {
@@ -148,6 +157,8 @@ interface SettingsState {
   setOfflineMode: (value: boolean) => void;
   maxMarkers: number;
   setMaxMarkers: (value: number) => void;
+  optimizeMarkers: boolean;
+  setOptimizeMarkers: (value: boolean) => void;
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
   locale: Locale;
@@ -184,6 +195,11 @@ export const useSettings = create<SettingsState>((set) => ({
   setMaxMarkers: (maxMarkers) => {
     writeLocal(MAX_MARKERS_KEY, String(maxMarkers));
     set({ maxMarkers });
+  },
+  optimizeMarkers: loadOptimizeMarkers(),
+  setOptimizeMarkers: (optimizeMarkers) => {
+    writeLocal(OPTIMIZE_MARKERS_KEY, optimizeMarkers ? "1" : "0");
+    set({ optimizeMarkers });
   },
   theme: loadTheme(),
   setTheme: (theme) => {

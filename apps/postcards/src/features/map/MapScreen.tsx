@@ -100,6 +100,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // no tiles, no consent offer, no reconnect prompt. Zero optional egress.
   const offlineMode = useSettings((s) => s.offlineMode);
   const maxMarkers = useSettings((s) => s.maxMarkers);
+  const optimizeMarkers = useSettings((s) => s.optimizeMarkers);
   // The explicit colour-theme choice (System / Light / Dark) drives the
   // basemap's dark palette too, so it never desyncs from the UI.
   const theme = useSettings((s) => s.theme);
@@ -618,6 +619,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           showTowns={showTowns}
           showCountries={showCountries}
           maxMarkers={maxMarkers}
+          optimizeMarkers={optimizeMarkers}
           dateFilter={dateFilter}
           folder={folder}
           reducedMotion={reducedMotion}

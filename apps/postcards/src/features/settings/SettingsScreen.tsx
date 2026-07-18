@@ -36,6 +36,8 @@ export function SettingsScreen() {
   const setOfflineMode = useSettings((s) => s.setOfflineMode);
   const maxMarkers = useSettings((s) => s.maxMarkers);
   const setMaxMarkers = useSettings((s) => s.setMaxMarkers);
+  const optimizeMarkers = useSettings((s) => s.optimizeMarkers);
+  const setOptimizeMarkers = useSettings((s) => s.setOptimizeMarkers);
   const [progress, setProgress] = useState<Record<string, number | undefined>>({});
   // Downloads are cancelable, and each region remembers when it was last saved
   // (so the button honestly reads "Re-download" instead of pretending it's new).
@@ -205,6 +207,15 @@ export function SettingsScreen() {
           dominated by the region list. */}
       <section className="settings-section">
         <h3>{t("settings.map.title")}</h3>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={optimizeMarkers}
+            onChange={(e) => setOptimizeMarkers(e.target.checked)}
+          />
+          <span>{t("settings.map.optimize")}</span>
+        </label>
+        <p className="muted small">{t("settings.map.optimizeDesc")}</p>
         <details className="settings-details">
           <summary>{t("settings.map.advanced")}</summary>
           <label className="picker-label setting-picker" htmlFor="max-markers">

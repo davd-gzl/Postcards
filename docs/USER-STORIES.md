@@ -73,12 +73,13 @@ must not lag on a phone.
   only cities above a population threshold (e.g. >10k, >100k, >1M). Applies to the
   map list and Places; combinable with the status/date/folder filters. Keep this a
   first-class, reusable filter dimension.
-- 🔲 **B3 — Lower the marker cap.** The max cities displayed (Settings → markers) is
-  too high — even 100 lags on mobile. Reduce the maximum/default; pick caps that
-  stay smooth on a mid-range phone.
-- 🔲 **B4 — "Show all visited" vs "optimize".** A toggle: show every visited city, OR
-  hide-for-performance = show only the **biggest visited city per area/region**
-  (one representative per area) so a dense map stays fast and readable.
+- ✅ **B3 — Lower the marker cap.** Default is now **25 on mobile / 100 on desktop**
+  (was 250), and the Settings picker offers 25/50/100/200/400. Marked places are
+  kept first, so the cap only ever thins browse markers, never your own. _(60a8367)_
+- ✅ **B4 — "Show all visited" vs "optimize".** Settings → Map → **"Show one city per
+  area"**: OFF shows every visited city; ON collapses each area (country +
+  subdivision) to its most-populous visited city — favourites and custom points
+  always survive. A dense map stays fast and readable; the data is untouched.
 - 🔲 **B5 — Airport visit counts.** If the data exists, show the **number of visits
   per airport**, and sort airports by most-visited (biggest first).
 

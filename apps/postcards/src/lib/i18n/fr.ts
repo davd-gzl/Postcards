@@ -76,6 +76,9 @@ export const fr: Messages = {
   "settings.scope.desc":
     "Utilisé partout où un pays est compté : totaux, passeport, progression par continent.",
   "settings.map.advanced": "Plus d'options de carte et cartes hors ligne",
+  "settings.map.optimize": "Afficher une ville par région",
+  "settings.map.optimizeDesc":
+    "Garde la carte rapide : n'affiche que la plus grande ville visitée de chaque région. Vos favoris et vos lieux restent toujours affichés. Désactivez pour voir toutes les villes.",
   "settings.map.title": "Carte",
   "settings.online.title": "Fonctions en ligne",
   "settings.online.desc": "Tout ce qui utilise internet, au même endroit. N'activez que ce que vous voulez.",
