@@ -54,6 +54,25 @@ test("the one Filter panel drives the map; the old inline controls are gone", as
   await expect(panel).toBeHidden();
 });
 
+test("the panel's Show section switches the map's place kind", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByText("Cities in view")).toBeVisible();
+
+  // Monuments/airports are reachable ONLY through the panel now (the top mode
+  // selector is gone). Switching Show → Monuments repaints the list.
+  await page.locator(".map-ctl-right").getByRole("button", { name: /Filter/ }).click();
+  const panel = page.getByRole("dialog", { name: "Filters" });
+  await panel.getByRole("button", { name: /Monuments/ }).click();
+  await panel.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByText("Monuments in view")).toBeVisible();
+
+  // And back to Cities.
+  await page.locator(".map-ctl-right").getByRole("button", { name: /Filter/ }).click();
+  await panel.getByRole("button", { name: "Cities", exact: true }).click();
+  await panel.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByText("Cities in view")).toBeVisible();
+});
+
 test("chips remove one dimension; Clear all resets everything", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Search a city or country").fill("Paris");
