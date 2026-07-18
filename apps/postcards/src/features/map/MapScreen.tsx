@@ -91,6 +91,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const visits = useVisits((s) => s.visits);
   const showToast = useToast((s) => s.show);
   const mapFocus = useUi((s) => s.mapFocus);
+  const selectedPlace = useUi((s) => s.selectedPlace);
   const reducedMotion = usePrefersReducedMotion();
   // The privacy escape hatch: when off, the app uses the no-network offline map
   // only (zero outbound requests), overriding whatever detailed basemap is saved.
@@ -112,6 +113,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const [focus, setFocus] = useState<MapFocus | null>(null);
   const [fit, setFit] = useState<MapFit | null>(null);
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
+  // When a place is picked elsewhere (search/chip/list), the id whose list row
+  // should scroll into view once it appears in the in-view list.
+  const scrollToIdRef = useRef<string | null>(null);
   const [basemap, setBasemap] = useState<Basemap>(loadBasemap);
   const [hasDetail, setHasDetail] = useState(false);
   const online = useOnlineStatus();
@@ -499,6 +503,14 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   useEffect(() => {
     if (mapFocus) setFocus({ lon: mapFocus.lon, lat: mapFocus.lat, key: mapFocus.nonce });
   }, [mapFocus?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A place picked anywhere (search/chip/list) selects its row in the in-view
+  // list AND flags it to scroll into view once the list catches up to the fly.
+  useEffect(() => {
+    if (!selectedPlace) return;
+    setSelectedCityId(selectedPlace.id);
+    scrollToIdRef.current = selectedPlace.id;
+  }, [selectedPlace?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function focusCity(c: { lon: number; lat: number }) {
     setFocus((f) => ({ lon: c.lon, lat: c.lat, key: (f?.key ?? 0) + 1 }));
@@ -985,7 +997,20 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
               const selected = selectedCityId === c.id;
               const place = { kind: "city" as const, id: c.id, name: c.name, countryId: c.countryIso2 };
               return (
-                <li key={c.id} className={"city-row compact" + (selected ? " selected" : "")}>
+                <li
+                  key={c.id}
+                  ref={
+                    selected && scrollToIdRef.current === c.id
+                      ? (el) => {
+                          if (el) {
+                            el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+                            scrollToIdRef.current = null;
+                          }
+                        }
+                      : undefined
+                  }
+                  className={"city-row compact" + (selected ? " selected" : "")}
+                >
                   <button
                     className="city-focus"
                     type="button"
