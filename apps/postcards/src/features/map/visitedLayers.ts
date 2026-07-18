@@ -7,6 +7,12 @@ function isVisited(v: Visit): boolean {
   return v.status !== "wishlist";
 }
 
+// Collision priority (lower symbol-sort-key wins when the map de-clutters
+// overlapping flags). Cities rank by -population so the biggest is kept; this
+// bias drops favourites and your own custom pins BELOW every browse city so they
+// are never the one thinned out — your marks always stay on the map.
+const PINNED = 1_000_000_000;
+
 /**
  * Point features for visited cities. Each carries what the flag marker needs
  * (country code, favourite flag, collision sort key) plus the details shown in
@@ -31,7 +37,7 @@ export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureC
           region: "",
           custom: 1,
           fav: v.favorite ? 1 : 0,
-          sortKey: 0,
+          sortKey: -PINNED, // your own place — always kept
         },
       });
       continue;
@@ -51,7 +57,9 @@ export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureC
         region,
         custom: 0,
         fav: v.favorite ? 1 : 0,
-        sortKey: -(city.population ?? 0),
+        // Favourites are pinned below every non-favourite; within each group the
+        // most-populous city is kept when flags collide.
+        sortKey: (v.favorite ? -PINNED : 0) - (city.population ?? 0),
       },
     });
   }

@@ -101,6 +101,41 @@ describe("optimize visited points (one city per area)", () => {
   });
 });
 
+describe("declutter priority (symbol-sort-key)", () => {
+  const parisCity = ref.searchCities("Paris")[0]!;
+  const cityV = (favorite: boolean): Visit => ({
+    visitId: crypto.randomUUID(),
+    place: { kind: "city", id: parisCity.id, name: parisCity.name, countryId: parisCity.countryIso2 },
+    date: null,
+    note: null,
+    status: "visited",
+    favorite,
+    addedAt: new Date().toISOString(),
+  });
+  const customV: Visit = {
+    visitId: crypto.randomUUID(),
+    place: { kind: "custom", id: "c1", name: "My spot", countryId: "FR", lat: 48.8, lon: 2.3 },
+    date: null,
+    note: null,
+    status: "visited",
+    favorite: false,
+    addedAt: new Date().toISOString(),
+  };
+
+  it("pins favourites and custom pins below every browse city (never thinned)", () => {
+    const fc = visitedCityPoints([cityV(false), cityV(true), customV], ref);
+    const nonFav = fc.features.find((f) => f.properties!.fav === 0 && f.properties!.custom === 0)!
+      .properties!;
+    const fav = fc.features.find((f) => f.properties!.fav === 1)!.properties!;
+    const cust = fc.features.find((f) => f.properties!.custom === 1)!.properties!;
+    // Lower symbol-sort-key wins the collision, so pinned marks must sort below.
+    expect(fav.sortKey).toBeLessThan(nonFav.sortKey);
+    expect(cust.sortKey).toBeLessThan(nonFav.sortKey);
+    // A plain visited city is unchanged: -population.
+    expect(nonFav.sortKey).toBe(-(parisCity.population ?? 0));
+  });
+});
+
 describe("trip arcs", () => {
   const airport = (iata: string): PlaceRef => {
     const a = ref.airportById(iata)!;
