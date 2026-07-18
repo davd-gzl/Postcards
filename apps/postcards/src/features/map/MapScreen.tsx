@@ -13,15 +13,19 @@ import { StateToggles } from "../visits/StateToggles";
 import { AddPlaceForm } from "../visits/AddPlaceForm";
 import { GuideButton } from "../guides/GuideButton";
 import { StatStrip } from "../stats/StatStrip";
-import { MapView, hasSavedCamera, type Basemap, type MapFocus, type MapFit, type MapMode } from "./MapView";
+import { MapView, hasSavedCamera, type Basemap, type MapFocus, type MapFit } from "./MapView";
 import { tripArcs } from "./visitedLayers";
-import { dateBuckets, mapDateMatches, yearRange, rangeExactYear, type MapDate } from "../travel/period";
-import { citiesInView, type Bounds, type CityFilter } from "./viewport";
+import { dateBuckets, mapDateMatches, rangeExactYear, type MapDate } from "../travel/period";
+import { citiesInView, type Bounds } from "./viewport";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import type { City } from "../../lib/reference/types";
 import { placeKey } from "../../lib/schema/helpers";
 import { CityLine } from "../../ui/CityLine";
 import { MoreButton } from "../../ui/MoreButton";
+import { useFilters, isDefault, currentFilters } from "../../lib/store/useFilters";
+import { activeChips } from "../filter/applyFilters";
+import { FilterPanel } from "../../ui/FilterPanel";
+import { FilterSummary } from "../../ui/FilterSummary";
 import { useT, type MessageKey } from "../../lib/i18n";
 
 // Fewer rows, faster everything: the list pages in small steps, and the
@@ -34,11 +38,6 @@ const POI_LIST_CAP = 50;
 const collator = new Intl.Collator(); // hoisted: per-pair localeCompare over 135k rows janks pans
 const BASEMAP_KEY = "postcards-basemap";
 const GLOBE_KEY = "postcards-globe";
-const FILTER_KEY = "postcards-city-filter";
-const MINPOP_KEY = "postcards-city-minpop";
-// City population thresholds for the "by number of people" filter: 0 = any, then
-// 10k / 100k / 1M. Narrows both the map's browse dots and the in-view list.
-const POP_CHOICES = [0, 10_000, 100_000, 1_000_000] as const;
 
 // i18n key for each basemap's label (translated at the call site).
 const BASEMAP_LABEL_KEY: Record<Basemap, MessageKey> = {
@@ -131,24 +130,15 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // the ＋ Add place button which seeds the current map centre).
   const [addPlaceAt, setAddPlaceAt] = useState<{ lon: number; lat: number } | null>(null);
   const [addPlaceOpen, setAddPlaceOpen] = useState(false);
-  const [cityFilter, setCityFilter] = useState<CityFilter>(() =>
-    loadPref(FILTER_KEY, (v) =>
-      v === "unvisited" || v === "visited" || v === "wishlist" ? v : "all",
-    ),
-  );
-  // "Filter by number of people": the minimum city population to show (0 = any).
-  const [minPop, setMinPop] = useState<number>(() =>
-    loadPref(MINPOP_KEY, (v) => {
-      const n = Number(v);
-      return (POP_CHOICES as readonly number[]).includes(n) ? n : 0;
-    }),
-  );
-  // The map's own date + folder filter (session state, map-local — no longer tied
-  // to the Trips tab's period, so it can be as precise as a single day). A year
-  // chip is a whole-year range; the date pickers set any window; the folder box
-  // narrows to one folder/trip name.
-  const [dateFilter, setDateFilter] = useState<MapDate>({ mode: "all" });
-  const [folder, setFolder] = useState("");
+  // The one shared filter state (spec 016) replaces the map's old per-control local
+  // state: status, population, date window and folder now live in `useFilters` — the
+  // same store the Places lists read — and the single Filter panel is where they
+  // change. These aliases keep the rest of the map reading the familiar names.
+  const filters = useFilters();
+  const cityFilter = filters.status;
+  const minPop = filters.minPop;
+  const dateFilter: MapDate = filters.date;
+  const folder = filters.folder;
   const trips = useTrips((s) => s.trips);
   const [showTrips, setShowTrips] = useState(true);
   const [globe, setGlobe] = useState(() => loadPref(GLOBE_KEY, (v) => v === "1"));
@@ -255,11 +245,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
       : 50;
   const [layersOpen, setLayersOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [mode, setMode] = useState<MapMode>(() =>
-    loadPref("postcards-map-mode", (v) =>
-      v === "cities" || v === "monuments" || v === "airports" ? v : "all",
-    ),
-  );
+  const mode = filters.mode;
   const [dark, setDark] = useState(() => resolveDark(theme));
 
   // Offer the offline street basemap only when a PMTiles pack is actually
@@ -338,26 +324,8 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
       ]),
     [visits, trips],
   );
-  const activeYear =
-    dateFilter.mode === "all" ? "all" : dateFilter.mode === "undated" ? "none" : rangeExactYear(dateFilter);
-  function pickYear(y: string) {
-    setDateFilter(y === "all" ? { mode: "all" } : y === "none" ? { mode: "undated" } : { mode: "range", ...yearRange(y) });
-  }
-  // Set the precise window from the date pickers; clearing both falls back to All.
-  function setRange(from: string, to: string) {
-    setDateFilter(from || to ? { mode: "range", from, to } : { mode: "all" });
-  }
-  const rangeFrom = dateFilter.mode === "range" ? dateFilter.from : "";
-  const rangeTo = dateFilter.mode === "range" ? dateFilter.to : "";
-  // Whether any narrowing is active (drives the dot on the Filter button and the
-  // Clear action inside the popover).
-  const filterActive = dateFilter.mode !== "all" || !!folder;
-  function clearFilter() {
-    setDateFilter({ mode: "all" });
-    setFolder("");
-  }
   // Folders in use, gathered from your visits AND your trip names (both are
-  // "folders" on the map), for the folder picker.
+  // "folders" on the map), for the folder picker inside the one Filter panel.
   const folderOptions = useMemo(() => {
     const set = new Set<string>();
     for (const v of visits) if (v.folder) set.add(v.folder);
@@ -367,14 +335,16 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     }
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [visits, trips]);
-  // The Filter control only appears when there's something to filter by.
-  const hasFilterControls = yearBuckets.years.length > 0 || folderOptions.length > 0;
+  // Any non-default dimension → the Filter button wears a dot and the summary shows.
+  const filterActive = !isDefault(filters);
+  const activeCount = filterActive ? activeChips(currentFilters(filters), t).length : 0;
   // A short human label for the active window (for the trip-arc period tag etc.).
+  const exactYear = dateFilter.mode === "range" ? rangeExactYear(dateFilter) : null;
   const periodTag =
     dateFilter.mode === "undated"
       ? ""
-      : activeYear && activeYear !== "all"
-        ? activeYear
+      : exactYear
+        ? exactYear
         : dateFilter.mode === "range"
           ? [dateFilter.from, dateFilter.to].filter(Boolean).join(" – ")
           : "";
@@ -393,7 +363,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // instead of yanking it away mid-action.
   const [snapshot, setSnapshot] = useState<City[]>([]);
   const [shown, setShown] = useState(PAGE);
-  const [sortAZ, setSortAZ] = useState(false);
+  const sortAZ = filters.sort === "az";
   useEffect(() => {
     // Three explicit personal buckets in view (date/folder window applied): the
     // cities you've VISITED, the ones on your WANT list, and everything else.
@@ -546,16 +516,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     setFocus((f) => ({ lon: c.lon, lat: c.lat, key: (f?.key ?? 0) + 1 }));
   }
 
-  function changeFilter(f: CityFilter) {
-    setCityFilter(f);
-    savePref(FILTER_KEY, f);
-  }
-
-  function changeMinPop(n: number) {
-    setMinPop(n);
-    savePref(MINPOP_KEY, String(n));
-  }
-
   // Everything of YOURS with coordinates — visited & wishlist cities, plus your
   // own custom points. This is what the first frame frames.
   const myPlaceCoords = useMemo(() => {
@@ -673,28 +633,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             </button>
           </div>
         )}
-        <div className="map-ctl map-ctl-top segmented" role="group" aria-label={t("map.modeAria")}>
-          {(["all", "cities", "monuments", "airports"] as MapMode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              aria-pressed={mode === m}
-              className={mode === m ? "seg-on" : ""}
-              onClick={() => {
-                setMode(m);
-                savePref("postcards-map-mode", m);
-              }}
-            >
-              {m === "all"
-                ? t("map.mode.all")
-                : m === "cities"
-                  ? t("map.mode.cities")
-                  : m === "monuments"
-                    ? `🏛 ${t("map.mode.monuments")}`
-                    : `✈ ${t("map.mode.airports")}`}
-            </button>
-          ))}
-        </div>
         <div className="map-ctl map-ctl-left">
           {/* No "+ Add place" button: add via long-press/right-click on the map
               (the "Add a place here" popup) or the search box. Keeps the controls
@@ -734,104 +672,27 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           </div>
         )}
         <div className="map-ctl map-ctl-right">
-          {hasFilterControls && (
-            <>
-              <button
-                className={
-                  "map-btn" + (filterOpen ? " on" : "") + (filterActive ? " map-btn-dot" : "")
-                }
-                type="button"
-                aria-expanded={filterOpen}
-                aria-haspopup="true"
-                title={t("map.filterTitle")}
-                onClick={() => {
-                  setFilterOpen((v) => !v);
-                  setLayersOpen(false);
-                }}
-              >
-                {t("map.filterButton")}
-              </button>
-              {filterOpen && (
-                <div
-                  className="layers-panel filter-panel"
-                  role="group"
-                  aria-label={t("map.filterPanelAria")}
-                >
-                  {(yearBuckets.years.length > 1 ||
-                    (yearBuckets.years.length === 1 && yearBuckets.undated)) && (
-                    <div
-                      className="segmented wrap year-filter"
-                      role="group"
-                      aria-label={t("map.yearFilterAria")}
-                    >
-                      {[
-                        { val: "all", label: t("map.year.all") },
-                        ...yearBuckets.years.map((y) => ({ val: y, label: y })),
-                        ...(yearBuckets.undated ? [{ val: "none", label: t("map.year.noDate") }] : []),
-                      ].map(({ val, label }) => (
-                        <button
-                          key={val}
-                          type="button"
-                          aria-pressed={activeYear === val}
-                          className={activeYear === val ? "seg-on" : ""}
-                          onClick={() => pickYear(val)}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {yearBuckets.years.length > 0 && (
-                    <div className="map-daterange">
-                      <label className="picker-label" htmlFor="map-from">
-                        <span className="small">{t("map.filter.from")}</span>
-                        <input
-                          id="map-from"
-                          type="date"
-                          className="select"
-                          value={rangeFrom}
-                          onChange={(e) => setRange(e.target.value, rangeTo)}
-                        />
-                      </label>
-                      <label className="picker-label" htmlFor="map-to">
-                        <span className="small">{t("map.filter.to")}</span>
-                        <input
-                          id="map-to"
-                          type="date"
-                          className="select"
-                          value={rangeTo}
-                          onChange={(e) => setRange(rangeFrom, e.target.value)}
-                        />
-                      </label>
-                    </div>
-                  )}
-                  {folderOptions.length > 0 && (
-                    <label className="picker-label" htmlFor="map-folder">
-                      <span className="small">{t("map.filter.folder")}</span>
-                      <select
-                        id="map-folder"
-                        className="select"
-                        value={folder}
-                        onChange={(e) => setFolder(e.target.value)}
-                      >
-                        <option value="">{t("map.filter.allFolders")}</option>
-                        {folderOptions.map((f) => (
-                          <option key={f} value={f}>
-                            {f}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-                  {filterActive && (
-                    <button className="link map-filter-clear" type="button" onClick={clearFilter}>
-                      {t("map.filter.clear")}
-                    </button>
-                  )}
-                </div>
-              )}
-            </>
-          )}
+          {/* The ONE Filter control (spec 016): every slicing dimension — status,
+              people, date, folder, sort, and the place-kind mode — lives inside the
+              panel this opens. No more per-control buttons scattered across the map. */}
+          <button
+            className={"map-btn" + (filterOpen ? " on" : "") + (filterActive ? " map-btn-dot" : "")}
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={filterOpen}
+            aria-label={
+              filterActive
+                ? `${t("filter.open")} · ${t("filter.activeAria", { count: activeCount })}`
+                : t("filter.open")
+            }
+            title={t("filter.open")}
+            onClick={() => {
+              setFilterOpen(true);
+              setLayersOpen(false);
+            }}
+          >
+            {t("filter.open")}
+          </button>
           <button
             className={"map-btn" + (layersOpen ? " on" : "")}
             type="button"
@@ -942,30 +803,13 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           </span>
         </div>
 
+        <FilterSummary />
+
         {poi ? (
           poi.items.length === 0 ? (
             <p className="muted empty">{t("map.list.poiEmpty")}</p>
           ) : (
             <>
-            <div className="segmented list-filter" role="group" aria-label={t("map.filterAria")}>
-              {(["all", "visited", "wishlist", "unvisited"] as CityFilter[]).map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  aria-pressed={cityFilter === f}
-                  className={cityFilter === f ? "seg-on" : ""}
-                  onClick={() => changeFilter(f)}
-                >
-                  {f === "all"
-                    ? t("map.filter.all")
-                    : f === "visited"
-                      ? t("map.filter.visited")
-                      : f === "wishlist"
-                        ? t("map.filter.wishlist")
-                        : t("map.filter.hideVisited")}
-                </button>
-              ))}
-            </div>
             {shownPoi.length === 0 ? (
               <p className="muted empty">
                 {cityFilter === "visited"
@@ -1002,65 +846,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           )
         ) : (
         <>
-        <div className="segmented list-filter" role="group" aria-label={t("map.filterCitiesAria")}>
-          {(["all", "visited", "wishlist", "unvisited"] as CityFilter[]).map((f) => (
-            <button
-              key={f}
-              type="button"
-              aria-pressed={cityFilter === f}
-              className={cityFilter === f ? "seg-on" : ""}
-              onClick={() => changeFilter(f)}
-            >
-              {f === "all"
-                ? t("map.filter.all")
-                : f === "visited"
-                  ? t("map.filter.visited")
-                  : f === "wishlist"
-                    ? t("map.filter.wishlist")
-                    : t("map.filter.hideVisited")}
-            </button>
-          ))}
-          <button
-            type="button"
-            aria-pressed={sortAZ}
-            className={sortAZ ? "seg-on" : ""}
-            title={sortAZ ? t("map.sortAZTitleOn") : t("map.sortAZTitleOff")}
-            onClick={() => setSortAZ((v) => !v)}
-          >
-            {t("map.sortAZ")}
-          </button>
-        </div>
-
-        <div className="pop-filter-row">
-          <span className="pop-filter-label" aria-hidden>
-            👥 {t("map.pop.heading")}
-          </span>
-          <div className="segmented" role="group" aria-label={t("map.filterPopAria")}>
-            {POP_CHOICES.map((n) => (
-              <button
-                key={n}
-                type="button"
-                aria-pressed={minPop === n}
-                className={minPop === n ? "seg-on" : ""}
-                title={
-                  n === 0
-                    ? t("map.pop.anyTitle")
-                    : t("map.pop.minTitle", { count: formatInt(n) })
-                }
-                onClick={() => changeMinPop(n)}
-              >
-                {n === 0
-                  ? t("map.pop.any")
-                  : n === 10_000
-                    ? t("map.pop.10k")
-                    : n === 100_000
-                      ? t("map.pop.100k")
-                      : t("map.pop.1m")}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {inView.length === 0 ? (
           <p className="muted empty">
             <span className="empty-emoji" aria-hidden>
@@ -1153,6 +938,14 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
         )}
       </section>
       )}
+
+      <FilterPanel
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        folders={folderOptions}
+        years={{ list: yearBuckets.years, undated: yearBuckets.undated }}
+        showMode
+      />
     </div>
   );
 }

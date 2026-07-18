@@ -55,6 +55,7 @@ export const DEFAULT_FILTERS: FilterState = {
 const STATUS_KEY = "postcards-city-filter";
 const MINPOP_KEY = "postcards-city-minpop";
 const SORT_KEY = "postcards-list-sort";
+const MODE_KEY = "postcards-map-mode";
 
 function readLocal(key: string): string | null {
   try {
@@ -82,11 +83,16 @@ function loadMinPop(): number {
 function loadSort(): SortOrder {
   return readLocal(SORT_KEY) === "az" ? "az" : "pop";
 }
+function loadMode(): FilterMode {
+  const v = readLocal(MODE_KEY);
+  return v === "cities" || v === "monuments" || v === "airports" ? v : "all";
+}
 
 function persist(state: FilterState): void {
   writeLocal(STATUS_KEY, state.status);
   writeLocal(MINPOP_KEY, String(state.minPop));
   writeLocal(SORT_KEY, state.sort);
+  writeLocal(MODE_KEY, state.mode);
 }
 
 /** True iff every dimension is at its default (⇒ no active filters, empty summary). */
@@ -121,6 +127,7 @@ export const useFilters = create<FilterStore>((set, get) => ({
   status: loadStatus(),
   minPop: loadMinPop(),
   sort: loadSort(),
+  mode: loadMode(),
   set: (partial) => {
     set(partial);
     persist(get());
