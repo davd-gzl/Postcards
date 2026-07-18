@@ -140,7 +140,6 @@ body {
 .section-head h2,
 .ss-num,
 .tt-main strong,
-.stats-hero .hero-num,
 .kpi-num {
   font-family: var(--display);
   font-optical-sizing: auto;
@@ -1231,95 +1230,64 @@ h1.brand {
 
 /* Coverage hero: ring (tier 1) beside the caption + continent constellation.
    Stacks on phones, sits side-by-side from the continent-grid breakpoint up. */
-.stats-hero {
+/* Two headline coverage bars (Stats): countries + big-city coverage, read at a
+   glance before opening any country. Each is a button that opens its Places view. */
+.stats-bars {
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 560px) {
+  .stats-bars {
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+}
+.stat-bar {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 14px;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  text-align: left;
+  color: var(--text);
+}
+.stat-bar-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.stat-bar-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+.stat-bar-fig {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.stat-bar-fig strong {
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.stat-bar .bar {
+  height: 10px;
+  border-radius: 999px;
+}
+.stat-bar:hover .bar span {
+  filter: brightness(1.08);
+}
+/* Continent constellation, sitting under the headline bars. */
+.stats-continents {
+  margin-top: 14px;
   text-align: center;
 }
 @media (min-width: 560px) {
-  .stats-hero {
-    flex-direction: row;
-    align-items: center;
-    gap: 20px;
+  .stats-continents {
     text-align: left;
   }
-}
-.hero-ring {
-  position: relative;
-  flex: none;
-  width: 120px;
-  height: 120px;
-  background: none;
-  border: none;
-  padding: 0;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-}
-.hero-ring-svg {
-  width: 120px;
-  height: 120px;
-  display: block;
-}
-.hero-ring-track {
-  fill: none;
-  stroke: var(--bg-sub);
-  stroke-width: 10;
-}
-.hero-ring-value {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 10;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.5s ease;
-}
-.hero-ring:hover .hero-ring-value {
-  stroke: var(--accent);
-  filter: brightness(1.08);
-}
-.hero-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-.hero-num {
-  font-size: clamp(2rem, 10vw, 3rem);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-}
-.hero-den {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  margin-top: 2px;
-}
-.hero-pct {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--accent);
-  margin-top: 3px;
-}
-.hero-ring:hover .hero-num {
-  color: var(--accent);
-}
-.hero-body {
-  flex: 1;
-  min-width: 0;
-}
-.hero-caption {
-  margin: 0 0 10px;
-  color: var(--muted);
-  font-size: 13.5px;
-  line-height: 1.35;
 }
 .continent-dots {
   display: flex;
@@ -3564,9 +3532,6 @@ button.brand:focus-visible {
 @media (max-width: 899.98px) {
   .stats-section {
     padding: 11px;
-  }
-  .hero-num {
-    font-size: clamp(1.9rem, 9vw, 2.6rem);
   }
   .kpi-num {
     font-size: clamp(1.3rem, 5.5vw, 1.5rem);

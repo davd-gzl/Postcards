@@ -21,11 +21,6 @@ import { CONTINENT_COLORS, CONTINENT_ORDER } from "../../lib/reference/continent
 import { ScopeToggle } from "../../ui/ScopeToggle";
 import { useT } from "../../lib/i18n";
 
-// Coverage-ring geometry: two concentric circles in a 120×120 viewBox. The
-// value arc's length is driven by stroke-dashoffset against this circumference.
-const RING_R = 52;
-const RING_C = 2 * Math.PI * RING_R;
-
 /** A row of tappable chips, capped so a huge country doesn't flood the card. */
 function ChipRow({
   label,
@@ -232,12 +227,10 @@ function CountryRow({
 
         {detail && (
           <>
-            <ChipRow
-              label={t("stats.country.chipCities")}
-              names={detail.cities.map((x) => x.name)}
-              done
-              onPick={openByName(detail.cities)}
-            />
+            {/* No per-city chip list here: a country can have hundreds of cities and
+                the wall of chips added noise without insight (the cities % bar above
+                already summarizes it; the city names live in Places and on the map).
+                Regions and monuments stay — they're few and "what's left" is useful. */}
             <ChipRow
               label={t("stats.country.chipRegionsVisited")}
               names={detail.regionsVisited}
@@ -325,6 +318,11 @@ export function StatsView() {
   const worldPctText = formatPercent(coverage.worldPct);
   const worldPctLabel =
     coverage.worldPct > 0 && worldPctText === formatPercent(0) ? "<1%" : worldPctText;
+  // Big-city coverage is a sliver of a huge denominator, so a real visit almost
+  // always rounds to 0% — floor it to "<1%" so progress never reads as nothing.
+  const cityPctText = formatPercent(coverage.cityPct);
+  const cityPctLabel =
+    coverage.cityPct > 0 && cityPctText === formatPercent(0) ? "<1%" : cityPctText;
 
   // Continent constellation: a dot per continent, lit when it's been touched.
   // Antarctica only earns a dot once visited (nobody's "missing" Antarctica).
@@ -347,75 +345,85 @@ export function StatsView() {
           counts demoted to a colored pill strip. Both open Places. */}
       <section className="stats-section" aria-labelledby="stats-coverage-h">
         <h3 id="stats-coverage-h">{t("stats.coverage.title")}</h3>
-        <div className="stats-hero">
+        {/* Two headline progress bars — read your coverage at a glance, before
+            opening any country. Countries, and "big cities" (every gazetteer city,
+            15k+ people) — the coverage metric that keeps growing for years. */}
+        <div className="stats-bars">
           <button
             type="button"
-            className="hero-ring"
+            className="stat-bar"
             title={t("stats.hero.title")}
-            aria-label={t("stats.hero.aria", {
+            aria-label={t("stats.bars.countriesAria", {
               visited: formatInt(coverage.countriesVisited),
               total: formatInt(coverage.worldCountryCount),
               pct: worldPctLabel,
             })}
             onClick={() => useUi.getState().openPlaces("countries")}
           >
-            <svg
-              className="hero-ring-svg"
-              viewBox="0 0 120 120"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <circle className="hero-ring-track" cx="60" cy="60" r={RING_R} />
-              <circle
-                className="hero-ring-value"
-                cx="60"
-                cy="60"
-                r={RING_R}
-                transform="rotate(-90 60 60)"
-                strokeDasharray={RING_C}
-                strokeDashoffset={RING_C * (1 - coverage.worldPct)}
-              />
-            </svg>
-            <span className="hero-center">
-              <span className="hero-num">{formatInt(coverage.countriesVisited)}</span>
-              <span className="hero-den">/ {formatInt(coverage.worldCountryCount)}</span>
-              <span className="hero-pct">{worldPctLabel}</span>
+            <span className="stat-bar-top">
+              <span className="stat-bar-name">{t("stats.bars.countries")}</span>
+              <span className="stat-bar-fig">
+                <strong>{formatInt(coverage.countriesVisited)}</strong>
+                <span className="muted">
+                  {" "}
+                  / {formatInt(coverage.worldCountryCount)} · {worldPctLabel}
+                </span>
+              </span>
             </span>
+            <Bar value={coverage.worldPct} label={t("stats.bars.countries")} />
           </button>
 
-          <div className="hero-body">
-            <p className="hero-caption">
-              {t("stats.hero.ofCount", {
-                count: formatInt(coverage.worldCountryCount),
-                label: scope === "un" ? t("stats.scope.un") : t("stats.scope.all"),
-              })}
-            </p>
-            <div className="continent-dots" aria-hidden="true">
-              {shownContinents.map((name) => {
-                const on = (covByContinent.get(name)?.visited ?? 0) > 0;
-                return (
-                  <span
-                    key={name}
-                    className={"cdot " + (on ? "on" : "off")}
-                    style={
-                      on
-                        ? { background: CONTINENT_COLORS[name], borderColor: CONTINENT_COLORS[name] }
-                        : undefined
-                    }
-                    title={name}
-                  >
-                    {on ? "✓" : ""}
-                  </span>
-                );
-              })}
-            </div>
-            <p className="continents-touched">
-              {t("stats.continents.count", {
-                visited: formatInt(continentsVisited),
-                total: formatInt(totalContinents),
-              })}
-            </p>
+          <button
+            type="button"
+            className="stat-bar"
+            title={t("stats.bars.bigCitiesTitle")}
+            aria-label={t("stats.bars.bigCitiesAria", {
+              visited: formatInt(coverage.citiesVisited),
+              total: formatInt(coverage.worldCityCount),
+              pct: cityPctLabel,
+            })}
+            onClick={() => useUi.getState().openPlaces("visited")}
+          >
+            <span className="stat-bar-top">
+              <span className="stat-bar-name">{t("stats.bars.bigCities")}</span>
+              <span className="stat-bar-fig">
+                <strong>{formatInt(coverage.citiesVisited)}</strong>
+                <span className="muted">
+                  {" "}
+                  / {formatInt(coverage.worldCityCount)} · {cityPctLabel}
+                </span>
+              </span>
+            </span>
+            <Bar value={coverage.cityPct} label={t("stats.bars.bigCities")} color="var(--accent)" />
+          </button>
+        </div>
+
+        <div className="stats-continents">
+          <div className="continent-dots" aria-hidden="true">
+            {shownContinents.map((name) => {
+              const on = (covByContinent.get(name)?.visited ?? 0) > 0;
+              return (
+                <span
+                  key={name}
+                  className={"cdot " + (on ? "on" : "off")}
+                  style={
+                    on
+                      ? { background: CONTINENT_COLORS[name], borderColor: CONTINENT_COLORS[name] }
+                      : undefined
+                  }
+                  title={name}
+                >
+                  {on ? "✓" : ""}
+                </span>
+              );
+            })}
           </div>
+          <p className="continents-touched">
+            {t("stats.continents.count", {
+              visited: formatInt(continentsVisited),
+              total: formatInt(totalContinents),
+            })}
+          </p>
         </div>
 
         <div className="kpi-row" aria-label={t("stats.totalsAria")}>

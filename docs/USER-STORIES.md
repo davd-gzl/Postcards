@@ -91,13 +91,13 @@ must not lag on a phone.
 
 The stats screen must show more at a glance and stop being noisy.
 
-- 🔲 **C1 — At-a-glance progress bars.** Put (two) progress bars directly on Stats,
-  visible **before** drilling in — e.g. % of countries and % of **big cities
-  (population > 10,000)** visited. The big-city coverage is a headline metric.
-- 🔲 **C2 — Compact, no per-city chips.** Kill the "one chip per city" layout — it
-  adds noise without insight. Compact the stats much more; go **deeper** on genuinely
-  useful, dense summaries (coverage, distributions, records) rather than lists of
-  chips.
+- ✅ **C1 — At-a-glance progress bars.** Stats now opens with **two headline bars** —
+  Countries and **Big cities** (every gazetteer city, 15k+ people) — read before
+  drilling into any country. Replaced the single countries ring.
+- ✅ **C2 — Compact, no per-city chips.** The **one-chip-per-city** wall inside each
+  country card is **gone** (a country's cities % is already the bar; names live in
+  Places + on the map). Regions and monuments chips stay — they're few and "what's
+  left" is actionable. _Deeper still (distributions/records) remains open._
 
 ---
 
