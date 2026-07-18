@@ -46,6 +46,16 @@ describe("coverage statistics (real gazetteer)", () => {
     expect(cov.worldPct).toBeCloseTo(2 / cov.worldCountryCount, 6);
   });
 
+  it("reports big-city coverage against the whole gazetteer (headline bar)", () => {
+    const cov = computeCoverage(visits, ref);
+    // The gazetteer is a large worldwide set (15k+ people), so the denominator is
+    // in the tens of thousands and three cities is a sliver of it.
+    expect(cov.worldCityCount).toBeGreaterThan(10_000);
+    expect(cov.cityPct).toBeCloseTo(cov.citiesVisited / cov.worldCityCount, 9);
+    expect(cov.cityPct).toBeGreaterThan(0);
+    expect(cov.cityPct).toBeLessThan(0.01);
+  });
+
   it("computes BOTH per-country metrics against real denominators", () => {
     const country = ref.countryByIso2("FR")!;
     expect(country.cityCount).toBeGreaterThan(500); // full FR gazetteer loaded

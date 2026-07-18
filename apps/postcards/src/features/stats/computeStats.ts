@@ -13,6 +13,10 @@ export interface Coverage {
   worldCountryCount: number;
   worldPct: number; // 0..1
   citiesVisited: number;
+  /** Every city in the gazetteer (GeoNames, 15k+ people) counted under the scope —
+   *  the denominator for the headline "big cities visited" bar. */
+  worldCityCount: number;
+  cityPct: number; // 0..1 — citiesVisited / worldCityCount
   airportsVisited: number;
   monumentsVisited: number;
 }
@@ -75,11 +79,20 @@ export function computeCoverage(
       .map((v) => v.place.id),
   );
   const worldCountryCount = ref.worldCountryCount(scope);
+  // World gazetteer-city total = the sum of every in-scope country's cityCount
+  // (metadata, so it's the FULL count regardless of which cities are lazily
+  // loaded). This is the denominator for the "big cities" headline coverage bar.
+  let worldCityCount = 0;
+  for (const c of ref.countries) {
+    if (inScope(c.sovereignty, scope)) worldCityCount += c.cityCount;
+  }
   return {
     countriesVisited,
     worldCountryCount,
     worldPct: pct(countriesVisited, worldCountryCount),
     citiesVisited: cityIds.size,
+    worldCityCount,
+    cityPct: pct(cityIds.size, worldCityCount),
     airportsVisited: airportIds.size,
     monumentsVisited: monumentIds.size,
   };
