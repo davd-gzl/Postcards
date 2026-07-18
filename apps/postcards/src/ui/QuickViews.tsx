@@ -19,35 +19,39 @@ export function QuickViews() {
       <button
         type="button"
         className="quick-chip"
+        aria-label={t("quick.showFavorites")}
         title={t("quick.favorites")}
         onClick={() => openPlaces("favorites")}
       >
-        <span aria-hidden>⭐</span> {t("quick.favorites")}
+        <span aria-hidden>⭐ {t("quick.favorites")}</span>
       </button>
       <button
         type="button"
         className="quick-chip"
+        aria-label={t("quick.showWishlist")}
         title={t("quick.wishlist")}
         onClick={() => openPlaces("wishlist")}
       >
-        <span aria-hidden>♡</span> {t("quick.wishlist")}
+        <span aria-hidden>♡ {t("quick.wishlist")}</span>
       </button>
       <button
         type="button"
         className="quick-chip"
+        aria-label={t("quick.showMonuments")}
         title={t("quick.monuments")}
         onClick={() => openPlaces("monuments")}
       >
-        <span aria-hidden>🏛</span> {t("quick.monuments")}
+        <span aria-hidden>🏛 {t("quick.monuments")}</span>
       </button>
       {hasTrips && (
         <button
           type="button"
           className="quick-chip"
+          aria-label={t("quick.showTrips")}
           title={t("quick.trips")}
           onClick={() => setTab("trips")}
         >
-          <span aria-hidden>🧭</span> {t("quick.trips")}
+          <span aria-hidden>🧭 {t("quick.trips")}</span>
         </button>
       )}
     </div>
