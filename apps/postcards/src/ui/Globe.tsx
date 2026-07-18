@@ -108,9 +108,10 @@ export function Globe({ size = 220 }: { size?: number }) {
       ctx.fillStyle = ocean;
       ctx.fillRect(0, 0, size, size);
 
-      // Land. Back-hemisphere vertices are clamped onto the rim so a continent
-      // straddling the horizon stays continuous instead of tearing.
-      ctx.fillStyle = "rgba(226,238,206,0.96)";
+      // Land. A soft earthy green (not the old near-white cream, which washed the
+      // globe out to a pale disc on land-heavy faces). Back-hemisphere vertices are
+      // clamped onto the rim so a continent straddling the horizon stays continuous.
+      ctx.fillStyle = "rgba(150,192,118,0.95)";
       for (const ring of land) {
         let front = false;
         ctx.beginPath();
@@ -138,7 +139,7 @@ export function Globe({ size = 220 }: { size?: number }) {
 
       // Terminator/rim shadow for depth.
       const shade = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.2, cx, cy, R);
-      shade.addColorStop(0, "rgba(255,255,255,0.10)");
+      shade.addColorStop(0, "rgba(255,255,255,0.06)");
       shade.addColorStop(0.6, "rgba(0,0,20,0)");
       shade.addColorStop(1, "rgba(3,10,32,0.45)");
       ctx.fillStyle = shade;

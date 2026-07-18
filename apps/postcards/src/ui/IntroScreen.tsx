@@ -1,15 +1,44 @@
 import { useEffect, useRef, useState } from "react";
 import { Globe } from "./Globe";
 import { useSettings } from "../lib/store/useSettings";
-import { useUi } from "../lib/store/useUi";
 import { useToast } from "../lib/store/useToast";
 import { downloadFullCities, fullCitiesEnabled } from "../lib/reference/referenceData";
 import { useT } from "../lib/i18n";
 
+/** An on/off toggle switch — the one control the intro rows use, so every option
+ *  reads the same way: flip it to activate, flip it back to deactivate. */
+function Switch({
+  on,
+  onChange,
+  label,
+  disabled,
+}: {
+  on: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label className={"intro-switch" + (disabled ? " is-disabled" : "")}>
+      <input
+        type="checkbox"
+        role="switch"
+        checked={on}
+        disabled={disabled}
+        aria-label={label}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className="intro-switch-track" aria-hidden>
+        <span className="intro-switch-thumb" />
+      </span>
+    </label>
+  );
+}
+
 /**
  * First-run welcome — a full page (not a modal) with a live spinning earth,
- * one line about what Postcards is, and a button per optional download so a
- * newcomer can grab what they want on the spot. Skippable; shown once.
+ * one line about what Postcards is, and a switch per optional feature so a
+ * newcomer can flip on what they want on the spot. Skippable; shown once.
  */
 export function IntroScreen({ onClose }: { onClose: () => void }) {
   const t = useT();
@@ -22,7 +51,6 @@ export function IntroScreen({ onClose }: { onClose: () => void }) {
   const showToast = useToast((s) => s.show);
   const startRef = useRef<HTMLButtonElement>(null);
 
-  const [mapOn, setMapOn] = useState(onlineMap);
   const [cities, setCities] = useState<"idle" | "busy" | "done">(
     fullCitiesEnabled() ? "done" : "idle",
   );
@@ -99,76 +127,37 @@ export function IntroScreen({ onClose }: { onClose: () => void }) {
               <span className="intro-row-title">🛰️ {t("intro.map.title")}</span>
               <span className="intro-row-desc">{t("intro.map.desc")}</span>
             </div>
-            <button
-              className="intro-get"
-              type="button"
-              disabled={mapOn}
-              onClick={() => {
-                setOnlineMap(true);
-                setMapOn(true);
-              }}
-            >
-              {mapOn ? `✓ ${t("intro.on")}` : t("intro.enable")}
-            </button>
+            <Switch on={onlineMap} onChange={setOnlineMap} label={t("intro.map.title")} />
           </li>
         )}
 
-        {/* Offline map for a trip — the actual region download lives in Settings
-            (it needs a map to pick an area), so surface it here and jump there. */}
-        <li className="intro-row">
-          <div className="intro-row-text">
-            <span className="intro-row-title">🗺️ {t("intro.offline.title")}</span>
-            <span className="intro-row-desc">{t("intro.offline.desc")}</span>
-          </div>
-          <button
-            className="intro-get"
-            type="button"
-            title={t("intro.offline.desc")}
-            onClick={() => {
-              useUi.getState().setTab("settings");
-              onClose();
-            }}
-          >
-            {t("intro.offline.action")}
-          </button>
-        </li>
-
-        <li className="intro-row">
-          <div className="intro-row-text">
-            <span className="intro-row-title">🏙️ {t("intro.cities.title")}</span>
-            <span className="intro-row-desc">{t("intro.cities.desc")}</span>
-          </div>
-          <button
-            className="intro-get"
-            type="button"
-            disabled={cities !== "idle"}
-            onClick={() => void getCities()}
-          >
-            {cities === "done"
-              ? `✓ ${t("intro.saved")}`
-              : cities === "busy"
-                ? t("intro.getting")
-                : t("intro.get")}
-          </button>
-        </li>
-
-        {/* Set expectations up front: with lots of places the map can crowd/lag,
-            and there's a one-tap fix. New users learn the option exists (and can
-            opt in now); the full controls live in Settings → Optimisation. */}
+        {/* Fast map — flip on to keep the map smooth once you've marked lots of
+            places; the full controls live in Settings → Optimisation. */}
         <li className="intro-row">
           <div className="intro-row-text">
             <span className="intro-row-title">⚡ {t("intro.optimize.title")}</span>
             <span className="intro-row-desc">{t("intro.optimize.desc")}</span>
           </div>
-          <button
-            className="intro-get"
-            type="button"
-            aria-pressed={optimizeMarkers}
-            title={t("intro.optimize.desc")}
-            onClick={() => setOptimizeMarkers(!optimizeMarkers)}
-          >
-            {optimizeMarkers ? `✓ ${t("intro.on")}` : t("intro.enable")}
-          </button>
+          <Switch
+            on={optimizeMarkers}
+            onChange={setOptimizeMarkers}
+            label={t("intro.optimize.title")}
+          />
+        </li>
+
+        {/* Offline city search — flipping it on downloads the full gazetteer
+            (~17 MB); once saved it stays on. */}
+        <li className="intro-row">
+          <div className="intro-row-text">
+            <span className="intro-row-title">🏙️ {t("intro.cities.title")}</span>
+            <span className="intro-row-desc">{t("intro.cities.desc")}</span>
+          </div>
+          <Switch
+            on={cities !== "idle"}
+            disabled={cities !== "idle"}
+            onChange={() => void getCities()}
+            label={t("intro.cities.title")}
+          />
         </li>
       </ul>
 
