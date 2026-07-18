@@ -6,6 +6,7 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { useGazetteerGeneration } from "../../lib/reference/useGazetteer";
 import {
   computeCoverage,
+  computeCityBands,
   computeContinentCoverage,
   computeRecords,
   countryDetail,
@@ -273,6 +274,7 @@ export function StatsView() {
   const [sortBy, setSortBy] = useState<CountrySort>("cities");
   /* eslint-disable react-hooks/exhaustive-deps */
   const coverage = useMemo(() => computeCoverage(visits, ref, scope), [visits, ref, scope, gazGen]);
+  const bands = useMemo(() => computeCityBands(visits, ref), [visits, ref, gazGen]);
   const records = useMemo(() => computeRecords(visits, ref), [visits, ref, gazGen]);
   // With only one visited city, northernmost = southernmost = biggest = that same
   // city, so the Records list repeats it. Only show the spatial superlatives once
@@ -460,6 +462,45 @@ export function StatsView() {
           )}
         </div>
       </section>
+
+      {bands.total > 0 && (
+        <section className="stats-section" aria-labelledby="stats-bands-h">
+          <h3 id="stats-bands-h">{t("stats.bands.title")}</h3>
+          <div
+            className="size-bar"
+            role="img"
+            aria-label={t("stats.bands.aria", {
+              mega: formatInt(bands.mega),
+              large: formatInt(bands.large),
+              small: formatInt(bands.small),
+            })}
+          >
+            {bands.mega > 0 && (
+              <span className="size-seg seg-mega" style={{ flexGrow: bands.mega }} />
+            )}
+            {bands.large > 0 && (
+              <span className="size-seg seg-large" style={{ flexGrow: bands.large }} />
+            )}
+            {bands.small > 0 && (
+              <span className="size-seg seg-small" style={{ flexGrow: bands.small }} />
+            )}
+          </div>
+          <ul className="size-legend">
+            <li>
+              <span className="size-dot seg-mega" aria-hidden />
+              <strong>{formatInt(bands.mega)}</strong> {t("stats.bands.mega")}
+            </li>
+            <li>
+              <span className="size-dot seg-large" aria-hidden />
+              <strong>{formatInt(bands.large)}</strong> {t("stats.bands.large")}
+            </li>
+            <li>
+              <span className="size-dot seg-small" aria-hidden />
+              <strong>{formatInt(bands.small)}</strong> {t("stats.bands.small")}
+            </li>
+          </ul>
+        </section>
+      )}
 
       {continentCov.length > 0 && (
         <section className="stats-section" aria-labelledby="stats-continents-h">

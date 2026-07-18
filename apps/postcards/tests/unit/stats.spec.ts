@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { getReferenceData } from "../../src/lib/reference/referenceData";
 import {
   computeCoverage,
+  computeCityBands,
   computeCountryCoverage,
   computeContinentCoverage,
   countryDetail,
@@ -54,6 +55,14 @@ describe("coverage statistics (real gazetteer)", () => {
     expect(cov.cityPct).toBeCloseTo(cov.citiesVisited / cov.worldCityCount, 9);
     expect(cov.cityPct).toBeGreaterThan(0);
     expect(cov.cityPct).toBeLessThan(0.01);
+  });
+
+  it("buckets visited cities by size (megacity / large / town)", () => {
+    const bands = computeCityBands(visits, ref);
+    expect(bands.total).toBe(3);
+    expect(bands.mega).toBe(2); // Paris + Tokyo are both 1M+
+    expect(bands.large + bands.small).toBe(1); // Lyon is below 1M
+    expect(bands.mega + bands.large + bands.small).toBe(bands.total);
   });
 
   it("computes BOTH per-country metrics against real denominators", () => {

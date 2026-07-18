@@ -98,6 +98,35 @@ export function computeCoverage(
   };
 }
 
+export interface CityBands {
+  mega: number; // >= 1,000,000
+  large: number; // 100,000 .. 999,999
+  small: number; // < 100,000 (the gazetteer floor is ~15,000)
+  total: number; // distinct visited gazetteer cities counted here
+}
+
+/** Distribution of your visited cities by size — a dense "what kind of traveller
+ *  are you" summary (megacities vs towns) for the Stats screen. Counts distinct
+ *  gazetteer cities only; custom pins and airports have no population and don't
+ *  count here. */
+export function computeCityBands(visits: Visit[], ref: ReferenceData): CityBands {
+  const seen = new Set<string>();
+  let mega = 0;
+  let large = 0;
+  let small = 0;
+  for (const v of onlyVisited(visits)) {
+    if (v.place.kind !== "city" || seen.has(v.place.id)) continue;
+    const c = ref.cityById(v.place.id);
+    if (!c) continue;
+    seen.add(v.place.id);
+    const p = c.population ?? 0;
+    if (p >= 1_000_000) mega++;
+    else if (p >= 100_000) large++;
+    else small++;
+  }
+  return { mega, large, small, total: mega + large + small };
+}
+
 /** Both per-country metrics: % of the country's cities AND % of its regions (FR-007). */
 export function computeCountryCoverage(
   visits: Visit[],
