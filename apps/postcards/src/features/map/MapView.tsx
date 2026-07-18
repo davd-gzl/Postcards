@@ -630,9 +630,11 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
         // Grow with zoom so markers stay obvious on big screens & close views.
         "icon-size": ["interpolate", ["linear"], ["zoom"], 1, 0.9, 5, 1.1, 10, 1.35],
         "icon-padding": 1,
-        // EVERY visited city keeps its flag on screen — where you've been should
-        // always be visible, even when markers crowd each other.
-        "icon-allow-overlap": true,
+        // Collision-managed so a dense cluster of your flags auto-thins instead of
+        // piling into an unreadable stack: overlapping flags drop out at low zoom
+        // and reappear as you zoom in and they separate. symbol-sort-key is
+        // -(population), so the biggest city in a cluster is the one kept.
+        "icon-allow-overlap": false,
         "symbol-sort-key": ["get", "sortKey"],
       },
     },
