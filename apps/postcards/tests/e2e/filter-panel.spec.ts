@@ -80,3 +80,42 @@ test("chips remove one dimension; Clear all resets everything", async ({ page })
   await summary.getByRole("button", { name: "Clear all" }).click();
   await expect(page.locator(".filter-summary")).toHaveCount(0);
 });
+
+test("Places shares the same Filter panel; population gates cities only (D4)", async ({ page }) => {
+  await page.goto("/");
+
+  // A big city (>1M), a small city (<1M) and an airport (a non-city).
+  await page.getByLabel("Search a city or country").fill("Tokyo");
+  await page.getByRole("button", { name: /Mark .*Tokyo.* visited/ }).first().click();
+  await page.getByLabel("Search a city or country").fill("Reykjavik");
+  await page.getByRole("button", { name: /Mark .*Reykjav.* visited/ }).first().click();
+  await page.getByLabel("Search a city or country").fill("JFK");
+  await page.getByRole("button", { name: /Mark .*JFK.* visited/ }).first().click();
+  await page.keyboard.press("Escape");
+
+  // Places → Visited (default view) lists all three.
+  await page.getByRole("button", { name: "Places", exact: true }).click();
+  const list = page.locator(".city-list").first();
+  await expect(list.getByText(/Tokyo/)).toBeVisible();
+  await expect(list.getByText(/Reykjav/)).toBeVisible();
+  await expect(list.getByText(/JFK/)).toBeVisible();
+
+  // The SAME panel opens here — but Places owns status via its tabs, so the panel
+  // has no Status section and no map-only place-kind Mode section.
+  await page.locator(".places-filter-row").getByRole("button", { name: /Filter/ }).click();
+  const panel = page.getByRole("dialog", { name: "Filters" });
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Not visited" })).toHaveCount(0);
+  await expect(panel.getByRole("button", { name: /Monuments/ })).toHaveCount(0);
+
+  // 1M+ people: the big city stays, the small city drops, and the airport (a
+  // non-city) is untouched by the population threshold (spec 016 D4).
+  await panel.getByRole("button", { name: "1M+", exact: true }).click();
+  await panel.getByRole("button", { name: "Done" }).click();
+  await expect(list.getByText(/Tokyo/)).toBeVisible();
+  await expect(list.getByText(/JFK/)).toBeVisible();
+  await expect(list.getByText(/Reykjav/)).toHaveCount(0);
+
+  // The shared summary reflects it.
+  await expect(page.locator(".filter-summary")).toContainText("1M+");
+});

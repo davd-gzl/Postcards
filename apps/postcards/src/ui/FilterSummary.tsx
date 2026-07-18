@@ -1,4 +1,4 @@
-import { useFilters, isDefault, currentFilters } from "../lib/store/useFilters";
+import { useFilters, currentFilters, type FilterState } from "../lib/store/useFilters";
 import { activeChips } from "../features/filter/applyFilters";
 import { useT } from "../lib/i18n";
 
@@ -7,13 +7,16 @@ import { useT } from "../lib/i18n";
  * non-default dimension, plus a Clear all. Reads the shared `useFilters` store
  * so it always mirrors what the panel and the lists are doing; renders nothing
  * when no filter is active. Each chip's ✕ resets exactly its own dimension.
+ *
+ * `exclude` drops chips a given screen doesn't act on (Places owns status via its
+ * tabs and has no map mode, so it excludes those), keeping the summary honest.
  */
-export function FilterSummary() {
+export function FilterSummary({ exclude = [] }: { exclude?: (keyof FilterState)[] }) {
   const t = useT();
   const f = useFilters();
   const state = currentFilters(f);
-  if (isDefault(state)) return null;
-  const chips = activeChips(state, t);
+  const chips = activeChips(state, t).filter((c) => !exclude.includes(c.field));
+  if (chips.length === 0) return null;
   return (
     <div className="filter-summary" role="group" aria-label={t("filter.summaryAria")}>
       {chips.map((chip) => (

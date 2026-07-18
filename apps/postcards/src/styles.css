@@ -1315,6 +1315,21 @@ h1.brand {
   padding: 2px 4px;
   font-size: 12.5px;
 }
+
+/* Places reuses the one panel: a Filter chip + the shared summary on one line. */
+.places-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+.places-filter-row .filter-summary {
+  margin: 0;
+}
+.filter-open-chip {
+  flex: none;
+}
 .city-focus {
   flex: 1;
   min-width: 0;
