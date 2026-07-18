@@ -76,13 +76,17 @@ export const en = {
   "settings.offlineMode.title": "Offline mode",
   "settings.offlineMode.toggle": "Fully offline — no network requests",
   "settings.offlineMode.desc":
-    "Run completely self-contained. Overrides everything below: the map stays on the bundled offline basemap, guide overviews never fetch, and the first-run detailed-map offer is withheld. Your own places and journal never leave this device either way — this also stops the map and guides from reaching out.",
+    "Run completely self-contained. It overrides everything under Online features below — the map stays on the bundled offline basemap and guides never fetch. Your own places and journal never leave this device either way.",
   "settings.detailedMap.offlineNote": "Turn off Offline mode to use the detailed map.",
   "settings.places.title": "Places",
   "settings.scope.title": "What counts as a country",
   "settings.scope.desc":
     "Used everywhere a country is counted: totals, the passport, per-continent progress.",
   "settings.map.advanced": "More map options & offline packs",
+  "settings.map.title": "Map",
+  "settings.online.title": "Online features",
+  "settings.online.desc": "Everything that reaches the internet, in one place. Enable only what you want.",
+  "settings.online.offlineNote": "Disabled while Offline mode is on — turn it off above to use these.",
   "settings.detailedMap.title": "Detailed map",
   "settings.detailedMap.desc":
     "The detailed OpenStreetMap map is on by default; it fetches map tiles from OpenStreetMap when you're online. Turn it off to use the plain offline map only, so the app makes no network requests at all. Either way, no personal data ever leaves your device.",

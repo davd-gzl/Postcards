@@ -70,13 +70,17 @@ export const ko: Messages = {
   "settings.offlineMode.title": "오프라인 모드",
   "settings.offlineMode.toggle": "완전 오프라인 — 네트워크 요청 없음",
   "settings.offlineMode.desc":
-    "완전히 자체 완결형으로 실행합니다. 아래 모든 설정에 우선합니다. 지도는 내장 오프라인 기본 지도로 유지되고, 가이드 개요는 절대 불러오지 않으며, 첫 실행 시 상세 지도 제안도 표시되지 않습니다. 장소와 저널은 어차피 이 기기를 떠나지 않으며 — 이 모드는 지도와 가이드의 외부 연결도 차단합니다.",
+    "완전히 자체 완결형으로 실행합니다. 아래 온라인 기능의 모든 항목에 우선합니다 — 지도는 내장 오프라인 기본 지도로 유지되고 가이드는 절대 불러오지 않습니다. 장소와 저널은 어차피 이 기기를 떠나지 않습니다.",
   "settings.detailedMap.offlineNote": "상세 지도를 사용하려면 오프라인 모드를 끄세요.",
   "settings.places.title": "장소",
   "settings.scope.title": "국가로 세는 기준",
   "settings.scope.desc":
     "국가를 세는 모든 곳에 사용됩니다: 합계, 여권, 대륙별 진행률.",
   "settings.map.advanced": "추가 지도 옵션 및 오프라인 팩",
+  "settings.map.title": "지도",
+  "settings.online.title": "온라인 기능",
+  "settings.online.desc": "인터넷을 사용하는 모든 것을 한곳에. 원하는 것만 켜세요.",
+  "settings.online.offlineNote": "오프라인 모드가 켜져 있으면 비활성화됩니다 — 위에서 끄면 사용할 수 있습니다.",
   "settings.detailedMap.title": "상세 지도",
   "settings.detailedMap.desc":
     "상세 OpenStreetMap 지도는 기본으로 켜져 있으며, 온라인일 때 OpenStreetMap에서 타일을 가져옵니다. 끄면 간단한 오프라인 지도만 사용하여 앱이 어떤 네트워크 요청도 하지 않습니다. 어느 경우든 개인 데이터는 기기를 떠나지 않습니다.",

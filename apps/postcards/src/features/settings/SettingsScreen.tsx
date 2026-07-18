@@ -163,28 +163,12 @@ export function SettingsScreen() {
         <p className="muted small">{t("settings.offlineMode.desc")}</p>
       </section>
 
-      {/* Places — what counts as a country + whether guides load automatically. */}
+      {/* Online features — EVERYTHING that reaches the internet, in one place, so a
+          user always knows exactly what can leave the device. All of it is governed
+          by Offline mode above: flip that on and these are disabled. */}
       <section className="settings-section">
-        <h3>{t("settings.places.title")}</h3>
-        <div className="picker-label">
-          <span>{t("settings.scope.title")}</span>
-          <ScopeToggle />
-        </div>
-        <p className="muted small">{t("settings.scope.desc")}</p>
-        <label className="toggle-row">
-          <input
-            type="checkbox"
-            checked={autoLoadGuides}
-            onChange={(e) => setAutoLoadGuides(e.target.checked)}
-          />
-          <span>{t("settings.guides.toggle")}</span>
-        </label>
-      </section>
-
-      {/* Map — the online basemap toggle up front; markers + offline packs tucked
-          into a disclosure so the page isn't dominated by the region list. */}
-      <section className="settings-section">
-        <h3>{t("settings.detailedMap.title")}</h3>
+        <h3>🌐 {t("settings.online.title")}</h3>
+        <p className="muted small">{t("settings.online.desc")}</p>
         <label className="toggle-row">
           <input
             type="checkbox"
@@ -194,7 +178,33 @@ export function SettingsScreen() {
           />
           <span>{t("settings.detailedMap.toggle")}</span>
         </label>
-        {offlineMode && <p className="muted small">{t("settings.detailedMap.offlineNote")}</p>}
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={autoLoadGuides && !offlineMode}
+            disabled={offlineMode}
+            onChange={(e) => setAutoLoadGuides(e.target.checked)}
+          />
+          <span>{t("settings.guides.toggle")}</span>
+        </label>
+        {offlineMode && <p className="muted small">{t("settings.online.offlineNote")}</p>}
+      </section>
+
+      {/* Places — what counts as a country. */}
+      <section className="settings-section">
+        <h3>{t("settings.places.title")}</h3>
+        <div className="picker-label">
+          <span>{t("settings.scope.title")}</span>
+          <ScopeToggle />
+        </div>
+        <p className="muted small">{t("settings.scope.desc")}</p>
+      </section>
+
+      {/* Map — markers + offline packs (the online basemap toggle lives under
+          Online features above). Tucked into a disclosure so the page isn't
+          dominated by the region list. */}
+      <section className="settings-section">
+        <h3>{t("settings.map.title")}</h3>
         <details className="settings-details">
           <summary>{t("settings.map.advanced")}</summary>
           <label className="picker-label setting-picker" htmlFor="max-markers">

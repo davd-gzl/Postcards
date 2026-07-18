@@ -95,7 +95,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // The privacy escape hatch: when off, the app uses the no-network offline map
   // only (zero outbound requests), overriding whatever detailed basemap is saved.
   const onlineMap = useSettings((s) => s.onlineMap);
-  const setOnlineMap = useSettings((s) => s.setOnlineMap);
   // The master self-contained switch: when on, it overrides onlineMap entirely —
   // no tiles, no consent offer, no reconnect prompt. Zero optional egress.
   const offlineMode = useSettings((s) => s.offlineMode);
@@ -797,30 +796,10 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           >
             ≡ {t("map.layersButton")}
           </button>
-          {!offlineMode && (
-            // Two-way toggle, ALWAYS pressable right next to Layers (not hidden in
-            // the panel): stream OpenStreetMap tiles, or go back to the zero-egress
-            // offline map. The map ships offline (no requests) until you turn this
-            // on. Withheld only under Offline mode (the master override).
-            <button
-              className={"map-btn" + (onlineMap ? " on" : "")}
-              type="button"
-              aria-pressed={onlineMap}
-              title={onlineMap ? t("map.online.disableHint") : t("map.online.enableHint")}
-              onClick={() => {
-                const next = !onlineMap;
-                setOnlineMap(next);
-                if (next) {
-                  setBasemap("osm");
-                  savePref(BASEMAP_KEY, "osm");
-                }
-                // Going offline: effectiveBasemap forces the offline base, so no
-                // tiles are fetched — nothing else to do.
-              }}
-            >
-              🌐 {t("map.online.enable")}
-            </button>
-          )}
+          {/* The map carries NO online/"detailed map" toggle: one global Online/Offline
+              mode (the top-bar chip) governs egress, and Settings holds the single
+              "detailed online map" control. This is the coherence fix — the map surface
+              never re-grows its own connectivity button. */}
           {layersOpen && (
             <div className="layers-panel" role="group" aria-label={t("map.layersAria")}>
               <button
