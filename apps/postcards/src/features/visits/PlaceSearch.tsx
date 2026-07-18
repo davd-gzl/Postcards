@@ -16,7 +16,11 @@ import { useT } from "../../lib/i18n";
  * Marking visited is the explicit "Add" chip on the row, or Shift+Enter.
  * Fully keyboard-operable: arrows move the active option, Escape clears.
  */
-export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; lat: number }) => void }) {
+export function PlaceSearch({
+  onFocusCity,
+}: {
+  onFocusCity?: (c: { lon: number; lat: number; id: string }) => void;
+}) {
   const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
@@ -63,13 +67,13 @@ export function PlaceSearch({ onFocusCity }: { onFocusCity?: (c: { lon: number; 
       useUi.getState().openCountry(place.countryId);
     } else if (place.kind === "city") {
       const c = ref.cityById(place.id);
-      if (c) onFocusCity?.({ lon: c.lon, lat: c.lat });
+      if (c) onFocusCity?.({ lon: c.lon, lat: c.lat, id: place.id });
     } else if (place.kind === "airport") {
       const a = ref.airportById(place.id);
-      if (a) onFocusCity?.({ lon: a.lon, lat: a.lat });
+      if (a) onFocusCity?.({ lon: a.lon, lat: a.lat, id: place.id });
     } else if (place.kind === "heritage") {
       const h = ref.heritageById(place.id);
-      if (h && (h.lat !== 0 || h.lon !== 0)) onFocusCity?.({ lon: h.lon, lat: h.lat });
+      if (h && (h.lat !== 0 || h.lon !== 0)) onFocusCity?.({ lon: h.lon, lat: h.lat, id: place.id });
       else useUi.getState().openCity(place.id);
     }
     setQ("");

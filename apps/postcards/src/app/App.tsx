@@ -223,7 +223,7 @@ export function App() {
                 Picking a city flies the map there (flyTo also switches the tab). */}
             <div className="topbar-search">
               <PlaceSearch
-                onFocusCity={(c) => useUi.getState().flyTo(c.lon, c.lat)}
+                onFocusCity={(c) => useUi.getState().selectPlace(c.lon, c.lat, c.id)}
               />
             </div>
             <span className="topbar-actions">

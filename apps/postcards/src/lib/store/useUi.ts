@@ -36,6 +36,10 @@ interface UiState {
   focusSearch: () => void;
   mapFocus: { lon: number; lat: number; nonce: number } | null;
   flyTo: (lon: number, lat: number) => void;
+  /** A place picked anywhere (search, a list, a chip): fly the map AND select it
+   *  in the in-view list. `id` is the gazetteer/place id the map list keys on. */
+  selectedPlace: { id: string; nonce: number } | null;
+  selectPlace: (lon: number, lat: number, id: string) => void;
   /** GeoNames id (or heritage/custom id) of the open detail page (null = closed). */
   cityPageId: string | null;
   openCity: (id: string) => void;
@@ -91,6 +95,16 @@ export const useUi = create<UiState>((set, get) => {
         cityPageId: null,
         countryPageId: null,
         mapFocus: { lon, lat, nonce: (get().mapFocus?.nonce ?? 0) + 1 },
+      }),
+    selectedPlace: null,
+    selectPlace: (lon, lat, id) =>
+      set({
+        history: pushHistory(),
+        tab: "map",
+        cityPageId: null,
+        countryPageId: null,
+        mapFocus: { lon, lat, nonce: (get().mapFocus?.nonce ?? 0) + 1 },
+        selectedPlace: { id, nonce: (get().selectedPlace?.nonce ?? 0) + 1 },
       }),
     cityPageId: null,
     openCity: (id) => set({ history: pushHistory(), cityPageId: id, countryPageId: null }),
