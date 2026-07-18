@@ -24,10 +24,20 @@ export type ThemeMode = "system" | "light" | "dark";
 
 // How many airport / monument markers to draw at most in the current view, so a
 // dense area doesn't blanket the map. Clamped to a sane range.
-export const MARKER_CAP_CHOICES = [100, 250, 500, 1000] as const;
-// Default lean: fewer markers means every pan and every visit-toggle redraw
-// stays instant on phones; Settings offers more for people who want density.
-const DEFAULT_MAX_MARKERS = 100;
+export const MARKER_CAP_CHOICES = [25, 50, 100, 200, 400] as const;
+// Default lean, and LEANER on phones: fewer markers keeps every pan and every
+// visit-toggle redraw instant (even 100 lagged on mobile). New installs get 25 on
+// a small screen, 100 on a large one; Settings offers more for those who want it.
+function defaultMaxMarkers(): number {
+  try {
+    if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 700px)").matches) {
+      return 25;
+    }
+  } catch {
+    /* no matchMedia: fall through to the desktop default */
+  }
+  return 100;
+}
 
 // localStorage is unavailable in private mode / restricted contexts; reads fall
 // back to null and writes are silently swallowed (settings just don't persist).
@@ -49,7 +59,7 @@ function writeLocal(key: string, value: string): void {
 
 function loadMaxMarkers(): number {
   const n = Number(readLocal(MAX_MARKERS_KEY));
-  return (MARKER_CAP_CHOICES as readonly number[]).includes(n) ? n : DEFAULT_MAX_MARKERS;
+  return (MARKER_CAP_CHOICES as readonly number[]).includes(n) ? n : defaultMaxMarkers();
 }
 
 function loadScope(): CountryScope {
