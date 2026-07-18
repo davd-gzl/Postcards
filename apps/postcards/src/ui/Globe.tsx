@@ -10,6 +10,7 @@ import { usePrefersReducedMotion } from "../lib/hooks/usePrefersReducedMotion";
 
 const GEOMETRY_URL = `${import.meta.env.BASE_URL}basemap/countries-50m.json`;
 type Ring = [number, number][]; // [lon, lat] degrees
+type ProjPt = { px: number; py: number; cosc: number }; // projected + near-side test
 
 // Decoded once per session and shared (the intro mounts at most once, but this
 // keeps a remount cheap).
@@ -108,29 +109,73 @@ export function Globe({ size = 220 }: { size?: number }) {
       ctx.fillStyle = ocean;
       ctx.fillRect(0, 0, size, size);
 
-      // Land. A soft earthy green (not the old near-white cream, which washed the
-      // globe out to a pale disc on land-heavy faces). Back-hemisphere vertices are
-      // clamped onto the rim so a continent straddling the horizon stays continuous.
+      // Land, a soft earthy green, clipped to the visible hemisphere with a proper
+      // orthographic cut: we walk each ring, keep near-side vertices, and where an
+      // edge crosses the horizon we cut to the exact limb point — then bridge
+      // consecutive crossings by tracing the arc ALONG the rim. So a continent
+      // going over the edge ends on the globe's curve instead of the old radial
+      // clamp, which smeared a chord across the disc and washed the earth out.
       ctx.fillStyle = "rgba(150,192,118,0.95)";
+      const rimAt = (a: ProjPt, b: ProjPt) => {
+        // Where edge a(near)→b(far) crosses the horizon (cosc = 0), snapped to the rim.
+        const t = a.cosc / (a.cosc - b.cosc);
+        const x = a.px + (b.px - a.px) * t;
+        const y = a.py + (b.py - a.py) * t;
+        const dx = x - cx;
+        const dy = y - cy;
+        const h = Math.hypot(dx, dy) || 1;
+        const rx = cx + (dx / h) * R;
+        const ry = cy + (dy / h) * R;
+        return { x: rx, y: ry, ang: Math.atan2(ry - cy, rx - cx) };
+      };
       for (const ring of land) {
-        let front = false;
-        ctx.beginPath();
-        for (let i = 0; i < ring.length; i++) {
-          const [lon, lat] = ring[i]!;
-          let [px, py, cosc] = project(lon, lat);
-          if (cosc < 0) {
-            const dx = px - cx;
-            const dy = py - cy;
-            const h = Math.hypot(dx, dy) || 1;
-            px = cx + (dx / h) * R;
-            py = cy + (dy / h) * R;
-          } else {
-            front = true;
+        const pts: ProjPt[] = ring.map(([lon, lat]) => {
+          const [px, py, cosc] = project(lon, lat);
+          return { px, py, cosc };
+        });
+        const n = pts.length;
+        if (n < 3 || pts.every((p) => p.cosc < 0)) continue; // degenerate or fully behind
+        // Start the walk at a hidden vertex (when any) so each run begins with a
+        // clean horizon entry and the wrap-around gap is easy to close.
+        let s = 0;
+        const partial = pts.some((p) => p.cosc < 0);
+        if (partial) while (pts[s]!.cosc >= 0) s++;
+        const out: { x: number; y: number }[] = [];
+        const traceRim = (from: number, to: number) => {
+          let d = to - from; // shortest signed arc along the limb
+          while (d > Math.PI) d -= 2 * Math.PI;
+          while (d < -Math.PI) d += 2 * Math.PI;
+          const steps = Math.max(1, Math.round(Math.abs(d) / 0.15));
+          for (let k = 1; k <= steps; k++) {
+            const ang = from + (d * k) / steps;
+            out.push({ x: cx + Math.cos(ang) * R, y: cy + Math.sin(ang) * R });
           }
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
+        };
+        let exitAng: number | null = null;
+        let firstEntryAng: number | null = null;
+        for (let j = 0; j < n; j++) {
+          const cur = pts[(s + j) % n]!;
+          const nxt = pts[(s + j + 1) % n]!;
+          if (cur.cosc >= 0) {
+            out.push({ x: cur.px, y: cur.py });
+            if (nxt.cosc < 0) {
+              const x = rimAt(cur, nxt);
+              out.push({ x: x.x, y: x.y });
+              exitAng = x.ang;
+            }
+          } else if (nxt.cosc >= 0) {
+            const e = rimAt(nxt, cur);
+            if (exitAng !== null) traceRim(exitAng, e.ang);
+            if (firstEntryAng === null) firstEntryAng = e.ang;
+            out.push({ x: e.x, y: e.y });
+          }
         }
-        if (front) {
+        // Close the final gap along the rim (last exit → first entry).
+        if (exitAng !== null && firstEntryAng !== null) traceRim(exitAng, firstEntryAng);
+        if (out.length > 2) {
+          ctx.beginPath();
+          ctx.moveTo(out[0]!.x, out[0]!.y);
+          for (let k = 1; k < out.length; k++) ctx.lineTo(out[k]!.x, out[k]!.y);
           ctx.closePath();
           ctx.fill();
         }
