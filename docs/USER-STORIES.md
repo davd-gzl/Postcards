@@ -80,8 +80,10 @@ must not lag on a phone.
   area"**: OFF shows every visited city; ON collapses each area (country +
   subdivision) to its most-populous visited city — favourites and custom points
   always survive. A dense map stays fast and readable; the data is untouched.
-- 🔲 **B5 — Airport visit counts.** If the data exists, show the **number of visits
-  per airport**, and sort airports by most-visited (biggest first).
+- ✅ **B5 — Airport visit counts.** The Trips screen shows a **"Busiest airports"**
+  roll-up: every airport you've been to, ranked by how many times it appears across
+  your trips (each flight leg touching it counts) plus any explicit airport visit —
+  most-visited first. Tap a row to fly to it on the map.
 
 ---
 
