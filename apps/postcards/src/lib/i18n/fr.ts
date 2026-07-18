@@ -69,13 +69,17 @@ export const fr: Messages = {
   "settings.offlineMode.title": "Mode hors ligne",
   "settings.offlineMode.toggle": "Entièrement hors ligne — aucune requête réseau",
   "settings.offlineMode.desc":
-    "Fonctionne de façon totalement autonome. Prime sur tout le reste : la carte reste sur le fond de carte hors ligne intégré, les aperçus de guides ne se chargent jamais et l'offre de carte détaillée au premier lancement est masquée. Vos lieux et votre journal ne quittent de toute façon jamais cet appareil — ceci empêche aussi la carte et les guides de se connecter.",
+    "Fonctionne de façon totalement autonome. Prime sur tout ce qui figure sous Fonctions en ligne ci-dessous — la carte reste sur le fond hors ligne intégré et les guides ne se chargent jamais. Vos lieux et votre journal ne quittent de toute façon jamais cet appareil.",
   "settings.detailedMap.offlineNote": "Désactivez le mode hors ligne pour utiliser la carte détaillée.",
   "settings.places.title": "Lieux",
   "settings.scope.title": "Ce qui compte comme un pays",
   "settings.scope.desc":
     "Utilisé partout où un pays est compté : totaux, passeport, progression par continent.",
   "settings.map.advanced": "Plus d'options de carte et cartes hors ligne",
+  "settings.map.title": "Carte",
+  "settings.online.title": "Fonctions en ligne",
+  "settings.online.desc": "Tout ce qui utilise internet, au même endroit. N'activez que ce que vous voulez.",
+  "settings.online.offlineNote": "Désactivé quand le mode hors ligne est activé — désactivez-le ci-dessus pour les utiliser.",
   "settings.detailedMap.title": "Carte détaillée",
   "settings.detailedMap.desc":
     "La carte détaillée OpenStreetMap est activée par défaut ; elle récupère les tuiles depuis OpenStreetMap lorsque vous êtes en ligne. Désactivez-la pour n'utiliser que la carte hors ligne simple, afin que l'appli ne fasse aucune requête réseau. Dans tous les cas, aucune donnée personnelle ne quitte votre appareil.",

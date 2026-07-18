@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./app/App";
 import { initReferenceData } from "./lib/reference/referenceData";
 import { useUpdate } from "./lib/store/useUpdate";
+import { useSettings } from "./lib/store/useSettings";
 import "@fontsource-variable/inter"; // self-hosted (OFL) — no font CDN
 import "@fontsource-variable/space-grotesk"; // display face for the wordmark, headings & figures (OFL)
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -37,7 +38,11 @@ if ("serviceWorker" in navigator) {
           const nw = reg.installing;
           nw?.addEventListener("statechange", () => offerIfWaiting(nw));
         });
-        setInterval(() => void reg.update(), 30 * 60 * 1000);
+        // Poll for a fresh deploy — but NOT in Offline mode, where the app makes
+        // zero app-initiated network requests (the update check is optional egress).
+        setInterval(() => {
+          if (!useSettings.getState().offlineMode) void reg.update();
+        }, 30 * 60 * 1000);
       })
       .catch(() => {
         /* registration unavailable (insecure context / unsupported): app still works */
