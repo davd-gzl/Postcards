@@ -202,11 +202,12 @@ export function SettingsScreen() {
         <p className="muted small">{t("settings.scope.desc")}</p>
       </section>
 
-      {/* Map — markers + offline packs (the online basemap toggle lives under
-          Online features above). Tucked into a disclosure so the page isn't
-          dominated by the region list. */}
+      {/* Optimisation — the map-performance controls, grouped so a user whose
+          map lags or piles up has one place to fix it: collapse crowded regions
+          to one flag, and cap how many browse markers draw at once. */}
       <section className="settings-section">
-        <h3>{t("settings.map.title")}</h3>
+        <h3>{t("settings.optimize.title")}</h3>
+        <p className="muted small">{t("settings.optimize.intro")}</p>
         <label className="toggle-row">
           <input
             type="checkbox"
@@ -216,23 +217,31 @@ export function SettingsScreen() {
           <span>{t("settings.map.optimize")}</span>
         </label>
         <p className="muted small">{t("settings.map.optimizeDesc")}</p>
+        <label className="picker-label setting-picker" htmlFor="max-markers">
+          {t("settings.detailedMap.maxMarkers")}
+          <select
+            id="max-markers"
+            className="select"
+            value={maxMarkers}
+            onChange={(e) => setMaxMarkers(Number(e.target.value))}
+          >
+            {MARKER_CAP_CHOICES.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="muted small">{t("settings.optimize.markersDesc")}</p>
+      </section>
+
+      {/* Map — offline packs (the online basemap toggle lives under Online
+          features above). Tucked into a disclosure so the page isn't dominated
+          by the region list. */}
+      <section className="settings-section">
+        <h3>{t("settings.map.title")}</h3>
         <details className="settings-details">
           <summary>{t("settings.map.advanced")}</summary>
-          <label className="picker-label setting-picker" htmlFor="max-markers">
-            {t("settings.detailedMap.maxMarkers")}
-            <select
-              id="max-markers"
-              className="select"
-              value={maxMarkers}
-              onChange={(e) => setMaxMarkers(Number(e.target.value))}
-            >
-              {MARKER_CAP_CHOICES.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
           <p className="muted small">{t("settings.offline.desc")}</p>
           {offlineMode && <p className="muted small">{t("settings.offline.offlineNote")}</p>}
           <ul className="region-list">
