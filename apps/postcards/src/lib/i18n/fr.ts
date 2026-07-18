@@ -574,6 +574,7 @@ export const fr: Messages = {
   "filter.mode.cities": "Villes",
   "filter.mode.monuments": "Monuments",
   "filter.mode.airports": "Aéroports",
+  "filter.more.title": "Plus",
   "filter.favoritesOnly": "Favoris uniquement",
   "filter.hasPhoto": "Avec photo",
   "filter.hasNote": "Avec note",

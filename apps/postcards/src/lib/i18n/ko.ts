@@ -573,6 +573,7 @@ export const ko: Messages = {
   "filter.mode.cities": "도시",
   "filter.mode.monuments": "기념물",
   "filter.mode.airports": "공항",
+  "filter.more.title": "더 보기",
   "filter.favoritesOnly": "즐겨찾기만",
   "filter.hasPhoto": "사진 있음",
   "filter.hasNote": "메모 있음",

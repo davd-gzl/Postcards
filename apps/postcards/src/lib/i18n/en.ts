@@ -579,6 +579,7 @@ export const en = {
   "filter.mode.cities": "Cities",
   "filter.mode.monuments": "Monuments",
   "filter.mode.airports": "Airports",
+  "filter.more.title": "More",
   "filter.favoritesOnly": "Favorites only",
   "filter.hasPhoto": "Has photo",
   "filter.hasNote": "Has note",

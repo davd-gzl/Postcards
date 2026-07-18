@@ -70,9 +70,9 @@ Paths are under `apps/postcards/`. `[P]` = parallelizable (different file, no in
 
 **Independent test**: enable Favorites only → both screens narrow to favourites, combinable, no new header button.
 
-- [ ] T023 [US4] Extend predicates in `src/lib/filter/applyFilters.ts` for `favoritesOnly`, `hasPhoto`, `hasNote`, `continent` (unit test additions in `tests/unit/applyFilters.spec.ts`)
-- [ ] T024 [US4] Add the growth sections (toggles + continent select) to `src/ui/FilterPanel.tsx` and their chips to `activeChips`; add i18n keys to en/fr/ko
-- [ ] T025 [US4] E2E: enable Favorites only, assert both map + Places narrow and the chip appears; enable continent, assert narrowing + chip
+- [X] T023 [US4] Predicates in `src/features/filter/applyFilters.ts` cover `favoritesOnly`, `hasPhoto`, `hasNote`, `continent` (unit-tested in `tests/unit/applyFilters.spec.ts`)
+- [X] T024 [US4] Added the growth "More" section (favourites-only / has-photo / has-note toggles + continent select) to `src/ui/FilterPanel.tsx` behind `showGrowth`; chips already in `activeChips`; `filter.more.title` added to en/fr/ko. Growth acts on saved records, so it's Places-only — the map excludes those fields from its badge/summary.
+- [X] T025 [US4] E2E `tests/e2e/filter-panel.spec.ts`: star a place, enable Favorites only, assert the list narrows to it and the chip appears
 
 ## Phase 7: Polish & Cross-Cutting
 
