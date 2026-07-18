@@ -120,9 +120,43 @@ Across every screen, the app must feel fast and light on both phone and laptop, 
 2. **Given** a phone screen, **When** the user opens a city's detail, **Then** its photo is visible without scrolling.
 3. **Given** any primary navigation (view switch, composer open, place tap), **When** the user performs it, **Then** it responds immediately.
 
+### User Story 7 - Durable data / long-term memory (Priority: P1, critical & cross-cutting)
+
+The traveller's logged places, journal, and photos must **never** be lost because a browser cleared or reset its storage. On the web, app storage can be silently evicted (iOS/Safari eviction, "clear browsing data," storage pressure) — for the user's brother this meant losing everything, which is unacceptable for a keepsake app. The app must make data as permanent as the platform allows and make losing it very hard.
+
+**Why this priority**: Data loss destroys the entire value of the product (it is a memory keeper). This is foundational trust, on par with the Online/Offline mode, so it is done early and treated as cross-cutting.
+
+**Independent Test**: Grant persistence and simulate a storage-eviction/reset — data survives. Deny/omit persistence — the app clearly warns and the user can fully restore from a backup file. Confirm the app shows last-backup time and nudges when data changed since.
+
+**Acceptance Scenarios**:
+
+1. **Given** the user has data, **When** the app starts, **Then** it requests persistent storage; if granted, the data is not subject to automatic browser eviction.
+2. **Given** persistence is denied or unavailable, **When** the user has unsaved changes, **Then** the app clearly warns and guides them to back up (export / QR), and never silently risks loss.
+3. **Given** a fresh install or a device whose storage was reset, **When** the user restores a backup file, **Then** all data (places, trips, journal, photos, settings) is recovered.
+4. **Given** data changed since the last backup, **When** the user opens the app or the relevant screen, **Then** the last-backup time is visible and a backup is gently prompted.
+
+---
+
+### User Story 8 - Native app via Capacitor (Priority: P7)
+
+The traveller wants to install Postcards as a real app (Android now, iOS later) from the same codebase — with durable native storage (which also protects against the browser-eviction problem above), native feel (status bar, safe areas, keyboard, haptics), and identical offline-first behavior.
+
+**Why this priority**: It broadens reach and hardens durability, but depends on the web experience being coherent first; it is a packaging/hardening track that follows the core UX themes.
+
+**Independent Test**: Build and launch the app in the Capacitor Android (and iOS) shell from the one codebase; confirm data persists across app restarts and updates, native niceties are present, and offline-first works identically.
+
+**Acceptance Scenarios**:
+
+1. **Given** the single web codebase, **When** it is wrapped by Capacitor, **Then** it builds and runs as a native Android app (and an iOS app) without a separate codebase.
+2. **Given** the native app, **When** the user logs places and writes entries, **Then** the data persists across app restarts and app updates in durable on-device storage.
+3. **Given** the native shell, **When** the app is used, **Then** the status bar, safe-area insets, keyboard handling, and haptics on primary actions feel native.
+4. **Given** no connection, **When** the user uses the native app, **Then** offline-first behavior is identical to the web PWA.
+
 ### Edge Cases
 
 - Device goes offline mid-session while in Online mode → the app degrades gracefully to offline equivalents; nothing errors or hangs.
+- Browser refuses persistent storage (some iOS Safari contexts) → the app warns and leans on the backup/restore safety net; data is never silently at risk.
+- User clears browsing data or reinstalls → a restore from the portable backup file recovers everything.
 - A place has no photo → detail and list show a clean placeholder, never a broken image.
 - Publishing with zero entries but some visited places → the site still renders a coherent map/overview.
 - QR transfer of a large library → handled via the portable file when a single QR is impractical; the user is guided, not blocked.
@@ -163,6 +197,16 @@ Across every screen, the app must feel fast and light on both phone and laptop, 
 - **FR-019**: First-run onboarding MUST present, in a terse prose-light form, the online/offline choice and the optional downloads, each with a clear action or skip.
 - **FR-020**: Onboarding MUST adapt to the chosen mode (de-emphasize online-only options when Offline is chosen) and defer the same choices to Settings.
 
+**Durable data / long-term memory (P1, cross-cutting)**
+- **FR-028**: The app MUST request persistent storage and, when the platform grants it, keep data durable against automatic browser eviction.
+- **FR-029**: When persistence is unavailable or denied, the app MUST warn and guide the user to back up (export / QR); it MUST NOT silently risk data loss.
+- **FR-030**: The app MUST show the last-backup time and prompt for a backup when data has changed since it.
+- **FR-031**: A single portable backup file MUST fully restore all data (places, trips, journal, photos, settings) after any storage reset or reinstall.
+
+**Native app via Capacitor (P7)**
+- **FR-032**: The single web codebase MUST build and run as native Android and iOS apps via Capacitor, with durable on-device storage.
+- **FR-033**: The native builds MUST provide status-bar styling, safe-area handling, keyboard handling, and haptic feedback on primary actions, and MUST behave offline-first identically to the PWA.
+
 **Speed & mobile (P6, cross-cutting)**
 - **FR-021**: Primary interactions (app open, view switch, place tap, composer open, map pan/zoom with the full gazetteer) MUST respond without a noticeable stall on a mid-range phone and a laptop.
 - **FR-022**: On mobile, a place's detail photo MUST be visible without scrolling.
@@ -196,6 +240,8 @@ Across every screen, the app must feel fast and light on both phone and laptop, 
 - **SC-007**: On a mid-range phone with the full gazetteer loaded, primary interactions have no perceptible stall, and the city-detail photo is visible without scrolling.
 - **SC-008**: First-time users can understand and set their online/offline + download choices from the intro in under 30 seconds, with no prose beyond what is needed to decide.
 - **SC-009**: The app remains 100% usable (log, browse, journal, publish, transfer) with GitHub never configured.
+- **SC-010**: After a simulated storage reset, a user who granted persistence keeps their data; a user who did not can fully restore from a backup file — no scenario loses data silently.
+- **SC-011**: The single codebase produces working Android and iOS app builds, and data survives app restart and update on device.
 
 ## Assumptions
 
@@ -205,10 +251,12 @@ Across every screen, the app must feel fast and light on both phone and laptop, 
 - The bundled reference set (top cities, countries, airports, heritage, landmarks, moments) plus the optional full city list is sufficient; no new datasets are introduced here.
 - "Monuments near me" uses on-device location only, requested on an explicit action, never stored (consistent with the current privacy model).
 - Existing features (trips, folders, photo gallery, moments, guides) remain; this feature reorganizes access to them rather than removing them.
+- Durable persistence relies on the platform's Storage persistence API on the web and native durable storage in the Capacitor shell; where a browser refuses persistence (e.g. some iOS Safari contexts), the portable backup file is the safety net.
+- Capacitor targets Android first (the user's immediate platform) with iOS supported by the same codebase; no platform-exclusive features are introduced.
 
 ## Out of Scope
 
 - Any backend service, server, or account system.
 - GitHub OAuth or a hosted token-exchange/proxy of any kind.
-- Native-only capabilities beyond the current Capacitor wrap.
 - New reference datasets beyond what already ships (community packs remain user-supplied by URL/file).
+- App-store submission/signing logistics (the build must work; store publishing is operational, not part of this feature).
