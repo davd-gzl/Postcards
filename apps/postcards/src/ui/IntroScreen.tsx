@@ -17,6 +17,8 @@ export function IntroScreen({ onClose }: { onClose: () => void }) {
   const offlineMode = useSettings((s) => s.offlineMode);
   const setOnlineMap = useSettings((s) => s.setOnlineMap);
   const setOfflineMode = useSettings((s) => s.setOfflineMode);
+  const optimizeMarkers = useSettings((s) => s.optimizeMarkers);
+  const setOptimizeMarkers = useSettings((s) => s.setOptimizeMarkers);
   const showToast = useToast((s) => s.show);
   const startRef = useRef<HTMLButtonElement>(null);
 
@@ -147,6 +149,25 @@ export function IntroScreen({ onClose }: { onClose: () => void }) {
               : cities === "busy"
                 ? t("intro.getting")
                 : t("intro.get")}
+          </button>
+        </li>
+
+        {/* Set expectations up front: with lots of places the map can crowd/lag,
+            and there's a one-tap fix. New users learn the option exists (and can
+            opt in now); the full controls live in Settings → Optimisation. */}
+        <li className="intro-row">
+          <div className="intro-row-text">
+            <span className="intro-row-title">⚡ {t("intro.optimize.title")}</span>
+            <span className="intro-row-desc">{t("intro.optimize.desc")}</span>
+          </div>
+          <button
+            className="intro-get"
+            type="button"
+            aria-pressed={optimizeMarkers}
+            title={t("intro.optimize.desc")}
+            onClick={() => setOptimizeMarkers(!optimizeMarkers)}
+          >
+            {optimizeMarkers ? `✓ ${t("intro.on")}` : t("intro.enable")}
           </button>
         </li>
       </ul>

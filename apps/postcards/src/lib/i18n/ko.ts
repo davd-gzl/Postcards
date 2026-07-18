@@ -860,6 +860,8 @@ export const ko: Messages = {
   "intro.offline.action": "설정",
   "intro.cities.title": "전체 도시 목록",
   "intro.cities.desc": "모든 도시와 마을(~17MB), 오프라인 검색.",
+  "intro.optimize.title": "빠른 지도",
+  "intro.optimize.desc": "장소가 많나요? 지역당 도시 하나만 표시하면 지도가 부드럽게 유지됩니다. 설정 → 최적화에서 언제든지 변경할 수 있습니다.",
   "intro.enable": "켜기",
   "intro.on": "켜짐",
   "intro.get": "받기",

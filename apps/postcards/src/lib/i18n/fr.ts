@@ -867,6 +867,8 @@ export const fr: Messages = {
   "intro.offline.action": "Configurer",
   "intro.cities.title": "Liste complète des villes",
   "intro.cities.desc": "Chaque ville et village (~17 Mo), recherche hors ligne.",
+  "intro.optimize.title": "Carte rapide",
+  "intro.optimize.desc": "Beaucoup de lieux ? Affichez une ville par région pour garder la carte fluide. Modifiable à tout moment dans Réglages → Optimisation.",
   "intro.enable": "Activer",
   "intro.on": "Activé",
   "intro.get": "Obtenir",
