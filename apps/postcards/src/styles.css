@@ -776,6 +776,17 @@ h1.brand {
   font-size: 18px;
   line-height: 1;
 }
+/* The visit-count badge on a "busiest airports" row (Trips screen): sits at the
+   right edge (the focus button beside it takes the remaining width), numbers
+   aligned so a column of counts reads cleanly. */
+.airport-count {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
 /* The inline per-row editor (date / folder / note). Full width under the row. */
 .row-menu {
   flex-basis: 100%;

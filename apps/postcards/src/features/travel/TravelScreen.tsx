@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useTrips } from "../../lib/store/useTrips";
+import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
-import { formatDate, formatKm } from "../../lib/format/format";
+import { countryFlag, formatDate, formatKm } from "../../lib/format/format";
 import type { PlaceRef, TravelMode, Trip } from "../../lib/schema/models";
 import { julianToDate, type BcbpResult } from "../../lib/bcbp/parse";
 import { CityLine } from "../../ui/CityLine";
+import { ListPager } from "../../ui/ListPager";
 import { PlacePicker } from "./PlacePicker";
 import { BoardingPassImport } from "./BoardingPassImport";
+import { airportVisitCounts } from "./airports";
 import { travelTotals, tripDistanceKm } from "./distance";
 import { MODE_GLYPH, MODE_ORDER } from "./modes";
 import {
@@ -144,6 +147,7 @@ export function TravelScreen() {
   const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   const trips = useTrips((s) => s.trips);
+  const visits = useVisits((s) => s.visits);
   const addTrip = useTrips((s) => s.addTrip);
   const updateTrip = useTrips((s) => s.updateTrip);
   const removeTrip = useTrips((s) => s.removeTrip);
@@ -160,12 +164,18 @@ export function TravelScreen() {
   const year = useUi((s) => s.tripYear) as YearFilter;
   const month = useUi((s) => s.tripMonth) as MonthFilter;
   const setTripPeriod = useUi((s) => s.setTripPeriod);
+  const flyTo = useUi((s) => s.flyTo);
 
   const years = useMemo(() => tripYears(trips), [trips]);
   const months = useMemo(() => (year === "all" ? [] : tripMonths(trips, year)), [trips, year]);
   const filtered = useMemo(() => tripsInPeriod(trips, year, month), [trips, year, month]);
 
   const totals = useMemo(() => travelTotals(filtered, ref), [filtered, ref]);
+  // A lifetime "busiest airports" roll-up (every trip endpoint + any airport you
+  // marked visited), most-visited first — independent of the year/month filter,
+  // which scopes the editable trip list above, not this career summary.
+  const airportCounts = useMemo(() => airportVisitCounts(trips, visits, ref), [trips, visits, ref]);
+  const [shownAir, setShownAir] = useState(20);
   const sorted = useMemo(
     () => [...filtered].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")),
     [filtered],
@@ -502,6 +512,53 @@ export function TravelScreen() {
             </section>
           )}
         </div>
+      )}
+
+      {airportCounts.length > 0 && (
+        <section className="airport-rollup" aria-label={t("travel.airports.aria")}>
+          <h3 className="trip-folder-name">
+            <span aria-hidden>✈️</span> {t("travel.airports.title")}{" "}
+            <span className="muted small">({airportCounts.length})</span>
+          </h3>
+          <ul className="city-list">
+            {airportCounts.slice(0, shownAir).map(({ airport, count }) => {
+              const country = ref.countryByIso2(airport.countryIso2)?.name ?? airport.countryIso2;
+              const label = t.plural("travel.airports.count", count);
+              return (
+                <li key={airport.id} className="city-row compact dense">
+                  <button
+                    className="city-focus"
+                    type="button"
+                    title={t("travel.airports.focusAria", { name: airport.name })}
+                    onClick={() => flyTo(airport.lon, airport.lat)}
+                  >
+                    <CityLine
+                      flag={countryFlag(airport.countryIso2)}
+                      name={
+                        <>
+                          <strong>{airport.id}</strong> {airport.name}
+                        </>
+                      }
+                      title={`${airport.id} · ${airport.name}`}
+                      sub={<>· {airport.city || country}</>}
+                    />
+                  </button>
+                  <span className="airport-count" title={label} aria-label={label}>
+                    ✈ {count}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {airportCounts.length > shownAir && (
+            <ListPager
+              shown={shownAir}
+              total={airportCounts.length}
+              step={20}
+              onMore={() => setShownAir((n) => n + 20)}
+            />
+          )}
+        </section>
       )}
     </section>
   );
