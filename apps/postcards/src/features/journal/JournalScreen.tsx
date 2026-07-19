@@ -574,13 +574,17 @@ export function JournalScreen() {
     () => stories.filter(matchesPlaceFilter),
     [stories, matchesPlaceFilter],
   );
-  // Layer the text search on top of the place filter: match the story's place name
-  // or its country name (accent-insensitive). Empty query is a no-op passthrough.
+  // Layer the text search on top of the place filter: match the words the user
+  // actually wrote — the entry's title and body — plus its place, folder and
+  // country (accent-insensitive). Empty query is a no-op passthrough.
   const searched = useMemo(() => {
     const needle = norm(query.trim());
     if (!needle) return placeFiltered;
     return placeFiltered.filter((s) => {
       if (norm(s.place.name).includes(needle)) return true;
+      if (norm(s.title).includes(needle)) return true;
+      if (norm(s.text).includes(needle)) return true;
+      if (norm(s.folder ?? "").includes(needle)) return true;
       const cn = s.place.countryId ? ref.countryByIso2(s.place.countryId)?.name : null;
       return cn ? norm(cn).includes(needle) : false;
     });

@@ -1,20 +1,14 @@
 import type { Trip } from "../../lib/schema/models";
 
-/** Month names for the filter dropdown, index 0 = January. */
-export const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
+/** Localized full month name for a 2-digit month ("01".."12"), via the platform
+ *  Intl formatter — the same way the Journal calendar localizes months, so fr/ko
+ *  users never see hardcoded English. Defaults to English (keeps pure-label tests
+ *  stable and gives a sane fallback when no locale is threaded through). */
+export function monthName(month: string, locale: string = "en"): string {
+  return new Intl.DateTimeFormat(locale, { month: "long" }).format(
+    new Date(2023, Number(month) - 1, 1),
+  );
+}
 
 /** "all" (no time filter) or a 4-digit year string. */
 export type YearFilter = "all" | string;
@@ -128,10 +122,11 @@ export function tripsInPeriod(trips: Trip[], year: YearFilter, month: MonthFilte
   });
 }
 
-/** Human label for the active period, e.g. "2024", "August 2024", or "" for all-time. */
-export function periodLabel(year: YearFilter, month: MonthFilter): string {
+/** Human label for the active period, e.g. "2024", "August 2024", or "" for all-time.
+ *  `locale` localizes the month name (default English keeps the label stable for
+ *  callers that don't pass one). */
+export function periodLabel(year: YearFilter, month: MonthFilter, locale: string = "en"): string {
   if (year === "all") return "";
   if (month === "all") return year;
-  const name = MONTH_NAMES[Number(month) - 1] ?? month;
-  return `${name} ${year}`;
+  return `${monthName(month, locale)} ${year}`;
 }

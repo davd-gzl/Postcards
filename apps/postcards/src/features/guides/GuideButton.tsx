@@ -354,7 +354,9 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
       <div className="guide-groups-col">
         {grouped.map(({ group, items }) => (
           <div key={group} className="guide-group">
-            <h3>{group}</h3>
+            {/* h4: these group titles nest UNDER the section's "Guides" h3, so a
+                screen-reader heading outline stays correct (WCAG 1.3.1). */}
+            <h4>{group}</h4>
             <ul className="guide-links">
               {items.map((l) => (
                 <li key={l.id}>
