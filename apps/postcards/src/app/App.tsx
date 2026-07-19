@@ -3,6 +3,7 @@ import { useVisits } from "../lib/store/useVisits";
 import { useTrips } from "../lib/store/useTrips";
 import { useStories } from "../lib/store/useStories";
 import { useUi, type Tab } from "../lib/store/useUi";
+import { runEscapeInterceptors } from "../lib/store/escapeStack";
 import { StatsView } from "../features/stats/StatsView";
 import { PlacesScreen } from "../features/visits/PlacesScreen";
 import { TravelScreen } from "../features/travel/TravelScreen";
@@ -113,10 +114,12 @@ export function App() {
         setShowAbout(false);
         if (!dialogOpen) {
           // On a city/country page, Escape leaves the page layer (never back
-          // through other pages you viewed); elsewhere it walks history.
+          // through other pages you viewed); otherwise let the active screen
+          // step out of a LOCAL sub-view first (Journal's map/timeline, a Places
+          // collection), and only walk tab history if it didn't handle it.
           const ui = useUi.getState();
           if (ui.cityPageId || ui.countryPageId) ui.closePages();
-          else ui.goBack();
+          else if (!runEscapeInterceptors()) ui.goBack();
         }
         return;
       }
@@ -183,7 +186,12 @@ export function App() {
         arm();
         return;
       }
-      // Always the LAST screen: pop the app's own navigation history.
+      // Step out of a local sub-view first (mirrors Escape), then the LAST
+      // screen: pop the app's own navigation history.
+      if (runEscapeInterceptors()) {
+        arm();
+        return;
+      }
       if (ui.goBack()) {
         arm();
         return;

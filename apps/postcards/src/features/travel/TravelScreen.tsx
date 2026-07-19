@@ -4,6 +4,7 @@ import { useTrips } from "../../lib/store/useTrips";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
+import { registerEscape } from "../../lib/store/escapeStack";
 import { countryFlag, formatDate, formatKm } from "../../lib/format/format";
 import type { PlaceRef, TravelMode, Trip } from "../../lib/schema/models";
 import { julianToDate, type BcbpResult } from "../../lib/bcbp/parse";
@@ -232,6 +233,26 @@ export function TravelScreen() {
   function resetForm() {
     loadForm(EMPTY_FIELDS);
   }
+
+  // Escape/Back steps out of the boarding-pass panel or the open add/edit form
+  // before leaving the tab. The section's onKeyDown handles the common case (it
+  // stops propagation, so this never double-fires); this global interceptor is
+  // the fallback for when focus sits outside the section.
+  useEffect(() => {
+    return registerEscape(() => {
+      if (passOpen) {
+        setPassOpen(false);
+        return true;
+      }
+      if (editingId || addOpen) {
+        resetForm();
+        setAddOpen(false);
+        return true;
+      }
+      return false;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [passOpen, editingId, addOpen]);
 
   function openNewTrip() {
     resetForm();
