@@ -130,10 +130,11 @@ const EMOJI_FONT = '"Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", s
 const PILL_FONT = '600 21px "Inter Variable", system-ui, sans-serif';
 
 /**
- * City marker: the bare flag emoji — no box, no halo — at ONE size for both
- * visited and want-list, so a want-list city is never bigger than a visited one.
- * A want-list ("want to go") flag is drawn slightly lighter and wears a small
- * amber ⚑ badge; favourites (either status) get a gold star at the corner.
+ * City marker, at ONE size for both states so a want-list city is never bigger
+ * than a visited one. VISITED is the bare country flag. WANT-LIST is a distinct
+ * amber DOT — a "you haven't unlocked the flag yet" placeholder that visiting
+ * swaps for the real flag (the little unlock reward). Favourites (either state)
+ * get a gold star at the corner.
  */
 function makeCityPill(iso2: string, favorite: boolean, wish: boolean): ImageData {
   const w = 44;
@@ -144,20 +145,19 @@ function makeCityPill(iso2: string, favorite: boolean, wish: boolean): ImageData
   const ctx = canvas.getContext("2d")!;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  // A want-list flag reads as "not yet" — a touch lighter than a visited one.
-  ctx.globalAlpha = wish ? 0.88 : 1;
-  ctx.font = `27px ${EMOJI_FONT}`;
-  ctx.fillText(countryFlag(iso2), w / 2, h / 2 + 1);
-  ctx.globalAlpha = 1;
   if (wish) {
-    // The app's want-list glyph, as amber text (colourable, unlike the emoji
-    // form) with a white outline so it reads on any basemap.
-    ctx.font = '700 15px system-ui, "Segoe UI", sans-serif';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "rgba(255,255,255,0.95)";
-    ctx.strokeText("⚑", 8, 9);
-    ctx.fillStyle = "#d97706";
-    ctx.fillText("⚑", 8, 9);
+    // Amber dot placeholder — sized to the flag's footprint (never the oversized
+    // always-on blob it used to be), with a white ring so it reads on any basemap.
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2 + 1, 8, 0, Math.PI * 2);
+    ctx.fillStyle = "#f59e0b";
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+  } else {
+    ctx.font = `27px ${EMOJI_FONT}`;
+    ctx.fillText(countryFlag(iso2), w / 2, h / 2 + 1);
   }
   if (favorite) {
     ctx.font = `14px ${EMOJI_FONT}`;
@@ -618,10 +618,11 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
       },
     },
     {
-      // Want-list cities share the visited flag pill (a "want to go" treatment),
-      // so they're the SAME size as visited, collision-managed (overlapping flags
-      // auto-thin at low zoom) and region-optimisable — never the old oversized
-      // always-on amber blob that read bigger than the flag.
+      // Want-list cities use the SAME marker system as visited (an amber-dot "want
+      // to go" placeholder instead of the flag), so they're the same size,
+      // collision-managed (overlapping markers auto-thin at low zoom) and
+      // region-optimisable — never the old oversized always-on blob, but still
+      // visually distinct so visiting "unlocks" the country flag.
       id: "cities-wishlist",
       type: "symbol",
       source: "wishlist",
@@ -710,6 +711,8 @@ export function MapView({
   showCountries = false,
   maxMarkers = 250,
   optimizeMarkers = false,
+  showAllMarkers = false,
+  onlyMine = false,
   dateFilter = { mode: "all" },
   folder = "",
   onBaseUnavailable,
@@ -726,6 +729,12 @@ export function MapView({
   /** "Optimize the map": collapse visited cities to one representative (the most
    *  populous) per area, keeping every custom point and favourite. Off = show all. */
   optimizeMarkers?: boolean;
+  /** "Show every place at once": drop the collision de-cluttering on YOUR markers,
+   *  so a zoomed-out map shows all your visited flags + want-list dots together. */
+  showAllMarkers?: boolean;
+  /** "Only my places": hide the browse city/town dots so only your visited flags
+   *  and want-list dots show — the clean "everywhere I've been" view. */
+  onlyMine?: boolean;
   /** Date filter for YOUR places: any date, undated-only, or a precise [from,to]
    *  range (a year chip is just a whole-year range). Narrows the visited/wishlist
    *  /airport markers, the visited-country shading and the browsable-POI "seen"
@@ -797,6 +806,10 @@ export function MapView({
   maxMarkersRef.current = maxMarkers;
   const optimizeMarkersRef = useRef(optimizeMarkers);
   optimizeMarkersRef.current = optimizeMarkers;
+  const showAllRef = useRef(showAllMarkers);
+  showAllRef.current = showAllMarkers;
+  const onlyMineRef = useRef(onlyMine);
+  onlyMineRef.current = onlyMine;
   // The active date + folder filter for YOUR places. Read from refs so the
   // imperative painters use the latest value without re-subscribing.
   const dateRef = useRef(dateFilter);
@@ -1074,10 +1087,19 @@ export function MapView({
   }
 
   function applyMode(map: MlMap, m: MapMode) {
+    const onlyMine = onlyMineRef.current;
     for (const [cat, ids] of Object.entries(MODE_LAYERS)) {
       const on = m === "all" || m === cat;
       for (const id of ids) {
-        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
+        // "Only my places" hides every browse/reference layer — the world's city
+        // dots, town dots and browse monuments — so ONLY your own markers (visited
+        // flags, want-list dots and logged airports) remain: the clean "everywhere
+        // I've been" view. Your personal layers (cities-visited/-wishlist/airports)
+        // are never in this browse set, so they always stay.
+        const hideBrowse =
+          onlyMine && (id === "cities-inview" || id === "cities-all" || id === "poi-monuments");
+        if (map.getLayer(id))
+          map.setLayoutProperty(id, "visibility", on && !hideBrowse ? "visible" : "none");
       }
     }
     // In "All" mode monuments only appear from country-level zoom — at world
@@ -1088,15 +1110,26 @@ export function MapView({
     // Browsable airports: always in Airports mode; in All mode only once you've
     // zoomed into a region, so ~7,000 planes don't blanket the world view.
     if (map.getLayer("airports-all")) {
-      const on = m === "airports" || m === "all";
+      const on = (m === "airports" || m === "all") && !onlyMine;
       map.setLayoutProperty("airports-all", "visibility", on ? "visible" : "none");
       map.setLayerZoomRange("airports-all", m === "airports" ? 0 : 5, 24);
     }
     // The full-gazetteer dot field is a power view — hidden unless toggled on,
     // and never shown in the monuments/airports modes.
     if (map.getLayer("cities-all")) {
-      const on = showTownsRef.current && (m === "all" || m === "cities");
+      const on = showTownsRef.current && (m === "all" || m === "cities") && !onlyMine;
       map.setLayoutProperty("cities-all", "visibility", on ? "visible" : "none");
+    }
+  }
+
+  // "Show every place at once": drop the collision de-cluttering on YOUR personal
+  // markers so a zoomed-out map shows every visited flag + want-list dot together,
+  // instead of thinning overlapping ones. Off = the readable collision-managed
+  // default. Runtime-toggled, so it flips live without rebuilding the style.
+  function applyMarkerOverlap(map: MlMap) {
+    const all = showAllRef.current;
+    for (const id of ["cities-visited", "cities-wishlist"]) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "icon-allow-overlap", all);
     }
   }
 
@@ -1141,22 +1174,21 @@ export function MapView({
       north: b.getNorth(),
     };
     const filter = cityFilterRef.current;
-    let visitedIds: Set<string> | undefined;
-    if (filter !== "all") {
-      // Mirrors MapScreen's list filter exactly: any city with a record in the
-      // active period counts as "visited" here (status is not consulted).
-      visitedIds = new Set(
-        visitsRef.current
-          .filter((v) => v.place.kind === "city" && visitMatches(v))
-          .map((v) => v.place.id),
-      );
-    }
+    // Every city with a personal record (visited OR want-list) in the active
+    // period is drawn as its own always-on marker, so exclude it from the browse
+    // dots: the cap then spends its whole budget on cities you haven't marked and
+    // never wipes them out to re-draw ones you've already been to.
+    const personalIds = new Set(
+      visitsRef.current
+        .filter((v) => v.place.kind === "city" && visitMatches(v))
+        .map((v) => v.place.id),
+    );
     const cities = markerCitiesInView(
       ref.allCities(),
       bounds,
       maxMarkersRef.current,
       filter,
-      visitedIds,
+      personalIds,
       minPopRef.current,
     );
     (map.getSource("cities-inview") as GeoJSONSource | undefined)?.setData(inViewPoints(cities));
@@ -1273,6 +1305,10 @@ export function MapView({
           center: lastCamera?.center ?? [6, 32],
           zoom: lastCamera?.zoom ?? 1.1,
           style: fullStyle,
+          // No cross-zoom collision fade: flags/dots pop in and out instantly as
+          // you zoom instead of ghosting through a 300 ms opacity fade, which read
+          // as flicker on the personal markers.
+          fadeDuration: 0,
           // Default cache is viewport-derived (~60 tiles on a phone) → panning
           // back re-flashes blanks as evicted tiles refetch. Hold more so a
           // pan-away/pan-back repaints instantly (memory cost is modest).
@@ -1322,6 +1358,7 @@ export function MapView({
         loadPhysicalWater(map);
         applyMode(map, mode);
         applyPersonalMarkerFilter(map);
+        applyMarkerOverlap(map); // honour "show every place at once" from the start
         // The full-gazetteer dot field: built only if the Towns toggle is
         // already on (applyAllCityDots self-gates — it's off by default, so
         // most sessions never pay for it), and even then at idle — YOUR flags
@@ -1718,6 +1755,23 @@ export function MapView({
     applyVisited(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [optimizeMarkers]);
+
+  // "Show every place at once" flips the collision de-cluttering on your markers.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    applyMarkerOverlap(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAllMarkers]);
+
+  // "Only my places" hides/reveals the browse city+town dots.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    applyMode(map, mode);
+    applyPersonalMarkerFilter(map); // applyMode blanket-reveals cities — re-prune
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onlyMine]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -38,6 +38,8 @@ export function SettingsScreen() {
   const setMaxMarkers = useSettings((s) => s.setMaxMarkers);
   const optimizeMarkers = useSettings((s) => s.optimizeMarkers);
   const setOptimizeMarkers = useSettings((s) => s.setOptimizeMarkers);
+  const showAllMarkers = useSettings((s) => s.showAllMarkers);
+  const setShowAllMarkers = useSettings((s) => s.setShowAllMarkers);
   const [progress, setProgress] = useState<Record<string, number | undefined>>({});
   // Downloads are cancelable, and each region remembers when it was last saved
   // (so the button honestly reads "Re-download" instead of pretending it's new).
@@ -217,6 +219,15 @@ export function SettingsScreen() {
           <span>{t("settings.map.optimize")}</span>
         </label>
         <p className="muted small">{t("settings.map.optimizeDesc")}</p>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={showAllMarkers}
+            onChange={(e) => setShowAllMarkers(e.target.checked)}
+          />
+          <span>{t("settings.map.showAll")}</span>
+        </label>
+        <p className="muted small">{t("settings.map.showAllDesc")}</p>
         <label className="picker-label setting-picker" htmlFor="max-markers">
           {t("settings.detailedMap.maxMarkers")}
           <select
@@ -227,7 +238,7 @@ export function SettingsScreen() {
           >
             {MARKER_CAP_CHOICES.map((n) => (
               <option key={n} value={n}>
-                {n}
+                {n === Infinity ? t("settings.detailedMap.unlimited") : n}
               </option>
             ))}
           </select>

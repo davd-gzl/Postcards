@@ -14,18 +14,21 @@ test("the one Filter panel drives the map; the old inline controls are gone", as
   await page.getByRole("button", { name: "Mark Paris visited" }).first().click();
   await page.keyboard.press("Escape");
 
-  // The scattered map controls no longer exist: no population row, no top
-  // place-kind mode selector — they moved into the panel.
+  // The scattered per-dimension map controls are gone: no population row. The
+  // place-kind switch (cities / monuments / airports) is its OWN prominent pill
+  // now — different datasets, not one more filter — so it lives on the map, not
+  // in the panel.
   await expect(page.locator(".pop-filter-row")).toHaveCount(0);
-  await expect(page.locator(".map-ctl-top")).toHaveCount(0);
+  const modePill = page.locator(".map-ctl-top");
+  await expect(modePill).toBeVisible();
+  await expect(modePill.getByRole("button", { name: /Monuments/ })).toBeVisible();
 
-  // Open the one panel; it hosts every dimension.
+  // Open the one panel; it hosts every WITHIN-kind dimension (status, people,
+  // date, folder, sort) — but NOT the place-kind mode (that's the pill above).
   await page.locator(".map-ctl-right").getByRole("button", { name: /Filter/ }).click();
   const panel = page.getByRole("dialog", { name: "Filters" });
   await expect(panel).toBeVisible();
-  // Place-kind mode (map-only) is in here now, not on the map header.
-  await expect(panel.getByRole("button", { name: "Cities", exact: true })).toBeVisible();
-  await expect(panel.getByRole("button", { name: /Monuments/ })).toBeVisible();
+  await expect(panel.getByRole("button", { name: /Monuments/ })).toHaveCount(0);
 
   // Apply status = Want list and People = 1M+.
   await panel.getByRole("button", { name: "Want list", exact: true }).click();
@@ -54,22 +57,19 @@ test("the one Filter panel drives the map; the old inline controls are gone", as
   await expect(panel).toBeHidden();
 });
 
-test("the panel's Show section switches the map's place kind", async ({ page }) => {
+test("the place-kind pill switches the map's dataset", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Cities in view")).toBeVisible();
 
-  // Monuments/airports are reachable ONLY through the panel now (the top mode
-  // selector is gone). Switching Show → Monuments repaints the list.
-  await page.locator(".map-ctl-right").getByRole("button", { name: /Filter/ }).click();
-  const panel = page.getByRole("dialog", { name: "Filters" });
-  await panel.getByRole("button", { name: /Monuments/ }).click();
-  await panel.getByRole("button", { name: "Done" }).click();
+  // Cities / monuments / airports are genuinely different data, so the switch is
+  // a first-class map control (its own prominent pill), not a row in the Filter
+  // panel. Tapping Monuments repaints the in-view list.
+  const modePill = page.locator(".map-ctl-top");
+  await modePill.getByRole("button", { name: /Monuments/ }).click();
   await expect(page.getByText("Monuments in view")).toBeVisible();
 
   // And back to Cities.
-  await page.locator(".map-ctl-right").getByRole("button", { name: /Filter/ }).click();
-  await panel.getByRole("button", { name: "Cities", exact: true }).click();
-  await panel.getByRole("button", { name: "Done" }).click();
+  await modePill.getByRole("button", { name: /Cities/ }).click();
   await expect(page.getByText("Cities in view")).toBeVisible();
 });
 

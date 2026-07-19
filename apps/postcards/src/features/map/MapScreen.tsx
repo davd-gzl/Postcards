@@ -22,7 +22,12 @@ import type { City } from "../../lib/reference/types";
 import { placeKey } from "../../lib/schema/helpers";
 import { CityLine } from "../../ui/CityLine";
 import { MoreButton } from "../../ui/MoreButton";
-import { useFilters, currentFilters, type FilterState } from "../../lib/store/useFilters";
+import {
+  useFilters,
+  currentFilters,
+  type FilterState,
+  type FilterMode,
+} from "../../lib/store/useFilters";
 import { activeChips } from "../filter/applyFilters";
 import { FilterPanel } from "../../ui/FilterPanel";
 import { FilterSummary } from "../../ui/FilterSummary";
@@ -46,6 +51,10 @@ const MAP_HIDDEN_FIELDS: (keyof FilterState)[] = [
   "hasPhoto",
   "hasNote",
   "continent",
+  // Place-kind mode is its own prominent pill now, not a filter — its state is
+  // visible in the pill itself, so it must not double up as a summary chip or
+  // light the Filter badge.
+  "mode",
 ];
 
 // i18n key for each basemap's label (translated at the call site).
@@ -113,6 +122,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const offlineMode = useSettings((s) => s.offlineMode);
   const maxMarkers = useSettings((s) => s.maxMarkers);
   const optimizeMarkers = useSettings((s) => s.optimizeMarkers);
+  const showAllMarkers = useSettings((s) => s.showAllMarkers);
   // The explicit colour-theme choice (System / Light / Dark) drives the
   // basemap's dark palette too, so it never desyncs from the UI.
   const theme = useSettings((s) => s.theme);
@@ -152,6 +162,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const [showTrips, setShowTrips] = useState(true);
   const [globe, setGlobe] = useState(() => loadPref(GLOBE_KEY, (v) => v === "1"));
   const [showTowns, setShowTowns] = useState(() => loadPref("postcards-towns", (v) => v === "1"));
+  // "Only my places": hide the world's browse city dots so the map shows just your
+  // visited flags + want-list dots — the clean "everywhere I've been" view.
+  const [onlyMine, setOnlyMine] = useState(() => loadPref("postcards-only-mine", (v) => v === "1"));
   // ON by default: "visited countries visually distinguished" is a core map
   // promise (US2-AC2) — the layer only paints countries you've actually visited,
   // so a fresh map stays clean anyway. The Layers toggle still turns it off.
@@ -614,6 +627,8 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           showCountries={showCountries}
           maxMarkers={maxMarkers}
           optimizeMarkers={optimizeMarkers}
+          showAllMarkers={showAllMarkers}
+          onlyMine={onlyMine}
           dateFilter={dateFilter}
           folder={folder}
           reducedMotion={reducedMotion}
@@ -658,6 +673,32 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             </button>
           )}
         </div>
+        {/* Place-kind switch, front and centre. Cities / monuments / airports are
+            genuinely DIFFERENT data, not one more filter to bury in the panel — so
+            it's a first-class map control (its own prominent pill), never a row in
+            the Filter menu. */}
+        <div className="map-ctl map-ctl-top">
+          <div className="segmented map-mode" role="group" aria-label={t("filter.mode.title")}>
+            {(["all", "cities", "monuments", "airports"] as FilterMode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={mode === m}
+                className={mode === m ? "seg-on" : ""}
+                onClick={() => filters.set({ mode: m })}
+                title={t(`filter.mode.${m}` as const)}
+              >
+                {m === "cities"
+                  ? `🏙 ${t("filter.mode.cities")}`
+                  : m === "monuments"
+                    ? `🏛 ${t("filter.mode.monuments")}`
+                    : m === "airports"
+                      ? `✈ ${t("filter.mode.airports")}`
+                      : t("filter.mode.all")}
+              </button>
+            ))}
+          </div>
+        </div>
         {addPlaceOpen && (
           <div
             className="map-add-overlay"
@@ -687,9 +728,10 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           </div>
         )}
         <div className="map-ctl map-ctl-right">
-          {/* The ONE Filter control (spec 016): every slicing dimension — status,
-              people, date, folder, sort, and the place-kind mode — lives inside the
-              panel this opens. No more per-control buttons scattered across the map. */}
+          {/* The ONE Filter control (spec 016) for slicing WITHIN a place kind —
+              status, people, date, folder, sort. The place-kind switch itself
+              (cities / monuments / airports) is its own prominent pill above, since
+              those are different datasets, not just another filter. */}
           <button
             className={"map-btn" + (filterOpen ? " on" : "") + (filterActive ? " map-btn-dot" : "")}
             type="button"
@@ -773,6 +815,20 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                 }}
               >
                 🗺 {t("map.layer.myCountries")}
+              </button>
+              <button
+                className={"map-btn" + (onlyMine ? " on" : "")}
+                type="button"
+                aria-pressed={onlyMine}
+                title={t("map.layer.onlyMineTitle")}
+                onClick={() => {
+                  setOnlyMine((v) => {
+                    savePref("postcards-only-mine", !v ? "1" : "0");
+                    return !v;
+                  });
+                }}
+              >
+                📍 {t("map.layer.onlyMine")}
               </button>
               {onlineMap && basemapCycle.length > 1 && (
                 <button className="map-btn" type="button" onClick={switchBasemap}>
@@ -964,7 +1020,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
         onClose={() => setFilterOpen(false)}
         folders={folderOptions}
         years={{ list: yearBuckets.years, undated: yearBuckets.undated }}
-        showMode
       />
     </div>
   );

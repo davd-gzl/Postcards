@@ -12,6 +12,7 @@ const AUTO_GUIDES_KEY = "postcards-auto-guides";
 const ONLINE_MAP_KEY = "postcards-online-map";
 const MAX_MARKERS_KEY = "postcards-max-markers";
 const OPTIMIZE_MARKERS_KEY = "postcards-optimize-markers";
+const SHOW_ALL_MARKERS_KEY = "postcards-show-all-markers";
 const THEME_KEY = "postcards-theme";
 const LOCALE_KEY = "postcards-locale";
 const AUTO_SYNC_KEY = "postcards-auto-sync";
@@ -25,18 +26,14 @@ export type ThemeMode = "system" | "light" | "dark";
 
 // How many airport / monument markers to draw at most in the current view, so a
 // dense area doesn't blanket the map. Clamped to a sane range.
-export const MARKER_CAP_CHOICES = [25, 50, 100, 200, 400] as const;
-// Default lean, and LEANER on phones: fewer markers keeps every pan and every
-// visit-toggle redraw instant (even 100 lagged on mobile). New installs get 25 on
-// a small screen, 100 on a large one; Settings offers more for those who want it.
+// `Infinity` = "Unlimited" (no cap). The cap thins only NON-visited markers now
+// (visited + favourites are always kept), so a modest default stays readable
+// without hiding your own places.
+export const MARKER_CAP_CHOICES = [25, 50, 100, 200, 400, Infinity] as const;
+// Default 100 everywhere: the mobile perf work (debounced list, cheaper viewport
+// scan) made 100 smooth on a phone, and the cap no longer touches your visited
+// markers — so a fuller map is safe. Settings offers more (up to Unlimited).
 function defaultMaxMarkers(): number {
-  try {
-    if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 700px)").matches) {
-      return 25;
-    }
-  } catch {
-    /* no matchMedia: fall through to the desktop default */
-  }
   return 100;
 }
 
@@ -69,6 +66,12 @@ function loadMaxMarkers(): number {
 // dense maps lag. Only a stored "1" turns it on.
 function loadOptimizeMarkers(): boolean {
   return readLocal(OPTIMIZE_MARKERS_KEY) === "1";
+}
+// "Show every place at once": drop the collision de-cluttering on YOUR markers so
+// a zoomed-out map shows all your visited flags + want-list dots together (the
+// "show a friend everywhere I've been" view). Opt-in; a stored "1" turns it on.
+function loadShowAllMarkers(): boolean {
+  return readLocal(SHOW_ALL_MARKERS_KEY) === "1";
 }
 
 function loadScope(): CountryScope {
@@ -159,6 +162,8 @@ interface SettingsState {
   setMaxMarkers: (value: number) => void;
   optimizeMarkers: boolean;
   setOptimizeMarkers: (value: boolean) => void;
+  showAllMarkers: boolean;
+  setShowAllMarkers: (value: boolean) => void;
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
   locale: Locale;
@@ -200,6 +205,11 @@ export const useSettings = create<SettingsState>((set) => ({
   setOptimizeMarkers: (optimizeMarkers) => {
     writeLocal(OPTIMIZE_MARKERS_KEY, optimizeMarkers ? "1" : "0");
     set({ optimizeMarkers });
+  },
+  showAllMarkers: loadShowAllMarkers(),
+  setShowAllMarkers: (showAllMarkers) => {
+    writeLocal(SHOW_ALL_MARKERS_KEY, showAllMarkers ? "1" : "0");
+    set({ showAllMarkers });
   },
   theme: loadTheme(),
   setTheme: (theme) => {

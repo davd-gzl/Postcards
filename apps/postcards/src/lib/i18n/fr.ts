@@ -82,6 +82,9 @@ export const fr: Messages = {
   "settings.map.optimize": "Afficher une ville par région",
   "settings.map.optimizeDesc":
     "Garde la carte rapide : n'affiche que la plus grande ville visitée de chaque région. Vos favoris et vos lieux restent toujours affichés. Désactivez pour voir toutes les villes.",
+  "settings.map.showAll": "Tout afficher d'un coup",
+  "settings.map.showAllDesc":
+    "Voyez tous vos drapeaux visités et vos points « à visiter » ensemble, même dézoomé — parfait pour montrer à un ami partout où vous êtes allé. Les repères ne s'espacent plus.",
   "settings.map.title": "Carte",
   "settings.online.title": "Fonctions en ligne",
   "settings.online.desc": "Tout ce qui utilise internet, au même endroit. N'activez que ce que vous voulez.",
@@ -91,6 +94,7 @@ export const fr: Messages = {
     "La carte détaillée OpenStreetMap est activée par défaut ; elle récupère les tuiles depuis OpenStreetMap lorsque vous êtes en ligne. Désactivez-la pour n'utiliser que la carte hors ligne simple, afin que l'appli ne fasse aucune requête réseau. Dans tous les cas, aucune donnée personnelle ne quitte votre appareil.",
   "settings.detailedMap.toggle": "Utiliser la carte détaillée en ligne (OpenStreetMap)",
   "settings.detailedMap.maxMarkers": "Nombre maximal de repères à l'écran",
+  "settings.detailedMap.unlimited": "Illimité",
   "settings.detailedMap.markersDesc":
     "Limite le nombre d'aéroports ou de monuments dessinés dans la vue actuelle, pour qu'une zone dense ne recouvre pas la carte. Les lieux que vous avez marqués sont toujours conservés.",
   "settings.offline.title": "Cartes hors ligne",
@@ -506,6 +510,8 @@ export const fr: Messages = {
   "map.layer.townsTitle": "Un point pour chaque ville sur terre",
   "map.layer.myCountries": "Mes pays",
   "map.layer.myCountriesTitle": "Colorer les pays que vous avez visités",
+  "map.layer.onlyMine": "Seulement mes lieux",
+  "map.layer.onlyMineTitle": "N'afficher que vos lieux — masquer les points de repère du monde",
   "map.basemap.simple": "Carte simple (hors ligne)",
   "map.basemap.osm": "Carte détaillée",
   "map.basemap.detail": "Rues hors ligne",

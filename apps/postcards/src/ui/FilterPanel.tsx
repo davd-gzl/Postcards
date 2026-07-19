@@ -4,7 +4,6 @@ import {
   POP_CHOICES,
   type FilterStatus,
   type SortOrder,
-  type FilterMode,
 } from "../lib/store/useFilters";
 import { rangeExactYear, yearRange } from "../features/travel/period";
 import { useT } from "../lib/i18n";
@@ -20,7 +19,6 @@ export function FilterPanel({
   onClose,
   folders,
   years,
-  showMode = false,
   showStatus = true,
   showGrowth = false,
   continents = [],
@@ -31,8 +29,6 @@ export function FilterPanel({
   folders: string[];
   /** Years present in the user's data + whether any record is undated. */
   years: { list: string[]; undated: boolean };
-  /** Map-only: show the place-kind mode section (cities / monuments / airports). */
-  showMode?: boolean;
   /** Places owns status via its tabs, so it hides the panel's Status section. */
   showStatus?: boolean;
   /** Show the growth dimensions (favourites-only / has-photo / has-note / continent).
@@ -91,7 +87,6 @@ export function FilterPanel({
 
   const STATUS: FilterStatus[] = ["all", "visited", "wishlist", "unvisited"];
   const SORTS: SortOrder[] = ["pop", "az"];
-  const MODES: FilterMode[] = ["all", "cities", "monuments", "airports"];
 
   return (
     <div className="filter-scrim" onClick={onClose}>
@@ -111,29 +106,9 @@ export function FilterPanel({
           </button>
         </div>
 
-        {/* Show (map place-kind mode) — map only */}
-        {showMode && (
-          <div className="filter-section">
-            <span className="filter-section-title">{t("filter.mode.title")}</span>
-            <div className="segmented wrap" role="group" aria-label={t("filter.mode.title")}>
-              {MODES.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  aria-pressed={f.mode === m}
-                  className={f.mode === m ? "seg-on" : ""}
-                  onClick={() => f.set({ mode: m })}
-                >
-                  {m === "monuments"
-                    ? `🏛 ${t("filter.mode.monuments")}`
-                    : m === "airports"
-                      ? `✈ ${t("filter.mode.airports")}`
-                      : t(`filter.mode.${m}` as const)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Place-kind mode (cities / monuments / airports) is NOT here: it's a
+            first-class map control (its own prominent pill), because those are
+            different datasets, not just another way to slice one list. */}
 
         {/* Status */}
         {showStatus && (

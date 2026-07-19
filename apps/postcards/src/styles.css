@@ -1205,7 +1205,7 @@ h1.brand {
   border: 1px solid var(--border);
   border-radius: var(--radius, 14px);
   width: min(440px, 100%);
-  max-height: min(86vh, 720px);
+  max-height: min(86dvh, 720px);
   overflow-y: auto;
   padding: 4px 16px 14px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
@@ -1264,7 +1264,7 @@ h1.brand {
   }
   .filter-panel {
     width: 100%;
-    max-height: 88vh;
+    max-height: 88dvh;
     border-radius: 16px 16px 0 0;
   }
 }
@@ -3935,6 +3935,38 @@ button.brand:focus-visible {
   .record .country-open {
     min-height: 34px;
   }
+  /* The Filter panel is the app's ONE slicing surface: give every segmented chip
+     (Status / People / Date / Sort / Mode / growth, and the Theme / Language /
+     Scope / Places-view switchers that reuse it) a comfortable touch target with
+     room between them, so wrong-chip taps stop. .segmented.wrap already reflows. */
+  .segmented {
+    gap: 6px;
+  }
+  .segmented button {
+    min-height: 40px;
+    padding: 8px 14px;
+  }
+  /* The map's primary thumb-zone controls (Filter / ≡ Layers / Fit) and the
+     buttons inside the Layers popover. */
+  .map-btn {
+    min-height: 40px;
+    padding: 8px 14px;
+  }
+  /* Lift the smallest icon buttons to at least the WCAG 2.5.8 (AA) 24px floor:
+     the removable filter-chip ✕, the favourite star, the row ⋯ menu and the
+     Places Filter opener. */
+  .filter-chip-x {
+    width: 26px;
+    height: 26px;
+  }
+  .chip {
+    min-height: 40px;
+  }
+  .star-btn,
+  .row-more {
+    min-height: 40px;
+    min-width: 40px;
+  }
 }
 
 /* Phones: a visited row's trailing controls (Guide, Photos, ★, Remove) add up
@@ -4071,7 +4103,9 @@ button.brand:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* `safe` falls back to flex-start when the content is taller than the viewport,
+     so on a short phone the hero (globe + title) is never clipped above the fold. */
+  justify-content: safe center;
   gap: 16px;
   padding: max(32px, env(safe-area-inset-top)) 22px max(28px, env(safe-area-inset-bottom));
   overflow-y: auto;

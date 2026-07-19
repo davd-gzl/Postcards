@@ -176,39 +176,52 @@ export type CityFilter = "all" | "unvisited" | "visited" | "wishlist";
 export const IN_VIEW_CAP = 2000;
 
 /**
- * The exact set of cities to paint as in-view markers for a viewport: the
- * population-ordered in-view working set, narrowed by the list filter, then
- * capped for the map (most-populous kept, so the cap never hides a major city).
+ * The discoverable ("browse") city dots to paint for a viewport — the cities you
+ * have NOT marked, so you can tap one to add it. Your visited flags and want-list
+ * dots are drawn as their own always-on markers, so this function never paints
+ * them and the cap never touches them: it's the "two counters" split the map
+ * shows — **your places (uncapped) vs. discoverable places (capped)**. That means
+ * the cap spends its whole budget on non-visited cities and can never wipe them
+ * all out to make room for cities you've already been to.
  *
- * Pure and deterministic so the map can recompute it straight off the live
- * camera on every `moveend` — no React round-trip — and so it's unit-testable.
- * `visitedIds` is only consulted when a non-"all" filter is active. `minPopulation`
- * (0 = off) drops any city below that headcount, so a dense view can be thinned to
- * just the bigger cities.
+ * - `personalIds` — every city with a personal record (visited OR want-list) in
+ *   the active period. Excluded from the browse dots (drawn as pills elsewhere),
+ *   so the biggest cities you've visited don't crowd out discoverable ones.
+ * - `filter` — when the shared status filter is focused on your OWN places
+ *   ("visited"/"wishlist"), the discovery dots step aside entirely (only your
+ *   markers show); "all"/"unvisited" show the discoverable cities.
+ * - `minPopulation` (0 = off) drops any city below that headcount.
+ * - `cap` — the most discoverable dots to draw; `Infinity` = "Unlimited" (every
+ *   discoverable city in view, bounded only by the working-set scan).
+ *
+ * Pure and deterministic so the map can recompute it straight off the live camera
+ * on every `moveend` — no React round-trip — and so it's unit-testable.
  */
 export function markerCitiesInView(
   cities: City[],
   bounds: Bounds | null,
   cap: number,
   filter: CityFilter = "all",
-  visitedIds?: ReadonlySet<string>,
+  personalIds?: ReadonlySet<string>,
   minPopulation = 0,
 ): City[] {
-  const inView = citiesInView(cities, bounds, IN_VIEW_CAP, true);
-  // "wishlist" doesn't prune the browse dots by visited-ness (wishlist places are
-  // painted as their own personal markers); it behaves like "all" for the dots.
-  const byStatus =
-    filter === "all" || filter === "wishlist" || !visitedIds
-      ? inView
-      : inView.filter((c) => visitedIds.has(c.id) === (filter === "visited"));
+  if (!bounds) return [];
+  // Focused on your own places → no discovery dots; your flags/wishes carry the map.
+  if (filter === "visited" || filter === "wishlist") return [];
+  // "Unlimited" (cap = Infinity) scans the whole in-view field; a finite cap only
+  // needs the bounded working set to have enough candidates to pick the biggest.
+  const scanLimit = Number.isFinite(cap) ? IN_VIEW_CAP : Infinity;
+  const inView = citiesInView(cities, bounds, scanLimit, true);
+  // Drop cities you've already marked — they're painted as your own markers.
+  const discoverable = personalIds ? inView.filter((c) => !personalIds.has(c.id)) : inView;
   const filtered =
     minPopulation > 0
-      ? byStatus.filter((c) => (c.population ?? 0) >= minPopulation)
-      : byStatus;
+      ? discoverable.filter((c) => (c.population ?? 0) >= minPopulation)
+      : discoverable;
   const capN = Math.max(1, cap);
   if (filtered.length <= capN) return filtered;
-  // `inView` is population-descending and the filter preserves order, so the
-  // head is already the biggest cities; sort defensively to guarantee it.
+  // `inView` is population-descending and the filters preserve order, so the head
+  // is already the biggest cities; sort defensively to guarantee it.
   return [...filtered]
     .sort((a, b) => (b.population ?? 0) - (a.population ?? 0))
     .slice(0, capN);
