@@ -80,14 +80,17 @@ export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureC
  *   marks; collapsing one away would hide a place the user deliberately flagged
  *   (matches the marker-cap rule "your own places are never hidden").
  * - Among the remaining real cities, keep only the **most-populous** one in each
- *   area, where an area is `country + subdivision` (state/province/region). Cities
- *   with no subdivision in the dataset share their country's bucket.
+ *   area. `granularity` sets how big an "area" is, so the map can be ZOOM-AWARE:
+ *   `"country"` (one flag per country) when zoomed out, `"area"` (country +
+ *   subdivision) when closer. Zoom in further and the caller skips this entirely
+ *   to show every flag — "the more you zoom, the more of your cities appear."
  *
  * Pure over the FeatureCollection built by {@link visitedCityPoints}, so it reads
  * only the `cc` / `region` / `pop` / `custom` / `fav` properties set there.
  */
 export function optimizeVisitedPoints(
   fc: FeatureCollection<Point>,
+  granularity: "country" | "area" = "area",
 ): FeatureCollection<Point> {
   const kept: Feature<Point>[] = [];
   // area key -> index into `kept` of the current biggest city representing it.
@@ -102,7 +105,8 @@ export function optimizeVisitedPoints(
       kept.push(f); // always shown — never collapsed into an area
       continue;
     }
-    const area = `${p.cc ?? ""}::${p.region ?? ""}`;
+    const area =
+      granularity === "country" ? `${p.cc ?? ""}` : `${p.cc ?? ""}::${p.region ?? ""}`;
     const at = repForArea.get(area);
     if (at === undefined) {
       repForArea.set(area, kept.length);
