@@ -889,6 +889,24 @@ h1.brand {
      "Bu…" just to keep "· Argentina - …" on screen. */
   flex-shrink: 12;
 }
+/* Long-name rows (monuments, airports): let the NAME wrap to another line rather
+   than truncate, and push the country detail onto its own line below it. */
+.city-line.multiline {
+  flex-wrap: wrap;
+}
+.city-line.multiline .city-name {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  /* basis 0 so the name stays on the flag's line and wraps its own text there,
+     instead of the whole span dropping below the flag. */
+  flex: 1 1 0;
+}
+.city-line.multiline .city-sub {
+  white-space: normal;
+  overflow: visible;
+  flex: 1 1 100%;
+}
 .flag {
   flex: none;
   font-size: 15px;
@@ -1183,10 +1201,6 @@ h1.brand {
   display: flex;
   flex-direction: column; /* DOM order == visual order == focus order (WCAG 2.4.3) */
   gap: 6px;
-}
-.map-ctl-left {
-  left: 10px;
-  align-items: flex-start;
 }
 .map-ctl-right {
   right: 10px;
@@ -3048,10 +3062,6 @@ h1.brand {
 
 /* Desktop: map buttons live at the TOP corners; About modal goes two-column. */
 @media (min-width: 900px) {
-  .map-ctl-left {
-    top: 10px;
-    bottom: auto;
-  }
   .map-ctl-right {
     top: 90px; /* below the zoom control */
     bottom: auto;
@@ -3348,12 +3358,8 @@ textarea.select {
     font-size: 12px;
     padding: 4px 10px;
   }
-  /* Attribution now lives bottom-LEFT (see MapView). Lift the bottom-left map
-     controls (Fit to my places) above it so the one-line ⓘ credit stays visible
-     underneath, never covered. */
-  .map-ctl-left {
-    bottom: 34px;
-  }
+  /* Attribution lives bottom-LEFT (see MapView); keep the one-line ⓘ credit
+     from wrapping so it stays a single readable line. */
   .map-box .maplibregl-ctrl-bottom-left {
     white-space: nowrap;
   }

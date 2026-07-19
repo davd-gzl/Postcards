@@ -502,7 +502,6 @@ export const en = {
   "map.addPlace": "Add place",
   "map.addPlaceTitle":
     "Add a place the maps don't have — right-click or long-press the map, or use this",
-  "map.fitToMyPlaces": "Fit to my places",
   "map.addDialogAria": "Add your own place",
   "map.addDialogTitle": "Add a place",
   "map.reconnect.back": "Back online.",
@@ -518,8 +517,6 @@ export const en = {
   "map.layer.townsTitle": "A dot for every town on earth",
   "map.layer.myCountries": "My countries",
   "map.layer.myCountriesTitle": "Shade the countries you've visited",
-  "map.layer.onlyMine": "Only my places",
-  "map.layer.onlyMineTitle": "Show only where you've been — hide the world's browse dots",
   "map.basemap.simple": "Simple map (offline)",
   "map.basemap.osm": "Detailed map",
   "map.basemap.detail": "Offline streets",

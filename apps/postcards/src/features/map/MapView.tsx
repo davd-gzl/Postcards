@@ -736,7 +736,6 @@ export function MapView({
   maxMarkers = 250,
   optimizeMarkers = false,
   showAllMarkers = false,
-  onlyMine = false,
   reduceMapWork = false,
   dateFilter = { mode: "all" },
   folder = "",
@@ -757,9 +756,6 @@ export function MapView({
   /** "Show every place at once": drop the collision de-cluttering on YOUR markers,
    *  so a zoomed-out map shows all your visited flags + want-list dots together. */
   showAllMarkers?: boolean;
-  /** "Only my places": hide the browse city/town dots so only your visited flags
-   *  and want-list dots show — the clean "everywhere I've been" view. */
-  onlyMine?: boolean;
   /** "Update markers only when the map stops" (slower phones): skip the live
    *  in-view recompute during a pan; the dots refresh once, on moveend. */
   reduceMapWork?: boolean;
@@ -837,8 +833,6 @@ export function MapView({
   optimizeMarkersRef.current = optimizeMarkers;
   const showAllRef = useRef(showAllMarkers);
   showAllRef.current = showAllMarkers;
-  const onlyMineRef = useRef(onlyMine);
-  onlyMineRef.current = onlyMine;
   const reduceMapWorkRef = useRef(reduceMapWork);
   reduceMapWorkRef.current = reduceMapWork;
   // The active date + folder filter for YOUR places. Read from refs so the
@@ -1119,19 +1113,10 @@ export function MapView({
   }
 
   function applyMode(map: MlMap, m: MapMode) {
-    const onlyMine = onlyMineRef.current;
     for (const [cat, ids] of Object.entries(MODE_LAYERS)) {
       const on = m === "all" || m === cat;
       for (const id of ids) {
-        // "Only my places" hides every browse/reference layer — the world's city
-        // dots, town dots and browse monuments — so ONLY your own markers (visited
-        // flags, want-list dots and logged airports) remain: the clean "everywhere
-        // I've been" view. Your personal layers (cities-visited/-wishlist/airports)
-        // are never in this browse set, so they always stay.
-        const hideBrowse =
-          onlyMine && (id === "cities-inview" || id === "cities-all" || id === "poi-monuments");
-        if (map.getLayer(id))
-          map.setLayoutProperty(id, "visibility", on && !hideBrowse ? "visible" : "none");
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
       }
     }
     // In "All" mode monuments only appear from country-level zoom — at world
@@ -1142,14 +1127,14 @@ export function MapView({
     // Browsable airports: always in Airports mode; in All mode only once you've
     // zoomed into a region, so ~7,000 planes don't blanket the world view.
     if (map.getLayer("airports-all")) {
-      const on = (m === "airports" || m === "all") && !onlyMine;
+      const on = m === "airports" || m === "all";
       map.setLayoutProperty("airports-all", "visibility", on ? "visible" : "none");
       map.setLayerZoomRange("airports-all", m === "airports" ? 0 : 5, 24);
     }
     // The full-gazetteer dot field is a power view — hidden unless toggled on,
     // and never shown in the monuments/airports modes.
     if (map.getLayer("cities-all")) {
-      const on = showTownsRef.current && (m === "all" || m === "cities") && !onlyMine;
+      const on = showTownsRef.current && (m === "all" || m === "cities");
       map.setLayoutProperty("cities-all", "visibility", on ? "visible" : "none");
     }
   }
@@ -1821,15 +1806,6 @@ export function MapView({
     applyMarkerOverlap(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAllMarkers]);
-
-  // "Only my places" hides/reveals the browse city+town dots.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !loadedRef.current) return;
-    applyMode(map, mode);
-    applyPersonalMarkerFilter(map); // applyMode blanket-reveals cities — re-prune
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlyMine]);
 
   useEffect(() => {
     const map = mapRef.current;

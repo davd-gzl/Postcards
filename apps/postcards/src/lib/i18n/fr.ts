@@ -497,7 +497,6 @@ export const fr: Messages = {
   "map.addPlace": "Ajouter un lieu",
   "map.addPlaceTitle":
     "Ajoutez un lieu que les cartes n'ont pas — clic droit ou appui long sur la carte, ou utilisez ceci",
-  "map.fitToMyPlaces": "Cadrer sur mes lieux",
   "map.addDialogAria": "Ajouter votre propre lieu",
   "map.addDialogTitle": "Ajouter un lieu",
   "map.reconnect.back": "De retour en ligne.",
@@ -513,8 +512,6 @@ export const fr: Messages = {
   "map.layer.townsTitle": "Un point pour chaque ville sur terre",
   "map.layer.myCountries": "Mes pays",
   "map.layer.myCountriesTitle": "Colorer les pays que vous avez visités",
-  "map.layer.onlyMine": "Seulement mes lieux",
-  "map.layer.onlyMineTitle": "N'afficher que vos lieux — masquer les points de repère du monde",
   "map.basemap.simple": "Carte simple (hors ligne)",
   "map.basemap.osm": "Carte détaillée",
   "map.basemap.detail": "Rues hors ligne",
