@@ -1320,7 +1320,9 @@ export function MapView({
       try {
         map = new maplibregl.Map({
           container: containerRef.current,
-          attributionControl: { compact: true },
+          // Attribution goes bottom-LEFT (added below), not the default bottom-right
+          // where it sat under the Filter/Layers pills and got covered by them.
+          attributionControl: false,
           center: lastCamera?.center ?? [6, 32],
           zoom: lastCamera?.zoom ?? 1.1,
           style: fullStyle,
@@ -1352,6 +1354,9 @@ export function MapView({
         }),
         "top-right",
       );
+      // OSM/ODbL + Natural Earth credit, bottom-LEFT so it clears the Filter and
+      // Layers pills in the bottom-right (they were literally covering the ⓘ).
+      map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
 
       // Marker images, generated lazily on demand.
       map.on("styleimagemissing", (e) => {
