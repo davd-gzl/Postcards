@@ -1669,7 +1669,7 @@ export function MapView({
             name: displayName,
             countryId: String(p.cc ?? ""),
           } as PlaceRef,
-          hasPage: kind === "city" || kind === "heritage",
+          hasPage: kind === "city" || kind === "heritage" || kind === "airport",
         },
         // A little preview photo for cities & monuments, but only when the online
         // basemap is active (offline / Offline mode uses "simple" — no network).

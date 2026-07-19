@@ -758,6 +758,10 @@ export const ko: Messages = {
   "city.back": "뒤로",
   "city.unknownPlace": "알 수 없는 장소",
   "city.tag.heritage": "UNESCO 세계유산",
+  "city.tag.airport": "공항",
+  "city.fact.airportCity": "취항 도시",
+  "city.airportTrafficNote":
+    "승객 수는 아직 로드된 데이터에 없습니다 — 공개 항공 트래픽 데이터셋을 추가하면 이용객 수를 표시할 수 있습니다.",
   "city.tag.ownPlace": "내 장소",
   "city.fact.people": "명",
   "city.fact.latLon": "위도, 경도",

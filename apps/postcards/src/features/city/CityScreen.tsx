@@ -71,15 +71,21 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
   const flyTo = useUi((s) => s.flyTo);
   const openJournalDraft = useUi((s) => s.openJournalDraft);
 
-  // The page serves cities, World Heritage monuments, and your own custom places.
+  // The page serves cities, World Heritage monuments, airports, and your own
+  // custom places (ids don't collide: cities are numeric/slug, airports IATA).
   const city = ref.cityById(cityId);
   const monument = !city ? ref.heritageById(cityId) : undefined;
+  const airport = !city && !monument ? ref.airportById(cityId) : undefined;
+  const airportName = airport ? `${airport.name} (${airport.id})` : undefined;
   const visit = city
     ? findByPlace(visits, { kind: "city", id: city.id })
     : monument
       ? findByPlace(visits, { kind: "heritage", id: monument.id })
-      : findByPlace(visits, { kind: "custom", id: cityId });
-  const liveCustom = !city && !monument && visit?.place.kind === "custom" ? visit.place : null;
+      : airport
+        ? findByPlace(visits, { kind: "airport", id: airport.id })
+        : findByPlace(visits, { kind: "custom", id: cityId });
+  const liveCustom =
+    !city && !monument && !airport && visit?.place.kind === "custom" ? visit.place : null;
   // A custom place exists ONLY as its visit's embedded PlaceRef — remember it so
   // unchecking "Been there" on this very page doesn't collapse the header to
   // "Unknown place" and strand the user (the toggles must stay to re-add it).
@@ -88,17 +94,25 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
   const customPlace =
     liveCustom ?? (lastCustom.current?.id === cityId ? lastCustom.current.place : null);
 
-  const name = city?.name ?? monument?.name ?? customPlace?.name ?? t("city.unknownPlace");
-  const cc = city?.countryIso2 ?? monument?.countryIso2 ?? customPlace?.countryId ?? "";
+  const name =
+    city?.name ?? monument?.name ?? airportName ?? customPlace?.name ?? t("city.unknownPlace");
+  const cc =
+    city?.countryIso2 ??
+    monument?.countryIso2 ??
+    airport?.countryIso2 ??
+    customPlace?.countryId ??
+    "";
   const country = ref.countryByIso2(cc);
   const region = city?.subdivisionId ? ref.subdivisionById(city.subdivisionId)?.name : null;
-  const lat = city?.lat ?? (monument && (monument.lat !== 0 || monument.lon !== 0) ? monument.lat : null) ?? customPlace?.lat ?? null;
-  const lon = city?.lon ?? (monument && (monument.lat !== 0 || monument.lon !== 0) ? monument.lon : null) ?? customPlace?.lon ?? null;
+  const lat = city?.lat ?? (monument && (monument.lat !== 0 || monument.lon !== 0) ? monument.lat : null) ?? airport?.lat ?? customPlace?.lat ?? null;
+  const lon = city?.lon ?? (monument && (monument.lat !== 0 || monument.lon !== 0) ? monument.lon : null) ?? airport?.lon ?? customPlace?.lon ?? null;
   const place = city
     ? { kind: "city" as const, id: city.id, name: city.name, countryId: city.countryIso2 }
     : monument
       ? { kind: "heritage" as const, id: monument.id, name: monument.name, countryId: monument.countryIso2 }
-      : customPlace;
+      : airport
+        ? { kind: "airport" as const, id: airport.id, name: airportName!, countryId: airport.countryIso2 }
+        : customPlace;
 
   // This place's journal stories (already newest-first in the store).
   const placeStories = useMemo(
@@ -143,6 +157,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
             {country?.name ?? cc}
             {region ? ` - ${region}` : ""}
             {monument ? ` · ${t("city.tag.heritage")}` : ""}
+            {airport ? ` · ${t("city.tag.airport")}` : ""}
             {customPlace ? ` · ${t("city.tag.ownPlace")}` : ""}
           </p>
         </div>
@@ -153,6 +168,11 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
         {city?.population != null && (
           <span className="fact">
             <strong>{formatInt(city.population)}</strong> {t("city.fact.people")}
+          </span>
+        )}
+        {airport?.city && (
+          <span className="fact">
+            {t("city.fact.airportCity")} <strong>{airport.city}</strong>
           </span>
         )}
         {lat != null && lon != null && (
@@ -175,7 +195,11 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
         )}
       </div>
 
-      {!city && !monument && !customPlace && (
+      {/* Honest about missing reference data (Constitution: aggregator, never
+          invents): passenger throughput isn't in any vendored dataset yet. */}
+      {airport && <p className="muted small">{t("city.airportTrafficNote")}</p>}
+
+      {!city && !monument && !airport && !customPlace && (
         <p className="notice">
           {t("city.notInData")}{" "}
           <button
