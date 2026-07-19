@@ -611,6 +611,11 @@ h1.brand {
 .search-input::placeholder {
   color: var(--muted);
 }
+/* Inputs that carry a trailing ✕ clear button reserve room so typed text never
+   slides under it. */
+.search-input.has-clear {
+  padding-right: 40px;
+}
 /* Leading 🔍 + trailing ✕, positioned inside the relative .search wrapper so the
    field reads as a search at a glance and clears in one tap. The input's side
    padding (set per-context below) keeps text clear of both. */
@@ -847,6 +852,10 @@ h1.brand {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+/* The note is a multi-line textarea — give it the full width of the 2-col menu. */
+.row-menu-note {
+  grid-column: 1 / -1;
 }
 @media (max-width: 520px) {
   .row-menu {

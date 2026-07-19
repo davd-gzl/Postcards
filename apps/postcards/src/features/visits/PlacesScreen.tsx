@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
@@ -77,15 +77,52 @@ function placeMeta(
 /** The per-row "more" popover: edit the visit's date, folder and note in one
  *  place, so the row itself stays a clean single column (flag + name). Opens
  *  inline below the row; the folder box suggests folders already in use. */
-function RowMenu({ v, onClose }: { v: Visit; onClose: () => void }) {
+function RowMenu({
+  v,
+  onClose,
+  triggerRef,
+  hideDate = false,
+}: {
+  v: Visit;
+  onClose: () => void;
+  /** This row's own ⋯ button — excluded from the outside-click close so its own
+   *  onClick (which toggles the menu) isn't fought by the close handler. */
+  triggerRef?: RefObject<HTMLButtonElement | null>;
+  /** Hide the date field (want-list rows: a want-to-go place has no visit date,
+   *  and a target date would drift toward trip-planning). */
+  hideDate?: boolean;
+}) {
   const t = useT();
   const setDetails = useVisits((s) => s.setDetails);
   const removeVisit = useVisits((s) => s.removeVisit);
   const restoreVisit = useVisits((s) => s.restoreVisit);
   const showToast = useToast((s) => s.show);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [date, setDate] = useState(v.date ?? "");
   const [folder, setFolder] = useState(v.folder ?? "");
   const [note, setNote] = useState(v.note ?? "");
+  // Close on Escape and on a click/tap outside the menu (its own ⋯ trigger is
+  // excluded — its onClick toggles it). Opening another row's ⋯ counts as an
+  // outside click here, so this menu closes: only one row menu stays open.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    }
+    function onDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (menuRef.current?.contains(target) || triggerRef?.current?.contains(target)) return;
+      onClose();
+    }
+    document.addEventListener("keydown", onKey, true);
+    document.addEventListener("mousedown", onDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("mousedown", onDown, true);
+    };
+  }, [onClose, triggerRef]);
   // Folders already in use, for the datalist — a snapshot when the menu opens.
   const folders = useMemo(() => {
     const set = new Set<string>();
@@ -102,16 +139,23 @@ function RowMenu({ v, onClose }: { v: Visit; onClose: () => void }) {
     onClose();
   }
   return (
-    <div className="row-menu" role="group" aria-label={t("places.rowMenu.aria", { name: v.place.name })}>
-      <label className="picker-label">
-        <span>{t("places.rowMenu.date")}</span>
-        <input
-          type="date"
-          className="select"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-      </label>
+    <div
+      className="row-menu"
+      ref={menuRef}
+      role="group"
+      aria-label={t("places.rowMenu.aria", { name: v.place.name })}
+    >
+      {!hideDate && (
+        <label className="picker-label">
+          <span>{t("places.rowMenu.date")}</span>
+          <input
+            type="date"
+            className="select"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </label>
+      )}
       <label className="picker-label">
         <span>{t("places.rowMenu.folder")}</span>
         <input
@@ -127,10 +171,11 @@ function RowMenu({ v, onClose }: { v: Visit; onClose: () => void }) {
           ))}
         </datalist>
       </label>
-      <label className="picker-label">
+      <label className="picker-label row-menu-note">
         <span>{t("places.rowMenu.note")}</span>
-        <input
+        <textarea
           className="select"
+          rows={3}
           value={note}
           maxLength={2000}
           placeholder={t("places.rowMenu.notePlaceholder")}
@@ -171,12 +216,10 @@ function RowMenu({ v, onClose }: { v: Visit; onClose: () => void }) {
 const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: boolean }) {
   const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
-  const removeVisit = useVisits((s) => s.removeVisit);
   const toggleVisit = useVisits((s) => s.toggleVisit);
   const toggleFavorite = useVisits((s) => s.toggleFavorite);
-  const restoreVisit = useVisits((s) => s.restoreVisit);
-  const showToast = useToast((s) => s.show);
   const [menuOpen, setMenuOpen] = useState(false);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
   const { sub } = placeMeta(ref, v, t);
   // A visited monument/airport must NOT read as a city: show its own glyph, not
   // the country flag (cities keep the flag).
@@ -186,13 +229,6 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
       : v.place.kind === "airport"
         ? "✈️"
         : countryFlag(v.place.countryId);
-
-  function removeWithUndo() {
-    // Only this row's record goes away — undo puts that one record back
-    // instead of rewriting the whole visits table.
-    void removeVisit(v.visitId);
-    showToast(t("places.row.removedToast", { name: v.place.name }), () => restoreVisit(v));
-  }
 
   return (
     <li className={"city-row compact" + (menuOpen ? " menu-open" : "")}>
@@ -214,7 +250,7 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
             // date and note now live in the row's "⋯" menu, not inline.
             <>
               · {sub}
-              {!wishlist && v.folder ? <span className="folder-chip">📁 {v.folder}</span> : null}
+              {v.folder ? <span className="folder-chip">📁 {v.folder}</span> : null}
             </>
           }
         />
@@ -248,33 +284,47 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
           ✓ {t("places.row.beenThere")}
         </button>
       )}
-      {!wishlist && (
-        <button
-          className="mini-btn row-more"
-          type="button"
-          aria-expanded={menuOpen}
-          aria-label={t("places.row.moreAria", { name: v.place.name })}
-          onClick={() => setMenuOpen((o) => !o)}
-        >
-          ⋯
-        </button>
+      {/* Both visited AND want-list rows get the ⋯ menu (date/folder/note + Remove),
+          so a want-to-go place can carry a note ("go in cherry-blossom season") and
+          a folder, and both row families share the same trailing controls. */}
+      <button
+        ref={moreBtnRef}
+        className="mini-btn row-more"
+        type="button"
+        aria-expanded={menuOpen}
+        aria-label={t("places.row.moreAria", { name: v.place.name })}
+        onClick={() => setMenuOpen((o) => !o)}
+      >
+        ⋯
+      </button>
+      {menuOpen && (
+        <RowMenu
+          v={v}
+          triggerRef={moreBtnRef}
+          hideDate={wishlist}
+          onClose={() => setMenuOpen(false)}
+        />
       )}
-      {/* Visited rows get Remove inside the "⋯" menu (keeps the row uncluttered so
-          the name fits); wishlist rows have no menu, so Remove stays inline. */}
-      {wishlist && (
-        <button
-          className="link-danger"
-          type="button"
-          onClick={removeWithUndo}
-          aria-label={t("places.row.removeAria", { name: v.place.name })}
-        >
-          {t("common.remove")}
-        </button>
-      )}
-      {menuOpen && !wishlist && <RowMenu v={v} onClose={() => setMenuOpen(false)} />}
     </li>
   );
 });
+
+/** The "nothing matches" line — with a one-tap Clear when a name search caused it,
+ *  so a search for a place you haven't logged isn't a dead end (the native ✕ on a
+ *  type=search box is unreliable on Android/Capacitor). */
+function NoMatch({ q, onClear }: { q: string; onClear: () => void }) {
+  const t = useT();
+  return (
+    <p className="muted empty">
+      {t("places.noMatch")}{" "}
+      {q && (
+        <button className="link" type="button" onClick={onClear}>
+          {t("search.clear")}
+        </button>
+      )}
+    </p>
+  );
+}
 
 /** Your visited places, your wish-to-go list, monuments, + a checklist of every country. */
 export function PlacesScreen() {
@@ -508,6 +558,11 @@ export function PlacesScreen() {
     setShown(100);
   }
 
+  const clearSearch = () => {
+    setFilter("");
+    setShown(100);
+  };
+
   return (
     <section aria-label={t("places.aria")}>
       <div className="section-head">
@@ -549,22 +604,35 @@ export function PlacesScreen() {
         (view !== "favorites" || favorites.length > 0) &&
         (view !== "wishlist" || wishlist.length > 0) &&
         (view !== "monuments" || heritageAvailable) && (
-          <input
-            type="search"
-            className="search-input places-filter"
-            placeholder={
-              view === "monuments"
-                ? t("places.filter.monumentsPlaceholder")
-                : t("places.filter.placesPlaceholder")
-            }
-            aria-label={
-              view === "monuments"
-                ? t("places.filter.monumentsAria")
-                : t("places.filter.placesAria")
-            }
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
+          <div className="search">
+            <input
+              type="search"
+              className="search-input places-filter has-clear"
+              placeholder={
+                view === "monuments"
+                  ? t("places.filter.monumentsPlaceholder")
+                  : t("places.filter.placesPlaceholder")
+              }
+              aria-label={
+                view === "monuments"
+                  ? t("places.filter.monumentsAria")
+                  : t("places.filter.placesAria")
+              }
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
+            {filter && (
+              <button
+                type="button"
+                className="search-clear"
+                aria-label={t("search.clear")}
+                title={t("search.clear")}
+                onClick={clearSearch}
+              >
+                ✕
+              </button>
+            )}
+          </div>
         )}
 
       {/* The ONE Filter (spec 016 US3): the same panel the map uses, minus status
@@ -602,7 +670,7 @@ export function PlacesScreen() {
             </p>
           )}
           {visited.length > 0 && visitedShown.length === 0 && (
-            <p className="muted empty">{t("places.noMatch")}</p>
+            <NoMatch q={q} onClear={clearSearch} />
           )}
           {visitedShown.length > 0 && (
             <div className="places-groupby btn-row" role="group" aria-label={t("places.groupBy")}>
@@ -675,7 +743,7 @@ export function PlacesScreen() {
             </p>
           )}
           {favorites.length > 0 && favoritesShown.length === 0 && (
-            <p className="muted empty">{t("places.noMatch")}</p>
+            <NoMatch q={q} onClear={clearSearch} />
           )}
           <ul className="city-list">
             {favoritesShown.slice(0, shown).map((v) => (
@@ -704,7 +772,7 @@ export function PlacesScreen() {
             </p>
           )}
           {wishlist.length > 0 && wishlistShown.length === 0 && (
-            <p className="muted empty">{t("places.noMatch")}</p>
+            <NoMatch q={q} onClear={clearSearch} />
           )}
           <ul className="city-list">
             {wishlistShown.slice(0, shown).map((v) => (
@@ -749,7 +817,7 @@ export function PlacesScreen() {
                 </button>
               </div>
               {monuments.length === 0 && (
-                <p className="muted empty">{t("places.noMatch")}</p>
+                <NoMatch q={q} onClear={clearSearch} />
               )}
               <ul className="city-list">
                 {monuments.slice(0, shown).map((h) => {
@@ -798,16 +866,29 @@ export function PlacesScreen() {
           <p className="muted small" style={{ margin: "0 0 6px" }}>
             {t("places.countries.desc")}
           </p>
-          <input
-            type="search"
-            className="search-input"
-            placeholder={t("places.countries.filterPlaceholder")}
-            aria-label={t("places.countries.filterAria")}
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
+          <div className="search">
+            <input
+              type="search"
+              className="search-input has-clear"
+              placeholder={t("places.countries.filterPlaceholder")}
+              aria-label={t("places.countries.filterAria")}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
+            {filter && (
+              <button
+                type="button"
+                className="search-clear"
+                aria-label={t("search.clear")}
+                title={t("search.clear")}
+                onClick={clearSearch}
+              >
+                ✕
+              </button>
+            )}
+          </div>
           {countryRows.length === 0 && (
-            <p className="muted empty">{t("places.noMatch")}</p>
+            <NoMatch q={q} onClear={clearSearch} />
           )}
           <ul className="city-list" style={{ marginTop: 8 }}>
             {/* Paged like every other long list here — 250 country rows (each
