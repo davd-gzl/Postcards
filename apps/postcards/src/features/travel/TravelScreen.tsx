@@ -161,6 +161,10 @@ export function TravelScreen() {
   const [formKey, setFormKey] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [passOpen, setPassOpen] = useState(false);
+  // The add/edit form is collapsed by default so the trip LOG is what you see on
+  // landing (mirrors the Journal composer). "＋ New trip", tapping a trip to edit,
+  // or scanning a boarding pass opens it; save/cancel closes it.
+  const [addOpen, setAddOpen] = useState(false);
   // The period filter is shared (via useUi) so the map's trip arcs match it.
   const year = useUi((s) => s.tripYear) as YearFilter;
   const month = useUi((s) => s.tripMonth) as MonthFilter;
@@ -229,11 +233,17 @@ export function TravelScreen() {
     loadForm(EMPTY_FIELDS);
   }
 
+  function openNewTrip() {
+    resetForm();
+    setAddOpen(true);
+  }
+
   function startEdit(t: Trip) {
     loadForm(
       { from: t.from, to: t.to, mode: t.mode, date: t.date ?? "", note: t.note ?? "", name: t.name ?? "" },
       t.tripId,
     );
+    setAddOpen(true);
     document.querySelector(".trip-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
@@ -250,6 +260,7 @@ export function TravelScreen() {
       showToast(t("travel.toast.added", { from: endpointLabel(from), to: endpointLabel(to) }), () => setAll(prev));
     }
     resetForm();
+    setAddOpen(false);
   }
 
   // Escape backs out of the screen's transient states: the edit mode or the
@@ -259,8 +270,9 @@ export function TravelScreen() {
     if (passOpen) {
       setPassOpen(false);
       e.stopPropagation();
-    } else if (editingId) {
+    } else if (editingId || addOpen) {
       resetForm();
+      setAddOpen(false);
       e.stopPropagation();
     }
   }
@@ -300,6 +312,7 @@ export function TravelScreen() {
         note: leg.flight ? `Flight ${leg.flight}` : "",
         name: "",
       });
+      setAddOpen(true);
       const missing = [!leg.from && leg.codes[0], !leg.to && leg.codes[1]].filter(Boolean);
       showToast(
         missing.length
@@ -391,6 +404,11 @@ export function TravelScreen() {
     <section aria-label={t("travel.title")} onKeyDown={onEscape}>
       <div className="section-head">
         <h2>{t("travel.title")}</h2>
+        {!addOpen && (
+          <button type="button" className="btn" onClick={openNewTrip}>
+            ＋ {t("travel.newTrip")}
+          </button>
+        )}
       </div>
 
       {years.length > 0 && (
@@ -469,13 +487,18 @@ export function TravelScreen() {
         <BoardingPassImport open={passOpen} onOpenChange={setPassOpen} onResult={handleScan} />
       )}
 
-      <TripForm
-        key={formKey}
-        initial={draft}
-        editing={!!editingId}
-        onSave={(fields) => void saveTrip(fields)}
-        onCancel={resetForm}
-      />
+      {addOpen && (
+        <TripForm
+          key={formKey}
+          initial={draft}
+          editing={!!editingId}
+          onSave={(fields) => void saveTrip(fields)}
+          onCancel={() => {
+            resetForm();
+            setAddOpen(false);
+          }}
+        />
+      )}
 
       {trips.length === 0 ? (
         <p className="muted empty">

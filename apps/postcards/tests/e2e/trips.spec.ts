@@ -8,6 +8,8 @@ test("log a trip and see its distance in the totals", async ({ page }) => {
   await gotoTab(page, "Trips");
   await expect(page.getByRole("heading", { name: "Travel log" })).toBeVisible();
 
+  // The add form is collapsed by default now — open it first.
+  await page.getByRole("button", { name: "New trip" }).click();
   // Pick the "from" airport by IATA code.
   await page.getByLabel("From", { exact: true }).fill("CDG");
   await page.getByRole("option").filter({ hasText: "CDG" }).first().click();

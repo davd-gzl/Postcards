@@ -378,6 +378,7 @@ export const fr: Messages = {
   "travel.notePlaceholder": "Vol AC834, siège 12A…",
   "travel.saveChanges": "Enregistrer",
   "travel.addTrip": "Ajouter un trajet",
+  "travel.newTrip": "Nouveau trajet",
   "travel.empty":
     "Aucun trajet enregistré pour l'instant. Ajoutez-en un que vous avez fait — ou scannez une carte d'embarquement et il se remplit tout seul.",
   "travel.noTripsInPeriod": "Aucun trajet en {period}.",

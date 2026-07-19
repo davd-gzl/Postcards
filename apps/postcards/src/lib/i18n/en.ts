@@ -383,6 +383,7 @@ export const en = {
   "travel.notePlaceholder": "Flight AC834, seat 12A…",
   "travel.saveChanges": "Save changes",
   "travel.addTrip": "Add trip",
+  "travel.newTrip": "New trip",
   "travel.empty":
     "No journeys logged yet. Add one you've taken — or scan a boarding pass and it fills itself in.",
   "travel.noTripsInPeriod": "No trips in {period}.",
