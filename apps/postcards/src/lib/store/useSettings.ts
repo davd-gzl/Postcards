@@ -13,6 +13,7 @@ const ONLINE_MAP_KEY = "postcards-online-map";
 const MAX_MARKERS_KEY = "postcards-max-markers";
 const OPTIMIZE_MARKERS_KEY = "postcards-optimize-markers";
 const SHOW_ALL_MARKERS_KEY = "postcards-show-all-markers";
+const REDUCE_MAP_WORK_KEY = "postcards-reduce-map-work";
 const THEME_KEY = "postcards-theme";
 const LOCALE_KEY = "postcards-locale";
 const AUTO_SYNC_KEY = "postcards-auto-sync";
@@ -72,6 +73,13 @@ function loadOptimizeMarkers(): boolean {
 // "show a friend everywhere I've been" view). Opt-in; a stored "1" turns it on.
 function loadShowAllMarkers(): boolean {
   return readLocal(SHOW_ALL_MARKERS_KEY) === "1";
+}
+// "Update markers only when the map stops": on a slower phone the browse (not-
+// visited) city dots recomputing live on every pan frame is the felt lag. Turning
+// this on drops the live recompute and only refreshes them once the map settles
+// (moveend), so panning stays smooth. Opt-in; a stored "1" turns it on.
+function loadReduceMapWork(): boolean {
+  return readLocal(REDUCE_MAP_WORK_KEY) === "1";
 }
 
 function loadScope(): CountryScope {
@@ -164,6 +172,8 @@ interface SettingsState {
   setOptimizeMarkers: (value: boolean) => void;
   showAllMarkers: boolean;
   setShowAllMarkers: (value: boolean) => void;
+  reduceMapWork: boolean;
+  setReduceMapWork: (value: boolean) => void;
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
   locale: Locale;
@@ -210,6 +220,11 @@ export const useSettings = create<SettingsState>((set) => ({
   setShowAllMarkers: (showAllMarkers) => {
     writeLocal(SHOW_ALL_MARKERS_KEY, showAllMarkers ? "1" : "0");
     set({ showAllMarkers });
+  },
+  reduceMapWork: loadReduceMapWork(),
+  setReduceMapWork: (reduceMapWork) => {
+    writeLocal(REDUCE_MAP_WORK_KEY, reduceMapWork ? "1" : "0");
+    set({ reduceMapWork });
   },
   theme: loadTheme(),
   setTheme: (theme) => {

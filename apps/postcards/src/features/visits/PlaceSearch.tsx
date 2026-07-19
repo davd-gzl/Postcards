@@ -126,6 +126,21 @@ export function PlaceSearch({
 
   return (
     <div className="search">
+      {/* A leading 🔍 makes the field unmistakably a search even when the top-bar
+          squeezes the placeholder to "Search a…" on a phone. It's a pointer
+          affordance that focuses the field on tap; the input already carries the
+          accessible name, so this is aria-hidden + non-focusable (no duplicate
+          "Search a city…" for AT, and keyboard users just tab to the input). */}
+      <button
+        type="button"
+        className="search-icon"
+        aria-hidden="true"
+        tabIndex={-1}
+        title={t("search.aria")}
+        onClick={() => inputRef.current?.focus()}
+      >
+        🔍
+      </button>
       <input
         ref={inputRef}
         type="search"
@@ -144,6 +159,21 @@ export function PlaceSearch({
         }}
         onKeyDown={onKeyDown}
       />
+      {q && (
+        <button
+          type="button"
+          className="search-clear"
+          aria-label={t("search.clear")}
+          title={t("search.clear")}
+          onClick={() => {
+            setQ("");
+            setActive(-1);
+            inputRef.current?.focus();
+          }}
+        >
+          ✕
+        </button>
+      )}
       <p className="sr-only" role="status" aria-live="polite">
         {notFound
           ? t("search.noMatches", { q: dq.trim() })

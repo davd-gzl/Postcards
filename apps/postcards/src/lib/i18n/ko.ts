@@ -86,6 +86,9 @@ export const ko: Messages = {
   "settings.map.showAll": "모든 장소 한 번에 표시",
   "settings.map.showAllDesc":
     "방문한 깃발과 위시리스트 점을 축소해도 모두 함께 표시합니다 — 어디를 다녀왔는지 친구에게 보여주기에 좋습니다. 마커가 겹쳐도 솎아내지 않습니다.",
+  "settings.map.reduceWork": "지도가 멈췄을 때만 마커 갱신",
+  "settings.map.reduceWorkDesc":
+    "느린 폰에서 더 부드러운 이동: 방문하지 않은 도시 점을 매 프레임이 아니라 지도가 멈춘 뒤에 갱신합니다. 내 장소는 영향을 받지 않습니다.",
   "settings.map.title": "지도",
   "settings.online.title": "온라인 기능",
   "settings.online.desc": "인터넷을 사용하는 모든 것을 한곳에. 원하는 것만 켜세요.",
@@ -659,6 +662,7 @@ export const ko: Messages = {
   // ── Global place search (top bar) ────────────────────────────────────────
   "search.placeholder": "도시나 국가 검색…",
   "search.aria": "도시나 국가 검색",
+  "search.clear": "검색 지우기",
   "search.noMatches": "{q}에 대한 결과 없음",
   "search.results_one": "결과 {count}개",
   "search.results_other": "결과 {count}개",

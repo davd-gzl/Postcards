@@ -606,6 +606,41 @@ h1.brand {
 .search-input::placeholder {
   color: var(--muted);
 }
+/* Leading 🔍 + trailing ✕, positioned inside the relative .search wrapper so the
+   field reads as a search at a glance and clears in one tap. The input's side
+   padding (set per-context below) keeps text clear of both. */
+.search-icon,
+.search-clear {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--muted);
+  line-height: 1;
+}
+.search-icon {
+  left: 5px;
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+}
+.search-clear {
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+  border-radius: 999px;
+}
+.search-clear:hover {
+  color: var(--text);
+  background: var(--bg-sub);
+}
 .results {
   position: absolute;
   left: 0;
@@ -833,7 +868,11 @@ h1.brand {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-shrink: 3;
+  /* The name is the point of the row — it keeps its width and only ellipsizes as
+     a last resort (once the region below has fully collapsed). */
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-shrink: 1;
 }
 .city-line .city-sub {
   white-space: nowrap;
@@ -841,6 +880,9 @@ h1.brand {
   text-overflow: ellipsis;
   flex: 1 1 auto;
   min-width: 0;
+  /* The region/detail yields its space FIRST, so "Buenos Aires" never collapses to
+     "Bu…" just to keep "· Argentina - …" on screen. */
+  flex-shrink: 12;
 }
 .flag {
   flex: none;
@@ -1663,6 +1705,37 @@ h1.brand {
   grid-area: meter;
   height: 5px;
   margin-top: 2px;
+}
+/* Cities | regions, side by side in the collapsed row — both coverage %s visible
+   without expanding. Each column takes half the width; the caption sits above its
+   own bar so you always know which is which. */
+.country-meters {
+  grid-area: meter;
+  display: flex;
+  gap: 14px;
+  margin-top: 3px;
+}
+.cmeter {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cmeter-cap {
+  font-size: 10.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmeter-cap b {
+  color: var(--text);
+  font-weight: 700;
+}
+.country-meters .bar {
+  height: 5px;
 }
 .country-body {
   margin-top: 6px;
@@ -3305,6 +3378,20 @@ textarea.select {
   white-space: nowrap;
   flex: none;
 }
+/* The place-kind pill is a small floating overlay, not a thumb-zone action, so it
+   opts OUT of the 40px coarse-pointer target the panel's segmented chips use and
+   stays compact (icon-only) — still comfortably above the WCAG 2.5.8 (AA) 24px
+   floor. Higher specificity than `.segmented button`, so it wins on touch too. */
+.map-ctl-top .map-mode {
+  gap: 2px;
+  padding: 2px;
+}
+.map-ctl-top .map-mode button {
+  min-height: 28px;
+  padding: 2px 8px;
+  font-size: 13px;
+  line-height: 1.15;
+}
 
 /* ===== Search in the top bar (it was eating a whole row on every screen) ===== */
 .topbar-search {
@@ -3319,7 +3406,8 @@ textarea.select {
 .topbar-search .search-input {
   height: 32px;
   font-size: 14px;
-  padding: 0 12px;
+  /* Room for the leading 🔍 and the trailing ✕. */
+  padding: 0 32px 0 34px;
 }
 /* Dropdowns anchor under the bar, not in the page flow. */
 .topbar-search .results {
@@ -3344,7 +3432,7 @@ textarea.select {
 @media (max-width: 899.98px) {
   .topbar-search .search-input {
     height: 30px;
-    padding: 0 11px;
+    padding: 0 30px 0 32px; /* room for 🔍 + ✕ */
     font-size: 16px; /* below 16px, iOS zooms the page on focus */
   }
   /* The input can be narrow between the brand and the icons — span the

@@ -92,6 +92,9 @@ export const en = {
   "settings.map.showAll": "Show every place at once",
   "settings.map.showAllDesc":
     "See all your visited flags and want-list dots together, even zoomed out — great for showing a friend everywhere you've been. Markers stop thinning to declutter.",
+  "settings.map.reduceWork": "Update markers only when the map stops",
+  "settings.map.reduceWorkDesc":
+    "Smoother panning on slower phones: the not-visited city dots refresh once you stop moving instead of on every frame. Your own places are unaffected.",
   "settings.map.title": "Map",
   "settings.online.title": "Online features",
   "settings.online.desc": "Everything that reaches the internet, in one place. Enable only what you want.",
@@ -665,6 +668,7 @@ export const en = {
   // ── Global place search (top bar) ────────────────────────────────────────
   "search.placeholder": "Search a city or country…",
   "search.aria": "Search a city or country",
+  "search.clear": "Clear search",
   "search.noMatches": "No matches for {q}",
   "search.results_one": "{count} result",
   "search.results_other": "{count} results",
