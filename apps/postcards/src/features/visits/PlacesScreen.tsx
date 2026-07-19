@@ -5,6 +5,7 @@ import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
 import { useSettings } from "../../lib/store/useSettings";
 import { countryFlag } from "../../lib/format/format";
+import { heritageGlyph } from "../../lib/reference/heritageGlyph";
 import type { Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
 import { inScope } from "../../lib/reference/scope";
@@ -176,6 +177,14 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
   const showToast = useToast((s) => s.show);
   const [menuOpen, setMenuOpen] = useState(false);
   const { sub } = placeMeta(ref, v, t);
+  // A visited monument/airport must NOT read as a city: show its own glyph, not
+  // the country flag (cities keep the flag).
+  const rowGlyph =
+    v.place.kind === "heritage"
+      ? heritageGlyph(ref.heritageById(v.place.id)?.category)
+      : v.place.kind === "airport"
+        ? "✈️"
+        : countryFlag(v.place.countryId);
 
   function removeWithUndo() {
     // Only this row's record goes away — undo puts that one record back
@@ -197,7 +206,7 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
         aria-label={t("places.row.openAria", { name: v.place.name })}
       >
         <CityLine
-          flag={countryFlag(v.place.countryId)}
+          flag={rowGlyph}
           name={v.place.name}
           sub={
             // One clean column: just the region, plus a folder chip when set. The

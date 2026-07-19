@@ -9,6 +9,7 @@ import { useSettings, type ThemeMode } from "../../lib/store/useSettings";
 import { usePrefersReducedMotion } from "../../lib/hooks/usePrefersReducedMotion";
 import { useOnlineStatus } from "../../lib/hooks/useOnlineStatus";
 import { countryFlag, formatInt } from "../../lib/format/format";
+import { heritageGlyph } from "../../lib/reference/heritageGlyph";
 import { StateToggles } from "../visits/StateToggles";
 import { AddPlaceForm } from "../visits/AddPlaceForm";
 import { GuideButton } from "../guides/GuideButton";
@@ -405,18 +406,19 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     const wishlistIds = new Set(
       cityVisits.filter((v) => v.status === "wishlist").map((v) => v.place.id),
     );
-    const arr = folder
-      ? // A folder is selected → the list is YOUR folder's cities in view (any
-        // status), matching the pruned markers.
-        inView.filter((c) => visitedIds.has(c.id) || wishlistIds.has(c.id))
-      : cityFilter === "all"
-        ? inView
-        : cityFilter === "visited"
-          ? inView.filter((c) => visitedIds.has(c.id))
-          : cityFilter === "wishlist"
-            ? inView.filter((c) => wishlistIds.has(c.id))
-            : // "unvisited" = neither visited nor on the want list.
-              inView.filter((c) => !visitedIds.has(c.id) && !wishlistIds.has(c.id));
+    const arr =
+      onlyMine || folder
+        ? // "Only my places" (or a selected folder) → just YOUR cities in view
+          // (visited + want-list), matching the map, no browse noise.
+          inView.filter((c) => visitedIds.has(c.id) || wishlistIds.has(c.id))
+        : cityFilter === "all"
+          ? inView
+          : cityFilter === "visited"
+            ? inView.filter((c) => visitedIds.has(c.id))
+            : cityFilter === "wishlist"
+              ? inView.filter((c) => wishlistIds.has(c.id))
+              : // "unvisited" = neither visited nor on the want list.
+                inView.filter((c) => !visitedIds.has(c.id) && !wishlistIds.has(c.id));
     // "By number of people" narrows the list in lock-step with the map dots.
     const arrP = minPop > 0 ? arr.filter((c) => (c.population ?? 0) >= minPop) : arr;
     setSnapshot(sortAZ ? [...arrP].sort((a, b) => collator.compare(a.name, b.name)) : arrP);
@@ -424,7 +426,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     // visitedCityIds deliberately NOT a dependency — see comment above. The date
     // window / folder ARE: a new selection re-partitions the list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, cityFilter, sortAZ, dateFilter, folder, minPop]);
+  }, [inView, cityFilter, sortAZ, dateFilter, folder, minPop, onlyMine]);
   const visible = useMemo(() => snapshot.slice(0, shown), [snapshot, shown]);
   const visitedInView = useMemo(
     () => inView.reduce((n, c) => n + (visitedCityIds.has(c.id) ? 1 : 0), 0),
@@ -461,7 +463,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
         visited: all.reduce((n, h) => n + (seen.has(h.id) ? 1 : 0), 0),
         items: all.slice(0, POI_LIST_CAP).map((h) => ({
           key: h.id,
-          flag: countryFlag(h.countryIso2),
+          flag: heritageGlyph(h.category),
           name: h.name,
           sub: ref.countryByIso2(h.countryIso2)?.name ?? h.countryIso2,
           lat: h.lat,
@@ -543,6 +545,16 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
 
   function focusCity(c: { lon: number; lat: number }) {
     setFocus((f) => ({ lon: c.lon, lat: c.lat, key: (f?.key ?? 0) + 1 }));
+  }
+
+  // "Only my places" — one concept driving BOTH the map (browse dots hidden) and
+  // the in-view list (trimmed to your visited + want-list). Toggled from the list
+  // header (quick) and the Layers panel.
+  function toggleOnlyMine() {
+    setOnlyMine((v) => {
+      savePref("postcards-only-mine", !v ? "1" : "0");
+      return !v;
+    });
   }
 
   // Everything of YOURS with coordinates — visited & wishlist cities, plus your
@@ -821,12 +833,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                 type="button"
                 aria-pressed={onlyMine}
                 title={t("map.layer.onlyMineTitle")}
-                onClick={() => {
-                  setOnlyMine((v) => {
-                    savePref("postcards-only-mine", !v ? "1" : "0");
-                    return !v;
-                  });
-                }}
+                onClick={toggleOnlyMine}
               >
                 📍 {t("map.layer.onlyMine")}
               </button>
@@ -862,6 +869,17 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
       <section className="view-list" aria-label={t("map.list.aria")}>
         <div className="section-head">
           <h2>{mode === "monuments" ? t("map.list.headingMonuments") : mode === "airports" ? t("map.list.headingAirports") : t("map.list.headingCities")}</h2>
+          {!poi && (
+            <button
+              type="button"
+              className={"chip list-only-mine" + (onlyMine ? " chip-on" : "")}
+              aria-pressed={onlyMine}
+              title={t("map.layer.onlyMineTitle")}
+              onClick={toggleOnlyMine}
+            >
+              📍 {t("map.layer.onlyMine")}
+            </button>
+          )}
           <span className="list-head-meta muted">
             <span>
               {t("map.list.inView", {
@@ -965,11 +983,27 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                     aria-expanded={selected}
                     title={t("stats.records.showOnMap", { name: c.name })}
                     onClick={() => {
-                      // A row click ZOOMS, always — it never yanks you off to
-                      // the detail page (that's the 📖 button on the selected
-                      // row). Tapping again just re-centres.
+                      // A row click ZOOMS to the city. For one you HAVEN'T visited,
+                      // it also opens the preview card (photo + "been there") above
+                      // the marker, so you can eyeball it and add it in one place.
+                      // A visited city just re-centres (its flag is already yours).
                       setSelectedCityId(c.id);
-                      focusCity(c);
+                      if (visitedCityIds.has(c.id)) {
+                        focusCity(c);
+                      } else {
+                        setFocus((f) => ({
+                          lon: c.lon,
+                          lat: c.lat,
+                          key: (f?.key ?? 0) + 1,
+                          popup: {
+                            name: c.name,
+                            sub: `· ${country}${region ? ` - ${region}` : ""}`,
+                            place,
+                            hasPage: true,
+                            showImage: effectiveBasemap !== "simple",
+                          },
+                        }));
+                      }
                     }}
                   >
                     <CityLine
