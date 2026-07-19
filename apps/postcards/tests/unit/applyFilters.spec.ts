@@ -30,9 +30,13 @@ describe("placeMatches", () => {
     expect(placeMatches(cityVisit(paris), ref, DEFAULT_FILTERS)).toBe(true);
   });
 
-  it("status matches the record (visited vs wishlist)", () => {
-    expect(placeMatches(cityVisit(paris, { status: "visited" }), ref, st({ status: "visited" }))).toBe(true);
-    expect(placeMatches(cityVisit(paris, { status: "wishlist" }), ref, st({ status: "visited" }))).toBe(false);
+  it("status matches the record (visited vs wishlist); multi-select is OR", () => {
+    expect(placeMatches(cityVisit(paris, { status: "visited" }), ref, st({ status: ["visited"] }))).toBe(true);
+    expect(placeMatches(cityVisit(paris, { status: "wishlist" }), ref, st({ status: ["visited"] }))).toBe(false);
+    // A record shows if its status is among the selected ones (OR across the set).
+    expect(placeMatches(cityVisit(paris, { status: "wishlist" }), ref, st({ status: ["visited", "wishlist"] }))).toBe(true);
+    // Empty = show everything.
+    expect(placeMatches(cityVisit(paris, { status: "wishlist" }), ref, st({ status: [] }))).toBe(true);
   });
 
   it("population gates cities but not non-city places (D4)", () => {
@@ -78,7 +82,7 @@ describe("activeChips", () => {
     expect(activeChips(DEFAULT_FILTERS, t)).toEqual([]);
   });
   it("emits one chip per non-default dimension", () => {
-    const chips = activeChips(st({ status: "wishlist", minPop: 1_000_000, favoritesOnly: true }), t);
+    const chips = activeChips(st({ status: ["wishlist"], minPop: 1_000_000, favoritesOnly: true }), t);
     const fields = chips.map((c) => c.field);
     expect(fields).toContain("status");
     expect(fields).toContain("minPop");

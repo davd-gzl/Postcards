@@ -167,8 +167,9 @@ export function citiesInView(
   return result.slice(0, limit);
 }
 
-/** The list/marker filter the map screen shares between its list and its dots. */
-export type CityFilter = "all" | "unvisited" | "visited" | "wishlist";
+/** The personal statuses the map shows (multi-select; empty = show all). Kept as
+ *  a bare string list so viewport.ts stays free of store imports. */
+export type CityStatus = "visited" | "wishlist" | "unvisited";
 
 /** Working set considered "in view" before the on-map marker cap — the same
  *  size the MapScreen list snapshots, so the map dots and the list stay in
@@ -187,9 +188,9 @@ export const IN_VIEW_CAP = 2000;
  * - `personalIds` — every city with a personal record (visited OR want-list) in
  *   the active period. Excluded from the browse dots (drawn as pills elsewhere),
  *   so the biggest cities you've visited don't crowd out discoverable ones.
- * - `filter` — when the shared status filter is focused on your OWN places
- *   ("visited"/"wishlist"), the discovery dots step aside entirely (only your
- *   markers show); "all"/"unvisited" show the discoverable cities.
+ * - `statuses` — the multi-select status filter. Discovery dots (not-visited
+ *   cities) show only when it includes "unvisited" or is empty (= show all); when
+ *   focused only on your own places (visited/wishlist), they step aside entirely.
  * - `minPopulation` (0 = off) drops any city below that headcount.
  * - `cap` — the most discoverable dots to draw; `Infinity` = "Unlimited" (every
  *   discoverable city in view, bounded only by the working-set scan).
@@ -201,13 +202,16 @@ export function markerCitiesInView(
   cities: City[],
   bounds: Bounds | null,
   cap: number,
-  filter: CityFilter = "all",
+  statuses: readonly CityStatus[] = [],
   personalIds?: ReadonlySet<string>,
   minPopulation = 0,
 ): City[] {
   if (!bounds) return [];
-  // Focused on your own places → no discovery dots; your flags/wishes carry the map.
-  if (filter === "visited" || filter === "wishlist") return [];
+  // Discovery dots are the NOT-visited cities: show them only when the filter
+  // includes "unvisited" (or is empty = show all). Focused on your own places →
+  // no discovery dots; your flags/wishes carry the map.
+  const showBrowse = statuses.length === 0 || statuses.includes("unvisited");
+  if (!showBrowse) return [];
   // "Unlimited" (cap = Infinity) scans the whole in-view field; a finite cap only
   // needs the bounded working set to have enough candidates to pick the biggest.
   const scanLimit = Number.isFinite(cap) ? IN_VIEW_CAP : Infinity;

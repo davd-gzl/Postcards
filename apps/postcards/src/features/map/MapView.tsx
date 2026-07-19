@@ -23,7 +23,8 @@ import {
   wishlistCityPoints,
 } from "./visitedLayers";
 import { prefetchAroundBounds, prefetchAroundPoint, OSM_TILE_TEMPLATE } from "../../lib/offline/tiles";
-import { markerCitiesInView, type Bounds, type CityFilter } from "./viewport";
+import { markerCitiesInView, type Bounds } from "./viewport";
+import { statusShows, type FilterStatus } from "../../lib/store/useFilters";
 import type { City } from "../../lib/reference/types";
 import type { PlaceRef, Visit } from "../../lib/schema/models";
 import { countryFlag, formatInt } from "../../lib/format/format";
@@ -722,7 +723,7 @@ export function MapView({
   onBounds,
   focus,
   fit,
-  cityFilter = "all",
+  cityFilter = [],
   minPop = 0,
   tripArcs,
   basemap = "simple",
@@ -774,10 +775,11 @@ export function MapView({
   onBounds?: (b: Bounds) => void;
   focus?: MapFocus | null;
   fit?: MapFit | null;
-  /** The in-view city dots follow the list's filter (all / hide-visited /
-   *  visited). The map recomputes the dot set straight off the live camera on
-   *  every move, so it needs the filter here rather than a pre-filtered list. */
-  cityFilter?: CityFilter;
+  /** The in-view city dots follow the list's MULTI-SELECT status filter (any mix
+   *  of visited / want-list / not-visited; empty = show all). The map recomputes
+   *  the dot set straight off the live camera on every move, so it needs the
+   *  filter here rather than a pre-filtered list. */
+  cityFilter?: readonly FilterStatus[];
   /** Only draw in-view browse cities with at least this many people (0 = off).
    *  Shares the value with the list so map dots and the list stay in lock-step. */
   minPop?: number;
@@ -1164,19 +1166,19 @@ export function MapView({
   }
 
   // The status filter prunes YOUR personal city markers so the MAP matches the
-  // LIST: the flags/dots you see are exactly the status you asked for. Composed
+  // LIST: the flags/dots you see are exactly the statuses you asked for. Composed
   // with the mode gate — city markers exist only in All/Cities modes — and always
-  // re-applied after applyMode (which blanket-reveals both layers).
-  //   all       → flags + wish dots
-  //   visited   → flags only
-  //   wishlist  → wish dots only
-  //   unvisited → neither (only the browse-discovery dots remain), so "Not visited"
-  //               really hides the cities you've already been to.
+  // re-applied after applyMode (which blanket-reveals both layers). MULTI-SELECT,
+  // via statusShows (empty or all three = show all):
+  //   visited flags show when the selection includes "visited" (or is empty).
+  //   want-list dots show when it includes "wishlist" (or is empty).
+  //   focused only on "unvisited" → neither shows (just the browse-discovery
+  //   dots remain), so "Not visited" really hides the cities you've been to.
   function applyPersonalMarkerFilter(map: MlMap) {
     const modeAllowsCities = modeRef.current === "all" || modeRef.current === "cities";
-    const f = cityFilterRef.current;
-    const showVisited = modeAllowsCities && f !== "unvisited" && f !== "wishlist";
-    const showWish = modeAllowsCities && f !== "unvisited" && f !== "visited";
+    const statuses = cityFilterRef.current;
+    const showVisited = modeAllowsCities && statusShows(statuses, "visited");
+    const showWish = modeAllowsCities && statusShows(statuses, "wishlist");
     if (map.getLayer("cities-visited"))
       map.setLayoutProperty("cities-visited", "visibility", showVisited ? "visible" : "none");
     if (map.getLayer("cities-wishlist"))
@@ -1204,7 +1206,7 @@ export function MapView({
       east: b.getEast(),
       north: b.getNorth(),
     };
-    const filter = cityFilterRef.current;
+    const statuses = cityFilterRef.current;
     // Every city with a personal record (visited OR want-list) in the active
     // period is drawn as its own always-on marker, so exclude it from the browse
     // dots: the cap then spends its whole budget on cities you haven't marked and
@@ -1218,7 +1220,7 @@ export function MapView({
       ref.allCities(),
       bounds,
       maxMarkersRef.current,
-      filter,
+      statuses,
       personalIds,
       minPopRef.current,
     );
