@@ -493,7 +493,7 @@ export function JournalScreen() {
   const [query, setQuery] = useState("");
   // Feed vs month-calendar view, the calendar's visible month ("YYYY-MM"), and an
   // optional single-day filter set by tapping a calendar day.
-  const [view, setView] = useState<"feed" | "calendar">("feed");
+  const [view, setView] = useState<"feed" | "calendar" | "byplace" | "timeline">("feed");
   const [calMonth, setCalMonth] = useState<string>(() => ymOf(today()));
   const [daySel, setDaySel] = useState<string | null>(null);
 
@@ -598,6 +598,40 @@ export function JournalScreen() {
       return true;
     });
   }, [searched, yearSel, daySel]);
+
+  // "By place" view: the filtered stories grouped by their place, so you see each
+  // place you've written about and, inside, its entries over time. Groups are
+  // ordered by most-recent entry; within a group the stories stay newest-first
+  // (the store order `filtered` preserves).
+  const byPlaceGroups = useMemo(() => {
+    const m = new Map<string, { place: PlaceRef; stories: Story[] }>();
+    for (const s of filtered) {
+      const k = placeKey(s.place);
+      const g = m.get(k);
+      if (g) g.stories.push(s);
+      else m.set(k, { place: s.place, stories: [s] });
+    }
+    return [...m.values()].sort(
+      (a, b) =>
+        (b.stories[0]?.date ?? "").localeCompare(a.stories[0]?.date ?? "") ||
+        a.place.name.localeCompare(b.place.name),
+    );
+  }, [filtered]);
+
+  // "Timeline" view: the filtered stories grouped by year (newest first; undated
+  // last), so you scroll your travels in time order.
+  const byYearGroups = useMemo(() => {
+    const m = new Map<string, Story[]>();
+    for (const s of filtered) {
+      const y = s.date?.slice(0, 4) || "—";
+      const g = m.get(y);
+      if (g) g.push(s);
+      else m.set(y, [s]);
+    }
+    return [...m.entries()].sort((a, b) =>
+      a[0] === "—" ? 1 : b[0] === "—" ? -1 : b[0].localeCompare(a[0]),
+    );
+  }, [filtered]);
 
   // Per-day colour/count for the calendar — derived from the place- AND search-
   // filtered stories (month navigation handles time). Colour is keyed to the day's
@@ -1052,6 +1086,22 @@ export function JournalScreen() {
             </button>
             <button
               type="button"
+              className={"mini-btn" + (view === "byplace" ? " mini-on" : "")}
+              aria-pressed={view === "byplace"}
+              onClick={() => setView("byplace")}
+            >
+              📍 {t("journal.viewByPlace")}
+            </button>
+            <button
+              type="button"
+              className={"mini-btn" + (view === "timeline" ? " mini-on" : "")}
+              aria-pressed={view === "timeline"}
+              onClick={() => setView("timeline")}
+            >
+              🕰️ {t("journal.viewTimeline")}
+            </button>
+            <button
+              type="button"
               className={"mini-btn" + (view === "calendar" ? " mini-on" : "")}
               aria-pressed={view === "calendar"}
               onClick={() => setView("calendar")}
@@ -1206,6 +1256,88 @@ export function JournalScreen() {
                 {t("journal.clearFilters")}
               </button>
             </p>
+          ) : view === "byplace" ? (
+            <div className="journal-byplace">
+              {byPlaceGroups.map(({ place, stories: ps }) => {
+                const yrs = ps
+                  .map((s) => s.date?.slice(0, 4))
+                  .filter((y): y is string => !!y);
+                const span = yrs.length
+                  ? yrs[0] === yrs[yrs.length - 1]
+                    ? yrs[0]
+                    : `${yrs[yrs.length - 1]}–${yrs[0]}`
+                  : "";
+                return (
+                  <details
+                    key={placeKey(place)}
+                    className="journal-place-group"
+                    open={byPlaceGroups.length <= 4}
+                  >
+                    <summary className="journal-place-summary">
+                      <span className="journal-place-name">
+                        {countryFlag(place.countryId)} {place.name}
+                      </span>
+                      <span className="muted small journal-place-meta">
+                        {ps.length} {t.plural("noun.story", ps.length)}
+                        {span ? ` · ${span}` : ""}
+                      </span>
+                    </summary>
+                    <ul className="journal-place-entries">
+                      {ps.map((s) => (
+                        <li key={s.storyId}>
+                          <button
+                            className="link journal-place-entry"
+                            type="button"
+                            onClick={() => startEdit(s)}
+                            aria-label={t("journal.editAria", {
+                              title: s.title || s.place.name,
+                            })}
+                          >
+                            <time className="journal-date">{formatDate(s.date)}</time>
+                            <span className="journal-place-entry-title">
+                              {s.title ||
+                                (s.text ? s.text.split("\n")[0] : "") ||
+                                t("journal.untitledEntry")}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                );
+              })}
+            </div>
+          ) : view === "timeline" ? (
+            <div className="journal-timeline">
+              {byYearGroups.map(([year, ps]) => (
+                <section key={year} className="journal-year-group">
+                  <h3 className="journal-year-head">
+                    {year === "—" ? t("journal.noDate") : year}
+                    <span className="muted small">
+                      {ps.length} {t.plural("noun.story", ps.length)}
+                    </span>
+                  </h3>
+                  <ul className="journal-place-entries">
+                    {ps.map((s) => (
+                      <li key={s.storyId}>
+                        <button
+                          className="link journal-place-entry"
+                          type="button"
+                          onClick={() => startEdit(s)}
+                          aria-label={t("journal.editAria", { title: s.title || s.place.name })}
+                        >
+                          <time className="journal-date">{formatDate(s.date)}</time>
+                          <span className="journal-place-entry-title">
+                            {countryFlag(s.place.countryId)} {s.place.name}
+                            {s.title ? ` — ${s.title}` : ""}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
           ) : (
           <>
           <div className="journal-feed">
