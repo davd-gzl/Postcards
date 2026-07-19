@@ -3394,17 +3394,17 @@ textarea.select {
   white-space: nowrap;
   flex: none;
 }
-/* The place-kind pill is a small floating overlay, not a thumb-zone action, so it
-   opts OUT of the 40px coarse-pointer target the panel's segmented chips use and
-   stays compact (icon-only) — still comfortably above the WCAG 2.5.8 (AA) 24px
-   floor. Higher specificity than `.segmented button`, so it wins on touch too. */
+/* The place-kind pill switches the whole map dataset — the most consequential map
+   control — so it takes the SAME 40px coarse-pointer target as the other map
+   buttons (inherited from `.segmented button` in the touch block below); no
+   min-height opt-out here. The active segment also spells out its label (see
+   MapScreen) so the current dataset is legible, not just a highlight. */
 .map-ctl-top .map-mode {
   gap: 2px;
   padding: 2px;
 }
 .map-ctl-top .map-mode button {
-  min-height: 28px;
-  padding: 2px 8px;
+  padding: 4px 10px;
   font-size: 13px;
   line-height: 1.15;
 }
