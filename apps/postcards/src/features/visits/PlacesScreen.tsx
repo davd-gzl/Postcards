@@ -78,6 +78,9 @@ function placeMeta(
 function RowMenu({ v, onClose }: { v: Visit; onClose: () => void }) {
   const t = useT();
   const setDetails = useVisits((s) => s.setDetails);
+  const removeVisit = useVisits((s) => s.removeVisit);
+  const restoreVisit = useVisits((s) => s.restoreVisit);
+  const showToast = useToast((s) => s.show);
   const [date, setDate] = useState(v.date ?? "");
   const [folder, setFolder] = useState(v.folder ?? "");
   const [note, setNote] = useState(v.note ?? "");
@@ -138,6 +141,22 @@ function RowMenu({ v, onClose }: { v: Visit; onClose: () => void }) {
         </button>
         <button className="btn-ghost" type="button" onClick={onClose}>
           {t("common.cancel")}
+        </button>
+        {/* Remove lives here now (not inline) so the row itself stays uncluttered
+            and the place name keeps its width. Undoable via the toast. */}
+        <button
+          className="link-danger row-menu-remove"
+          type="button"
+          aria-label={t("places.row.removeAria", { name: v.place.name })}
+          onClick={() => {
+            void removeVisit(v.visitId);
+            showToast(t("places.row.removedToast", { name: v.place.name }), () =>
+              restoreVisit(v),
+            );
+            onClose();
+          }}
+        >
+          {t("common.remove")}
         </button>
       </div>
     </div>
@@ -230,14 +249,18 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
           ⋯
         </button>
       )}
-      <button
-        className="link-danger"
-        type="button"
-        onClick={removeWithUndo}
-        aria-label={t("places.row.removeAria", { name: v.place.name })}
-      >
-        {t("common.remove")}
-      </button>
+      {/* Visited rows get Remove inside the "⋯" menu (keeps the row uncluttered so
+          the name fits); wishlist rows have no menu, so Remove stays inline. */}
+      {wishlist && (
+        <button
+          className="link-danger"
+          type="button"
+          onClick={removeWithUndo}
+          aria-label={t("places.row.removeAria", { name: v.place.name })}
+        >
+          {t("common.remove")}
+        </button>
+      )}
       {menuOpen && !wishlist && <RowMenu v={v} onClose={() => setMenuOpen(false)} />}
     </li>
   );

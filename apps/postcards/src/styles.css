@@ -3348,10 +3348,14 @@ textarea.select {
     font-size: 12px;
     padding: 4px 10px;
   }
-  /* The Layers pill sits in the bottom-right corner here — lift MapLibre's
-     compact attribution ⓘ above it so the OSM/ODbL credit stays tappable. */
-  .map-box .maplibregl-ctrl-bottom-right {
-    bottom: 40px;
+  /* Attribution now lives bottom-LEFT (see MapView). Lift the bottom-left map
+     controls (Fit to my places) above it so the one-line ⓘ credit stays visible
+     underneath, never covered. */
+  .map-ctl-left {
+    bottom: 34px;
+  }
+  .map-box .maplibregl-ctrl-bottom-left {
+    white-space: nowrap;
   }
   .view-list {
     padding: 6px 10px 14px;
