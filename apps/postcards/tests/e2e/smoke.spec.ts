@@ -35,6 +35,8 @@ test("undo reverts a removal", async ({ page }) => {
   // undoable toast. Remove Tokyo, then undo — it comes back.
   await page.getByRole("button", { name: "Places", exact: true }).click();
   await expect(page.getByText("Tokyo", { exact: true })).toBeVisible();
+  // Remove now lives in the row's "⋯" menu (keeps the row uncluttered so names fit).
+  await page.getByRole("button", { name: "More options for Tokyo (date, folder, note)" }).click();
   await page.getByRole("button", { name: "Remove Tokyo" }).click();
   await expect(page.getByText("Removed Tokyo")).toBeVisible();
   await page.getByRole("button", { name: "Undo" }).click();
