@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Globe } from "./Globe";
 import { useSettings } from "../lib/store/useSettings";
 import { useToast } from "../lib/store/useToast";
@@ -48,8 +48,28 @@ export function IntroScreen({ onClose }: { onClose: () => void }) {
   const setOfflineMode = useSettings((s) => s.setOfflineMode);
   const optimizeMarkers = useSettings((s) => s.optimizeMarkers);
   const setOptimizeMarkers = useSettings((s) => s.setOptimizeMarkers);
+  const reduceMapWork = useSettings((s) => s.reduceMapWork);
+  const setReduceMapWork = useSettings((s) => s.setReduceMapWork);
   const showToast = useToast((s) => s.show);
   const startRef = useRef<HTMLButtonElement>(null);
+
+  // Detect a phone / slower device (touch + small screen, or touch + few CPU
+  // cores) so we can recommend the smooth-map settings up front. A laptop/desktop
+  // doesn't need them, so the banner simply doesn't appear there.
+  const isPhone = useMemo(() => {
+    if (typeof matchMedia === "undefined") return false;
+    const coarse = matchMedia("(pointer: coarse)").matches;
+    const small = matchMedia("(max-width: 640px)").matches;
+    const fewCores = (navigator.hardwareConcurrency ?? 8) <= 4;
+    return (coarse && small) || (coarse && fewCores);
+  }, []);
+  // The recommendation is "applied" once both smooth-map settings are on.
+  const smoothMapOn = reduceMapWork && optimizeMarkers;
+  function applyPhoneRecommended() {
+    setReduceMapWork(true);
+    setOptimizeMarkers(true);
+    showToast(t("intro.recommend.toast"));
+  }
 
   const [cities, setCities] = useState<"idle" | "busy" | "done">(
     fullCitiesEnabled() ? "done" : "idle",
@@ -90,6 +110,24 @@ export function IntroScreen({ onClose }: { onClose: () => void }) {
       <p className="intro-lede">{t("intro.lede")}</p>
 
       <ul className="intro-list">
+        {/* Device-aware recommendation: on a phone, offer the smooth-map settings
+            in one tap. Hidden on a laptop/desktop and once they're already on. */}
+        {isPhone && !smoothMapOn && (
+          <li className="intro-row intro-recommend">
+            <div className="intro-row-text">
+              <span className="intro-row-title">📱 {t("intro.recommend.title")}</span>
+              <span className="intro-row-desc">{t("intro.recommend.desc")}</span>
+            </div>
+            <button
+              type="button"
+              className="intro-seg-btn is-on intro-recommend-apply"
+              onClick={applyPhoneRecommended}
+            >
+              {t("intro.recommend.apply")}
+            </button>
+          </li>
+        )}
+
         {/* The single most important choice, made explicit up front: is Postcards
             allowed online (richer) or fully self-contained (nothing leaves the
             device)? Everything below adapts to the mode picked here. */}
