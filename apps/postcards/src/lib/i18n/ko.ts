@@ -255,6 +255,10 @@ export const ko: Messages = {
   "places.visited.empty":
     "아직 없습니다. 지도나 검색창에서 장소를 추가하세요 — 도시를 방문하면 해당 국가도 함께 수집됩니다.",
   "places.noMatch": "필터와 일치하는 항목이 없습니다.",
+  "places.groupBy": "그룹화",
+  "places.groupBy.none": "목록",
+  "places.groupBy.country": "국가별",
+  "places.groupBy.year": "연도별",
   "places.favorites.empty": "아직 즐겨찾기가 없습니다. 방문한 장소의 하트를 누르면 여기에 나타납니다.",
   "places.wishlist.empty":
     "아직 가고 싶은 곳이 없습니다. 장소를 찾아 ⚑를 눌러 언젠가 갈 목록에 추가하세요.",

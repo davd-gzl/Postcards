@@ -254,6 +254,10 @@ export const fr: Messages = {
   "places.visited.empty":
     "Rien pour l'instant. Ajoutez des lieux depuis la carte ou la barre de recherche — visiter une ville collecte aussi son pays.",
   "places.noMatch": "Rien ne correspond à votre filtre.",
+  "places.groupBy": "Grouper par",
+  "places.groupBy.none": "Liste",
+  "places.groupBy.country": "Par pays",
+  "places.groupBy.year": "Par année",
   "places.favorites.empty":
     "Aucun favori pour l'instant. Appuyez sur le cœur d'un lieu visité et il apparaît ici.",
   "places.wishlist.empty":

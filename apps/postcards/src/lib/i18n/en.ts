@@ -261,6 +261,10 @@ export const en = {
   "places.visited.empty":
     "Nothing yet. Add places from the map or the search bar — visiting a city also collects its country.",
   "places.noMatch": "Nothing matches your filter.",
+  "places.groupBy": "Group by",
+  "places.groupBy.none": "List",
+  "places.groupBy.country": "By country",
+  "places.groupBy.year": "By year",
   "places.favorites.empty": "No favorites yet. Tap the heart on a visited place and it lands here.",
   "places.wishlist.empty":
     "No wishes yet. Find a place and tap the ⚑ to add it to your someday list.",
