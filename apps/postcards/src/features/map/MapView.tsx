@@ -370,7 +370,15 @@ function openPlacePopup(
   }
   const actions = document.createElement("div");
   actions.className = "map-popup-actions";
-  const popup = new maplibregl.Popup({ closeButton: false, offset: 12, maxWidth: "260px" })
+  // anchor:"bottom" pins the card's bottom tip to the marker, so it ALWAYS opens
+  // ABOVE the place (never below). The tap / list-click eases the marker toward
+  // centre first, so there's room above for it on screen.
+  const popup = new maplibregl.Popup({
+    closeButton: false,
+    offset: 12,
+    maxWidth: "260px",
+    anchor: "bottom",
+  })
     .setLngLat(lngLat)
     .setDOMContent(el);
 
@@ -469,6 +477,10 @@ export interface MapFocus {
   lon: number;
   lat: number;
   key: number;
+  /** When set, open the place preview popup (above the marker) once the fly
+   *  settles — the list uses this so tapping a not-visited city previews it with
+   *  its photo, exactly like tapping its dot on the map. */
+  popup?: { name: string; sub: string; place: PlaceRef; hasPage: boolean; showImage: boolean };
 }
 
 export interface MapFit {
@@ -1821,11 +1833,23 @@ export function MapView({
     if (basemap === "osm") prefetchAroundPoint(focus.lon, focus.lat, targetZoom);
     // easeTo, not flyTo: fly's zoom-out-then-in arc reads as a jarring
     // "dezoom/rezoom" when hopping between nearby places (Lyon → its airport).
+    const dur = reducedRef.current ? 0 : 650;
     map.easeTo({
       center: [focus.lon, focus.lat],
       zoom: targetZoom,
-      duration: reducedRef.current ? 0 : 650,
+      duration: dur,
     });
+    // A list tap on a not-visited city opens its preview card — same popup as
+    // tapping the dot, above the marker — once the marker has eased to centre so
+    // there's room for it on screen.
+    const pop = focus.popup;
+    if (pop) {
+      const open = () => {
+        if (map && loadedRef.current) openPlacePopup(map, [focus.lon, focus.lat], pop, pop.showImage);
+      };
+      if (dur === 0) open();
+      else setTimeout(open, dur + 40);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.key]);
 

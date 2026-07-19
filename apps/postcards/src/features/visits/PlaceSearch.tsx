@@ -4,7 +4,6 @@ import { searchPlaces } from "./search";
 import { useVisits, findByPlace, visitIndex } from "../../lib/store/useVisits";
 import { useUi } from "../../lib/store/useUi";
 import { useToast } from "../../lib/store/useToast";
-import { AddPlaceForm } from "./AddPlaceForm";
 import { placeKey } from "../../lib/schema/helpers";
 import type { PlaceRef } from "../../lib/schema/models";
 import { useT } from "../../lib/i18n";
@@ -29,9 +28,6 @@ export function PlaceSearch({
   const showToast = useToast((s) => s.show);
   const [q, setQ] = useState("");
   const [active, setActive] = useState(-1);
-  // Expand the "add your own place" form even when there ARE near-miss results
-  // (e.g. searching "Gili" finds Gili Air but not the missing Gili Meno).
-  const [showAddOwn, setShowAddOwn] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const focusNonce = useUi((s) => s.searchFocusNonce);
@@ -48,10 +44,6 @@ export function PlaceSearch({
   const dq = useDeferredValue(q);
   const results = useMemo(() => searchPlaces(ref, dq), [ref, dq]);
   const notFound = dq.trim().length >= 2 && results.length === 0;
-  // A fresh query collapses the inline add-your-own form.
-  useEffect(() => {
-    setShowAddOwn(false);
-  }, [dq]);
 
   // Keep the active option visible as arrows move it.
   useEffect(() => {
@@ -108,9 +100,19 @@ export function PlaceSearch({
       // stale list or silently does nothing.
       const list = q === dq ? results : searchPlaces(ref, q);
       const r = list[active >= 0 && active < list.length ? active : 0];
-      // Enter shows the place; Shift+Enter marks it visited (keyboard parity
-      // with the row's Add chip).
-      if (r) (e.shiftKey ? toggle : pick)(r.place);
+      // Return commits the top match (flies there) AND leaves the search bar —
+      // blur it so the keyboard drops and you're back on the map/list. Shift+Enter
+      // marks it visited and keeps focus, for rapid add-add-add.
+      if (r) {
+        if (e.shiftKey) {
+          toggle(r.place);
+        } else {
+          pick(r.place);
+          inputRef.current?.blur();
+        }
+      } else {
+        inputRef.current?.blur(); // nothing to pick → still exit the field
+      }
       e.preventDefault();
       return;
     }
@@ -236,27 +238,12 @@ export function PlaceSearch({
           })}
         </ul>
       )}
-      {!notFound && dq.trim().length >= 2 && results.length > 0 && (
-        <div className="search-addown">
-          {showAddOwn ? (
-            <AddPlaceForm
-              initialName={dq.trim()}
-              onDone={() => {
-                setShowAddOwn(false);
-                setQ("");
-              }}
-            />
-          ) : (
-            <button type="button" className="link search-addown-btn" onClick={() => setShowAddOwn(true)}>
-              ＋ {t("search.addOwn", { q: dq.trim() })}
-            </button>
-          )}
-        </div>
-      )}
+      {/* No "add your own place" here: a custom place is added by tapping its spot
+          on the map (long-press / "Add a place here"), which is where coordinates
+          come from. Search just says, plainly, when nothing matched. */}
       {notFound && (
         <div className="search-empty">
-          <p>{t("search.notInData", { q: dq.trim() })}</p>
-          <AddPlaceForm initialName={dq.trim()} onDone={() => setQ("")} />
+          <p>{t("search.noMatches", { q: dq.trim() })}</p>
         </div>
       )}
     </div>
