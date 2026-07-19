@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
+import { StoryMap } from "./StoryMap";
 import type { City } from "../../lib/reference/types";
 import { useStories } from "../../lib/store/useStories";
 import { useTrips } from "../../lib/store/useTrips";
@@ -493,7 +494,7 @@ export function JournalScreen() {
   const [query, setQuery] = useState("");
   // Feed vs month-calendar view, the calendar's visible month ("YYYY-MM"), and an
   // optional single-day filter set by tapping a calendar day.
-  const [view, setView] = useState<"feed" | "calendar" | "byplace" | "timeline">("feed");
+  const [view, setView] = useState<"feed" | "calendar" | "byplace" | "timeline" | "map">("feed");
   const [calMonth, setCalMonth] = useState<string>(() => ymOf(today()));
   const [daySel, setDaySel] = useState<string | null>(null);
 
@@ -1102,6 +1103,14 @@ export function JournalScreen() {
             </button>
             <button
               type="button"
+              className={"mini-btn" + (view === "map" ? " mini-on" : "")}
+              aria-pressed={view === "map"}
+              onClick={() => setView("map")}
+            >
+              🗺️ {t("journal.viewMap")}
+            </button>
+            <button
+              type="button"
               className={"mini-btn" + (view === "calendar" ? " mini-on" : "")}
               aria-pressed={view === "calendar"}
               onClick={() => setView("calendar")}
@@ -1338,6 +1347,8 @@ export function JournalScreen() {
                 </section>
               ))}
             </div>
+          ) : view === "map" ? (
+            <StoryMap stories={filtered} />
           ) : (
           <>
           <div className="journal-feed">
