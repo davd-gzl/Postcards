@@ -6,7 +6,7 @@ import { useUi } from "../../lib/store/useUi";
 import { placeKey } from "../../lib/schema/helpers";
 import { countryFlag, formatDate, formatInt, formatKm } from "../../lib/format/format";
 import { haversineKm } from "../travel/distance";
-import { articleUrl } from "../../lib/wikivoyage";
+import { articleUrl, searchUrl } from "../../lib/wikivoyage";
 import { StateToggles } from "../visits/StateToggles";
 import { PhotoGallery } from "../visits/PhotoGallery";
 import { GuideSection } from "../guides/GuideButton";
@@ -16,6 +16,13 @@ import { useT } from "../../lib/i18n";
 /** Wikipedia article URL for a title (link only — nothing is fetched). */
 function wikipediaUrl(title: string): string {
   return `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/\s+/g, "_"))}`;
+}
+
+/** Wikipedia full-text SEARCH URL — the honest fallback for a place we hold no
+ *  reference article for (a user's own custom place), so we never link to a
+ *  direct article that would 404 and imply facts we don't have. */
+function wikipediaSearchUrl(query: string): string {
+  return `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(query)}`;
 }
 
 /** When did you go, and what do you remember? (FR-002 — both optional.)
@@ -43,9 +50,12 @@ function VisitDetails({ visitId, date, note }: { visitId: string; date: string |
       </label>
       <label className="visit-field visit-note">
         <span className="muted small">{t("city.note")}</span>
-        <input
-          type="text"
-          className="select"
+        {/* A real memory is multi-sentence — a textarea (not a one-line input) so
+            you can see what you wrote on a phone; newlines round-trip through the
+            portable JSON. */}
+        <textarea
+          className="select journal-textarea"
+          rows={3}
           placeholder={t("city.notePlaceholder")}
           maxLength={2000}
           value={draft}
@@ -114,6 +124,18 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
         ? { kind: "airport" as const, id: airport.id, name: airportName!, countryId: airport.countryIso2 }
         : customPlace;
 
+  // Outbound reference links use titles from the SOURCE record, not the display
+  // `name` (which carries the airport's "(IATA)" suffix). Wikivoyage has CITY
+  // guides, not airport pages, so an airport links to its home city. A custom
+  // (user-invented) place has no reference article, so we point at SEARCH — never
+  // a direct article that would 404 and imply facts we don't hold.
+  const isCustom = !city && !monument && !airport;
+  const wpTitle = city?.name ?? monument?.name ?? airport?.name ?? name;
+  const wvTitle =
+    city?.name ?? monument?.name ?? (airport ? airport.city || airport.name : name);
+  const wikipediaHref = isCustom ? wikipediaSearchUrl(name) : wikipediaUrl(wpTitle);
+  const wikivoyageHref = isCustom ? searchUrl(name) : articleUrl(wvTitle);
+
   // This place's journal stories (already newest-first in the store).
   const placeStories = useMemo(
     () => (place ? stories.filter((s) => placeKey(s.place) === placeKey(place)) : []),
@@ -135,6 +157,8 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
       .slice(0, 6);
     const airports = ref
       .allAirports()
+      // Never list the page's own airport as its "nearest airport" at 0.0 km.
+      .filter((a) => a.id !== cityId)
       .map((a) => ({ ...a, km: haversineKm(from, a) }))
       .sort((a, b) => a.km - b.km)
       .slice(0, 3);
@@ -260,7 +284,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
           <div className="city-links">
             <a
               className="mini-btn"
-              href={wikipediaUrl(name)}
+              href={wikipediaHref}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -268,7 +292,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
             </a>
             <a
               className="mini-btn"
-              href={articleUrl(name)}
+              href={wikivoyageHref}
               target="_blank"
               rel="noopener noreferrer"
             >

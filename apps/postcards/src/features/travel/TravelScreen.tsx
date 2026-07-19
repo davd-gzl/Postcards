@@ -15,7 +15,7 @@ import { airportVisitCounts } from "./airports";
 import { travelTotals, tripDistanceKm } from "./distance";
 import { MODE_GLYPH, MODE_ORDER } from "./modes";
 import {
-  MONTH_NAMES,
+  monthName,
   periodLabel,
   tripMonths,
   tripYears,
@@ -23,7 +23,7 @@ import {
   type MonthFilter,
   type YearFilter,
 } from "./period";
-import { useT, type MessageKey } from "../../lib/i18n";
+import { useT, useLocale, type MessageKey } from "../../lib/i18n";
 
 /** Compact endpoint label: the IATA code for airports (names are long), else the place name. */
 function endpointLabel(p: PlaceRef): string {
@@ -145,6 +145,7 @@ function TripForm({
 /** Log of journeys you've taken: add a trip, see per-trip distance and totals. */
 export function TravelScreen() {
   const t = useT();
+  const locale = useLocale();
   const ref = useMemo(() => getReferenceData(), []);
   const trips = useTrips((s) => s.trips);
   const visits = useVisits((s) => s.visits);
@@ -422,7 +423,7 @@ export function TravelScreen() {
                 <option value="all">{t("travel.allMonths")}</option>
                 {months.map((m) => (
                   <option key={m} value={m}>
-                    {MONTH_NAMES[Number(m) - 1]}
+                    {monthName(m, locale)}
                   </option>
                 ))}
               </select>
@@ -434,8 +435,8 @@ export function TravelScreen() {
       <div
         className="travel-totals"
         aria-label={
-          periodLabel(year, month)
-            ? t("travel.totalsForAria", { period: periodLabel(year, month) })
+          periodLabel(year, month, locale)
+            ? t("travel.totalsForAria", { period: periodLabel(year, month, locale) })
             : t("travel.totalsAria")
         }
       >
@@ -485,7 +486,7 @@ export function TravelScreen() {
         </p>
       ) : sorted.length === 0 ? (
         <p className="muted empty">
-          {t("travel.noTripsInPeriod", { period: periodLabel(year, month) })}{" "}
+          {t("travel.noTripsInPeriod", { period: periodLabel(year, month, locale) })}{" "}
           <button className="link" type="button" onClick={() => pickYear("all")}>
             {t("travel.showAll")}
           </button>

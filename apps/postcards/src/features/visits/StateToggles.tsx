@@ -67,9 +67,17 @@ export function StateToggles({
   // ⚑ Want-to-go, and ✓ only to UNDO a legacy direct record.
   const countryCheck = place.kind === "country";
 
+  const showBeen = !countryCheck || been;
+  const showWant = !been && !derivedVisited;
+  const showFav = been || fav;
+  // A country counted visited via a city inside it (derivedVisited, no explicit
+  // record) suppresses all three buttons — don't render an empty, labelled group
+  // (a dead screen-reader stop + a gap next to its "✓ Visited" chip).
+  if (!showBeen && !showWant && !showFav) return null;
+
   return (
     <div className="states" role="group" aria-label={t("states.statusAria", { name: place.name })}>
-      {(!countryCheck || been) && (
+      {showBeen && (
         <button
           className={"state been" + (been ? " on" : "")}
           type="button"
@@ -84,7 +92,7 @@ export function StateToggles({
           ✓
         </button>
       )}
-      {!been && !derivedVisited && (
+      {showWant && (
         <button
           className={"state want" + (want ? " on" : "")}
           type="button"
@@ -100,7 +108,7 @@ export function StateToggles({
           ⚑
         </button>
       )}
-      {(been || fav) && (
+      {showFav && (
         <button
           className={"state fav" + (fav ? " on" : "")}
           type="button"
