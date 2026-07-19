@@ -2,6 +2,8 @@ import { test, expect, type Page } from "@playwright/test";
 import { gotoTab } from "./nav-helper";
 
 async function addDatedTrip(page: Page, from: string, to: string, date: string) {
+  // The add form is collapsed by default — open it for each trip.
+  await page.getByRole("button", { name: "New trip" }).click();
   await page.getByLabel("From", { exact: true }).fill(from);
   await page.getByRole("option").filter({ hasText: from }).first().click();
   await page.getByLabel("To", { exact: true }).fill(to);

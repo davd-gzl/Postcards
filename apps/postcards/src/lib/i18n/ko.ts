@@ -377,6 +377,7 @@ export const ko: Messages = {
   "travel.notePlaceholder": "AC834편, 12A 좌석…",
   "travel.saveChanges": "변경 저장",
   "travel.addTrip": "이동 추가",
+  "travel.newTrip": "새 이동",
   "travel.empty":
     "아직 기록된 이동이 없습니다. 다녀온 이동을 추가하거나 탑승권을 스캔하면 자동으로 채워집니다.",
   "travel.noTripsInPeriod": "{period}에 이동이 없습니다.",

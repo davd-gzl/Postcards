@@ -9,6 +9,7 @@ test("edit a logged trip", async ({ page }) => {
   // Add a trip. Filter the option by its code so the picker's listbox row is
   // targeted, never the mode <select>'s native "Flight" option (both expose
   // role=option; the deferred picker list can lag a frame behind the keystroke).
+  await page.getByRole("button", { name: "New trip" }).click();
   await page.getByLabel("From", { exact: true }).fill("CDG");
   await page.getByRole("option").filter({ hasText: "CDG" }).first().click();
   await page.getByLabel("To", { exact: true }).fill("JFK");
