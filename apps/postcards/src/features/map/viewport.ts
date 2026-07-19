@@ -23,9 +23,20 @@ function lonInRange(lon: number, west: number, east: number): boolean {
 // the viewport covers. Wide views (many cells) fall back to the population-
 // ordered early-break, which is already fast when the top cities are everywhere.
 const GRID_COLS = 360;
-// Above this many covered cells the grid stops paying off — the population
-// early-break wins for continental/world views. ~1024 ≈ a 32°×32° window.
+// A zoomed-in view touches few cells → always use the grid (a cheap collect), no
+// need to weigh density. ~1024 ≈ a 32°×32° window.
 const CELL_MAX = 1024;
+// Between CELL_MAX and here, weigh how many cities the covered cells actually hold
+// (a cheap bucket-length sum, no per-city work) and use the grid when that's
+// modest — so a WIDE but SPARSE view (ocean/desert/poles) skips empty cells
+// instead of scanning all ~135k population-sorted rows to find fewer than `limit`
+// in-view. Beyond this the view is near-global and cities are everywhere, so the
+// population early-break wins outright.
+const GRID_DENSITY_MAX = 16_384;
+// The grid-collect path is worth it up to roughly this many candidate cities in
+// the covered cells; above it a wide view is dense enough that the population-
+// ordered early-break reaches the top `limit` faster.
+const GRID_MAX_CANDIDATES = 20_000;
 
 function clampRow(lat: number): number {
   return Math.min(179, Math.max(0, Math.floor(lat + 90)));
@@ -79,14 +90,35 @@ export function citiesInView(
 ): City[] {
   if (!bounds) return [];
 
-  // Fast path: a zoomed-in view touches few grid cells — visit only those.
+  // Prefer the grid (collect only cities in the covered cells, skipping empty
+  // ocean/desert cheaply) unless the view is wide AND dense, where the
+  // population-ordered early-break reaches the top `limit` faster.
   if (Number.isFinite(limit)) {
+    const g = ensureGrid(cities);
     const row0 = clampRow(bounds.south);
     const row1 = clampRow(bounds.north);
     const { startCol, colCount } = columnSpan(bounds);
     const cellCount = (row1 - row0 + 1) * colCount;
+
+    let useGrid: boolean;
     if (cellCount <= CELL_MAX) {
-      const g = ensureGrid(cities);
+      useGrid = true; // zoomed-in: few cells, always a cheap collect
+    } else if (cellCount <= GRID_DENSITY_MAX) {
+      // Weigh density cheaply: sum bucket lengths over the covered cells (Map.gets
+      // only, no per-city work). A sparse wide view holds few cities → grid wins;
+      // a dense one holds many → the early-break is faster.
+      let covered = 0;
+      for (let r = row0; r <= row1; r++) {
+        for (let k = 0; k < colCount; k++) {
+          covered += g.get(r * GRID_COLS + ((startCol + k) % 360))?.length ?? 0;
+        }
+      }
+      useGrid = covered <= GRID_MAX_CANDIDATES;
+    } else {
+      useGrid = false; // near-global: cities everywhere, early-break wins
+    }
+
+    if (useGrid) {
       const candidates: City[] = [];
       for (let r = row0; r <= row1; r++) {
         for (let k = 0; k < colCount; k++) {
@@ -104,13 +136,13 @@ export function citiesInView(
         }
       }
       // Cells are visited row-major, not globally population-ordered, so sort the
-      // (small) candidate set before taking the top `limit`.
+      // candidate set before taking the top `limit`.
       candidates.sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
       return candidates.slice(0, limit);
     }
   }
 
-  // Wide view (or unbounded limit): the population-ordered early-break.
+  // Wide + dense view (or unbounded limit): the population-ordered early-break.
   if (presorted && Number.isFinite(limit)) {
     const out: City[] = [];
     for (const c of cities) {

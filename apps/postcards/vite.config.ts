@@ -23,6 +23,23 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Isolate the heavy map libraries into their own long-lived vendor chunk,
+          // so a routine app-code deploy no longer re-downloads/re-parses ~1 MB of
+          // MapLibre, and the lazy map-feature chunk shrinks. NARROW on purpose:
+          // maplibre-gl is imported ONLY by the lazily-loaded map screen, so this
+          // chunk stays lazy — a blanket node_modules split would instead pull
+          // MapLibre into the eager entry graph (via react) and parse it on first
+          // paint, a real regression on low-end phones.
+          if (id.includes("maplibre-gl") || id.includes("/pmtiles/")) return "maplibre";
+          return undefined;
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

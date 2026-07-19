@@ -71,8 +71,11 @@ void initReferenceData().then(() => {
   void import("./lib/packs/store").then((m) => m.useDataPacks.getState().load());
 });
 
-// Warm the code-split MapScreen chunk (~1 MB, mostly MapLibre) while the
-// reference data downloads — the map is the default tab, so it's always needed
-// next. Vite dedupes dynamic imports by URL: App's React.lazy resolves from
-// this same in-flight request, and the code split stays intact.
-void import("./features/map/MapScreen");
+// Warm the code-split MapScreen chunk (~1 MB, mostly MapLibre) — the map is the
+// default tab, so it's needed next. Deferred to idle so its ~1 MB fetch+parse
+// doesn't compete with first paint and the reference-data download on a low-end
+// phone; App's React.lazy is still the real loader (Vite dedupes by URL), so if
+// the map mounts before idle fires it simply loads then — no behaviour change.
+const warmMap = () => void import("./features/map/MapScreen");
+if (typeof requestIdleCallback === "function") requestIdleCallback(warmMap, { timeout: 2000 });
+else setTimeout(warmMap, 300);
