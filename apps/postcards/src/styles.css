@@ -3253,6 +3253,30 @@ textarea.select {
 .places-groups .journal-place-group > .city-list {
   padding: 0 6px 4px;
 }
+
+/* Photo wall: a square-tile grid of every postcard photo; tap a tile to open its
+   place. Tiles are cropped to squares (object-fit: cover) so the grid stays even. */
+.photo-wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 4px;
+  margin-top: 8px;
+}
+.photo-wall-tile {
+  padding: 0;
+  border: none;
+  background: var(--bg-sub);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.photo-wall-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 .journal-card {
   padding: 9px 11px;
   margin-bottom: 8px;
