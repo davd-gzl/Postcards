@@ -1339,6 +1339,19 @@ export function MapView({
       }
       mapRef.current = map;
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      // "Locate me": a device-sensor button (no network, no telemetry) that asks
+      // for geolocation permission on tap and recentres the map on you, showing a
+      // live position dot. Local-only — it never leaves the device, so it fits the
+      // privacy model, and it degrades gracefully if permission is denied.
+      map.addControl(
+        new maplibregl.GeolocateControl({
+          positionOptions: { enableHighAccuracy: true },
+          trackUserLocation: true,
+          showUserLocation: true,
+          showAccuracyCircle: true,
+        }),
+        "top-right",
+      );
 
       // Marker images, generated lazily on demand.
       map.on("styleimagemissing", (e) => {

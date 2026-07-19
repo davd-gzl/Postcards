@@ -495,30 +495,35 @@ h1.brand {
   padding: 2px;
 }
 /* Online/Offline chip in the topbar (non-interactive status). */
+/* Same box as the other top-bar action buttons (.topbar-about) so the row reads
+   as one set of equal-sized controls, not a smaller odd-one-out. */
 .conn-status {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 9px;
-  border: 1px solid var(--border);
+  gap: 6px;
+  padding: 5px 11px 5px 9px;
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
   background: var(--surface);
-  font-size: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
   white-space: nowrap;
 }
 .conn-status .dot {
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1;
 }
 /* The chip is a real toggle button (click to flip Offline mode). */
 .conn-toggle {
   cursor: pointer;
-  color: inherit;
   font: inherit;
-  font-size: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
 }
-.conn-toggle:hover {
-  background: var(--bg-sub);
+.conn-toggle:hover,
+.conn-toggle:focus-visible {
+  color: var(--accent);
   border-color: var(--accent);
 }
 .conn-online .dot {
@@ -3286,7 +3291,8 @@ textarea.select {
   .topbar-about span {
     display: none; /* icon-only actions on small screens */
   }
-  .topbar-about {
+  .topbar-about,
+  .conn-status {
     padding: 5px 8px;
   }
   .map-top {
@@ -3445,6 +3451,17 @@ textarea.select {
     right: 8px;
     width: auto;
   }
+  /* Tap the search and it takes the whole bar so you can read what you type: the
+     brand + action icons step aside while it's focused, and the field grows a
+     little taller. Everything returns on blur. (:has() degrades to the narrow
+     field on the rare browser without it — no breakage.) */
+  .topbar:has(.topbar-search:focus-within) .brand-wrap,
+  .topbar:has(.topbar-search:focus-within) .topbar-actions {
+    display: none;
+  }
+  .topbar-search:focus-within .search-input {
+    height: 38px;
+  }
 }
 /* Mid-width: icon-only tabs so the left-anchored row stays clear of the search. */
 @media (min-width: 900px) and (max-width: 1299.98px) {
@@ -3506,7 +3523,8 @@ button.brand:focus-visible {
   .topbar-about span {
     display: none;
   }
-  .topbar-about {
+  .topbar-about,
+  .conn-status {
     padding: 5px 8px;
   }
 }
