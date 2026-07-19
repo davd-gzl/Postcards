@@ -3,6 +3,7 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
+import { registerEscape } from "../../lib/store/escapeStack";
 import { useSettings } from "../../lib/store/useSettings";
 import { countryFlag } from "../../lib/format/format";
 import { heritageGlyph } from "../../lib/reference/heritageGlyph";
@@ -352,6 +353,21 @@ export function PlacesScreen() {
     // last-used view, not replay this one forever.
     useUi.setState({ placesViewRequest: null });
   }, [request?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Escape/Back steps out of a collection (Moments/Photos/Passport are little
+  // screens of their own) back to the Visited list, before leaving the tab.
+  useEffect(() => {
+    return registerEscape(() => {
+      if (view === "moments" || view === "photos" || view === "passport") {
+        setView("visited");
+        saveView("visited");
+        setFilter("");
+        setShown(100);
+        return true;
+      }
+      return false;
+    });
+  }, [view]);
 
   const heritageAvailable = useMemo(() => ref.allHeritage().length > 0, [ref]);
 

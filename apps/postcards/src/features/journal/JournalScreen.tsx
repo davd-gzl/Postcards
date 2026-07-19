@@ -7,6 +7,7 @@ import { useTrips } from "../../lib/store/useTrips";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
+import { registerEscape } from "../../lib/store/escapeStack";
 import { useModalKeys } from "../../lib/hooks/useModalKeys";
 import { fileToPostcard } from "../../lib/image/downscale";
 import { countryFlag, formatDate, formatKm } from "../../lib/format/format";
@@ -928,6 +929,24 @@ export function JournalScreen() {
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [composerOpen, dirty, editingId]);
+
+  // Escape/Back steps out of a drilled-in view (map/timeline/by-place/calendar)
+  // back to the feed, then clears a picked day — before leaving the Journal. A
+  // dirty composer is caught by the handler above (App skips interceptors while
+  // it's open), so this only runs on the plain list.
+  useEffect(() => {
+    return registerEscape(() => {
+      if (view !== "feed") {
+        setView("feed");
+        return true;
+      }
+      if (daySel) {
+        setDaySel(null);
+        return true;
+      }
+      return false;
+    });
+  }, [view, daySel]);
 
   async function onPickPhotos(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
