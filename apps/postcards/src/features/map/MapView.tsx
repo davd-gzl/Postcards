@@ -306,6 +306,15 @@ function ensureAirImages(map: MlMap, fc: FeatureCollection<Point>): void {
   if (added) map.triggerRepaint();
 }
 
+/** Zoom → how coarsely "Show one city per area" groups your visited flags, so
+ *  they never pile up at low zoom yet more appear as you zoom in: one flag per
+ *  country when far out, per subdivision closer, and every flag once you're in. */
+function optimizeGranularity(zoom: number): "country" | "area" | null {
+  if (zoom < 4) return "country";
+  if (zoom < 7) return "area";
+  return null; // zoomed in enough — show every flag
+}
+
 function inViewPoints(cities: City[]): FeatureCollection<Point> {
   const ref = getReferenceData();
   const features: Feature<Point>[] = cities.map((c) => ({
@@ -650,7 +659,7 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
         ],
         "icon-size": ["interpolate", ["linear"], ["zoom"], 1, 0.9, 5, 1.1, 10, 1.35],
         "icon-padding": 1,
-        "icon-allow-overlap": false,
+        "icon-allow-overlap": true,
         "symbol-sort-key": ["get", "sortKey"],
       },
     },
@@ -677,11 +686,13 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
         // Grow with zoom so markers stay obvious on big screens & close views.
         "icon-size": ["interpolate", ["linear"], ["zoom"], 1, 0.9, 5, 1.1, 10, 1.35],
         "icon-padding": 1,
-        // Collision-managed so a dense cluster of your flags auto-thins instead of
-        // piling into an unreadable stack: overlapping flags drop out at low zoom
-        // and reappear as you zoom in and they separate. symbol-sort-key is
-        // -(population), so the biggest city in a cluster is the one kept.
-        "icon-allow-overlap": false,
+        // Your flags are ALWAYS drawn (overlap allowed) — never hidden by collision
+        // or by browse monuments/airports — because seeing everywhere you've been
+        // is the whole point. Density is managed by "Show one city per area"
+        // (region-optimize), not by dropping flags. symbol-sort-key = -(population)
+        // keeps the biggest city on top where they stack; favourites are pinned.
+        // (Runtime-flipped by "Show every place at once": OFF re-enables thinning.)
+        "icon-allow-overlap": true,
         "symbol-sort-key": ["get", "sortKey"],
       },
     },
@@ -1009,10 +1020,15 @@ export function MapView({
     const vis = visitsRef.current.filter((v) => visitMatches(v));
     const markerKey = (v: Visit) =>
       `${v.place.kind}:${v.place.id}:${v.status}:${v.favorite ? 1 : 0}`;
-    // The optimize flag is folded into the key so toggling "one city per area"
-    // rebuilds the source even when the visit set itself is unchanged.
+    // "Show one city per area" is ZOOM-AWARE: coarse (one flag per country) when
+    // zoomed out, finer (per subdivision) closer in, every flag once you're close.
+    // The granularity is folded into the key so a zoom that changes the bucket
+    // rebuilds the source; toggling the setting does too. `undefined` = setting
+    // off (show all); a null granularity = on but zoomed in enough to show all.
+    const gran = optimizeMarkersRef.current ? optimizeGranularity(map.getZoom()) : undefined;
+    const optTag = optimizeMarkersRef.current ? `opt:${gran ?? "all"}|` : "all|";
     const citiesKey =
-      (optimizeMarkersRef.current ? "opt|" : "all|") +
+      optTag +
       vis
         .filter(
           (v) => v.status !== "wishlist" && (v.place.kind === "city" || v.place.kind === "custom"),
@@ -1022,16 +1038,15 @@ export function MapView({
         .join("|");
     if (citiesKey !== lastCitiesKey.current) {
       lastCitiesKey.current = citiesKey;
-      const fc = optimizeMarkersRef.current
-        ? optimizeVisitedPoints(visitedCityPoints(vis, ref))
-        : visitedCityPoints(vis, ref);
+      const base = visitedCityPoints(vis, ref);
+      const fc = gran ? optimizeVisitedPoints(base, gran) : base;
       (map.getSource("cities") as GeoJSONSource | undefined)?.setData(fc);
       // Warm the flag images up front — a later zoom-out must not have to fetch
       // any visited flag's image before it can paint (the "load in late" bug).
       ensurePillImages(map, fc);
     }
     const wishKey =
-      (optimizeMarkersRef.current ? "opt|" : "all|") +
+      optTag +
       vis
         .filter((v) => v.status === "wishlist" && v.place.kind === "city")
         .map(markerKey)
@@ -1039,12 +1054,9 @@ export function MapView({
         .join("|");
     if (wishKey !== lastWishKey.current) {
       lastWishKey.current = wishKey;
-      // Want-list cities get the SAME region optimisation as visited: "Show one
-      // city per area" thins them to one pill per area too, and the flag images
-      // are warmed so a zoom-out never paints them in late.
-      const wfc = optimizeMarkersRef.current
-        ? optimizeVisitedPoints(wishlistCityPoints(vis, ref))
-        : wishlistCityPoints(vis, ref);
+      // Want-list cities get the SAME zoom-aware region optimisation as visited.
+      const wbase = wishlistCityPoints(vis, ref);
+      const wfc = gran ? optimizeVisitedPoints(wbase, gran) : wbase;
       (map.getSource("wishlist") as GeoJSONSource | undefined)?.setData(wfc);
       ensurePillImages(map, wfc);
     }
@@ -1440,6 +1452,9 @@ export function MapView({
         // without waiting on a React render.
         applyViewportPoi(map);
         applyInViewCities(map);
+        // Zoom-aware "one city per area": rebuild your flags when the zoom crosses
+        // a granularity bucket (key-guarded, so a same-bucket pan is a no-op).
+        if (optimizeMarkersRef.current) applyVisited(map);
         const wasProgrammatic = suppressBoundsRef.current;
         if (wasProgrammatic) {
           suppressBoundsRef.current = false; // programmatic fly — keep the list still

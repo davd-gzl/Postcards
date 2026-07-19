@@ -100,6 +100,18 @@ describe("optimize visited points (one city per area)", () => {
     ]);
     expect(names(optimizeVisitedPoints(input))).toEqual(["Lyon", "Paris"]);
   });
+
+  it("granularity 'country' (zoomed out) keeps one flag per COUNTRY", () => {
+    const input = fc([
+      pt("Paris", { cc: "FR", region: "IDF", pop: 2_000_000 }),
+      pt("Lyon", { cc: "FR", region: "ARA", pop: 500_000 }),
+      pt("Berlin", { cc: "DE", region: "BE", pop: 3_500_000 }),
+    ]);
+    // Default "area" keeps all three (distinct subdivisions); "country" collapses
+    // France's two to its biggest (Paris) — "the more you zoom, the more appear".
+    expect(names(optimizeVisitedPoints(input, "area"))).toEqual(["Berlin", "Lyon", "Paris"]);
+    expect(names(optimizeVisitedPoints(input, "country"))).toEqual(["Berlin", "Paris"]);
+  });
 });
 
 describe("declutter priority (symbol-sort-key)", () => {

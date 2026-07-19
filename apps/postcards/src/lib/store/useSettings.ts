@@ -68,11 +68,12 @@ function loadMaxMarkers(): number {
 function loadOptimizeMarkers(): boolean {
   return readLocal(OPTIMIZE_MARKERS_KEY) === "1";
 }
-// "Show every place at once": drop the collision de-cluttering on YOUR markers so
-// a zoomed-out map shows all your visited flags + want-list dots together (the
-// "show a friend everywhere I've been" view). Opt-in; a stored "1" turns it on.
+// "Show every place at once": your visited flags + want-list dots are NEVER
+// hidden by the map's collision de-cluttering (nor by browse monuments/airports)
+// — the whole point of the app is seeing everywhere you've been. ON by default;
+// turn it OFF (stored "0") to let dense clusters thin themselves at low zoom.
 function loadShowAllMarkers(): boolean {
-  return readLocal(SHOW_ALL_MARKERS_KEY) === "1";
+  return readLocal(SHOW_ALL_MARKERS_KEY) !== "0";
 }
 // "Update markers only when the map stops": on a slower phone the browse (not-
 // visited) city dots recomputing live on every pan frame is the felt lag. Turning
