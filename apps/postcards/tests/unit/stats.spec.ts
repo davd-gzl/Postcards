@@ -77,6 +77,20 @@ describe("coverage statistics (real gazetteer)", () => {
     expect(fr.regionPct).toBeCloseTo(2 / 13, 6);
   });
 
+  it("computes big-city (100k+) coverage as a generous subset of all cities", () => {
+    const fr = computeCountryCoverage(visits, ref, "FR");
+    // Paris (~2.1M) and Lyon (~0.5M) are both 100k+, so both count as big cities.
+    expect(fr.bigCitiesVisited).toBe(2);
+    // Big cities are a strict subset of the country's gazetteer cities…
+    expect(fr.bigCitiesTotal).toBeGreaterThan(0);
+    expect(fr.bigCitiesTotal).toBeLessThan(fr.citiesTotal);
+    expect(fr.bigCitiesTotal).toBeGreaterThanOrEqual(fr.bigCitiesVisited);
+    expect(fr.bigCityPct).toBeCloseTo(fr.bigCitiesVisited / fr.bigCitiesTotal, 9);
+    // …so the same two visits read as much more progress than against every town.
+    expect(fr.bigCityPct).toBeGreaterThan(fr.cityPct);
+    expect(fr.bigCityPct).toBeLessThanOrEqual(1);
+  });
+
   it("never exceeds 100%: cities outside the gazetteer don't count", () => {
     const unknown: Visit = {
       visitId: crypto.randomUUID(),

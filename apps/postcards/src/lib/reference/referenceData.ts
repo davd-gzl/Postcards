@@ -10,6 +10,7 @@ import type {
   ReferenceProvenance,
   Subdivision,
 } from "./types";
+import { BIG_CITY_MIN_POPULATION } from "./types";
 import provenanceData from "./data/provenance.json";
 import continentsData from "./data/continents.json";
 import sovereigntyData from "./data/sovereignty.json";
@@ -61,7 +62,12 @@ const ARTICLE_NAMES_URL = `${import.meta.env.BASE_URL}reference/article-names.js
 function buildCountries(cities: City[], subdivisions: Subdivision[]): Country[] {
   const names = countries.getNames("en");
   const cityCounts = new Map<string, number>();
-  for (const c of cities) cityCounts.set(c.countryIso2, (cityCounts.get(c.countryIso2) ?? 0) + 1);
+  const bigCityCounts = new Map<string, number>();
+  for (const c of cities) {
+    cityCounts.set(c.countryIso2, (cityCounts.get(c.countryIso2) ?? 0) + 1);
+    if ((c.population ?? 0) >= BIG_CITY_MIN_POPULATION)
+      bigCityCounts.set(c.countryIso2, (bigCityCounts.get(c.countryIso2) ?? 0) + 1);
+  }
   const subCounts = new Map<string, number>();
   for (const s of subdivisions)
     subCounts.set(s.countryIso2, (subCounts.get(s.countryIso2) ?? 0) + 1);
@@ -78,6 +84,7 @@ function buildCountries(cities: City[], subdivisions: Subdivision[]): Country[] 
       name: countryNames[iso2] ?? name,
       continent: continents[iso2] ?? "",
       cityCount: cityCounts.get(iso2) ?? 0,
+      bigCityCount: bigCityCounts.get(iso2) ?? 0,
       subdivisionCount: subCounts.get(iso2) ?? 0,
       sovereignty: sovereignty[iso2] ?? "territory",
     });
@@ -144,8 +151,16 @@ class ReferenceDataImpl implements ReferenceData {
     // Refresh the per-country "known cities" denominators from the WORLD set only
     // (pack POIs are extra places, not part of the cities-known count).
     const counts = new Map<string, number>();
-    for (const c of this.baseCities) counts.set(c.countryIso2, (counts.get(c.countryIso2) ?? 0) + 1);
-    for (const country of this.countries) country.cityCount = counts.get(country.iso2) ?? 0;
+    const bigCounts = new Map<string, number>();
+    for (const c of this.baseCities) {
+      counts.set(c.countryIso2, (counts.get(c.countryIso2) ?? 0) + 1);
+      if ((c.population ?? 0) >= BIG_CITY_MIN_POPULATION)
+        bigCounts.set(c.countryIso2, (bigCounts.get(c.countryIso2) ?? 0) + 1);
+    }
+    for (const country of this.countries) {
+      country.cityCount = counts.get(country.iso2) ?? 0;
+      country.bigCityCount = bigCounts.get(country.iso2) ?? 0;
+    }
     this.remergeCities();
   }
 
