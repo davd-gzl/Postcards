@@ -37,6 +37,7 @@ export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureC
           region: "",
           custom: 1,
           fav: v.favorite ? 1 : 0,
+          wish: 0,
           sortKey: -PINNED, // your own place — always kept
         },
       });
@@ -57,6 +58,7 @@ export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureC
         region,
         custom: 0,
         fav: v.favorite ? 1 : 0,
+        wish: 0,
         // Favourites are pinned below every non-favourite; within each group the
         // most-populous city is kept when flags collide.
         sortKey: (v.favorite ? -PINNED : 0) - (city.population ?? 0),
@@ -112,7 +114,14 @@ export function optimizeVisitedPoints(
   return { type: "FeatureCollection", features: kept };
 }
 
-/** Point features for wish-to-go cities (drawn as distinct wish markers). */
+/**
+ * Point features for wish-to-go cities. Identical property shape to
+ * {@link visitedCityPoints} (`wish: 1` is the only difference) so want-list
+ * cities render as the SAME compact flag pill as visited — just a "want to go"
+ * treatment — and flow through the exact same region optimisation
+ * ({@link optimizeVisitedPoints}) and flag-collision de-cluttering. Favourites
+ * are pinned and carry their star, matching visited.
+ */
 export function wishlistCityPoints(visits: Visit[], ref: ReferenceData): FeatureCollection<Point> {
   const features: Feature<Point>[] = [];
   for (const v of visits) {
@@ -120,8 +129,6 @@ export function wishlistCityPoints(visits: Visit[], ref: ReferenceData): Feature
     const city = ref.cityById(v.place.id);
     if (!city) continue;
     const region = city.subdivisionId ? ref.subdivisionById(city.subdivisionId)?.name ?? "" : "";
-    // Same property shape as visitedCityPoints — the tap popup builds its
-    // PlaceRef from `id`, so omitting it here would toggle a phantom "" city.
     features.push({
       type: "Feature",
       geometry: { type: "Point", coordinates: [city.lon, city.lat] },
@@ -132,6 +139,9 @@ export function wishlistCityPoints(visits: Visit[], ref: ReferenceData): Feature
         pop: city.population ?? 0,
         region,
         custom: 0,
+        fav: v.favorite ? 1 : 0,
+        wish: 1,
+        sortKey: (v.favorite ? -PINNED : 0) - (city.population ?? 0),
       },
     });
   }

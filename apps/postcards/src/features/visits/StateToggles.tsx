@@ -47,7 +47,13 @@ export function StateToggles({
       show(t("places.row.removedToast", { name: place.name }), () => restoreVisit(prev));
   }
   function onWant() {
+    // Mirror onBeen: removing a want-list place (which can drop a note/★) gets an
+    // undoable toast, so an accidental tap — on the map list or anywhere this
+    // shared control renders — is recoverable, not a silent loss.
+    const prev = findByPlace(useVisits.getState().visits, place);
     void toggleWish(place);
+    if (prev?.status === "wishlist")
+      show(t("places.row.removedToast", { name: place.name }), () => restoreVisit(prev));
   }
   async function onFav() {
     if (!findByPlace(useVisits.getState().visits, place)) {

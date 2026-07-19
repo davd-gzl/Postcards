@@ -130,10 +130,12 @@ const EMOJI_FONT = '"Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", s
 const PILL_FONT = '600 21px "Inter Variable", system-ui, sans-serif';
 
 /**
- * Visited-city marker: the bare flag emoji — no box, no halo, just the flag.
- * Favourites get a small gold star at the corner.
+ * City marker: the bare flag emoji — no box, no halo — at ONE size for both
+ * visited and want-list, so a want-list city is never bigger than a visited one.
+ * A want-list ("want to go") flag is drawn slightly lighter and wears a small
+ * amber ⚑ badge; favourites (either status) get a gold star at the corner.
  */
-function makeCityPill(iso2: string, favorite: boolean): ImageData {
+function makeCityPill(iso2: string, favorite: boolean, wish: boolean): ImageData {
   const w = 44;
   const h = 38; // ~19px on screen
   const canvas = document.createElement("canvas");
@@ -142,8 +144,21 @@ function makeCityPill(iso2: string, favorite: boolean): ImageData {
   const ctx = canvas.getContext("2d")!;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  // A want-list flag reads as "not yet" — a touch lighter than a visited one.
+  ctx.globalAlpha = wish ? 0.88 : 1;
   ctx.font = `27px ${EMOJI_FONT}`;
   ctx.fillText(countryFlag(iso2), w / 2, h / 2 + 1);
+  ctx.globalAlpha = 1;
+  if (wish) {
+    // The app's want-list glyph, as amber text (colourable, unlike the emoji
+    // form) with a white outline so it reads on any basemap.
+    ctx.font = '700 15px system-ui, "Segoe UI", sans-serif';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(255,255,255,0.95)";
+    ctx.strokeText("⚑", 8, 9);
+    ctx.fillStyle = "#d97706";
+    ctx.fillText("⚑", 8, 9);
+  }
   if (favorite) {
     ctx.font = `14px ${EMOJI_FONT}`;
     ctx.fillText("⭐", w - 9, 9);
@@ -265,9 +280,10 @@ function ensurePillImages(map: MlMap, fc: FeatureCollection<Point>): void {
     const p = f.properties ?? {};
     const cc = String(p.cc ?? "");
     const fav = Number(p.fav) === 1;
-    const id = `pill-${cc}-${fav ? 1 : 0}`;
+    const wish = Number(p.wish) === 1;
+    const id = `pill-${cc}-${fav ? 1 : 0}-${wish ? 1 : 0}`;
     if (!map.hasImage(id)) {
-      map.addImage(id, makeCityPill(cc, fav), { pixelRatio: 2 });
+      map.addImage(id, makeCityPill(cc, fav, wish), { pixelRatio: 2 });
       added = true;
     }
   }
@@ -402,7 +418,12 @@ function openPlacePopup(
     state.textContent = visited ? "✓ Visited · tap to undo" : "Tap to mark visited";
     body.title = visited ? `Remove ${info.name} from visited` : `Mark ${info.name} visited`;
     wish.className = "mini-btn" + (wished ? " mini-on" : "");
-    wish.textContent = wished ? "⚑ Wishlisted" : "⚑ Want to go";
+    // Advertise reversibility, exactly like the visited state's "tap to undo",
+    // so removing a want-list city on the map is discoverable — not a dead end.
+    wish.textContent = wished ? "⚑ Wishlisted · tap to remove" : "⚑ Want to go";
+    wish.title = wished
+      ? `Remove ${info.name} from wishlist`
+      : `Add ${info.name} to wishlist`;
     wish.style.display = visited ? "none" : ""; // you've been — nothing to wish
     story.style.display = visited ? "" : "none"; // journal what you've seen
   };
@@ -597,14 +618,27 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
       },
     },
     {
+      // Want-list cities share the visited flag pill (a "want to go" treatment),
+      // so they're the SAME size as visited, collision-managed (overlapping flags
+      // auto-thin at low zoom) and region-optimisable — never the old oversized
+      // always-on amber blob that read bigger than the flag.
       id: "cities-wishlist",
-      type: "circle",
+      type: "symbol",
       source: "wishlist",
-      paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 5, 8, 7.5],
-        "circle-color": "#ffffff",
-        "circle-stroke-color": "#f59e0b",
-        "circle-stroke-width": 2.5,
+      layout: {
+        "icon-image": [
+          "concat",
+          "pill-",
+          ["get", "cc"],
+          "-",
+          ["to-string", ["get", "fav"]],
+          "-",
+          ["to-string", ["get", "wish"]],
+        ],
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 1, 0.9, 5, 1.1, 10, 1.35],
+        "icon-padding": 1,
+        "icon-allow-overlap": false,
+        "symbol-sort-key": ["get", "sortKey"],
       },
     },
     // Monuments (UNESCO World Heritage): per-kind badges (🏛 cultural, 🌲 natural,
@@ -626,7 +660,7 @@ function overlayLayers(basemap: Basemap, dark: boolean): StyleSpecification["lay
       type: "symbol",
       source: "cities",
       layout: {
-        "icon-image": ["concat", "pill-", ["get", "cc"], "-", ["to-string", ["get", "fav"]]],
+        "icon-image": ["concat", "pill-", ["get", "cc"], "-", ["to-string", ["get", "fav"]], "-", ["to-string", ["get", "wish"]]],
         // Grow with zoom so markers stay obvious on big screens & close views.
         "icon-size": ["interpolate", ["linear"], ["zoom"], 1, 0.9, 5, 1.1, 10, 1.35],
         "icon-padding": 1,
@@ -965,14 +999,23 @@ export function MapView({
       // any visited flag's image before it can paint (the "load in late" bug).
       ensurePillImages(map, fc);
     }
-    const wishKey = vis
-      .filter((v) => v.status === "wishlist" && v.place.kind === "city")
-      .map((v) => v.place.id)
-      .sort()
-      .join("|");
+    const wishKey =
+      (optimizeMarkersRef.current ? "opt|" : "all|") +
+      vis
+        .filter((v) => v.status === "wishlist" && v.place.kind === "city")
+        .map(markerKey)
+        .sort()
+        .join("|");
     if (wishKey !== lastWishKey.current) {
       lastWishKey.current = wishKey;
-      (map.getSource("wishlist") as GeoJSONSource | undefined)?.setData(wishlistCityPoints(vis, ref));
+      // Want-list cities get the SAME region optimisation as visited: "Show one
+      // city per area" thins them to one pill per area too, and the flag images
+      // are warmed so a zoom-out never paints them in late.
+      const wfc = optimizeMarkersRef.current
+        ? optimizeVisitedPoints(wishlistCityPoints(vis, ref))
+        : wishlistCityPoints(vis, ref);
+      (map.getSource("wishlist") as GeoJSONSource | undefined)?.setData(wfc);
+      ensurePillImages(map, wfc);
     }
     const airKey = vis
       .filter((v) => v.place.kind === "airport")
@@ -1246,8 +1289,8 @@ export function MapView({
       map.on("styleimagemissing", (e) => {
         if (!map || map.hasImage(e.id)) return;
         if (e.id.startsWith("pill-")) {
-          const [, cc, fav] = e.id.split("-");
-          map.addImage(e.id, makeCityPill(cc ?? "", fav === "1"), { pixelRatio: 2 });
+          const [, cc, fav, wish] = e.id.split("-");
+          map.addImage(e.id, makeCityPill(cc ?? "", fav === "1", wish === "1"), { pixelRatio: 2 });
         } else if (e.id.startsWith("mon-")) {
           const [, cat, seen] = e.id.split("-");
           map.addImage(e.id, makeMonumentPin(cat ?? "cultural", seen === "1"), { pixelRatio: 2 });
