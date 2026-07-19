@@ -11,26 +11,49 @@ thin shells that load it.
 - `android/` — the Android project, **scaffolded and committed** (`npx cap add android`). Build
   outputs (`*.apk`, `build/`, `.gradle`, copied web assets) are git-ignored; only source is tracked.
 - npm scripts: `cap:sync`, `cap:copy`, `cap:add:ios`, `cap:open:android`, `cap:open:ios`,
-  `native:android`, `native:ios`.
+  `native:android`, `native:ios`, **`apk:debug`** (headless APK, below).
 
-> **Not verified on device here.** The Android project was generated in a Linux CI container which
-> has **no Android SDK**, and iOS needs **macOS + Xcode**, so no signed `.apk`/`.ipa` was produced.
-> The steps below are the standard Capacitor workflow to build and run on your machine.
+## Android — get an APK
 
-## Android
+### Easiest: download a debug APK from CI (no local Android toolchain)
 
-Requires Android Studio (or the Android SDK + JDK 17).
+The [`Android APK (debug)`](../.github/workflows/android-apk.yml) workflow builds an installable debug
+APK on every push (and on demand) and uploads it as an artifact:
+
+1. Push to `main` or any `claude/**` branch — or run the workflow manually (Actions → **Android APK
+   (debug)** → *Run workflow*).
+2. Open the finished run and download the **`postcards-debug-apk`** artifact.
+3. Unzip and install: `adb install app-debug.apk` (or copy to the phone and open it; you'll need
+   "install unknown apps" enabled since it's a debug build).
+
+The APK is **debug-signed** with the auto-generated Android debug keystore (fine for sideloading, not
+for the Play Store) — the signing cert differs per machine/run, so uninstall an older copy if Android
+refuses to update over it.
+
+### Build the APK locally, headless (no Android Studio)
+
+Needs **JDK 17** + the **Android SDK / command-line tools** with `ANDROID_HOME` (or
+`ANDROID_SDK_ROOT`) set — but *not* Android Studio:
 
 ```bash
-pnpm --filter postcards build          # produce dist/
-pnpm --filter postcards cap:sync       # copy dist/ into android/ + update plugins
-pnpm --filter postcards cap:open:android   # open in Android Studio → Run / Build APK/AAB
-# or the one-shot:
-pnpm --filter postcards native:android
+pnpm --filter postcards apk:debug
+# = pnpm build → cap sync android → android/ ./gradlew assembleDebug
+# → apps/postcards/android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-If `android/` is ever missing or you want to regenerate it: `pnpm --filter postcards cap:add:android`
-(takes ~milliseconds; it re-copies the template).
+### With Android Studio (interactive)
+
+```bash
+pnpm --filter postcards native:android   # build → cap sync android → cap open android → Run / Build APK/AAB
+```
+
+If `android/` is ever missing or you want to regenerate it: `pnpm --filter postcards cap:add:android`.
+
+> **APK size (~25 MB).** `cap sync` copies all of `dist/` into the app assets, including the 17 MB
+> full gazetteer (`reference/cities-all.json`). On the web that file is downloaded on demand to keep
+> the install small; bundling it into the native app is harmless — it just means the native app is
+> **fully offline out of the box**. A leaner APK would need a dedicated build variant that excludes it
+> *and* verifies the on-demand fetch works inside the Capacitor `https` scheme — a separate change.
 
 ## iOS (macOS only)
 
@@ -58,5 +81,7 @@ pnpm --filter postcards native:ios
 - **Shared Offline Map Store.** The `OfflineMapStore` seam (see
   [`OFFLINE-MAPS.md`](OFFLINE-MAPS.md)) is where a native `SharedOfflineMapStore` plugin (iOS App
   Group / Android SAF) plugs in, so map packs are device-global across the ecosystem.
-- **CI.** Building signed binaries belongs in a macOS runner (iOS) / SDK-equipped runner (Android),
-  not this container.
+- **CI.** The `Android APK (debug)` workflow produces an installable **debug** APK on GitHub's
+  Ubuntu runners (JDK 17 + the runner's Android SDK; `gradlew` self-bootstraps Gradle). A **release**
+  AAB/APK still needs a signing key (store it as an encrypted secret) and, for iOS, a macOS runner
+  with an Apple signing team — out of scope for the debug artifact above.
