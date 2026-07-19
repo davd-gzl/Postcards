@@ -12,15 +12,17 @@ import {
 } from "../../lib/wikivoyage";
 import type { PlaceRef } from "../../lib/schema/models";
 import { useOnlineStatus } from "../../lib/hooks/useOnlineStatus";
-import { useT } from "../../lib/i18n";
+import { useT, type MessageKey } from "../../lib/i18n";
 
-const KIND_GROUP: Record<string, string> = {
-  place: "Explore",
-  country: "Explore",
-  understand: "Understand the country",
-  phrasebook: "Language & alphabet",
+// Stable, language-independent group keys (translated at render via guide.group.*);
+// the grouping logic never touches display text.
+const KIND_GROUP: Record<string, "explore" | "understand" | "phrasebook"> = {
+  place: "explore",
+  country: "explore",
+  understand: "understand",
+  phrasebook: "phrasebook",
 };
-const GROUP_ORDER = ["Explore", "Understand the country", "Language & alphabet"];
+const GROUP_ORDER = ["explore", "understand", "phrasebook"] as const;
 
 /** Resolve the names a place's guides are built from (common country name —
  *  the real Wikivoyage article title, e.g. "Russia", not "Russian Federation"). */
@@ -105,6 +107,7 @@ interface GuideNames {
 /** Shared body: a single tidy overview card (photo + short extract, loaded when
  *  online) plus the grouped guide links. */
 function GuideContent({ placeName, names }: { placeName: string; names: GuideNames }) {
+  const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
   // Offline mode is the master override: no overview ever auto-fetches, and the
   // manual "Load overview" button is withheld too (external guide LINKS stay —
@@ -233,23 +236,21 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
 
   return (
     <div className="guide-body">
-      <p className="muted small guide-source">
-        Overviews from Wikivoyage and Wikipedia. Links open in your browser.
-      </p>
+      <p className="muted small guide-source">{t("guide.sourceNote")}</p>
 
       <div className="guide-overviews">
         {!overview && state === "loading" && (
           <p className="muted small guide-loading" role="status" aria-live="polite">
-            Loading overview…
+            {t("guide.loadingOverview")}
           </p>
         )}
         {!overview && state === "idle" && !autoLoad && !offlineMode && (
           <button type="button" className="btn-ghost guide-overview-btn" onClick={loadOverview}>
-            ↧ Load overview &amp; photo
+            ↧ {t("guide.loadOverview")}
           </button>
         )}
         {!overview && offlineMode && (
-          <p className="muted small">Overviews are off in Offline mode.</p>
+          <p className="muted small">{t("guide.offlineOff")}</p>
         )}
         {/* Auto-load is on but the overview never loaded because the device is
             offline — the effect bailed and left this area blank. Say so, with a
@@ -262,19 +263,19 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
           typeof navigator !== "undefined" &&
           !navigator.onLine && (
             <p className="muted small">
-              You&rsquo;re offline — the overview loads when you&rsquo;re back online.{" "}
+              {t("guide.offlineWait")}{" "}
               <button type="button" className="mini-btn" onClick={loadOverview}>
-                Retry
+                {t("guide.retry")}
               </button>
             </p>
           )}
         {!overview && state === "empty" && (
           <p className="muted small">
             {typeof navigator !== "undefined" && !navigator.onLine
-              ? "You're offline; the links below open when you're back online."
-              : "No quick overview for this exact title. Try the links or the search below."}{" "}
+              ? t("guide.emptyOffline")
+              : t("guide.emptyOnline")}{" "}
             <button type="button" className="mini-btn" onClick={loadOverview}>
-              Retry
+              {t("guide.retry")}
             </button>
           </p>
         )}
@@ -288,7 +289,7 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
               <img
                 className="guide-photo"
                 src={photo}
-                alt={`Photo of ${placeName}`}
+                alt={t("guide.photoAlt", { place: placeName })}
                 loading="lazy"
                 referrerPolicy="no-referrer"
               />
@@ -300,9 +301,9 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
             </blockquote>
             <figcaption className="muted small guide-cite">
               <a href={cardUrl} target="_blank" rel="noopener noreferrer">
-                Read more on {cardSource}
+                {t("guide.readMore", { source: cardSource })}
               </a>{" "}
-              · CC BY-SA · saved offline
+              · CC BY-SA · {t("guide.savedOffline")}
             </figcaption>
           </figure>
         )}
@@ -310,21 +311,21 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
         {/* The whole guide, readable right here — no trip to the website. */}
         {(overview || full) && !full && fullState === "idle" && !offlineMode && (
           <button type="button" className="btn-ghost guide-overview-btn" onClick={() => void loadFullGuide()}>
-            📖 Read the whole guide here
+            📖 {t("guide.readWhole")}
           </button>
         )}
         {fullState === "loading" && (
           <p className="muted small guide-loading" role="status" aria-live="polite">
-            Loading the full guide…
+            {t("guide.loadingFull")}
           </p>
         )}
         {fullState === "empty" && (
           <p className="muted small">
             {typeof navigator !== "undefined" && !navigator.onLine
-              ? "You're offline — the full guide loads when you're back online."
-              : "No full guide for this exact title — the links below still work."}{" "}
+              ? t("guide.fullOffline")
+              : t("guide.fullEmpty")}{" "}
             <button type="button" className="mini-btn" onClick={() => void loadFullGuide()}>
-              Retry
+              {t("guide.retry")}
             </button>
           </p>
         )}
@@ -340,11 +341,11 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
             ))}
             {full && (
               <p className="muted small guide-cite">
-                Full guide ·{" "}
+                {t("guide.fullGuideLabel")} ·{" "}
                 <a href={full.url} target="_blank" rel="noopener noreferrer">
                   {full.attribution}
                 </a>{" "}
-                · saved offline
+                · {t("guide.savedOffline")}
               </p>
             )}
           </div>
@@ -356,13 +357,17 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
           <div key={group} className="guide-group">
             {/* h4: these group titles nest UNDER the section's "Guides" h3, so a
                 screen-reader heading outline stays correct (WCAG 1.3.1). */}
-            <h4>{group}</h4>
+            <h4>{t(`guide.group.${group}` as MessageKey)}</h4>
             <ul className="guide-links">
               {items.map((l) => (
                 <li key={l.id}>
                   <a href={l.url} target="_blank" rel="noopener noreferrer">
-                    <span className="guide-link-label">{l.label}</span>
-                    <span className="guide-link-hint muted small">{l.hint}</span>
+                    <span className="guide-link-label">
+                      {t(`guide.link.${l.kind}.label` as MessageKey, { name: l.name })}
+                    </span>
+                    <span className="guide-link-hint muted small">
+                      {t(`guide.link.${l.kind}.hint` as MessageKey)}
+                    </span>
                   </a>
                 </li>
               ))}
@@ -375,7 +380,7 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
           title doesn't match (name variants) or the overview fetch fails. */}
       <p className="muted small guide-search">
         <a href={searchUrl(searchQuery)} target="_blank" rel="noopener noreferrer">
-          Search Wikivoyage for “{searchQuery}”
+          {t("guide.searchFor", { query: searchQuery })}
         </a>
       </p>
     </div>

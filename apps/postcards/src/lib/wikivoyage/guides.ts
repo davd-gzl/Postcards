@@ -16,8 +16,7 @@ export function guidesFor(input: WikivoyagePlaceInput, lang: string = DEFAULT_LA
     links.push({
       id: `place:${iso}:${input.cityName}`,
       kind: "place",
-      label: `${input.cityName} travel guide`,
-      hint: "See, do, eat & get around",
+      name: input.cityName,
       title: input.cityName,
       url: articleUrl(input.cityName, lang),
     });
@@ -26,8 +25,7 @@ export function guidesFor(input: WikivoyagePlaceInput, lang: string = DEFAULT_LA
   links.push({
     id: `country:${iso}`,
     kind: "country",
-    label: `${input.countryName} travel guide`,
-    hint: "Regions, cities & practicalities",
+    name: input.countryName,
     title: input.countryName,
     url: articleUrl(input.countryName, lang),
   });
@@ -35,8 +33,7 @@ export function guidesFor(input: WikivoyagePlaceInput, lang: string = DEFAULT_LA
   links.push({
     id: `understand:${iso}`,
     kind: "understand",
-    label: `About ${input.countryName}`,
-    hint: "History, geography, culture & climate",
+    name: input.countryName,
     title: input.countryName,
     url: articleUrl(input.countryName, lang, "Understand"),
   });
@@ -50,8 +47,7 @@ export function guidesFor(input: WikivoyagePlaceInput, lang: string = DEFAULT_LA
     links.push({
       id: `phrasebook:${name}`,
       kind: "phrasebook",
-      label: `${name} phrasebook`,
-      hint: "Alphabet, pronunciation & key phrases",
+      name,
       title,
       url: articleUrl(title, lang),
     });

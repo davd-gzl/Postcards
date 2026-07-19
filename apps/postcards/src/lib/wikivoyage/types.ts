@@ -37,10 +37,10 @@ export interface WikivoyageLink {
   /** Stable id, unique within one place's guide list. */
   id: string;
   kind: WikivoyageGuideKind;
-  /** Human label, e.g. "Paris travel guide", "French phrasebook". */
-  label: string;
-  /** Short helper line describing what's behind the link. */
-  hint: string;
+  /** The human name this link is about (city / country / language). The display
+   *  label + hint are derived from `kind` + `name` at render time, so this stays a
+   *  language-independent link builder (the UI localizes; see GuideContent). */
+  name: string;
   /** Wikivoyage article title (unencoded), e.g. "Paris", "French phrasebook". */
   title: string;
   /** Ready-to-open URL (may include a section anchor). */
