@@ -3249,6 +3249,54 @@ textarea.select {
   font-size: 15px;
 }
 
+/* Journal "Map of stories": a self-contained SVG (land silhouette + a pin per
+   place you've written about). The legend below is the keyboard/AT path. */
+.journal-storymap {
+  margin-top: 10px;
+}
+.storymap-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, #4a86c5 16%, var(--bg-sub));
+}
+.storymap-land {
+  fill: var(--surface);
+  stroke: var(--border-strong);
+  stroke-width: 0.7;
+  stroke-linejoin: round;
+}
+.storymap-pin {
+  cursor: pointer;
+}
+.storymap-pin-dot {
+  fill: #3b6fb0;
+  stroke: var(--surface);
+  stroke-width: 1.6;
+}
+.storymap-pin:hover .storymap-pin-dot {
+  fill: var(--text);
+}
+.storymap-pin-count {
+  fill: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.storymap-legend {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.storymap-legend button {
+  text-align: left;
+}
+
 /* Places "group by country / year": reuses the collapsible group shell above,
    with full place rows (.city-list) inside each section. */
 .places-groupby {
