@@ -14,7 +14,6 @@ import { CityLine } from "../../ui/CityLine";
 import { ScopeToggle } from "../../ui/ScopeToggle";
 import { PhotoGallery } from "./PhotoGallery";
 import { StateToggles } from "./StateToggles";
-import { GuideButton } from "../guides/GuideButton";
 import { PassportScreen } from "../passport/PassportScreen";
 import { ExperiencesScreen } from "../experiences/ExperiencesScreen";
 import { PhotoWall } from "./PhotoWall";
@@ -256,7 +255,6 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
           }
         />
       </button>
-      <GuideButton place={v.place} />
       {!wishlist && (
         <PhotoGallery visitId={v.visitId} photos={v.photos ?? []} placeName={v.place.name} />
       )}
@@ -671,6 +669,23 @@ export function PlacesScreen() {
             ⚙ {t("filter.open")}
             {placesFilterActive ? ` · ${placesFilterChips.length}` : ""}
           </button>
+          {/* Group-by lives on the SAME line as Filter (visited list only) so the
+              two controls read as one toolbar, not two stacked rows. */}
+          {view === "visited" && visitedShown.length > 0 && (
+            <div className="places-groupby btn-row" role="group" aria-label={t("places.groupBy")}>
+              {(["none", "country", "year"] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  className={"mini-btn" + (groupBy === g ? " mini-on" : "")}
+                  aria-pressed={groupBy === g}
+                  onClick={() => setGroupBy(g)}
+                >
+                  {t(`places.groupBy.${g}` as const)}
+                </button>
+              ))}
+            </div>
+          )}
           <FilterSummary exclude={["status", "mode"]} />
         </div>
       )}
@@ -687,21 +702,6 @@ export function PlacesScreen() {
           )}
           {visited.length > 0 && visitedShown.length === 0 && (
             <NoMatch q={q} onClear={clearSearch} />
-          )}
-          {visitedShown.length > 0 && (
-            <div className="places-groupby btn-row" role="group" aria-label={t("places.groupBy")}>
-              {(["none", "country", "year"] as const).map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  className={"mini-btn" + (groupBy === g ? " mini-on" : "")}
-                  aria-pressed={groupBy === g}
-                  onClick={() => setGroupBy(g)}
-                >
-                  {t(`places.groupBy.${g}` as const)}
-                </button>
-              ))}
-            </div>
           )}
           {visitedGroups ? (
             <div className="places-groups">
@@ -854,7 +854,6 @@ export function PlacesScreen() {
                       >
                         <CityLine flag={countryFlag(h.countryIso2)} name={h.name} sub={<>· {country}</>} />
                       </button>
-                      <GuideButton place={place} />
                       <StateToggles place={place} />
                     </li>
                   );

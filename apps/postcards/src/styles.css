@@ -1741,8 +1741,13 @@ h1.brand {
 .country-meters {
   grid-area: meter;
   display: flex;
-  gap: 14px;
+  gap: 12px;
   margin-top: 3px;
+}
+/* The collapsed row's mini-meters are the at-a-glance summary; once open, the
+   body shows the same metrics with counts, so hide these to avoid duplication. */
+.country-card[open] .country-meters {
+  display: none;
 }
 .cmeter {
   flex: 1 1 0;
@@ -3303,7 +3308,7 @@ textarea.select {
 /* Places "group by country / year": reuses the collapsible group shell above,
    with full place rows (.city-list) inside each section. */
 .places-groupby {
-  margin: 4px 0 8px;
+  margin: 0; /* sits inline on the Filter toolbar row now, not on its own line */
 }
 .places-groups {
   display: flex;

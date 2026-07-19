@@ -153,9 +153,11 @@ function CountryRow({
         <span className="country-caret" aria-hidden>
           ›
         </span>
-        {/* Cities (left) and regions (right) side by side, so both coverage %s
-            read at a glance — no need to expand the row to compare them. */}
-        {(c.citiesTotal > 0 || c.regionsTotal > 0) && (
+        {/* Cities, big cities (100k+) and regions side by side, so every coverage %
+            reads at a glance — no need to expand the row to compare them. Hidden
+            once the row is open (the body shows the same, with counts) so nothing
+            is duplicated. */}
+        {(c.citiesTotal > 0 || c.bigCitiesTotal > 0 || c.regionsTotal > 0) && (
           <div className="country-meters">
             {c.citiesTotal > 0 && (
               <div className="cmeter">
@@ -163,6 +165,18 @@ function CountryRow({
                   {t("stats.country.metricCities")} <b>{formatPercent(c.cityPct)}</b>
                 </span>
                 <Bar value={c.cityPct} label={t("stats.country.cityBarAria", { name: c.name })} />
+              </div>
+            )}
+            {c.bigCitiesTotal > 0 && (
+              <div className="cmeter">
+                <span className="cmeter-cap">
+                  {t("stats.country.metricBigCities")} <b>{formatPercent(c.bigCityPct)}</b>
+                </span>
+                <Bar
+                  value={c.bigCityPct}
+                  label={t("stats.country.bigCityBarAria", { name: c.name })}
+                  color="var(--stat-been)"
+                />
               </div>
             )}
             {c.regionsTotal > 0 && (
@@ -210,6 +224,26 @@ function CountryRow({
           </div>
           {c.citiesTotal > 0 && <Bar value={c.cityPct} label={t("stats.country.cityBarAria", { name: c.name })} />}
         </div>
+
+        {c.bigCitiesTotal > 0 && (
+          <div className="metric">
+            <div className="metric-label">
+              <span>{t("stats.country.metricBigCities")}</span>
+              <span className="muted">
+                {t("stats.country.metricBigCitiesDetail", {
+                  pct: formatPercent(c.bigCityPct),
+                  visited: c.bigCitiesVisited,
+                  total: c.bigCitiesTotal,
+                })}
+              </span>
+            </div>
+            <Bar
+              value={c.bigCityPct}
+              label={t("stats.country.bigCityBarAria", { name: c.name })}
+              color="var(--stat-been)"
+            />
+          </div>
+        )}
 
         <div className="metric">
           <div className="metric-label">
@@ -343,8 +377,9 @@ export function StatsView() {
   const worldPctText = formatPercent(coverage.worldPct);
   const worldPctLabel =
     coverage.worldPct > 0 && worldPctText === formatPercent(0) ? "<1%" : worldPctText;
-  // Big-city coverage is a sliver of a huge denominator, so a real visit almost
-  // always rounds to 0% — floor it to "<1%" so progress never reads as nothing.
+  // City coverage is a sliver of a huge denominator (every 15k+ town on Earth),
+  // so a real visit almost always rounds to 0% — floor it to "<1%" so progress
+  // never reads as nothing.
   const cityPctText = formatPercent(coverage.cityPct);
   const cityPctLabel =
     coverage.cityPct > 0 && cityPctText === formatPercent(0) ? "<1%" : cityPctText;
@@ -371,8 +406,9 @@ export function StatsView() {
       <section className="stats-section" aria-labelledby="stats-coverage-h">
         <h3 id="stats-coverage-h">{t("stats.coverage.title")}</h3>
         {/* Two headline progress bars — read your coverage at a glance, before
-            opening any country. Countries, and "big cities" (every gazetteer city,
-            15k+ people) — the coverage metric that keeps growing for years. */}
+            opening any country. Countries, and cities (every gazetteer city,
+            15k+ people) — the coverage metric that keeps growing for years.
+            ("Big cities", 100k+, is a per-country meter in the list below.) */}
         <div className="stats-bars">
           <button
             type="button"
@@ -401,8 +437,8 @@ export function StatsView() {
           <button
             type="button"
             className="stat-bar"
-            title={t("stats.bars.bigCitiesTitle")}
-            aria-label={t("stats.bars.bigCitiesAria", {
+            title={t("stats.bars.citiesTitle")}
+            aria-label={t("stats.bars.citiesAria", {
               visited: formatInt(coverage.citiesVisited),
               total: formatInt(coverage.worldCityCount),
               pct: cityPctLabel,
@@ -410,7 +446,7 @@ export function StatsView() {
             onClick={() => useUi.getState().openPlaces("visited")}
           >
             <span className="stat-bar-top">
-              <span className="stat-bar-name">{t("stats.bars.bigCities")}</span>
+              <span className="stat-bar-name">{t("stats.bars.cities")}</span>
               <span className="stat-bar-fig">
                 <strong>{formatInt(coverage.citiesVisited)}</strong>
                 <span className="muted">
@@ -419,7 +455,7 @@ export function StatsView() {
                 </span>
               </span>
             </span>
-            <Bar value={coverage.cityPct} label={t("stats.bars.bigCities")} color="var(--accent)" />
+            <Bar value={coverage.cityPct} label={t("stats.bars.cities")} color="var(--accent)" />
           </button>
         </div>
 
