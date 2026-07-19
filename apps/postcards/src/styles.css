@@ -3072,7 +3072,9 @@ h1.brand {
 /* Desktop: map buttons live at the TOP corners; About modal goes two-column. */
 @media (min-width: 900px) {
   .map-ctl-right {
-    top: 90px; /* below the zoom control */
+    /* Clear the full top-right MapLibre stack — zoom in/out AND the geolocate
+       button below it — so Filter / Layers never overlap the geolocate control. */
+    top: 124px;
     bottom: auto;
   }
   .about-modal {
@@ -3892,8 +3894,16 @@ button.brand:focus-visible {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  /* Name + hint and the place chip(s) flow on ONE line, wrapping only when the
+     row runs out of room (was a hard column break that pushed chips below). */
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+.moment-main > .city-line {
+  width: auto;
+  flex: 0 1 auto;
 }
 .moment-spots {
   display: flex;
