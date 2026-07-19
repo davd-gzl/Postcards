@@ -3,6 +3,7 @@ import type { Feature, FeatureCollection, Point } from "geojson";
 import { getReferenceData } from "../../src/lib/reference/referenceData";
 import {
   visitedCityPoints,
+  wishlistCityPoints,
   optimizeVisitedPoints,
   tripArcs,
 } from "../../src/features/map/visitedLayers";
@@ -133,6 +134,47 @@ describe("declutter priority (symbol-sort-key)", () => {
     expect(cust.sortKey).toBeLessThan(nonFav.sortKey);
     // A plain visited city is unchanged: -population.
     expect(nonFav.sortKey).toBe(-(parisCity.population ?? 0));
+  });
+});
+
+describe("wishlist points share the visited shape (unified marker + optimise)", () => {
+  const parisCity = ref.searchCities("Paris")[0]!;
+  const wishV = (favorite = false): Visit => ({
+    visitId: crypto.randomUUID(),
+    place: { kind: "city", id: parisCity.id, name: parisCity.name, countryId: parisCity.countryIso2 },
+    date: null,
+    note: null,
+    status: "wishlist",
+    favorite,
+    addedAt: new Date().toISOString(),
+  });
+
+  it("emits wish=1 plus the fav + sortKey the flag pill and collision need", () => {
+    const p = wishlistCityPoints([wishV(false)], ref).features[0]!.properties!;
+    expect(p.wish).toBe(1);
+    expect(p.cc).toBe("FR");
+    expect(p.custom).toBe(0);
+    expect(p.fav).toBe(0);
+    // Same collision key as a visited city: -population.
+    expect(p.sortKey).toBe(-(parisCity.population ?? 0));
+  });
+
+  it("carries the favourite star and pins a favourite want-list city (kept in a collision)", () => {
+    const p = wishlistCityPoints([wishV(true)], ref).features[0]!.properties!;
+    expect(p.fav).toBe(1);
+    expect(p.sortKey).toBeLessThan(0); // -PINNED bias keeps favourites
+  });
+
+  it("flows through the SAME region optimisation as visited (one want-list city per area)", () => {
+    const out = optimizeVisitedPoints({
+      type: "FeatureCollection",
+      features: [
+        { type: "Feature", geometry: { type: "Point", coordinates: [0, 0] }, properties: { name: "Big", cc: "FR", region: "IDF", pop: 2_000_000, custom: 0, fav: 0, wish: 1 } },
+        { type: "Feature", geometry: { type: "Point", coordinates: [0, 0] }, properties: { name: "Small", cc: "FR", region: "IDF", pop: 5_000, custom: 0, fav: 0, wish: 1 } },
+      ],
+    });
+    expect(out.features).toHaveLength(1);
+    expect(out.features[0]!.properties?.name).toBe("Big");
   });
 });
 
