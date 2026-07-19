@@ -145,7 +145,7 @@ describe("markerCitiesInView (browse-discovery dots)", () => {
     // nyc is a personal (visited/want-list) marker → drawn as its own pill, never
     // a browse dot. With a cap of 2 the two biggest DISCOVERABLE cities remain.
     const personal = new Set(["nyc"]);
-    const ids = markerCitiesInView(set, usEast, 2, "all", personal).map((c) => c.id);
+    const ids = markerCitiesInView(set, usEast, 2, [], personal).map((c) => c.id);
     expect(ids).toEqual(["philly", "boston"]); // nyc excluded; both others fit
     expect(ids).not.toContain("nyc");
   });
@@ -154,45 +154,54 @@ describe("markerCitiesInView (browse-discovery dots)", () => {
     // Even a cap of 1: the marked city (nyc) doesn't consume the budget, so the
     // single slot goes to the biggest discoverable city, not to nyc.
     const personal = new Set(["nyc"]);
-    const ids = markerCitiesInView(set, usEast, 1, "all", personal).map((c) => c.id);
+    const ids = markerCitiesInView(set, usEast, 1, [], personal).map((c) => c.id);
     expect(ids).toEqual(["philly"]);
   });
 
-  it("filter 'visited' shows no discovery dots (your flags carry the map)", () => {
+  it("filter ['visited'] shows no discovery dots (your flags carry the map)", () => {
     const personal = new Set(["nyc", "boston"]);
-    expect(markerCitiesInView(set, usEast, 10, "visited", personal)).toEqual([]);
+    expect(markerCitiesInView(set, usEast, 10, ["visited"], personal)).toEqual([]);
   });
 
-  it("filter 'wishlist' shows no discovery dots", () => {
-    expect(markerCitiesInView(set, usEast, 10, "wishlist")).toEqual([]);
+  it("filter ['wishlist'] shows no discovery dots", () => {
+    expect(markerCitiesInView(set, usEast, 10, ["wishlist"])).toEqual([]);
   });
 
-  it("filter 'unvisited' drops cities you've marked", () => {
+  it("filter ['unvisited'] drops cities you've marked", () => {
     const personal = new Set(["nyc"]);
-    const ids = markerCitiesInView(set, usEast, 10, "unvisited", personal).map((c) => c.id);
+    const ids = markerCitiesInView(set, usEast, 10, ["unvisited"], personal).map((c) => c.id);
+    expect(new Set(ids)).toEqual(new Set(["boston", "philly"]));
+  });
+
+  it("multi-select ['visited','unvisited'] still shows discovery dots", () => {
+    // Including "unvisited" keeps the browse dots on even while your own flags show.
+    const personal = new Set(["nyc"]);
+    const ids = markerCitiesInView(set, usEast, 10, ["visited", "unvisited"], personal).map(
+      (c) => c.id,
+    );
     expect(new Set(ids)).toEqual(new Set(["boston", "philly"]));
   });
 
   it("minPopulation drops cities below the headcount", () => {
     // boston (690k) falls below a 1M threshold; nyc + philly survive.
-    const ids = markerCitiesInView(set, usEast, 10, "all", undefined, 1_000_000).map((c) => c.id);
+    const ids = markerCitiesInView(set, usEast, 10, [], undefined, 1_000_000).map((c) => c.id);
     expect(new Set(ids)).toEqual(new Set(["nyc", "philly"]));
   });
 
   it("minPopulation combines with the personal exclusion (AND)", () => {
     const personal = new Set(["nyc"]);
     // Discoverable = {boston, philly}; only philly clears the 1M threshold.
-    const ids = markerCitiesInView(set, usEast, 10, "all", personal, 1_000_000).map((c) => c.id);
+    const ids = markerCitiesInView(set, usEast, 10, [], personal, 1_000_000).map((c) => c.id);
     expect(ids).toEqual(["philly"]);
   });
 
   it("Unlimited cap (Infinity) keeps every discoverable city in view", () => {
-    const ids = markerCitiesInView(set, usEast, Infinity, "all").map((c) => c.id);
+    const ids = markerCitiesInView(set, usEast, Infinity, []).map((c) => c.id);
     expect(new Set(ids)).toEqual(new Set(["nyc", "boston", "philly"]));
   });
 
   it("minPopulation of 0 is a no-op (every in-view city kept)", () => {
-    const ids = markerCitiesInView(set, usEast, 10, "all", undefined, 0).map((c) => c.id);
+    const ids = markerCitiesInView(set, usEast, 10, [], undefined, 0).map((c) => c.id);
     expect(new Set(ids)).toEqual(new Set(["nyc", "boston", "philly"]));
   });
 

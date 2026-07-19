@@ -85,7 +85,7 @@ export function FilterPanel({
   const setRange = (from: string, to: string) =>
     f.set({ date: from || to ? { mode: "range", from, to } : { mode: "all" } });
 
-  const STATUS: FilterStatus[] = ["all", "visited", "wishlist", "unvisited"];
+  const STATUS: FilterStatus[] = ["visited", "wishlist", "unvisited"];
   const SORTS: SortOrder[] = ["pop", "az"];
 
   return (
@@ -110,22 +110,31 @@ export function FilterPanel({
             first-class map control (its own prominent pill), because those are
             different datasets, not just another way to slice one list. */}
 
-        {/* Status */}
+        {/* Status — MULTI-SELECT: tap any combination of visited / want-list /
+            not-visited (toggle buttons, aria-pressed). None selected = show all
+            (the default), so you see everything and narrow to any mix fast. */}
         {showStatus && (
           <div className="filter-section">
             <span className="filter-section-title">{t("filter.status.title")}</span>
             <div className="segmented wrap" role="group" aria-label={t("filter.status.title")}>
-              {STATUS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  aria-pressed={f.status === s}
-                  className={f.status === s ? "seg-on" : ""}
-                  onClick={() => f.set({ status: s })}
-                >
-                  {t(`filter.status.${s}` as const)}
-                </button>
-              ))}
+              {STATUS.map((s) => {
+                const on = f.status.includes(s);
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    aria-pressed={on}
+                    className={on ? "seg-on" : ""}
+                    onClick={() =>
+                      f.set({
+                        status: on ? f.status.filter((x) => x !== s) : [...f.status, s],
+                      })
+                    }
+                  >
+                    {t(`filter.status.${s}` as const)}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

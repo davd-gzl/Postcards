@@ -1,6 +1,6 @@
 import type { Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
-import type { FilterState } from "../../lib/store/useFilters";
+import type { FilterState, FilterStatus } from "../../lib/store/useFilters";
 import { mapDateMatches, rangeExactYear } from "../travel/period";
 import type { TFunction, MessageKey } from "../../lib/i18n";
 
@@ -13,9 +13,10 @@ import type { TFunction, MessageKey } from "../../lib/i18n";
  *  the Places tab, so callers pass state.status = "all" there; population gates
  *  cities only (D4 — non-city kinds pass it unchanged). */
 export function placeMatches(v: Visit, ref: ReferenceData, s: FilterState): boolean {
-  if (s.status === "visited" && v.status !== "visited") return false;
-  if (s.status === "wishlist" && v.status !== "wishlist") return false;
-  if (s.status === "unvisited") return false; // a saved record is never "unvisited"
+  // Multi-select status: a saved record shows only if its own status is among the
+  // selected ones (empty = all). A saved record is never "unvisited", so a filter
+  // of only "unvisited" excludes every saved place.
+  if (s.status.length > 0 && !s.status.includes(v.status as FilterStatus)) return false;
   if (!mapDateMatches(v.date, s.date)) return false;
   if (s.folder && v.folder !== s.folder) return false;
   if (s.favoritesOnly && !v.favorite) return false;
@@ -54,8 +55,10 @@ export interface ActiveFilterChip {
  *  caller wires each chip's ✕ to clearField(field). Pure: no store dependency. */
 export function activeChips(s: FilterState, t: TFunction): ActiveFilterChip[] {
   const chips: ActiveFilterChip[] = [];
-  if (s.status !== "all") {
-    chips.push({ field: "status", label: t(`filter.status.${s.status}` as MessageKey) });
+  // Only a partial selection is a "filter" (empty or all three = show everything).
+  if (s.status.length > 0 && s.status.length < 3) {
+    const label = s.status.map((st) => t(`filter.status.${st}` as MessageKey)).join(", ");
+    chips.push({ field: "status", label });
   }
   if (s.minPop > 0) {
     const label = s.minPop >= 1_000_000 ? "1M+" : s.minPop >= 100_000 ? "100k+" : "10k+";

@@ -26,6 +26,7 @@ import { MoreButton } from "../../ui/MoreButton";
 import {
   useFilters,
   currentFilters,
+  statusShows,
   type FilterState,
   type FilterMode,
 } from "../../lib/store/useFilters";
@@ -406,19 +407,21 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     const wishlistIds = new Set(
       cityVisits.filter((v) => v.status === "wishlist").map((v) => v.place.id),
     );
+    // MULTI-SELECT status (empty = show all): a city shows if its own bucket is
+    // among the selected statuses. statusShows treats empty/all-three as "show all".
+    const showVisited = statusShows(cityFilter, "visited");
+    const showWish = statusShows(cityFilter, "wishlist");
+    const showUnvisited = statusShows(cityFilter, "unvisited");
     const arr =
       onlyMine || folder
         ? // "Only my places" (or a selected folder) → just YOUR cities in view
           // (visited + want-list), matching the map, no browse noise.
           inView.filter((c) => visitedIds.has(c.id) || wishlistIds.has(c.id))
-        : cityFilter === "all"
-          ? inView
-          : cityFilter === "visited"
-            ? inView.filter((c) => visitedIds.has(c.id))
-            : cityFilter === "wishlist"
-              ? inView.filter((c) => wishlistIds.has(c.id))
-              : // "unvisited" = neither visited nor on the want list.
-                inView.filter((c) => !visitedIds.has(c.id) && !wishlistIds.has(c.id));
+        : inView.filter((c) => {
+            if (visitedIds.has(c.id)) return showVisited;
+            if (wishlistIds.has(c.id)) return showWish;
+            return showUnvisited; // neither visited nor want-list
+          });
     // "By number of people" narrows the list in lock-step with the map dots.
     const arrP = minPop > 0 ? arr.filter((c) => (c.population ?? 0) >= minPop) : arr;
     setSnapshot(sortAZ ? [...arrP].sort((a, b) => collator.compare(a.name, b.name)) : arrP);
@@ -504,17 +507,20 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // (before, the chips floated above a blank void and it read as broken).
   const shownPoi = useMemo(() => {
     if (!poi) return [];
-    if (cityFilter === "all") return poi.items;
+    // MULTI-SELECT status, same as the city list: a POI shows if its bucket
+    // (visited / want-list / neither) is among the selected statuses.
+    const showVisited = statusShows(cityFilter, "visited");
+    const showWish = statusShows(cityFilter, "wishlist");
+    const showUnvisited = statusShows(cityFilter, "unvisited");
+    if (showVisited && showWish && showUnvisited) return poi.items;
     const wishKeys = new Set(
       visits.filter((v) => v.status === "wishlist").map((v) => placeKey(v.place)),
     );
-    return poi.items.filter((x) =>
-      cityFilter === "visited"
-        ? x.seen
-        : cityFilter === "wishlist"
-          ? wishKeys.has(placeKey(x.place))
-          : !x.seen && !wishKeys.has(placeKey(x.place)),
-    );
+    return poi.items.filter((x) => {
+      if (x.seen) return showVisited;
+      if (wishKeys.has(placeKey(x.place))) return showWish;
+      return showUnvisited;
+    });
   }, [poi, cityFilter, visits]);
 
   // Trip arcs honour the SAME map filter as the places: a trip shows only when
@@ -901,9 +907,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             <>
             {shownPoi.length === 0 ? (
               <p className="muted empty">
-                {cityFilter === "visited"
+                {cityFilter.length === 1 && cityFilter[0] === "visited"
                   ? t("map.poiNoneVisited")
-                  : cityFilter === "wishlist"
+                  : cityFilter.length === 1 && cityFilter[0] === "wishlist"
                     ? t("map.poiNoneWishlist")
                     : t("map.poiAllVisited")}
               </p>
@@ -949,9 +955,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                 fall back to the friendly status-specific line. */}
             {mapChips.some((c) => c.field !== "status")
               ? t("filter.emptyFiltered")
-              : cityFilter === "unvisited"
+              : cityFilter.length === 1 && cityFilter[0] === "unvisited"
                 ? t("map.emptyAllVisited")
-                : cityFilter === "wishlist"
+                : cityFilter.length === 1 && cityFilter[0] === "wishlist"
                   ? t("map.emptyNoWishlist")
                   : t("map.emptyNoVisited")}
           </p>

@@ -6,10 +6,17 @@ import { create } from "zustand";
 // localStorage (reusing the keys the old scattered controls used); the rest are
 // session-scoped, exactly as the map's date/folder always were.
 
-// Structurally identical to the map's CityFilter / MapMode / MapDate so a
+// Structurally identical to the map's CityStatus / MapMode / MapDate so a
 // FilterState value passes straight into viewport.ts and MapView without adapters
 // (TypeScript structural typing), while this module stays free of feature imports.
-export type FilterStatus = "all" | "visited" | "wishlist" | "unvisited";
+// Personal status is MULTI-SELECT (spec 016 + user ask): pick any combination of
+// visited / want-list / not-been. An EMPTY array = show everything (the default),
+// so you see it all by default and can quickly narrow to any mix.
+export type FilterStatus = "visited" | "wishlist" | "unvisited";
+/** True iff `statuses` shows a given kind — empty (or all three) means "show all". */
+export function statusShows(statuses: readonly FilterStatus[], kind: FilterStatus): boolean {
+  return statuses.length === 0 || statuses.length === 3 || statuses.includes(kind);
+}
 export type SortOrder = "pop" | "az";
 export type FilterMode = "all" | "cities" | "monuments" | "airports";
 export type FilterDate =
@@ -18,7 +25,8 @@ export type FilterDate =
   | { mode: "range"; from: string; to: string };
 
 export interface FilterState {
-  status: FilterStatus;
+  /** Which personal statuses to show. Empty = all (default). */
+  status: FilterStatus[];
   /** Minimum city population (0 = any). Gates cities only (spec 016 D4). */
   minPop: number;
   date: FilterDate;
@@ -38,7 +46,7 @@ export interface FilterState {
 export const POP_CHOICES = [0, 10_000, 100_000, 1_000_000] as const;
 
 export const DEFAULT_FILTERS: FilterState = {
-  status: "all",
+  status: [],
   minPop: 0,
   date: { mode: "all" },
   folder: "",
@@ -72,9 +80,13 @@ function writeLocal(key: string, value: string): void {
   }
 }
 
-function loadStatus(): FilterStatus {
-  const v = readLocal(STATUS_KEY);
-  return v === "visited" || v === "wishlist" || v === "unvisited" ? v : "all";
+function loadStatus(): FilterStatus[] {
+  // Stored as a comma list; older builds stored a single value ("visited") or
+  // "all" — both parse cleanly ("all" / "" → empty = show everything).
+  const raw = readLocal(STATUS_KEY);
+  if (!raw) return [];
+  const kinds: FilterStatus[] = ["visited", "wishlist", "unvisited"];
+  return raw.split(",").filter((v): v is FilterStatus => kinds.includes(v as FilterStatus));
 }
 function loadMinPop(): number {
   const n = Number(readLocal(MINPOP_KEY));
@@ -89,7 +101,7 @@ function loadMode(): FilterMode {
 }
 
 function persist(state: FilterState): void {
-  writeLocal(STATUS_KEY, state.status);
+  writeLocal(STATUS_KEY, state.status.join(","));
   writeLocal(MINPOP_KEY, String(state.minPop));
   writeLocal(SORT_KEY, state.sort);
   writeLocal(MODE_KEY, state.mode);
@@ -98,7 +110,7 @@ function persist(state: FilterState): void {
 /** True iff every dimension is at its default (⇒ no active filters, empty summary). */
 export function isDefault(s: FilterState): boolean {
   return (
-    s.status === "all" &&
+    s.status.length === 0 &&
     s.minPop === 0 &&
     s.date.mode === "all" &&
     s.folder === "" &&

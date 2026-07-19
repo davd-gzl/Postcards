@@ -57,6 +57,42 @@ test("the one Filter panel drives the map; the old inline controls are gone", as
   await expect(panel).toBeHidden();
 });
 
+test("status is MULTI-SELECT: pick any combination, deselect to show all", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByText("Postcards")).toBeVisible();
+
+  await page.locator(".map-ctl-right").getByRole("button", { name: /Filter/ }).click();
+  const panel = page.getByRole("dialog", { name: "Filters" });
+  await expect(panel).toBeVisible();
+
+  // Nothing selected by default (= show everything).
+  const visited = panel.getByRole("button", { name: "Visited", exact: true });
+  const wishlist = panel.getByRole("button", { name: "Want list", exact: true });
+  await expect(visited).toHaveAttribute("aria-pressed", "false");
+  await expect(wishlist).toHaveAttribute("aria-pressed", "false");
+
+  // Select TWO statuses at once — both stay pressed (checkbox-like toggles).
+  await visited.click();
+  await wishlist.click();
+  await expect(visited).toHaveAttribute("aria-pressed", "true");
+  await expect(wishlist).toHaveAttribute("aria-pressed", "true");
+  await panel.getByRole("button", { name: "Done" }).click();
+
+  // The summary lists both selected statuses.
+  const summary = page.locator(".filter-summary");
+  await expect(summary).toContainText("Visited");
+  await expect(summary).toContainText("Want list");
+
+  // Deselecting both returns to "show everything" — the status chip disappears.
+  await page.locator(".map-ctl-right").getByRole("button", { name: /Filter/ }).click();
+  await visited.click();
+  await wishlist.click();
+  await expect(visited).toHaveAttribute("aria-pressed", "false");
+  await expect(wishlist).toHaveAttribute("aria-pressed", "false");
+  await panel.getByRole("button", { name: "Done" }).click();
+  await expect(page.locator(".filter-summary")).toHaveCount(0);
+});
+
 test("the place-kind pill switches the map's dataset", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Cities in view")).toBeVisible();

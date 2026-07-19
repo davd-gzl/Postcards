@@ -17,7 +17,7 @@ import { GuideButton } from "../guides/GuideButton";
 import { PassportScreen } from "../passport/PassportScreen";
 import { ExperiencesScreen } from "../experiences/ExperiencesScreen";
 import { ListPager } from "../../ui/ListPager";
-import { useFilters, currentFilters } from "../../lib/store/useFilters";
+import { useFilters, currentFilters, type FilterStatus } from "../../lib/store/useFilters";
 import { placeMatches, sortPlaces, activeChips } from "../filter/applyFilters";
 import { FilterPanel } from "../../ui/FilterPanel";
 import { FilterSummary } from "../../ui/FilterSummary";
@@ -344,7 +344,7 @@ export function PlacesScreen() {
   // population / sort / growth) comes from the ONE shared filter store, so the
   // map and Places never disagree (spec 016 US3). The name box is separate.
   const listState = useMemo(
-    () => ({ ...currentFilters(filters), status: "all" as const }),
+    () => ({ ...currentFilters(filters), status: [] as FilterStatus[] }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       filters.date,
