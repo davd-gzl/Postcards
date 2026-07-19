@@ -3146,6 +3146,95 @@ textarea.select {
 .journal-feed {
   margin-top: 10px;
 }
+
+/* Journal "By place" + "Timeline" views: grouped, collapsible sections whose
+   entries are compact one-line links (date + place/title), so you scan each
+   place's — or each year's — stories over time. */
+.journal-byplace,
+.journal-timeline {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.journal-place-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
+}
+.journal-place-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 11px;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+}
+.journal-place-summary::-webkit-details-marker {
+  display: none;
+}
+.journal-place-summary::before {
+  content: "▸";
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.journal-place-group[open] > .journal-place-summary::before {
+  content: "▾";
+}
+.journal-place-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.journal-place-meta {
+  flex: none;
+  white-space: nowrap;
+}
+.journal-place-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0 11px 6px;
+  display: flex;
+  flex-direction: column;
+}
+.journal-place-entries li {
+  border-top: 1px solid var(--border);
+}
+.journal-place-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 2px;
+  text-align: left;
+}
+.journal-place-entry .journal-date {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.journal-place-entry-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.journal-year-group {
+  margin: 0;
+}
+.journal-year-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 6px 0 2px;
+  font-size: 15px;
+}
 .journal-card {
   padding: 9px 11px;
   margin-bottom: 8px;
