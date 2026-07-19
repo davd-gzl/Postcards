@@ -287,6 +287,7 @@ export function PlacesScreen() {
   const [filter, setFilter] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [shown, setShown] = useState(100);
+  const [groupBy, setGroupBy] = useState<"none" | "country" | "year">("none");
   const q = filter.trim().toLowerCase();
 
   // Another screen (the map's counter strip) asked for a specific view.
@@ -373,6 +374,34 @@ export function PlacesScreen() {
   const visitedShown = useMemo(() => filterVisits(visited), [filterVisits, visited]);
   const favoritesShown = useMemo(() => filterVisits(favorites), [filterVisits, favorites]);
   const wishlistShown = useMemo(() => filterVisits(wishlist), [filterVisits, wishlist]);
+
+  // "Many ways to see the data": the visited list can also be GROUPED — into
+  // expandable country sections (passport-style) or under the year you went. The
+  // same filter/sort feeds it, so the groups always agree with the flat list.
+  const visitedGroups = useMemo(() => {
+    if (groupBy === "none") return null;
+    const m = new Map<string, { key: string; label: string; flag: string; visits: Visit[] }>();
+    for (const v of visitedShown) {
+      const key =
+        groupBy === "country" ? v.place.countryId || "ZZ" : v.date?.slice(0, 4) || "—";
+      const g = m.get(key);
+      if (g) g.visits.push(v);
+      else {
+        const label =
+          groupBy === "country"
+            ? (ref.countryByIso2(key)?.name ?? key)
+            : key === "—"
+              ? t("filter.date.undated")
+              : key;
+        m.set(key, { key, label, flag: groupBy === "country" ? countryFlag(key) : "", visits: [v] });
+      }
+    }
+    const arr = [...m.values()];
+    if (groupBy === "country")
+      arr.sort((a, b) => b.visits.length - a.visits.length || a.label.localeCompare(b.label));
+    else arr.sort((a, b) => (a.key === "—" ? 1 : b.key === "—" ? -1 : b.key.localeCompare(a.key)));
+    return arr;
+  }, [groupBy, visitedShown, ref, t]);
 
   // The years your visits span, newest first, for the date filter chips.
   const years = useMemo(() => {
@@ -573,18 +602,62 @@ export function PlacesScreen() {
           {visited.length > 0 && visitedShown.length === 0 && (
             <p className="muted empty">{t("places.noMatch")}</p>
           )}
-          <ul className="city-list">
-            {visitedShown.slice(0, shown).map((v) => (
-              <VisitRow key={v.visitId} v={v} />
-            ))}
-          </ul>
-          {visitedShown.length > shown && (
-            <ListPager
-              shown={shown}
-              total={visitedShown.length}
-              step={100}
-              onMore={() => setShown((n) => n + 100)}
-            />
+          {visitedShown.length > 0 && (
+            <div className="places-groupby btn-row" role="group" aria-label={t("places.groupBy")}>
+              {(["none", "country", "year"] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  className={"mini-btn" + (groupBy === g ? " mini-on" : "")}
+                  aria-pressed={groupBy === g}
+                  onClick={() => setGroupBy(g)}
+                >
+                  {t(`places.groupBy.${g}` as const)}
+                </button>
+              ))}
+            </div>
+          )}
+          {visitedGroups ? (
+            <div className="places-groups">
+              {visitedGroups.map((grp) => (
+                <details
+                  key={grp.key}
+                  className="journal-place-group"
+                  open={visitedGroups.length <= 6}
+                >
+                  <summary className="journal-place-summary">
+                    <span className="journal-place-name">
+                      {grp.flag ? `${grp.flag} ` : ""}
+                      {grp.label}
+                    </span>
+                    <span className="muted small journal-place-meta">
+                      {grp.visits.length} {t.plural("noun.place", grp.visits.length)}
+                    </span>
+                  </summary>
+                  <ul className="city-list">
+                    {grp.visits.map((v) => (
+                      <VisitRow key={v.visitId} v={v} />
+                    ))}
+                  </ul>
+                </details>
+              ))}
+            </div>
+          ) : (
+            <>
+              <ul className="city-list">
+                {visitedShown.slice(0, shown).map((v) => (
+                  <VisitRow key={v.visitId} v={v} />
+                ))}
+              </ul>
+              {visitedShown.length > shown && (
+                <ListPager
+                  shown={shown}
+                  total={visitedShown.length}
+                  step={100}
+                  onMore={() => setShown((n) => n + 100)}
+                />
+              )}
+            </>
           )}
         </>
       )}

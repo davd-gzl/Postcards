@@ -3166,12 +3166,16 @@ textarea.select {
 .journal-place-summary {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: 8px;
   padding: 9px 11px;
   cursor: pointer;
   list-style: none;
   font-weight: 600;
+}
+/* Push the count to the right edge; the marker + name stay hugged together on the
+   left (space-between would strand a short count and centre the name). */
+.journal-place-meta {
+  margin-left: auto;
 }
 .journal-place-summary::-webkit-details-marker {
   display: none;
@@ -3234,6 +3238,20 @@ textarea.select {
   gap: 8px;
   margin: 6px 0 2px;
   font-size: 15px;
+}
+
+/* Places "group by country / year": reuses the collapsible group shell above,
+   with full place rows (.city-list) inside each section. */
+.places-groupby {
+  margin: 4px 0 8px;
+}
+.places-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.places-groups .journal-place-group > .city-list {
+  padding: 0 6px 4px;
 }
 .journal-card {
   padding: 9px 11px;
