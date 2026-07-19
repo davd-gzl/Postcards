@@ -16,6 +16,7 @@ import { StateToggles } from "./StateToggles";
 import { GuideButton } from "../guides/GuideButton";
 import { PassportScreen } from "../passport/PassportScreen";
 import { ExperiencesScreen } from "../experiences/ExperiencesScreen";
+import { PhotoWall } from "./PhotoWall";
 import { ListPager } from "../../ui/ListPager";
 import { useFilters, currentFilters, type FilterStatus } from "../../lib/store/useFilters";
 import { placeMatches, sortPlaces, activeChips } from "../filter/applyFilters";
@@ -25,7 +26,7 @@ import { useT, type TFunction } from "../../lib/i18n";
 
 // Everything place-shaped lives here, one view each — including Favorites (its
 // own view, not a mode that repaints "Visited"), Moments and the Passport.
-type View = "visited" | "favorites" | "wishlist" | "countries" | "monuments" | "moments" | "passport";
+type View = "visited" | "favorites" | "wishlist" | "countries" | "monuments" | "moments" | "passport" | "photos";
 const VIEWS: readonly View[] = ["visited", "favorites", "wishlist", "countries", "monuments", "moments", "passport"];
 // The screen unmounts on every tab switch — remember the last view so coming
 // back lands where you were, not on "Visited".
@@ -496,6 +497,7 @@ export function PlacesScreen() {
   // the view switcher above.
   const COLLECTIONS: { id: View; label: string; emoji: string }[] = [
     { id: "moments", label: t("places.collection.moments"), emoji: "✨" },
+    { id: "photos", label: t("places.collection.photos"), emoji: "📷" },
     { id: "passport", label: t("places.collection.passport"), emoji: "🛂" },
   ];
 
@@ -858,6 +860,8 @@ export function PlacesScreen() {
       )}
 
       {view === "moments" && <ExperiencesScreen embedded />}
+
+      {view === "photos" && <PhotoWall />}
 
       {view === "passport" && <PassportScreen embedded />}
 
