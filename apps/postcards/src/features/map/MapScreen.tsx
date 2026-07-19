@@ -165,9 +165,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const [showTrips, setShowTrips] = useState(true);
   const [globe, setGlobe] = useState(() => loadPref(GLOBE_KEY, (v) => v === "1"));
   const [showTowns, setShowTowns] = useState(() => loadPref("postcards-towns", (v) => v === "1"));
-  // "Only my places": hide the world's browse city dots so the map shows just your
-  // visited flags + want-list dots — the clean "everywhere I've been" view.
-  const [onlyMine, setOnlyMine] = useState(() => loadPref("postcards-only-mine", (v) => v === "1"));
   // ON by default: "visited countries visually distinguished" is a core map
   // promise (US2-AC2) — the layer only paints countries you've actually visited,
   // so a fresh map stays clean anyway. The Layers toggle still turns it off.
@@ -413,9 +410,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     const showWish = statusShows(cityFilter, "wishlist");
     const showUnvisited = statusShows(cityFilter, "unvisited");
     const arr =
-      onlyMine || folder
-        ? // "Only my places" (or a selected folder) → just YOUR cities in view
-          // (visited + want-list), matching the map, no browse noise.
+      folder
+        ? // A selected folder → just YOUR cities in view (visited + want-list),
+          // matching the map, no browse noise.
           inView.filter((c) => visitedIds.has(c.id) || wishlistIds.has(c.id))
         : inView.filter((c) => {
             if (visitedIds.has(c.id)) return showVisited;
@@ -429,7 +426,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     // visitedCityIds deliberately NOT a dependency — see comment above. The date
     // window / folder ARE: a new selection re-partitions the list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, cityFilter, sortAZ, dateFilter, folder, minPop, onlyMine]);
+  }, [inView, cityFilter, sortAZ, dateFilter, folder, minPop]);
   const visible = useMemo(() => snapshot.slice(0, shown), [snapshot, shown]);
   const visitedInView = useMemo(
     () => inView.reduce((n, c) => n + (visitedCityIds.has(c.id) ? 1 : 0), 0),
@@ -553,16 +550,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     setFocus((f) => ({ lon: c.lon, lat: c.lat, key: (f?.key ?? 0) + 1 }));
   }
 
-  // "Only my places" — one concept driving BOTH the map (browse dots hidden) and
-  // the in-view list (trimmed to your visited + want-list). Toggled from the list
-  // header (quick) and the Layers panel.
-  function toggleOnlyMine() {
-    setOnlyMine((v) => {
-      savePref("postcards-only-mine", !v ? "1" : "0");
-      return !v;
-    });
-  }
-
   // Everything of YOURS with coordinates — visited & wishlist cities, plus your
   // own custom points. This is what the first frame frames.
   const myPlaceCoords = useMemo(() => {
@@ -648,7 +635,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           optimizeMarkers={optimizeMarkers}
           showAllMarkers={showAllMarkers}
           reduceMapWork={reduceMapWork}
-          onlyMine={onlyMine}
           dateFilter={dateFilter}
           folder={folder}
           reducedMotion={reducedMotion}
@@ -683,16 +669,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             </button>
           </div>
         )}
-        <div className="map-ctl map-ctl-left">
-          {/* No "+ Add place" button: add via long-press/right-click on the map
-              (the "Add a place here" popup) or the search box. Keeps the controls
-              uncluttered. */}
-          {myPlaceCoords.length > 0 && (
-            <button className="map-btn" type="button" onClick={() => fitToMyPlaces()}>
-              {t("map.fitToMyPlaces")}
-            </button>
-          )}
-        </div>
         {/* Place-kind switch, front and centre. Cities / monuments / airports are
             genuinely DIFFERENT data, not one more filter to bury in the panel — so
             it's a first-class map control (its own prominent pill), never a row in
@@ -834,15 +810,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
               >
                 🗺 {t("map.layer.myCountries")}
               </button>
-              <button
-                className={"map-btn" + (onlyMine ? " on" : "")}
-                type="button"
-                aria-pressed={onlyMine}
-                title={t("map.layer.onlyMineTitle")}
-                onClick={toggleOnlyMine}
-              >
-                📍 {t("map.layer.onlyMine")}
-              </button>
               {onlineMap && basemapCycle.length > 1 && (
                 <button className="map-btn" type="button" onClick={switchBasemap}>
                   ⤳ {t(BASEMAP_LABEL_KEY[nextBasemap])}
@@ -875,17 +842,6 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
       <section className="view-list" aria-label={t("map.list.aria")}>
         <div className="section-head">
           <h2>{mode === "monuments" ? t("map.list.headingMonuments") : mode === "airports" ? t("map.list.headingAirports") : t("map.list.headingCities")}</h2>
-          {!poi && (
-            <button
-              type="button"
-              className={"chip list-only-mine" + (onlyMine ? " chip-on" : "")}
-              aria-pressed={onlyMine}
-              title={t("map.layer.onlyMineTitle")}
-              onClick={toggleOnlyMine}
-            >
-              📍 {t("map.layer.onlyMine")}
-            </button>
-          )}
           <span className="list-head-meta muted">
             <span>
               {t("map.list.inView", {
@@ -923,7 +879,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                       title={t("stats.records.showOnMap", { name: x.name })}
                       onClick={() => focusCity({ lon: x.lon, lat: x.lat })}
                     >
-                      <CityLine flag={x.flag} name={x.name} sub={<>· {x.sub}</>} />
+                      <CityLine flag={x.flag} name={x.name} sub={<>· {x.sub}</>} multiline />
                     </button>
                     {/* The row itself only zooms the map; details live behind 📖. */}
                     {x.page && <GuideButton place={x.place} />}

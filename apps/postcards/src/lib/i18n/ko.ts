@@ -496,7 +496,6 @@ export const ko: Messages = {
   "map.addPlace": "장소 추가",
   "map.addPlaceTitle":
     "지도에 없는 장소를 추가하세요 — 지도에서 우클릭하거나 길게 누르거나, 이 버튼을 사용하세요",
-  "map.fitToMyPlaces": "내 장소에 맞추기",
   "map.addDialogAria": "내 장소 추가",
   "map.addDialogTitle": "장소 추가",
   "map.reconnect.back": "다시 온라인 상태입니다.",
@@ -512,8 +511,6 @@ export const ko: Messages = {
   "map.layer.townsTitle": "지구상의 모든 소도시를 점으로 표시",
   "map.layer.myCountries": "내 국가",
   "map.layer.myCountriesTitle": "방문한 국가를 음영으로 표시",
-  "map.layer.onlyMine": "내 장소만",
-  "map.layer.onlyMineTitle": "다녀온 곳만 표시 — 세계 탐색 점 숨기기",
   "map.basemap.simple": "간단한 지도 (오프라인)",
   "map.basemap.osm": "상세 지도",
   "map.basemap.detail": "오프라인 거리 지도",

@@ -59,10 +59,9 @@ await page.emulateMedia({ colorScheme: "light" });
 await page.waitForTimeout(400);
 
 // Mobile — frame the whole itinerary neatly, arcs drawn between the cities.
+// The map auto-fits to your places on first open, so no manual framing needed.
 await nav("Map").click();
-await page.waitForTimeout(1200);
-await page.getByRole("button", { name: "Fit to my places" }).click();
-await page.waitForTimeout(3200); // let the fly animation settle
+await page.waitForTimeout(3200); // let the auto-fit fly animation settle
 await clearToast();
 await page.screenshot({ path: `${OUT}/map-mobile.png`, fullPage: true });
 
@@ -88,8 +87,6 @@ await page.screenshot({ path: `${OUT}/places-mobile.png`, fullPage: false });
 // Desktop hero — full world map with visited places + trip arcs highlighted.
 await page.setViewportSize({ width: 1360, height: 900 });
 await nav("Map").click();
-await page.waitForTimeout(1200);
-await page.getByRole("button", { name: "Fit to my places" }).click();
 await page.waitForTimeout(2800);
 await page.screenshot({ path: `${OUT}/map-desktop.png` });
 
