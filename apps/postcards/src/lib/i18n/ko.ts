@@ -83,6 +83,9 @@ export const ko: Messages = {
   "settings.map.optimize": "지역당 도시 하나만 표시",
   "settings.map.optimizeDesc":
     "지도를 빠르게 유지합니다: 각 지역에서 방문한 가장 큰 도시만 표시합니다. 즐겨찾기와 내 장소는 항상 표시됩니다. 모든 도시를 보려면 끄세요.",
+  "settings.map.showAll": "모든 장소 한 번에 표시",
+  "settings.map.showAllDesc":
+    "방문한 깃발과 위시리스트 점을 축소해도 모두 함께 표시합니다 — 어디를 다녀왔는지 친구에게 보여주기에 좋습니다. 마커가 겹쳐도 솎아내지 않습니다.",
   "settings.map.title": "지도",
   "settings.online.title": "온라인 기능",
   "settings.online.desc": "인터넷을 사용하는 모든 것을 한곳에. 원하는 것만 켜세요.",
@@ -92,6 +95,7 @@ export const ko: Messages = {
     "상세 OpenStreetMap 지도는 기본으로 켜져 있으며, 온라인일 때 OpenStreetMap에서 타일을 가져옵니다. 끄면 간단한 오프라인 지도만 사용하여 앱이 어떤 네트워크 요청도 하지 않습니다. 어느 경우든 개인 데이터는 기기를 떠나지 않습니다.",
   "settings.detailedMap.toggle": "상세 온라인 지도 사용 (OpenStreetMap)",
   "settings.detailedMap.maxMarkers": "화면에 표시할 최대 마커 수",
+  "settings.detailedMap.unlimited": "무제한",
   "settings.detailedMap.markersDesc":
     "현재 화면에 그려지는 공항이나 기념물의 수를 제한하여 밀집한 지역이 지도를 뒤덮지 않도록 합니다. 표시해 둔 장소는 항상 유지됩니다.",
   "settings.offline.title": "오프라인 지도",
@@ -505,6 +509,8 @@ export const ko: Messages = {
   "map.layer.townsTitle": "지구상의 모든 소도시를 점으로 표시",
   "map.layer.myCountries": "내 국가",
   "map.layer.myCountriesTitle": "방문한 국가를 음영으로 표시",
+  "map.layer.onlyMine": "내 장소만",
+  "map.layer.onlyMineTitle": "다녀온 곳만 표시 — 세계 탐색 점 숨기기",
   "map.basemap.simple": "간단한 지도 (오프라인)",
   "map.basemap.osm": "상세 지도",
   "map.basemap.detail": "오프라인 거리 지도",

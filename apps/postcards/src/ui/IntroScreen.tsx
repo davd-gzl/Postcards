@@ -56,7 +56,10 @@ export function IntroScreen({ onClose }: { onClose: () => void }) {
   );
 
   useEffect(() => {
-    startRef.current?.focus();
+    // Focus the Start button for keyboard users WITHOUT scrolling it into view —
+    // it's the last child of a tall, centred overlay, so a default focus scrolls
+    // the hero (globe + title + first rows) off the top on a phone.
+    startRef.current?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };

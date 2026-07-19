@@ -89,6 +89,9 @@ export const en = {
   "settings.map.optimize": "Show one city per area",
   "settings.map.optimizeDesc":
     "Keeps the map fast: shows just the biggest visited city in each region. Your favorites and own places always stay. Turn off to show every city.",
+  "settings.map.showAll": "Show every place at once",
+  "settings.map.showAllDesc":
+    "See all your visited flags and want-list dots together, even zoomed out — great for showing a friend everywhere you've been. Markers stop thinning to declutter.",
   "settings.map.title": "Map",
   "settings.online.title": "Online features",
   "settings.online.desc": "Everything that reaches the internet, in one place. Enable only what you want.",
@@ -98,6 +101,7 @@ export const en = {
     "The detailed OpenStreetMap map is on by default; it fetches map tiles from OpenStreetMap when you're online. Turn it off to use the plain offline map only, so the app makes no network requests at all. Either way, no personal data ever leaves your device.",
   "settings.detailedMap.toggle": "Use the detailed online map (OpenStreetMap)",
   "settings.detailedMap.maxMarkers": "Most markers on screen",
+  "settings.detailedMap.unlimited": "Unlimited",
   "settings.detailedMap.markersDesc":
     "Caps how many airports or monuments are drawn in the current view, so a dense area doesn't blanket the map. Places you've marked are always kept.",
   "settings.offline.title": "Offline maps",
@@ -511,6 +515,8 @@ export const en = {
   "map.layer.townsTitle": "A dot for every town on earth",
   "map.layer.myCountries": "My countries",
   "map.layer.myCountriesTitle": "Shade the countries you've visited",
+  "map.layer.onlyMine": "Only my places",
+  "map.layer.onlyMineTitle": "Show only where you've been — hide the world's browse dots",
   "map.basemap.simple": "Simple map (offline)",
   "map.basemap.osm": "Detailed map",
   "map.basemap.detail": "Offline streets",

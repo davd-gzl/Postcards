@@ -129,7 +129,7 @@ describe("citiesInView", () => {
   });
 });
 
-describe("markerCitiesInView", () => {
+describe("markerCitiesInView (browse-discovery dots)", () => {
   const nyc = city("nyc", 40.7, -74, 8_400_000);
   const boston = city("boston", 42.36, -71.06, 690_000);
   const philly = city("philly", 39.95, -75.16, 1_580_000);
@@ -141,15 +141,35 @@ describe("markerCitiesInView", () => {
     expect(two).toEqual(["nyc", "philly"]); // top two by population
   });
 
-  it("filter 'visited' keeps only cities with a record", () => {
-    const visited = new Set(["nyc", "boston"]);
-    const ids = markerCitiesInView(set, usEast, 10, "visited", visited).map((c) => c.id);
-    expect(new Set(ids)).toEqual(new Set(["nyc", "boston"]));
+  it("excludes your marked cities so the cap is spent only on discoverable ones", () => {
+    // nyc is a personal (visited/want-list) marker → drawn as its own pill, never
+    // a browse dot. With a cap of 2 the two biggest DISCOVERABLE cities remain.
+    const personal = new Set(["nyc"]);
+    const ids = markerCitiesInView(set, usEast, 2, "all", personal).map((c) => c.id);
+    expect(ids).toEqual(["philly", "boston"]); // nyc excluded; both others fit
+    expect(ids).not.toContain("nyc");
   });
 
-  it("filter 'unvisited' drops cities with a record", () => {
-    const visited = new Set(["nyc"]);
-    const ids = markerCitiesInView(set, usEast, 10, "unvisited", visited).map((c) => c.id);
+  it("your places never crowd out discoverable cities (two counters)", () => {
+    // Even a cap of 1: the marked city (nyc) doesn't consume the budget, so the
+    // single slot goes to the biggest discoverable city, not to nyc.
+    const personal = new Set(["nyc"]);
+    const ids = markerCitiesInView(set, usEast, 1, "all", personal).map((c) => c.id);
+    expect(ids).toEqual(["philly"]);
+  });
+
+  it("filter 'visited' shows no discovery dots (your flags carry the map)", () => {
+    const personal = new Set(["nyc", "boston"]);
+    expect(markerCitiesInView(set, usEast, 10, "visited", personal)).toEqual([]);
+  });
+
+  it("filter 'wishlist' shows no discovery dots", () => {
+    expect(markerCitiesInView(set, usEast, 10, "wishlist")).toEqual([]);
+  });
+
+  it("filter 'unvisited' drops cities you've marked", () => {
+    const personal = new Set(["nyc"]);
+    const ids = markerCitiesInView(set, usEast, 10, "unvisited", personal).map((c) => c.id);
     expect(new Set(ids)).toEqual(new Set(["boston", "philly"]));
   });
 
@@ -159,11 +179,16 @@ describe("markerCitiesInView", () => {
     expect(new Set(ids)).toEqual(new Set(["nyc", "philly"]));
   });
 
-  it("minPopulation combines with the status filter (AND)", () => {
-    const visited = new Set(["nyc", "boston"]);
-    // Of the visited cities (nyc, boston), only nyc clears the 1M threshold.
-    const ids = markerCitiesInView(set, usEast, 10, "visited", visited, 1_000_000).map((c) => c.id);
-    expect(ids).toEqual(["nyc"]);
+  it("minPopulation combines with the personal exclusion (AND)", () => {
+    const personal = new Set(["nyc"]);
+    // Discoverable = {boston, philly}; only philly clears the 1M threshold.
+    const ids = markerCitiesInView(set, usEast, 10, "all", personal, 1_000_000).map((c) => c.id);
+    expect(ids).toEqual(["philly"]);
+  });
+
+  it("Unlimited cap (Infinity) keeps every discoverable city in view", () => {
+    const ids = markerCitiesInView(set, usEast, Infinity, "all").map((c) => c.id);
+    expect(new Set(ids)).toEqual(new Set(["nyc", "boston", "philly"]));
   });
 
   it("minPopulation of 0 is a no-op (every in-view city kept)", () => {
