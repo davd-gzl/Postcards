@@ -764,6 +764,10 @@ export const en = {
   "city.back": "Back",
   "city.unknownPlace": "Unknown place",
   "city.tag.heritage": "UNESCO World Heritage Site",
+  "city.tag.airport": "Airport",
+  "city.fact.airportCity": "Serves",
+  "city.airportTrafficNote":
+    "Passenger numbers aren't in the loaded datasets yet — add an open air-traffic dataset to show how many people pass through.",
   "city.tag.ownPlace": "your own place",
   "city.fact.people": "people",
   "city.fact.latLon": "lat, lon",

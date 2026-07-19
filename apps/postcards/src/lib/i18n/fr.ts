@@ -764,6 +764,10 @@ export const fr: Messages = {
   "city.back": "Retour",
   "city.unknownPlace": "Lieu inconnu",
   "city.tag.heritage": "Site du patrimoine mondial de l'UNESCO",
+  "city.tag.airport": "Aéroport",
+  "city.fact.airportCity": "Dessert",
+  "city.airportTrafficNote":
+    "Le nombre de passagers n'est pas encore dans les données chargées — ajoutez un jeu de données ouvert sur le trafic aérien pour l'afficher.",
   "city.tag.ownPlace": "votre propre lieu",
   "city.fact.people": "habitants",
   "city.fact.latLon": "lat, lon",

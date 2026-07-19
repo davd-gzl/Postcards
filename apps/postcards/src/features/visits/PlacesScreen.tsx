@@ -155,9 +155,8 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
   const toggleFavorite = useVisits((s) => s.toggleFavorite);
   const restoreVisit = useVisits((s) => s.restoreVisit);
   const showToast = useToast((s) => s.show);
-  const flyTo = useUi((s) => s.flyTo);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { coord, sub } = placeMeta(ref, v, t);
+  const { sub } = placeMeta(ref, v, t);
 
   function removeWithUndo() {
     // Only this row's record goes away — undo puts that one record back
@@ -174,9 +173,7 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
         onClick={() =>
           v.place.kind === "country"
             ? useUi.getState().openCountry(v.place.countryId)
-            : v.place.kind === "airport"
-              ? coord && flyTo(coord.lon, coord.lat)
-              : useUi.getState().openCity(v.place.id)
+            : useUi.getState().openCity(v.place.id)
         }
         aria-label={t("places.row.openAria", { name: v.place.name })}
       >
