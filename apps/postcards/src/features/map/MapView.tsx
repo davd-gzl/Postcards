@@ -1336,6 +1336,26 @@ export function MapView({
         emitBounds(map);
       });
 
+      // The in-view LIST is React state, so re-partitioning it on every 150 ms pan
+      // tick re-renders the whole map screen twice per tick — the felt mobile lag.
+      // The live MAP dots stay live (imperative, in the `move` handler below); the
+      // list re-partitions on a short TRAILING debounce — when the pan pauses or
+      // ends — so a drag/fling no longer drives React state per tick.
+      let boundsDebounce: ReturnType<typeof setTimeout> | undefined;
+      const cancelBoundsDebounce = () => {
+        if (boundsDebounce) {
+          clearTimeout(boundsDebounce);
+          boundsDebounce = undefined;
+        }
+      };
+      const scheduleBoundsEmit = () => {
+        cancelBoundsDebounce();
+        boundsDebounce = setTimeout(() => {
+          boundsDebounce = undefined;
+          if (map && loadedRef.current && !suppressBoundsRef.current) emitBounds(map);
+        }, 180);
+      };
+
       map.on("moveend", () => {
         if (!map) return;
         lastCamera = { center: map.getCenter(), zoom: map.getZoom() };
@@ -1350,6 +1370,7 @@ export function MapView({
         if (wasProgrammatic) {
           suppressBoundsRef.current = false; // programmatic fly — keep the list still
         } else {
+          cancelBoundsDebounce(); // this final, exact frame supersedes any pending emit
           emitBounds(map);
         }
         // Warm the ring of tiles JUST OUTSIDE the view so the next pan reveals
@@ -1379,8 +1400,8 @@ export function MapView({
         const now = performance.now();
         if (now - lastLiveBounds < 150) return;
         lastLiveBounds = now;
-        emitBounds(map);
-        applyInViewCities(map);
+        applyInViewCities(map); // live map dots stay live (imperative, cheap)
+        scheduleBoundsEmit(); // the React list re-partitions when the pan settles
       });
       // Any real user gesture re-enables list refreshes immediately.
       for (const ev of ["dragstart", "wheel", "dblclick"] as const) {
@@ -1606,6 +1627,9 @@ export function MapView({
     return () => {
       cancelled = true;
       loadedRef.current = false;
+      // A pending bounds-emit debounce (declared in the map-init scope) self-guards
+      // on loadedRef.current, now false, so it fires once harmlessly — nothing to
+      // clear here.
       unsub();
       removeOsmHeal?.();
       map?.remove();
