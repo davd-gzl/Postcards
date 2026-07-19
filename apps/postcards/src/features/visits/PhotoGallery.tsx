@@ -34,6 +34,7 @@ export function PhotoGallery({
   const closeRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [index, setIndex] = useState(0);
@@ -53,6 +54,13 @@ export function PhotoGallery({
       void setPhotoCaption(visitId, safeIndex, draft);
       setDraft(null);
     }
+  }
+
+  // Page between photos — the arrow buttons AND the touch swipe share this, so
+  // they can't drift: commit any caption edit, then wrap-advance by delta.
+  function page(delta: number) {
+    commitCaption();
+    setIndex((i) => (i + delta + count) % count);
   }
 
   // Keep the viewer index valid as photos are added/removed.
@@ -169,16 +177,39 @@ export function PhotoGallery({
           aria-label={t("photo.dialogAria", { place: placeName })}
           onClick={() => setOpen(false)}
         >
-          <div className="lightbox-stage" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="lightbox-stage"
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={
+              count > 1
+                ? (e) => {
+                    const p = e.changedTouches[0];
+                    swipeStart.current = p ? { x: p.clientX, y: p.clientY } : null;
+                  }
+                : undefined
+            }
+            onTouchEnd={
+              count > 1
+                ? (e) => {
+                    const s = swipeStart.current;
+                    swipeStart.current = null;
+                    const p = e.changedTouches[0];
+                    if (!s || !p) return;
+                    const dx = p.clientX - s.x;
+                    const dy = p.clientY - s.y;
+                    // A horizontal swipe over ~48px pages; ignore mostly-vertical
+                    // drags (matches the exported reader's swipe threshold).
+                    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy)) page(dx < 0 ? 1 : -1);
+                  }
+                : undefined
+            }
+          >
             {count > 1 && (
               <button
                 type="button"
                 className="lightbox-nav prev"
                 aria-label={t("journal.prevPhoto")}
-                onClick={() => {
-                  commitCaption();
-                  setIndex((i) => (i - 1 + count) % count);
-                }}
+                onClick={() => page(-1)}
               >
                 ‹
               </button>
@@ -189,10 +220,7 @@ export function PhotoGallery({
                 type="button"
                 className="lightbox-nav next"
                 aria-label={t("journal.nextPhoto")}
-                onClick={() => {
-                  commitCaption();
-                  setIndex((i) => (i + 1) % count);
-                }}
+                onClick={() => page(1)}
               >
                 ›
               </button>

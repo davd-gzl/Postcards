@@ -675,22 +675,30 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             the Filter menu. */}
         <div className="map-ctl map-ctl-top">
           <div className="segmented map-mode" role="group" aria-label={t("filter.mode.title")}>
-            {(["all", "cities", "monuments", "airports"] as FilterMode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={mode === m}
-                aria-label={t(`filter.mode.${m}` as const)}
-                className={mode === m ? "seg-on" : ""}
-                onClick={() => filters.set({ mode: m })}
-                title={t(`filter.mode.${m}` as const)}
-              >
-                {/* Icon-only so the pill stays small; the label lives in
-                    aria-label + title (hover/AT), and the active kind is shown by
-                    the highlight. "All" has no natural glyph, so it keeps its word. */}
-                {m === "cities" ? "🏙" : m === "monuments" ? "🏛" : m === "airports" ? "✈" : "All"}
-              </button>
-            ))}
+            {(["all", "cities", "monuments", "airports"] as FilterMode[]).map((m) => {
+              const label = t(`filter.mode.${m}` as const);
+              const icon = m === "cities" ? "🏙" : m === "monuments" ? "🏛" : m === "airports" ? "✈" : "";
+              const active = mode === m;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  aria-pressed={active}
+                  aria-label={label}
+                  className={active ? "seg-on" : ""}
+                  onClick={() => filters.set({ mode: m })}
+                  title={label}
+                >
+                  {/* Inactive segments are icon-only so the pill stays small; the
+                      ACTIVE one spells out its label beside its icon so the current
+                      dataset is legible in words, not just by the highlight. "All"
+                      has no glyph, so it always shows its word. aria-label carries
+                      the full name on every segment (screen readers + e2e). */}
+                  {icon}
+                  {active || !icon ? (icon ? " " : "") + label : ""}
+                </button>
+              );
+            })}
           </div>
         </div>
         {addPlaceOpen && (
