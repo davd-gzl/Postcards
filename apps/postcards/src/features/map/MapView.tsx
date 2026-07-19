@@ -713,6 +713,7 @@ export function MapView({
   optimizeMarkers = false,
   showAllMarkers = false,
   onlyMine = false,
+  reduceMapWork = false,
   dateFilter = { mode: "all" },
   folder = "",
   onBaseUnavailable,
@@ -735,6 +736,9 @@ export function MapView({
   /** "Only my places": hide the browse city/town dots so only your visited flags
    *  and want-list dots show — the clean "everywhere I've been" view. */
   onlyMine?: boolean;
+  /** "Update markers only when the map stops" (slower phones): skip the live
+   *  in-view recompute during a pan; the dots refresh once, on moveend. */
+  reduceMapWork?: boolean;
   /** Date filter for YOUR places: any date, undated-only, or a precise [from,to]
    *  range (a year chip is just a whole-year range). Narrows the visited/wishlist
    *  /airport markers, the visited-country shading and the browsable-POI "seen"
@@ -810,6 +814,8 @@ export function MapView({
   showAllRef.current = showAllMarkers;
   const onlyMineRef = useRef(onlyMine);
   onlyMineRef.current = onlyMine;
+  const reduceMapWorkRef = useRef(reduceMapWork);
+  reduceMapWorkRef.current = reduceMapWork;
   // The active date + folder filter for YOUR places. Read from refs so the
   // imperative painters use the latest value without re-subscribing.
   const dateRef = useRef(dateFilter);
@@ -1133,19 +1139,20 @@ export function MapView({
     }
   }
 
-  // The visited/wishlist toggle also prunes YOUR personal city markers so the map
-  // matches the list: "Visited" hides the ⚑ wish-to-go pins (only your flags
-  // remain), "Hide visited" hides the flags (only your wishes remain). Composed
+  // The status filter prunes YOUR personal city markers so the MAP matches the
+  // LIST: the flags/dots you see are exactly the status you asked for. Composed
   // with the mode gate — city markers exist only in All/Cities modes — and always
   // re-applied after applyMode (which blanket-reveals both layers).
+  //   all       → flags + wish dots
+  //   visited   → flags only
+  //   wishlist  → wish dots only
+  //   unvisited → neither (only the browse-discovery dots remain), so "Not visited"
+  //               really hides the cities you've already been to.
   function applyPersonalMarkerFilter(map: MlMap) {
     const modeAllowsCities = modeRef.current === "all" || modeRef.current === "cities";
     const f = cityFilterRef.current;
-    // Your visited FLAGS always stay on the map — "Hide visited" only narrows the
-    // in-view LIST, it never strips your flags. Only the ⚑ wishlist markers are
-    // pruned, and only under "Visited" (where you're focused on where you've been).
-    const showVisited = modeAllowsCities;
-    const showWish = modeAllowsCities && f !== "visited";
+    const showVisited = modeAllowsCities && f !== "unvisited" && f !== "wishlist";
+    const showWish = modeAllowsCities && f !== "unvisited" && f !== "visited";
     if (map.getLayer("cities-visited"))
       map.setLayoutProperty("cities-visited", "visibility", showVisited ? "visible" : "none");
     if (map.getLayer("cities-wishlist"))
@@ -1434,6 +1441,10 @@ export function MapView({
       let lastLiveBounds = 0;
       map.on("move", () => {
         if (!map || !loadedRef.current || suppressBoundsRef.current) return;
+        // Low-power mode: don't recompute the in-view set every pan frame — the
+        // moveend handler refreshes the dots + list once the map settles. This is
+        // the single biggest per-frame cost on a slow phone.
+        if (reduceMapWorkRef.current) return;
         const now = performance.now();
         if (now - lastLiveBounds < 150) return;
         lastLiveBounds = now;

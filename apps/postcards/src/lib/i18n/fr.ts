@@ -85,6 +85,9 @@ export const fr: Messages = {
   "settings.map.showAll": "Tout afficher d'un coup",
   "settings.map.showAllDesc":
     "Voyez tous vos drapeaux visités et vos points « à visiter » ensemble, même dézoomé — parfait pour montrer à un ami partout où vous êtes allé. Les repères ne s'espacent plus.",
+  "settings.map.reduceWork": "Actualiser les repères seulement à l'arrêt de la carte",
+  "settings.map.reduceWorkDesc":
+    "Défilement plus fluide sur les téléphones lents : les points des villes non visitées se rafraîchissent une fois la carte immobile, plutôt qu'à chaque image. Vos propres lieux ne sont pas affectés.",
   "settings.map.title": "Carte",
   "settings.online.title": "Fonctions en ligne",
   "settings.online.desc": "Tout ce qui utilise internet, au même endroit. N'activez que ce que vous voulez.",
@@ -660,6 +663,7 @@ export const fr: Messages = {
   // ── Global place search (top bar) ────────────────────────────────────────
   "search.placeholder": "Rechercher une ville ou un pays…",
   "search.aria": "Rechercher une ville ou un pays",
+  "search.clear": "Effacer la recherche",
   "search.noMatches": "Aucun résultat pour {q}",
   "search.results_one": "{count} résultat",
   "search.results_other": "{count} résultats",

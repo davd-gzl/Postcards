@@ -123,6 +123,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const maxMarkers = useSettings((s) => s.maxMarkers);
   const optimizeMarkers = useSettings((s) => s.optimizeMarkers);
   const showAllMarkers = useSettings((s) => s.showAllMarkers);
+  const reduceMapWork = useSettings((s) => s.reduceMapWork);
   // The explicit colour-theme choice (System / Light / Dark) drives the
   // basemap's dark palette too, so it never desyncs from the UI.
   const theme = useSettings((s) => s.theme);
@@ -628,6 +629,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           maxMarkers={maxMarkers}
           optimizeMarkers={optimizeMarkers}
           showAllMarkers={showAllMarkers}
+          reduceMapWork={reduceMapWork}
           onlyMine={onlyMine}
           dateFilter={dateFilter}
           folder={folder}
@@ -684,17 +686,15 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                 key={m}
                 type="button"
                 aria-pressed={mode === m}
+                aria-label={t(`filter.mode.${m}` as const)}
                 className={mode === m ? "seg-on" : ""}
                 onClick={() => filters.set({ mode: m })}
                 title={t(`filter.mode.${m}` as const)}
               >
-                {m === "cities"
-                  ? `🏙 ${t("filter.mode.cities")}`
-                  : m === "monuments"
-                    ? `🏛 ${t("filter.mode.monuments")}`
-                    : m === "airports"
-                      ? `✈ ${t("filter.mode.airports")}`
-                      : t("filter.mode.all")}
+                {/* Icon-only so the pill stays small; the label lives in
+                    aria-label + title (hover/AT), and the active kind is shown by
+                    the highlight. "All" has no natural glyph, so it keeps its word. */}
+                {m === "cities" ? "🏙" : m === "monuments" ? "🏛" : m === "airports" ? "✈" : "All"}
               </button>
             ))}
           </div>

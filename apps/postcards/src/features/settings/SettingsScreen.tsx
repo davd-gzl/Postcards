@@ -40,6 +40,8 @@ export function SettingsScreen() {
   const setOptimizeMarkers = useSettings((s) => s.setOptimizeMarkers);
   const showAllMarkers = useSettings((s) => s.showAllMarkers);
   const setShowAllMarkers = useSettings((s) => s.setShowAllMarkers);
+  const reduceMapWork = useSettings((s) => s.reduceMapWork);
+  const setReduceMapWork = useSettings((s) => s.setReduceMapWork);
   const [progress, setProgress] = useState<Record<string, number | undefined>>({});
   // Downloads are cancelable, and each region remembers when it was last saved
   // (so the button honestly reads "Re-download" instead of pretending it's new).
@@ -244,6 +246,15 @@ export function SettingsScreen() {
           </select>
         </label>
         <p className="muted small">{t("settings.optimize.markersDesc")}</p>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={reduceMapWork}
+            onChange={(e) => setReduceMapWork(e.target.checked)}
+          />
+          <span>{t("settings.map.reduceWork")}</span>
+        </label>
+        <p className="muted small">{t("settings.map.reduceWorkDesc")}</p>
       </section>
 
       {/* Map — offline packs (the online basemap toggle lives under Online

@@ -153,8 +153,31 @@ function CountryRow({
         <span className="country-caret" aria-hidden>
           ›
         </span>
-        {c.citiesTotal > 0 && (
-          <Bar value={c.cityPct} label={t("stats.country.cityBarAria", { name: c.name })} />
+        {/* Cities (left) and regions (right) side by side, so both coverage %s
+            read at a glance — no need to expand the row to compare them. */}
+        {(c.citiesTotal > 0 || c.regionsTotal > 0) && (
+          <div className="country-meters">
+            {c.citiesTotal > 0 && (
+              <div className="cmeter">
+                <span className="cmeter-cap">
+                  {t("stats.country.metricCities")} <b>{formatPercent(c.cityPct)}</b>
+                </span>
+                <Bar value={c.cityPct} label={t("stats.country.cityBarAria", { name: c.name })} />
+              </div>
+            )}
+            {c.regionsTotal > 0 && (
+              <div className="cmeter">
+                <span className="cmeter-cap">
+                  {t("stats.country.metricRegions")} <b>{formatPercent(c.regionPct)}</b>
+                </span>
+                <Bar
+                  value={c.regionPct}
+                  label={t("stats.country.regionBarAria", { name: c.name })}
+                  color="var(--accent)"
+                />
+              </div>
+            )}
+          </div>
         )}
       </summary>
 
