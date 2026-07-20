@@ -45,6 +45,7 @@ const POI_LIST_CAP = 50;
 const collator = new Intl.Collator(); // hoisted: per-pair localeCompare over 135k rows janks pans
 const BASEMAP_KEY = "postcards-basemap";
 const GLOBE_KEY = "postcards-globe";
+const TRIPS_LAYER_KEY = "postcards-layer-trips";
 // The growth dimensions filter SAVED records (favourite / photo / note / continent),
 // so they belong to the record-based screens (Places). The map neither exposes them
 // in its panel nor counts them in its badge/summary.
@@ -162,7 +163,8 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   const dateFilter: MapDate = filters.date;
   const folder = filters.folder;
   const trips = useTrips((s) => s.trips);
-  const [showTrips, setShowTrips] = useState(true);
+  // Remembered across sessions, like the basemap and globe (default on).
+  const [showTrips, setShowTrips] = useState(() => loadPref(TRIPS_LAYER_KEY, (v) => v !== "0"));
   const [globe, setGlobe] = useState(() => loadPref(GLOBE_KEY, (v) => v === "1"));
   const [showTowns, setShowTowns] = useState(() => loadPref("postcards-towns", (v) => v === "1"));
   // ON by default: "visited countries visually distinguished" is a core map
@@ -784,7 +786,12 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                   className={"map-btn" + (showTrips ? " on" : "")}
                   type="button"
                   aria-pressed={showTrips}
-                  onClick={() => setShowTrips((s) => !s)}
+                  onClick={() =>
+                    setShowTrips((s) => {
+                      savePref(TRIPS_LAYER_KEY, s ? "0" : "1");
+                      return !s;
+                    })
+                  }
                   title={periodTag ? t("map.layer.tripsTitle", { period: periodTag }) : undefined}
                 >
                   🧵 {t("map.layer.trips")}{showTrips && periodTag ? ` · ${periodTag}` : ""}

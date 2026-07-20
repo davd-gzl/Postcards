@@ -372,15 +372,29 @@ export function PlacesScreen() {
 
   const heritageAvailable = useMemo(() => ref.allHeritage().length > 0, [ref]);
 
+  const visitedRaw = useMemo(() => visits.filter((v) => v.status === "visited"), [visits]);
+  // Display order is favourites-first + A–Z, but FROZEN for the visit: toggling ★
+  // must not make a row jump out from under your finger. The order is re-derived
+  // only when the SET of visited places changes (you add/remove one) or the screen
+  // remounts — "don't move it until you leave the page or update it".
+  const membershipKey = useMemo(
+    () => [...visitedRaw.map((v) => v.visitId)].sort().join(","),
+    [visitedRaw],
+  );
+  const orderIndex = useMemo(() => {
+    const sorted = [...visitedRaw].sort(
+      (a, b) => Number(b.favorite) - Number(a.favorite) || a.place.name.localeCompare(b.place.name),
+    );
+    return new Map(sorted.map((v, i) => [v.visitId, i]));
+    // Intentionally keyed on membership only — a ★ toggle keeps the frozen order.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [membershipKey]);
   const visited = useMemo(
     () =>
-      visits
-        .filter((v) => v.status === "visited")
-        .sort(
-          (a, b) =>
-            Number(b.favorite) - Number(a.favorite) || a.place.name.localeCompare(b.place.name),
-        ),
-    [visits],
+      [...visitedRaw].sort(
+        (a, b) => (orderIndex.get(a.visitId) ?? 1e9) - (orderIndex.get(b.visitId) ?? 1e9),
+      ),
+    [visitedRaw, orderIndex],
   );
   const favorites = useMemo(() => visited.filter((v) => v.favorite), [visited]);
   const wishlist = useMemo(

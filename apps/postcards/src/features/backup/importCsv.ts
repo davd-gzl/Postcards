@@ -67,12 +67,13 @@ function splitLine(line: string, delim: string): string[] {
 }
 
 /** Header aliases → our canonical column names. */
-const COLUMN_ALIASES: Record<string, "lat" | "lon" | "country" | "name" | "status"> = {
+const COLUMN_ALIASES: Record<string, "lat" | "lon" | "country" | "name" | "status" | "date"> = {
   lat: "lat", latitude: "lat",
   lon: "lon", lng: "lon", long: "lon", longitude: "lon",
   country: "country", cc: "country", iso: "country", iso2: "country", countrycode: "country",
   city: "name", name: "name", place: "name", town: "name",
   been: "status", status: "status", tags: "status", visited: "status", state: "status",
+  date: "date", when: "date", visitedon: "date", day: "date",
 };
 
 /**
@@ -96,7 +97,7 @@ export function parsePlacesCsv(text: string, ref: ReferenceData): CsvImportResul
   const delim =
     header.includes(";") ? ";" : header.includes("\t") ? "\t" : ",";
   const cols = splitLine(header, delim).map((h) => matchKey(h).replace(/\s+/g, ""));
-  const idx: Partial<Record<"lat" | "lon" | "country" | "name" | "status", number>> = {};
+  const idx: Partial<Record<"lat" | "lon" | "country" | "name" | "status" | "date", number>> = {};
   cols.forEach((c, i) => {
     const key = COLUMN_ALIASES[c];
     if (key && idx[key] === undefined) idx[key] = i;
@@ -131,7 +132,12 @@ export function parsePlacesCsv(text: string, ref: ReferenceData): CsvImportResul
         : "visited";
     const favorite = tags.some((t) => t === "fave" || t === "fav" || t === "favorite" || t === "star");
 
-    places.push({ place: resolvePlace(ref, name, cc, hasCoord ? lat : null, hasCoord ? lon : null), status, favorite, date: null });
+    // Preserve the visit date when the file carries one (our export does); accept
+    // only a plain ISO calendar date so nothing odd slips into the record.
+    const rawDate = idx.date !== undefined ? (f[idx.date] ?? "").trim() : "";
+    const date = /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : null;
+
+    places.push({ place: resolvePlace(ref, name, cc, hasCoord ? lat : null, hasCoord ? lon : null), status, favorite, date });
   }
   return { places, total: lines.length - 1, skipped };
 }

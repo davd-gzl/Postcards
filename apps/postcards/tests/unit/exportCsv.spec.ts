@@ -33,7 +33,7 @@ describe("serializePlacesCsv", () => {
       ref,
     );
     const lines = csv.trim().split("\n");
-    expect(lines[0]).toBe("lat;lon;country;city;been");
+    expect(lines[0]).toBe("lat;lon;country;city;been;date");
     expect(lines[1]).toContain('"fr"');
     expect(lines[1]).toContain('"been,fave"');
     expect(lines[2]).toContain('"want"');
@@ -45,6 +45,7 @@ describe("serializePlacesCsv", () => {
     const original = visit({
       place: { kind: "city", id: tokyo.id, name: tokyo.name, countryId: "JP" },
       favorite: true,
+      date: "2025-06-14",
     });
     const csv = serializePlacesCsv([original], ref);
     const { places } = parsePlacesCsv(csv, ref);
@@ -53,6 +54,7 @@ describe("serializePlacesCsv", () => {
     expect(places[0]!.place.id).toBe(tokyo.id); // same gazetteer record
     expect(places[0]!.status).toBe("visited");
     expect(places[0]!.favorite).toBe(true);
+    expect(places[0]!.date).toBe("2025-06-14"); // the visit date round-trips
   });
 
   it("skips bare country records (nothing to place on a map)", () => {
