@@ -145,7 +145,8 @@ export function PassportScreen({ embedded }: { embedded?: boolean } = {}) {
   return (
     <section aria-label={t("passport.title")}>
       <div className="section-head">
-        {embedded ? <h3>{t("passport.title")}</h3> : <h2>{t("passport.title")}</h2>}
+        {/* Embedded inside Places, the Places header carries the title. */}
+        {!embedded && <h2>{t("passport.title")}</h2>}
         <ScopeToggle />
       </div>
 

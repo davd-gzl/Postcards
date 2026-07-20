@@ -595,14 +595,23 @@ export function PlacesScreen() {
     setShown(100);
   };
 
-  // Moments / Passport render their own heading, so hide the "Places" title there
-  // to avoid a double heading — but the view-switcher tabs stay (see the header).
-  const hideTitle = view === "moments" || view === "passport";
+  // Every view names itself in ONE consistent place — the header title below. It
+  // used to sit above the tabs for the lists but be rendered lower, by the
+  // Moments/Passport screens themselves, so the label jumped around. Collections
+  // show their own name here; the personal lists share the "Places" section title.
+  const viewTitle =
+    view === "moments"
+      ? t("moments.title")
+      : view === "passport"
+        ? t("passport.title")
+        : view === "photos"
+          ? t("places.collection.photos")
+          : t("places.title");
 
   return (
     <section aria-label={t("places.aria")}>
       <div className="section-head">
-        {!hideTitle && <h2>{t("places.title")}</h2>}
+        <h2>{viewTitle}</h2>
         {/* The view tabs stay visible in EVERY view — including the Moments/Photos/
             Passport collections — so opening a collection doesn't wipe the page and
             strand you; one tap on Visited/Favorites/… is always the way back. */}

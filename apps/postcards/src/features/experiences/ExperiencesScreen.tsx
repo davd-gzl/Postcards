@@ -107,15 +107,17 @@ export function ExperiencesScreen({ embedded }: { embedded?: boolean } = {}) {
 
   const groups = useMemo(() => groupExperiences(list, ref), [list, ref]);
 
-  // Heading levels shift down one step when embedded inside another screen, so
-  // the document outline stays correct (standalone h2→h3→h4; embedded h3→h4→h5).
-  const ContinentHeading = (embedded ? "h4" : "h3") as "h3" | "h4";
-  const CountryHeading = (embedded ? "h5" : "h4") as "h4" | "h5";
+  // One page title sits above these — standalone: this screen's own h2; embedded:
+  // the Places header's h2 — so the sub-headings always start at h3.
+  const ContinentHeading = "h3" as const;
+  const CountryHeading = "h4" as const;
 
   return (
     <section aria-label={t("moments.title")}>
       <div className="section-head">
-        {embedded ? <h3>{t("moments.title")}</h3> : <h2>{t("moments.title")}</h2>}
+        {/* Embedded inside Places, the Places header carries the title — don't
+            repeat it; only the standalone screen renders its own. */}
+        {!embedded && <h2>{t("moments.title")}</h2>}
         <span className="list-head-meta muted">
           {t("moments.lived", { lived, total: list.length })}
         </span>
