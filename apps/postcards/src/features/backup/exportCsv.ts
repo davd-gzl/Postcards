@@ -37,7 +37,9 @@ function q(s: string): string {
  * inside, so a bare country has nothing to place on a map).
  */
 export function serializePlacesCsv(visits: Visit[], ref: ReferenceData): string {
-  const rows = ["lat;lon;country;city;been"];
+  // `date` is the last column so old importers (which read the first five) still
+  // round-trip; the app's own importer reads it back to preserve when you were there.
+  const rows = ["lat;lon;country;city;been;date"];
   for (const v of visits) {
     if (v.place.kind === "country") continue;
     const coord = coordOf(ref, v);
@@ -50,6 +52,7 @@ export function serializePlacesCsv(visits: Visit[], ref: ReferenceData): string 
         q(v.place.countryId.toLowerCase()),
         q(v.place.name),
         q(tags.join(",")),
+        v.date ?? "",
       ].join(";"),
     );
   }
