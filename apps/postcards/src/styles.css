@@ -293,6 +293,7 @@ h1.brand {
 }
 .section-head h3 {
   font-size: 15px;
+  font-weight: 600;
   margin: 0;
 }
 .muted {
@@ -947,7 +948,7 @@ h1.brand {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  border: 1.5px solid var(--border-strong);
+  border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--muted);
   font-size: 14px;
@@ -1050,9 +1051,11 @@ h1.brand {
   white-space: nowrap;
 }
 .mini-btn.mini-on {
-  border-color: #f59e0b;
-  background: #fef7e8;
-  color: #b45309;
+  /* Selected pills use the app's indigo accent everywhere (segmented seg-on,
+     collections, scope toggle) — not a one-off orange that read as a warning. */
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .star-btn {
   flex: none;
@@ -2420,6 +2423,8 @@ h1.brand {
 .pass-open {
   width: 100%;
   margin-bottom: 12px;
+  /* Match the summary card directly above it (both full-width, touching). */
+  border-radius: var(--radius);
 }
 .pass-panel {
   border: 1px solid var(--border);
@@ -2847,9 +2852,14 @@ h1.brand {
 .settings-section {
   margin-bottom: 22px;
 }
+/* Clear the page title from the first sub-heading (heading-on-heading otherwise). */
+.settings-section:first-of-type {
+  margin-top: 12px;
+}
 .settings-section h3 {
   margin: 0 0 4px;
   font-size: 15px;
+  font-weight: 600;
 }
 /* Progressive disclosure for advanced/bulky settings (offline map packs, marker
    cap) so the page reads light. Collapsed by default; the summary is a calm,
@@ -4016,6 +4026,7 @@ button.brand:focus-visible {
 .passport-continent h3 {
   margin: 12px 0 6px;
   font-size: 14px;
+  font-weight: 600;
 }
 
 /* Stats density: half the air, same information. */
@@ -4255,13 +4266,21 @@ button.brand:focus-visible {
 /* Touch screens: the 30px Been/Want/Fav toggles sat ~36px apart on compact
    rows — thumbs hit the neighbouring row's ✓. Bigger targets on a roomier
    pitch; desktop keeps the deliberate compact density (pointer: fine). */
-@media (pointer: coarse) {
+@media (pointer: coarse), (hover: none) {
+  /* Right-size the ✓/⚑/♥ toggles: a lighter 34px box that no longer dominates the
+     row, but a transparent inset ::after restores a full 44px finger target. */
   .state {
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
+    position: relative;
+  }
+  .state::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
   }
   .states {
-    gap: 8px;
+    gap: 10px;
   }
   .city-row.compact {
     padding: 5px 0;
@@ -4281,8 +4300,10 @@ button.brand:focus-visible {
     gap: 6px;
   }
   .segmented button {
-    min-height: 40px;
-    padding: 8px 14px;
+    /* Meet the 44px floor exactly — trimmed vertical padding stops it stacking
+       on top of min-height and rendering ~46px, so the tab rows read lighter. */
+    min-height: 44px;
+    padding: 4px 14px;
   }
   /* The map's primary thumb-zone controls (Filter / ≡ Layers) and the buttons
      inside the Layers popover. */
@@ -4303,13 +4324,35 @@ button.brand:focus-visible {
     width: 26px;
     height: 26px;
   }
+  /* Compact pill (~30px) that no longer looks half-empty around a 12px label,
+     with a transparent ::after lifting the tap target to 44px. */
   .chip {
-    min-height: 40px;
+    min-height: 0;
+    padding: 7px 12px;
+    position: relative;
   }
+  .chip::after {
+    content: "";
+    position: absolute;
+    inset: -7px;
+  }
+  /* The visited-row trailing controls read as ONE set: ♥, ⋯ and the 📷 Photos
+     button share a COMPACT ~34px look (the bare .mini-btn was ~27px, shorter than
+     its neighbours) with a transparent ::after lifting each to a 44px tap target —
+     right-sized, not bulky. Scoped to rows so map-popup/lightbox stay small. */
   .star-btn,
-  .row-more {
-    min-height: 40px;
-    min-width: 40px;
+  .row-more,
+  .city-row .mini-btn {
+    min-height: 34px;
+    min-width: 34px;
+    position: relative;
+  }
+  .star-btn::after,
+  .row-more::after,
+  .city-row .mini-btn::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
   }
 }
 
@@ -4321,8 +4364,25 @@ button.brand:focus-visible {
   .city-row .row-btn-label {
     display: none;
   }
+  /* Square padding so the label-less 📷 is a compact square, not a stretched oval. */
   .city-row .mini-btn {
-    padding: 4px 8px;
+    padding: 4px;
+  }
+  /* Tighten the stacked header bands so content sits higher on a phone. */
+  .section-head {
+    gap: 6px;
+  }
+  .places-filter-row {
+    margin: 4px 0;
+  }
+  /* Clamp the always-on Moments/Monuments intro to two lines so the first row
+     isn't pushed below the fold (the full text still reads on desktop). */
+  .places-intro {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }
 

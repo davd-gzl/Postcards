@@ -136,7 +136,7 @@ export function CountryScreen({ iso2, onBack }: { iso2: string; onBack: () => vo
                   type="button"
                   onClick={() => useUi.getState().openCity(h.id)}
                 >
-                  <CityLine flag="🏛️" name={h.name} />
+                  <CityLine flag="🏛️" name={h.name} multiline />
                 </button>
                 <StateToggles
                   place={{ kind: "heritage", id: h.id, name: h.name, countryId: h.countryIso2 }}

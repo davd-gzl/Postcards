@@ -120,7 +120,7 @@ export function ExperiencesScreen({ embedded }: { embedded?: boolean } = {}) {
           {t("moments.lived", { lived, total: list.length })}
         </span>
       </div>
-      <p className="muted small">{t("moments.desc")}</p>
+      <p className="muted small places-intro">{t("moments.desc")}</p>
       {loading && <p className="muted empty">{t("moments.loading")}</p>}
       {!loading && list.length === 0 && <p className="muted empty">{t("moments.loadError")}</p>}
       {groups.map((cont) => (

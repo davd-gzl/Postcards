@@ -22,7 +22,9 @@ test("Escape backs out of a Places collection to the Visited list before leaving
 
   // Move focus off the button (so the global handler owns Escape, not the button),
   // then press Escape: it must return to Visited, NOT navigate away from Places.
-  await page.getByRole("heading", { name: "Places" }).click();
+  // (The collection's own "Moments" heading — the redundant "Places" title is
+  // hidden on collection views.)
+  await page.getByRole("heading", { name: "Moments" }).click();
   await page.keyboard.press("Escape");
 
   await expect(visitedTab).toHaveAttribute("aria-pressed", "true");
