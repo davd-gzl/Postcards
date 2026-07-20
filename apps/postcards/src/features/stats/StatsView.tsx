@@ -17,6 +17,7 @@ import {
 import { travelTotals } from "../travel/distance";
 import { MODE_GLYPH } from "../travel/modes";
 import { useUi } from "../../lib/store/useUi";
+import { useFilters } from "../../lib/store/useFilters";
 import { countryFlag, formatDate, formatInt, formatKm, formatPercent } from "../../lib/format/format";
 import { CONTINENT_COLORS, CONTINENT_ORDER } from "../../lib/reference/continents";
 import { ScopeToggle } from "../../ui/ScopeToggle";
@@ -345,6 +346,13 @@ export function StatsView() {
       if (c) flyTo(c.lon, c.lat);
     };
   }
+  // Open the visited Places list narrowed to a population band (0 = all cities,
+  // 100k = big cities, 1M = megacities) via the app's ONE shared filter, so the
+  // tile drills into exactly the cities it counts.
+  function openCitiesFiltered(minPop: number) {
+    useFilters.getState().set({ minPop });
+    useUi.getState().openPlaces("visited");
+  }
   function flyToRegion(iso2: string) {
     return (name: string) => {
       const sub = ref.subdivisionsOf(iso2).find((s) => s.name === name);
@@ -486,7 +494,7 @@ export function StatsView() {
             type="button"
             className="kpi kpi-hero"
             title={t("stats.kpi.visitedTitle")}
-            onClick={() => useUi.getState().openPlaces("visited")}
+            onClick={() => openCitiesFiltered(0)}
           >
             <span className="kpi-num kpi-been">{formatInt(coverage.citiesVisited)}</span>
             <span className="kpi-label">{t("stats.kpi.cities")}</span>
@@ -505,7 +513,7 @@ export function StatsView() {
               type="button"
               className="kpi"
               title={t("stats.kpi.visitedTitle")}
-              onClick={() => useUi.getState().openPlaces("visited")}
+              onClick={() => openCitiesFiltered(100_000)}
             >
               <span className="kpi-num kpi-been">{formatInt(bands.mega + bands.large)}</span>
               <span className="kpi-label">{t("stats.kpi.bigCities")}</span>
@@ -516,7 +524,7 @@ export function StatsView() {
               type="button"
               className="kpi"
               title={t("stats.kpi.visitedTitle")}
-              onClick={() => useUi.getState().openPlaces("visited")}
+              onClick={() => openCitiesFiltered(1_000_000)}
             >
               <span className="kpi-num kpi-been">{formatInt(bands.mega)}</span>
               <span className="kpi-label">{t("stats.kpi.megaCities")}</span>
