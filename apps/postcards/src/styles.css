@@ -361,16 +361,18 @@ h1.brand {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface);
+  /* Sit ON the list below (its own surface) as a slim grab strip, not a chunky
+     band of its own between the two panes. */
+  background: var(--bg);
   touch-action: none;
   user-select: none;
   cursor: row-resize;
-  height: 16px;
+  height: 10px;
 }
 .pane-divider::after {
   content: "";
-  width: 44px;
-  height: 5px;
+  width: 32px;
+  height: 4px;
   border-radius: 999px;
   background: var(--border-strong);
 }
@@ -4300,10 +4302,18 @@ button.brand:focus-visible {
     gap: 6px;
   }
   .segmented button {
-    /* Meet the 44px floor exactly — trimmed vertical padding stops it stacking
-       on top of min-height and rendering ~46px, so the tab rows read lighter. */
-    min-height: 44px;
-    padding: 4px 14px;
+    /* Compact tabs / map-mode pill — a slim 34px visible height with a
+       transparent vertical ::after so the tap target still clears 44px without
+       the buttons looking chunky. Vertical-only inset → no overlap with the
+       adjacent segments left/right. */
+    min-height: 34px;
+    padding: 6px 13px;
+    position: relative;
+  }
+  .segmented button::after {
+    content: "";
+    position: absolute;
+    inset: -5px 0;
   }
   /* The map's primary thumb-zone controls (Filter / ≡ Layers) and the buttons
      inside the Layers popover. */
@@ -4311,11 +4321,10 @@ button.brand:focus-visible {
     min-height: 40px;
     padding: 8px 14px;
   }
-  /* Lift the map/list resize handle to the same 24px touch floor this block
-     applies to every other small control (its thin ::after grab bar stays
-     centred, so only the hit-area grows). */
+  /* A slim grab strip on touch too — draggable but not a chunky band (the thin
+     ::after grab bar stays centred). */
   .pane-divider {
-    height: 28px;
+    height: 16px;
   }
   /* Lift the smallest icon buttons to at least the WCAG 2.5.8 (AA) 24px floor:
      the removable filter-chip ✕, the favourite star, the row ⋯ menu and the

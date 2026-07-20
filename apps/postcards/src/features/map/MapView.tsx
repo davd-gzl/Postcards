@@ -1350,6 +1350,9 @@ export function MapView({
           trackUserLocation: true,
           showUserLocation: true,
           showAccuracyCircle: true,
+          // Stop at city scale — the default flies all the way to street level,
+          // which is more zoom than you want just to see where you are.
+          fitBoundsOptions: { maxZoom: 11 },
         }),
         "top-right",
       );
@@ -1682,6 +1685,9 @@ export function MapView({
         map.easeTo({
           center: anchor,
           zoom: tapZoom,
+          // Seat the marker LOW in the viewport so the card (which always opens
+          // above it) has room and its top isn't clipped by the map's edge.
+          offset: [0, Math.round(map.getContainer().clientHeight * 0.28)],
           duration: reducedRef.current ? 0 : 550,
         });
       });
@@ -1838,7 +1844,9 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !focus) return;
     suppressBoundsRef.current = true; // programmatic — the list must not move
-    const targetZoom = Math.max(map.getZoom(), 4.5);
+    // A list tap should clearly ZOOM to the city (was a barely-perceptible 4.5
+    // floor); city scale, never past the current zoom.
+    const targetZoom = Math.max(map.getZoom(), 6.5);
     // Fetch the destination's tiles DURING the flight — arriving somewhere far
     // used to mean watching its tiles pop in one by one.
     if (basemap === "osm") prefetchAroundPoint(focus.lon, focus.lat, targetZoom);
@@ -1848,6 +1856,9 @@ export function MapView({
     map.easeTo({
       center: [focus.lon, focus.lat],
       zoom: targetZoom,
+      // When a preview card will open above the marker, seat it low so its top
+      // isn't clipped by the map edge (matches the marker-tap behaviour).
+      offset: focus.popup ? [0, Math.round(map.getContainer().clientHeight * 0.28)] : [0, 0],
       duration: dur,
     });
     // A list tap on a not-visited city opens its preview card — same popup as
