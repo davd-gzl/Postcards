@@ -362,6 +362,19 @@ async function loadPopupThumb(name: string, fig: HTMLElement): Promise<void> {
   }
 }
 
+/** How far to seat a place's marker BELOW the map's vertical centre so its
+ *  preview card — which always opens ABOVE the marker — clears the top edge,
+ *  but no more than the viewport actually needs. A tall (desktop) map already
+ *  has ample room above a centred marker, so this returns 0 there and the place
+ *  simply centres; only a short (mobile) map, where a centred card would be
+ *  clipped, gets a downward nudge. Replaces a flat 28%-of-height shove that read
+ *  as a jarring downward jump on a big screen. */
+function cardSeatOffsetY(map: MlMap): number {
+  const CARD = 260; // ≈ max card height: photo + name + context + actions + tip.
+  const h = map.getContainer().clientHeight;
+  return Math.max(0, Math.round(CARD - h / 2));
+}
+
 function openPlacePopup(
   map: MlMap,
   lngLat: maplibregl.LngLatLike,
@@ -1696,9 +1709,10 @@ export function MapView({
         map.easeTo({
           center: anchor,
           zoom: tapZoom,
-          // Seat the marker LOW in the viewport so the card (which always opens
-          // above it) has room and its top isn't clipped by the map's edge.
-          offset: [0, Math.round(map.getContainer().clientHeight * 0.28)],
+          // Seat the marker only as low as the viewport needs so the card (which
+          // always opens above it) isn't clipped — 0 on a tall desktop map (just
+          // centre the place), a downward nudge only on a short phone map.
+          offset: [0, cardSeatOffsetY(map)],
           duration: reducedRef.current ? 0 : 550,
         });
       });
@@ -1867,9 +1881,10 @@ export function MapView({
     map.easeTo({
       center: [focus.lon, focus.lat],
       zoom: targetZoom,
-      // When a preview card will open above the marker, seat it low so its top
-      // isn't clipped by the map edge (matches the marker-tap behaviour).
-      offset: focus.popup ? [0, Math.round(map.getContainer().clientHeight * 0.28)] : [0, 0],
+      // When a preview card will open above the marker, seat it low enough to
+      // clear the top edge but no further — 0 on a tall desktop map (matches the
+      // marker-tap behaviour), a downward nudge only where the card wouldn't fit.
+      offset: focus.popup ? [0, cardSeatOffsetY(map)] : [0, 0],
       duration: dur,
     });
     // A list tap on a not-visited city opens its preview card — same popup as

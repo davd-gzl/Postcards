@@ -20,6 +20,7 @@ import { dateBuckets, mapDateMatches, rangeExactYear, type MapDate } from "../tr
 import { citiesInView, type Bounds } from "./viewport";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import type { City } from "../../lib/reference/types";
+import type { PlaceRef } from "../../lib/schema/models";
 import { placeKey } from "../../lib/schema/helpers";
 import { CityLine } from "../../ui/CityLine";
 import { MoreButton } from "../../ui/MoreButton";
@@ -540,16 +541,67 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
     if (mapFocus) setFocus({ lon: mapFocus.lon, lat: mapFocus.lat, key: mapFocus.nonce });
   }, [mapFocus?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // A place picked anywhere (search/chip/list) selects its row in the in-view
-  // list AND flags it to scroll into view once the list catches up to the fly.
+  // A place picked anywhere OFF the map (search, a Places row) flies here, opens
+  // its preview card — exactly like tapping the marker — and flags its list row
+  // to scroll into view once the list catches up to the fly.
   useEffect(() => {
     if (!selectedPlace) return;
-    setSelectedCityId(selectedPlace.id);
-    scrollToIdRef.current = selectedPlace.id;
+    const { place, lon, lat } = selectedPlace;
+    scrollToIdRef.current = place.id;
+    openPlaceCard({
+      lon,
+      lat,
+      name: place.name,
+      sub: cardSubFor(place),
+      place,
+      // Cities, monuments and airports each have a detail page; a custom pin
+      // doesn't (the pin itself IS the record).
+      hasPage: place.kind !== "custom",
+    });
   }, [selectedPlace?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function focusCity(c: { lon: number; lat: number }) {
-    setFocus((f) => ({ lon: c.lon, lat: c.lat, key: (f?.key ?? 0) + 1 }));
+  // The "· Country - Region" context line for a place's preview card — the same
+  // secondary line the map's own list rows already show.
+  function cardSubFor(place: PlaceRef): string {
+    const country = ref.countryByIso2(place.countryId)?.name ?? place.countryId;
+    if (place.kind === "city") {
+      const c = ref.cityById(place.id);
+      const region = c?.subdivisionId ? ref.subdivisionById(c.subdivisionId)?.name : null;
+      return `· ${country}${region ? ` - ${region}` : ""}`;
+    }
+    return `· ${country}`;
+  }
+
+  // Fly to a place AND open its preview card — the SAME result as tapping the
+  // place's marker on the map. Every list row and every cross-screen pick
+  // (search, a Places row jumping here) routes through this, so "click the row"
+  // is exactly "click the point on the map": a card you can read, mark visited,
+  // wishlist, journal or open in full — never a silent re-centre.
+  function openPlaceCard(info: {
+    lon: number;
+    lat: number;
+    name: string;
+    sub: string;
+    place: PlaceRef;
+    hasPage: boolean;
+  }) {
+    setSelectedCityId(info.place.id);
+    setFocus((f) => ({
+      lon: info.lon,
+      lat: info.lat,
+      key: (f?.key ?? 0) + 1,
+      popup: {
+        name: info.name,
+        sub: info.sub,
+        place: info.place,
+        hasPage: info.hasPage,
+        // A photo only for cities & monuments on a live base — matches the
+        // marker-tap card; airports and the offline base carry none.
+        showImage:
+          effectiveBasemap !== "simple" &&
+          (info.place.kind === "city" || info.place.kind === "heritage"),
+      },
+    }));
   }
 
   // Everything of YOURS with coordinates — visited & wishlist cities, plus your
@@ -892,11 +944,23 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                       className="city-focus"
                       type="button"
                       title={t("stats.records.showOnMap", { name: x.name })}
-                      onClick={() => focusCity({ lon: x.lon, lat: x.lat })}
+                      onClick={() =>
+                        // Same as tapping this monument/airport's marker: fly in
+                        // and open its preview card (mark visited / Details), not
+                        // just a re-centre.
+                        openPlaceCard({
+                          lon: x.lon,
+                          lat: x.lat,
+                          name: x.name,
+                          sub: `· ${x.sub}`,
+                          place: x.place,
+                          hasPage: true,
+                        })
+                      }
                     >
                       <CityLine flag={x.flag} name={x.name} sub={<>· {x.sub}</>} multiline />
                     </button>
-                    {/* The row itself only zooms the map; details live behind 📖. */}
+                    {/* 📖 opens the Wikivoyage guide — distinct from the card's Details. */}
                     {x.page && <GuideButton place={x.place} />}
                     <StateToggles place={x.place} />
                   </li>
@@ -959,29 +1023,19 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
                     type="button"
                     aria-expanded={selected}
                     title={t("stats.records.showOnMap", { name: c.name })}
-                    onClick={() => {
-                      // A row click ZOOMS to the city. For one you HAVEN'T visited,
-                      // it also opens the preview card (photo + "been there") above
-                      // the marker, so you can eyeball it and add it in one place.
-                      // A visited city just re-centres (its flag is already yours).
-                      setSelectedCityId(c.id);
-                      if (visitedCityIds.has(c.id)) {
-                        focusCity(c);
-                      } else {
-                        setFocus((f) => ({
-                          lon: c.lon,
-                          lat: c.lat,
-                          key: (f?.key ?? 0) + 1,
-                          popup: {
-                            name: c.name,
-                            sub: `· ${country}${region ? ` - ${region}` : ""}`,
-                            place,
-                            hasPage: true,
-                            showImage: effectiveBasemap !== "simple",
-                          },
-                        }));
-                      }
-                    }}
+                    onClick={() =>
+                      // A row click is a marker tap: zoom in AND open the preview
+                      // card (photo + been-there/wishlist/story/Details) above the
+                      // marker — visited or not — instead of a silent re-centre.
+                      openPlaceCard({
+                        lon: c.lon,
+                        lat: c.lat,
+                        name: c.name,
+                        sub: `· ${country}${region ? ` - ${region}` : ""}`,
+                        place,
+                        hasPage: true,
+                      })
+                    }
                   >
                     <CityLine
                       flag={countryFlag(c.countryIso2)}
