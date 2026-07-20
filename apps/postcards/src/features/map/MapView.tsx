@@ -1164,10 +1164,21 @@ export function MapView({
     const statuses = cityFilterRef.current;
     const showVisited = modeAllowsCities && statusShows(statuses, "visited");
     const showWish = modeAllowsCities && statusShows(statuses, "wishlist");
-    if (map.getLayer("cities-visited"))
+    // The population filter drops YOUR sub-threshold city flags too, so the map
+    // stays in lock-step with the list (which already hides them). Your custom
+    // pins have no population and are never hidden by it.
+    const minPop = minPopRef.current;
+    const popFilter = (
+      minPop > 0 ? ["any", ["==", ["get", "custom"], 1], [">=", ["get", "pop"], minPop]] : null
+    ) as maplibregl.FilterSpecification | null;
+    if (map.getLayer("cities-visited")) {
       map.setLayoutProperty("cities-visited", "visibility", showVisited ? "visible" : "none");
-    if (map.getLayer("cities-wishlist"))
+      map.setFilter("cities-visited", popFilter);
+    }
+    if (map.getLayer("cities-wishlist")) {
       map.setLayoutProperty("cities-wishlist", "visibility", showWish ? "visible" : "none");
+      map.setFilter("cities-wishlist", popFilter);
+    }
   }
 
   // The in-view city dots, recomputed straight off the LIVE camera. Driven by
