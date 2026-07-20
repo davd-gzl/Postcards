@@ -33,7 +33,9 @@ export function visitedCityPoints(visits: Visit[], ref: ReferenceData): FeatureC
           id: v.place.id,
           name: v.place.name,
           cc: v.place.countryId,
-          pop: 0,
+          // The population the user typed for this pin (0 if none) — so the map's
+          // population filter treats a 0-people custom place as 0, like the list.
+          pop: v.place.population ?? 0,
           region: "",
           custom: 1,
           fav: v.favorite ? 1 : 0,

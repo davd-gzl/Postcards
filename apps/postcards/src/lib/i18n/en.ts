@@ -421,6 +421,9 @@ export const en = {
   "addPlace.coordsAria": "Coordinates, latitude comma longitude, optional",
   "addPlace.addButton": "Add place",
   "addPlace.coordsHint": "Coordinates must look like “48.85, 2.35”.",
+  "addPlace.populationPlaceholder": "People (optional)",
+  "addPlace.populationAria": "Population (optional)",
+  "addPlace.populationHint": "Population must be a whole number of people.",
 
   // ── Journal ──────────────────────────────────────────────────────────────
   "journal.title": "Journal",

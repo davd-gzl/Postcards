@@ -39,13 +39,33 @@ describe("placeMatches", () => {
     expect(placeMatches(cityVisit(paris, { status: "wishlist" }), ref, st({ status: [] }))).toBe(true);
   });
 
-  it("population gates cities but not non-city places (D4)", () => {
+  it("population gates cities AND custom pins; monuments/airports are exempt", () => {
     expect(placeMatches(cityVisit(paris), ref, st({ minPop: 1_000_000 }))).toBe(true); // Paris >1M
-    const custom: Visit = {
+    const at = { countryId: "FR", lat: 0, lon: 0 };
+    // A custom pin with no headcount counts as 0 → excluded by a positive threshold.
+    const customNoPop: Visit = {
       ...cityVisit(paris),
-      place: { kind: "custom", id: "c1", name: "spot", countryId: "FR", lat: 0, lon: 0 },
+      place: { kind: "custom", id: "c1", name: "spot", ...at },
     };
-    expect(placeMatches(custom, ref, st({ minPop: 1_000_000 }))).toBe(true); // no population → passes
+    expect(placeMatches(customNoPop, ref, st({ minPop: 1_000_000 }))).toBe(false);
+    // …but a custom pin you gave a real population to passes when it clears the bar.
+    const customBig: Visit = {
+      ...cityVisit(paris),
+      place: { kind: "custom", id: "c2", name: "big spot", population: 2_000_000, ...at },
+    };
+    expect(placeMatches(customBig, ref, st({ minPop: 1_000_000 }))).toBe(true);
+    expect(placeMatches(customBig, ref, st({ minPop: 5_000_000 }))).toBe(false);
+    // Monuments / airports have no population — the filter never hides them.
+    const monument: Visit = {
+      ...cityVisit(paris),
+      place: { kind: "heritage", id: "h1", name: "A UNESCO site", countryId: "FR" },
+    };
+    const airport: Visit = {
+      ...cityVisit(paris),
+      place: { kind: "airport", id: "CDG", name: "Paris CDG", countryId: "FR" },
+    };
+    expect(placeMatches(monument, ref, st({ minPop: 1_000_000 }))).toBe(true);
+    expect(placeMatches(airport, ref, st({ minPop: 1_000_000 }))).toBe(true);
   });
 
   it("favoritesOnly / hasPhoto / hasNote", () => {

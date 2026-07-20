@@ -1165,11 +1165,11 @@ export function MapView({
     const showVisited = modeAllowsCities && statusShows(statuses, "visited");
     const showWish = modeAllowsCities && statusShows(statuses, "wishlist");
     // The population filter drops YOUR sub-threshold city flags too, so the map
-    // stays in lock-step with the list (which already hides them). Your custom
-    // pins have no population and are never hidden by it.
+    // stays in lock-step with the list. Custom pins carry the population you typed
+    // (0 if none), so a 0-people custom place is filtered like any small city.
     const minPop = minPopRef.current;
     const popFilter = (
-      minPop > 0 ? ["any", ["==", ["get", "custom"], 1], [">=", ["get", "pop"], minPop]] : null
+      minPop > 0 ? [">=", ["get", "pop"], minPop] : null
     ) as maplibregl.FilterSpecification | null;
     if (map.getLayer("cities-visited")) {
       map.setLayoutProperty("cities-visited", "visibility", showVisited ? "visible" : "none");
