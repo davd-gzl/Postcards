@@ -322,7 +322,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
             {nearby.monuments.map((h) => (
               <li key={h.id} className="city-row compact">
                 <button className="city-focus" type="button" onClick={() => flyTo(h.lon, h.lat)}>
-                  <CityLine flag="🏛️" name={h.name} sub={<>· {t("city.away", { km: formatKm(h.km) })}</>} />
+                  <CityLine flag="🏛️" name={h.name} sub={<>· {t("city.away", { km: formatKm(h.km) })}</>} multiline />
                 </button>
                 <StateToggles
                   place={{ kind: "heritage", id: h.id, name: h.name, countryId: h.countryIso2 }}
@@ -344,6 +344,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
                     flag="✈️"
                     name={`${a.name} (${a.id})`}
                     sub={<>· {t("city.away", { km: formatKm(a.km) })}</>}
+                    multiline
                   />
                 </button>
                 <StateToggles

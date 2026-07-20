@@ -245,6 +245,9 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
         <CityLine
           flag={rowGlyph}
           name={v.place.name}
+          // Heritage/airport names are long ("Historic Sanctuary of Machu Picchu")
+          // — let them wrap instead of clipping; cities keep the dense one-liner.
+          multiline={v.place.kind === "heritage" || v.place.kind === "airport"}
           sub={
             // One clean column: just the region, plus a folder chip when set. The
             // date and note now live in the row's "⋯" menu, not inline.
@@ -577,23 +580,31 @@ export function PlacesScreen() {
     setShown(100);
   };
 
+  // Moments / Photos / Passport are self-contained collections: the view-switcher
+  // tabs (Visited/Wishlist/…) do nothing there, and Moments/Passport render their
+  // own heading — so drop that double chrome and reclaim a header band on mobile.
+  const isCollection = view === "moments" || view === "photos" || view === "passport";
+  const hideTitle = view === "moments" || view === "passport";
+
   return (
     <section aria-label={t("places.aria")}>
       <div className="section-head">
-        <h2>{t("places.title")}</h2>
-        <div className="segmented wrap" role="group" aria-label={t("places.viewAria")}>
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              aria-pressed={view === t.id}
-              className={view === t.id ? "seg-on" : ""}
-              onClick={() => switchView(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {!hideTitle && <h2>{t("places.title")}</h2>}
+        {!isCollection && (
+          <div className="segmented wrap" role="group" aria-label={t("places.viewAria")}>
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                aria-pressed={view === t.id}
+                className={view === t.id ? "seg-on" : ""}
+                onClick={() => switchView(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
         <div
           className="segmented wrap places-collections"
           role="group"
@@ -820,7 +831,7 @@ export function PlacesScreen() {
           ) : (
             <>
               <div className="countries-head">
-                <p className="muted small" style={{ margin: 0 }}>
+                <p className="muted small places-intro" style={{ margin: 0 }}>
                   {t("places.monuments.desc")}
                 </p>
                 <button
@@ -852,7 +863,7 @@ export function PlacesScreen() {
                         onClick={() => useUi.getState().openCity(h.id)}
                         aria-label={t("places.row.openAria", { name: h.name })}
                       >
-                        <CityLine flag={countryFlag(h.countryIso2)} name={h.name} sub={<>· {country}</>} />
+                        <CityLine flag={countryFlag(h.countryIso2)} name={h.name} sub={<>· {country}</>} multiline />
                       </button>
                       <StateToggles place={place} />
                     </li>

@@ -586,6 +586,7 @@ export function TravelScreen() {
                       }
                       title={`${airport.id} · ${airport.name}`}
                       sub={<>· {airport.city || country}</>}
+                      multiline
                     />
                   </button>
                   <span className="airport-count" title={label} aria-label={label}>
