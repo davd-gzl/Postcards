@@ -1658,6 +1658,21 @@ h1.brand {
   font-size: 12px;
   color: var(--muted);
 }
+/* The cities count is the headline number — full-width and large across the top
+   of the KPI grid, with the other tiles (countries, big/mega cities, monuments)
+   below it. */
+.kpi-hero {
+  grid-column: 1 / -1;
+  align-items: baseline;
+  flex-direction: row;
+  gap: 8px;
+}
+.kpi-hero .kpi-num {
+  font-size: clamp(2.6rem, 13vw, 3.4rem);
+}
+.kpi-hero .kpi-label {
+  font-size: 14px;
+}
 .country-card {
   background: var(--surface);
   border: 1px solid var(--border);
