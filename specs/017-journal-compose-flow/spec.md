@@ -94,7 +94,7 @@ blocking, falling back to manual search.
 
 ### Edge Cases
 
-- **Unsaved draft on leave**: Leaving the composer (Back/Escape/Cancel, tab switch, phone Back) with typed content must not silently lose it — preserve a resumable draft or confirm discard.
+- **Unsaved draft on leave**: Leaving the composer (Back/Escape/Cancel, tab switch, phone Back) with typed content must not silently lose it — the draft is auto-preserved and restored on reopen, with no discard prompt.
 - **No visited places yet**: A brand-new user with nothing logged can still write (place resolvable via search / "near you"); the place picker never dead-ends.
 - **Long-press vs scroll/tap ambiguity**: Press-and-hold on the nav button must not also trigger the normal tap navigation, a normal tap must not trigger the long-press, and a drag/scroll starting on the button cancels the long-press.
 - **Location denied earlier**: If the user previously denied location, the composer must not nag on every open; it silently falls back to manual search.
@@ -102,6 +102,13 @@ blocking, falling back to manual search.
 - **Offline**: With no network, "near you" still works against on-device reference data (no map tiles or remote calls required); everything degrades to manual entry when it can't.
 - **Return target**: Whatever screen launched the composer (feed, a city page, the long-press shortcut) is the screen returned to on save/cancel.
 - **Editing an existing story**: Opening an existing story to edit uses the same page and returns correctly; auto-location does not overwrite an already-chosen place.
+
+## Clarifications
+
+### Session 2026-07-20
+
+- Q: When the user leaves the composer with unsaved, non-empty content, what should happen? → A: **Auto-preserve** the in-progress draft as a resumable local draft and restore it when the composer reopens for that context; never show a discard-confirmation modal. The cached draft is transient on-device state only — never persisted as reference/shared data, never transmitted, and cleared once the story is saved or explicitly discarded.
+- Q: When the composer opens for a NEW story, how is "near you" location triggered? → A: **Auto-attempt on open** — automatically attempt a location fix when the composer opens (permission-gated), with no separate "find nearby" tap. If permission is already granted it fetches silently; if undecided, the in-context request is tied to this explicit act of opening the composer; if denied / offline / slow it degrades silently to manual search.
 
 ## Requirements *(mandatory)*
 
@@ -112,11 +119,11 @@ blocking, falling back to manual search.
 - **FR-003**: The composer page MUST offer an explicit Save and an explicit Cancel; Save persists the story locally and returns to the launching screen; Cancel discards and returns.
 - **FR-004**: Back and Escape MUST close the composer page and return to the screen it was opened from (the feed, a city page, etc.), consistent with the app's existing page-layer Back/Escape behavior, without leaving the user deeper than where they started.
 - **FR-005**: The Journal MUST expose a clear primary "write a story" entry point that opens the composer page.
-- **FR-006**: Leaving the composer with unsaved, non-empty content MUST NOT silently discard it — the app MUST either preserve a resumable draft or require an explicit discard confirmation.
+- **FR-006**: Leaving the composer with unsaved, non-empty content MUST auto-preserve it as a resumable local draft and restore that draft when the composer next opens for the same context (a new story, or the specific story being edited); no discard-confirmation modal is shown on exit. The cached draft is transient on-device state only — never written as reference/shared data, never transmitted — and is cleared once the story is saved or the draft is explicitly discarded.
 - **FR-007**: A short tap on the Journal bottom-nav button MUST open the Journal feed (unchanged), and a long-press (press-and-hold beyond a short threshold) on that same button MUST open the composer page pre-set to today's date.
 - **FR-008**: The long-press MUST NOT also trigger the normal tap navigation, and a normal tap MUST NOT trigger the composer; a scroll/drag beginning on the button cancels the long-press.
 - **FR-009**: There MUST be an accessible, keyboard-operable equivalent for "start today's story" so the long-press is never the only path to it (e.g., a keyboard shortcut and/or a visible control).
-- **FR-010**: When the composer page opens for a NEW story, the app MUST attempt to obtain the device's current location to suggest nearby places, subject to the user's permission.
+- **FR-010**: When the composer page opens for a NEW story, the app MUST automatically attempt to obtain the device's current location to suggest nearby places — on open, with no separate "find nearby" tap — subject to the user's permission: if permission is already granted the fix is fetched silently; if permission is undecided, the in-context request is tied to this explicit act of opening the composer.
 - **FR-011**: Location access MUST be opt-in and permission-gated, requested in the context of this explicit action; the app MUST NOT block the composer waiting for a location result and MUST time out gracefully.
 - **FR-012**: If location permission is absent/denied, the device is offline, or the fix fails/times out, the composer MUST remain fully usable with manual place search and MUST NOT surface an error or a blocking state.
 - **FR-013**: Device coordinates MUST be used only on-device to rank nearby reference places; they MUST NOT be written onto the saved story record and MUST NOT be transmitted off the device.
@@ -141,7 +148,7 @@ blocking, falling back to manual search.
 - **SC-003**: A long-press on the Journal nav button opens today's composer in a single gesture (no intermediate feed or "new story" tap), while a short tap still opens the feed — two distinct, reliable outcomes from the same control.
 - **SC-004**: Every "write today" path is reachable without a pointer (keyboard/AT), verified by completing the flow using only the keyboard.
 - **SC-005**: With location available, a relevant "near you" place can be selected in one tap within 2 seconds of opening the composer; with location denied/offline, the composer is fully usable with zero errors shown and no added wait.
-- **SC-006**: No unsaved draft with typed content is ever lost without an explicit user choice (confirmed discard or auto-preserved draft), across Back, Escape, Cancel, and tab-switch.
+- **SC-006**: No unsaved draft with typed content is ever lost — it is auto-preserved and restored on reopen — across Back, Escape, Cancel, and tab-switch.
 - **SC-007**: With the network fully disabled, the entire flow (open, write, near-you suggestions, save) works, and a network monitor records zero outbound requests attributable to this feature.
 - **SC-008**: The composer page passes automated accessibility checks (WCAG 2.1 AA), and the build fails if any en/fr/ko translation key is missing.
 
