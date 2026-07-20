@@ -7,7 +7,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - claude/repo-setup-speckit-3magw3
+      - main
   workflow_dispatch:
 
 permissions:

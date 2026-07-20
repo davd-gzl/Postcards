@@ -6,7 +6,7 @@ name: Tests
 on:
   push:
     branches:
-      - claude/repo-setup-speckit-3magw3
+      - main
   pull_request:
   workflow_dispatch:
 

@@ -11,6 +11,10 @@ on:
       - "claude/**"
   workflow_dispatch:
 
+# The release-publish step needs to create/replace a GitHub Release + its tag.
+permissions:
+  contents: write
+
 concurrency:
   group: android-apk-${{ github.ref }}
   cancel-in-progress: true
@@ -53,3 +57,20 @@ jobs:
           name: postcards-debug-apk
           path: apps/postcards/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      # Also publish it to the Releases page so it's downloadable without opening
+      # the Actions run. One rolling prerelease ("debug-latest") holds the newest
+      # build: delete + recreate so its tag always points at the current commit.
+      # main only — feature-branch pushes still get the run artifact above.
+      - name: Publish the APK to the rolling debug release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete debug-latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create debug-latest \
+            "apps/postcards/android/app/build/outputs/apk/debug/app-debug.apk#postcards-debug.apk" \
+            --title "Latest debug APK" \
+            --notes "Automated debug build from ${{ github.sha }}. Debug/unsigned — not for production." \
+            --prerelease \
+            --target "${{ github.sha }}"
