@@ -893,11 +893,13 @@ h1.brand {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1 1 auto;
+  /* flex-basis 0: the detail only ever occupies the space LEFT OVER after the full
+     name, and truncates (even down to nothing) before the name gives up a single
+     character. So "Boulogne-Billancourt" shows in full and its "· region · people"
+     is what shortens — never the city name. (A content-sized basis let the name
+     keep losing a proportional slice, which is why names still clipped.) */
+  flex: 1 1 0;
   min-width: 0;
-  /* The region/detail yields its space FIRST, so "Buenos Aires" never collapses to
-     "Bu…" just to keep "· Argentina - …" on screen. */
-  flex-shrink: 12;
 }
 /* Long-name rows (monuments, airports): let the NAME wrap to another line rather
    than truncate, and push the country detail onto its own line below it. */

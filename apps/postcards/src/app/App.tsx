@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, type JSX } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, type JSX } from "react";
 import { useVisits } from "../lib/store/useVisits";
 import { useTrips } from "../lib/store/useTrips";
 import { useStories } from "../lib/store/useStories";
@@ -83,6 +83,36 @@ export function App() {
   const mapVisible = tab === "map" && !cityPageId && !countryPageId;
   const firstRender = useRef(true);
 
+  // Scroll memory. <main> is the single scroll container reused across tabs and
+  // detail pages, so its scrollTop leaks between views: open a city while scrolled
+  // down a list and the city opened mid-page; go back and the list had lost its
+  // place. Remember each view's scroll and restore it on return, so "back" lands
+  // you exactly where you were. A CITY page is the exception — it always opens at
+  // the TOP (you drilled into a new thing), so its scroll is never saved. A country
+  // page IS a long list you open cities from, so it's remembered like a tab.
+  const forceTop = !!cityPageId;
+  const viewKey = cityPageId
+    ? `city:${cityPageId}`
+    : countryPageId
+      ? `country:${countryPageId}`
+      : `tab:${tab}`;
+  const scrollTops = useRef<Map<string, number>>(new Map());
+  const viewKeyRef = useRef(viewKey);
+  const onMainScroll = () => {
+    const el = mainRef.current;
+    // City pages always reopen at the top, so there's nothing to remember for them.
+    if (el && !viewKeyRef.current.startsWith("city:"))
+      scrollTops.current.set(viewKeyRef.current, el.scrollTop);
+  };
+  // Runs before paint: point the scroll-memory at the new view, then place the
+  // scroll — top for a freshly-opened city, the remembered offset otherwise.
+  useLayoutEffect(() => {
+    viewKeyRef.current = viewKey;
+    const el = mainRef.current;
+    if (!el) return;
+    el.scrollTop = forceTop ? 0 : (scrollTops.current.get(viewKey) ?? 0);
+  }, [viewKey, forceTop]);
+
   useEffect(() => {
     void useVisits.getState().load();
     void useTrips.getState().load();
@@ -99,7 +129,9 @@ export function App() {
       firstRender.current = false;
       return;
     }
-    mainRef.current?.focus();
+    // preventScroll: the layout effect above already placed the scroll; a plain
+    // focus() would yank it back to pull <main> into view and undo the restore.
+    mainRef.current?.focus({ preventScroll: true });
   }, [tab, cityPageId, countryPageId]);
 
   useEffect(() => {
@@ -193,6 +225,14 @@ export function App() {
         return;
       }
       if (ui.goBack()) {
+        arm();
+        return;
+      }
+      // A detail page is still open with no history behind it (e.g. deep-linked or
+      // opened from search): close it in place — Back must never fall through and
+      // quit the app while you're looking at a city/country page.
+      if (ui.cityPageId || ui.countryPageId) {
+        ui.closePages();
         arm();
         return;
       }
@@ -307,6 +347,7 @@ export function App() {
             ref={mainRef}
             id="main"
             tabIndex={-1}
+            onScroll={onMainScroll}
             className={"content" + (mapVisible ? " flush" : "")}
           >
             {/* The map stays MOUNTED (hidden, not unmounted) once it has been
