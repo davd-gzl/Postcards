@@ -36,10 +36,12 @@ interface UiState {
   focusSearch: () => void;
   mapFocus: { lon: number; lat: number; nonce: number } | null;
   flyTo: (lon: number, lat: number) => void;
-  /** A place picked anywhere (search, a list, a chip): fly the map AND select it
-   *  in the in-view list. `id` is the gazetteer/place id the map list keys on. */
-  selectedPlace: { id: string; nonce: number } | null;
-  selectPlace: (lon: number, lat: number, id: string) => void;
+  /** A place picked anywhere OFF the map (search, a list, a chip): fly the map to
+   *  it AND open its preview card, exactly like tapping its marker. Carries the
+   *  full place so the map can build the card (name, kind, page) without having
+   *  to re-resolve it from an id alone. */
+  selectedPlace: { place: PlaceRef; lon: number; lat: number; nonce: number } | null;
+  selectPlace: (lon: number, lat: number, place: PlaceRef) => void;
   /** GeoNames id (or heritage/custom id) of the open detail page (null = closed). */
   cityPageId: string | null;
   openCity: (id: string) => void;
@@ -97,14 +99,15 @@ export const useUi = create<UiState>((set, get) => {
         mapFocus: { lon, lat, nonce: (get().mapFocus?.nonce ?? 0) + 1 },
       }),
     selectedPlace: null,
-    selectPlace: (lon, lat, id) =>
+    selectPlace: (lon, lat, place) =>
+      // No mapFocus here: the fly comes WITH the card (via the map's
+      // selectedPlace effect → focus.popup), so the place isn't eased twice.
       set({
         history: pushHistory(),
         tab: "map",
         cityPageId: null,
         countryPageId: null,
-        mapFocus: { lon, lat, nonce: (get().mapFocus?.nonce ?? 0) + 1 },
-        selectedPlace: { id, nonce: (get().selectedPlace?.nonce ?? 0) + 1 },
+        selectedPlace: { place, lon, lat, nonce: (get().selectedPlace?.nonce ?? 0) + 1 },
       }),
     cityPageId: null,
     openCity: (id) => set({ history: pushHistory(), cityPageId: id, countryPageId: null }),

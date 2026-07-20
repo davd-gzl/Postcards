@@ -220,7 +220,8 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
   const toggleFavorite = useVisits((s) => s.toggleFavorite);
   const [menuOpen, setMenuOpen] = useState(false);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
-  const { sub } = placeMeta(ref, v, t);
+  const { coord, sub } = placeMeta(ref, v, t);
+  const isAirport = v.place.kind === "airport";
   // A visited monument/airport must NOT read as a city: show its own glyph, not
   // the country flag (cities keep the flag).
   const rowGlyph =
@@ -235,12 +236,20 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
       <button
         className="city-focus"
         type="button"
-        onClick={() =>
-          v.place.kind === "country"
-            ? useUi.getState().openCountry(v.place.countryId)
-            : useUi.getState().openCity(v.place.id)
+        onClick={() => {
+          if (v.place.kind === "country") useUi.getState().openCountry(v.place.countryId);
+          // An airport's detail page is thin — send it to the map and open the
+          // same card as tapping its marker (been-there / Details), rather than
+          // the sparse page. Cities & monuments keep their rich detail page.
+          else if (isAirport && coord)
+            useUi.getState().selectPlace(coord.lon, coord.lat, v.place);
+          else useUi.getState().openCity(v.place.id);
+        }}
+        aria-label={
+          isAirport
+            ? t("stats.records.showOnMap", { name: v.place.name })
+            : t("places.row.openAria", { name: v.place.name })
         }
-        aria-label={t("places.row.openAria", { name: v.place.name })}
       >
         <CityLine
           flag={rowGlyph}
