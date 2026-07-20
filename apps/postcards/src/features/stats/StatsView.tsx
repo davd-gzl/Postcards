@@ -285,17 +285,11 @@ function CountryRow({
 
         {detail && (
           <>
-            {/* No per-city chip list here: a country can have hundreds of cities and
-                the wall of chips added noise without insight (the cities % bar above
-                already summarizes it; the city names live in Places and on the map).
-                Regions and monuments stay — they're few and "what's left" is useful. */}
-            <ChipRow
-              label={t("stats.country.chipRegionsVisited")}
-              names={detail.regionsVisited}
-              done
-              hint={t("stats.country.showOnMapHint")}
-              onPick={flyToRegion}
-            />
+            {/* No per-city OR per-region "visited" chip wall: a country can have
+                dozens of each and the "done" chips add noise without insight (the %
+                bars above already summarize them; the names live in Places / the map).
+                Only "what's LEFT" stays — regions and monuments still to see are the
+                actionable, space-worthy lists. */}
             <ChipRow
               label={t("stats.country.chipRegionsToVisit")}
               names={detail.regionsRemainingNames}
