@@ -415,6 +415,9 @@ export const ko: Messages = {
   "addPlace.coordsAria": "좌표, 위도 쉼표 경도, 선택",
   "addPlace.addButton": "장소 추가",
   "addPlace.coordsHint": "좌표는 “48.85, 2.35” 형식이어야 합니다.",
+  "addPlace.populationPlaceholder": "인구 (선택)",
+  "addPlace.populationAria": "인구 (선택)",
+  "addPlace.populationHint": "인구는 정수여야 합니다.",
 
   // ── Journal ──────────────────────────────────────────────────────────────
   "journal.title": "일지",

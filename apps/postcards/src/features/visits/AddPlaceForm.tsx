@@ -37,6 +37,16 @@ export function AddPlaceForm({
   const [coords, setCoords] = useState(
     initialCoords ? `${initialCoords.lat.toFixed(5)}, ${initialCoords.lon.toFixed(5)}` : "",
   );
+  // Optional: how many people live here. Your own place has no reference population,
+  // so without this it counts as 0 and the population filter hides it — type a real
+  // number and it's treated like any city of that size.
+  const [population, setPopulation] = useState("");
+  const parsedPop = useMemo(() => {
+    const s = population.trim();
+    if (s === "") return null;
+    const n = Math.floor(Number(s));
+    return Number.isFinite(n) && n >= 0 && n <= 100_000_000 ? n : null;
+  }, [population]);
 
   const parsed = useMemo(() => {
     const m = /^\s*(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(coords);
@@ -69,6 +79,7 @@ export function AddPlaceForm({
         name: cleanName,
         countryId: cc,
         ...(parsed ?? {}),
+        ...(parsedPop != null ? { population: parsedPop } : {}),
       },
     });
     if (parsed) useUi.getState().flyTo(parsed.lon, parsed.lat);
@@ -135,8 +146,23 @@ export function AddPlaceForm({
           {t("addPlace.addButton")}
         </button>
       </div>
+      <div className="add-place-row">
+        <input
+          className="search-input"
+          type="number"
+          inputMode="numeric"
+          min={0}
+          value={population}
+          placeholder={t("addPlace.populationPlaceholder")}
+          aria-label={t("addPlace.populationAria")}
+          onChange={(e) => setPopulation(e.target.value)}
+        />
+      </div>
       {coords.trim() !== "" && !parsed && (
         <p className="muted small">{t("addPlace.coordsHint")}</p>
+      )}
+      {population.trim() !== "" && parsedPop == null && (
+        <p className="muted small">{t("addPlace.populationHint")}</p>
       )}
     </div>
   );

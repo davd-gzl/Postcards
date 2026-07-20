@@ -416,6 +416,9 @@ export const fr: Messages = {
   "addPlace.coordsAria": "Coordonnées, latitude virgule longitude, facultatif",
   "addPlace.addButton": "Ajouter le lieu",
   "addPlace.coordsHint": "Les coordonnées doivent ressembler à « 48.85, 2.35 ».",
+  "addPlace.populationPlaceholder": "Habitants (facultatif)",
+  "addPlace.populationAria": "Population (facultatif)",
+  "addPlace.populationHint": "La population doit être un nombre entier d’habitants.",
 
   // ── Journal ──────────────────────────────────────────────────────────────
   "journal.title": "Journal",

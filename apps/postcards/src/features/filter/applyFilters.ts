@@ -9,9 +9,20 @@ import type { TFunction, MessageKey } from "../../lib/i18n";
 // browse cities through viewport.ts (status + population there); THESE cover the
 // Places lists and the active-filter summary, so both screens agree.
 
+/** A place's headcount for the population filter, or null when population does NOT
+ *  apply to that kind (monuments, airports, countries) so they're never filtered
+ *  out by it. Cities read the gazetteer; a custom pin uses the number the user
+ *  typed (absent = 0), so a custom "city" with no people counts as 0. */
+function populationFor(v: Visit, ref: ReferenceData): number | null {
+  if (v.place.kind === "city") return ref.cityById(v.place.id)?.population ?? 0;
+  if (v.place.kind === "custom") return v.place.population ?? 0;
+  return null; // heritage / airport / country: no population — exempt from the filter
+}
+
 /** Whether one visit record passes the filter (Places lists). `status` is owned by
- *  the Places tab, so callers pass state.status = "all" there; population gates
- *  cities only (D4 — non-city kinds pass it unchanged). */
+ *  the Places tab, so callers pass state.status = "all" there; the population gate
+ *  applies to cities and custom pins (a missing/0 headcount fails a positive
+ *  threshold); monuments and airports have no population and always pass it. */
 export function placeMatches(v: Visit, ref: ReferenceData, s: FilterState): boolean {
   // Multi-select status: a saved record shows only if its own status is among the
   // selected ones (empty = all). A saved record is never "unvisited", so a filter
@@ -22,18 +33,18 @@ export function placeMatches(v: Visit, ref: ReferenceData, s: FilterState): bool
   if (s.favoritesOnly && !v.favorite) return false;
   if (s.hasPhoto && !(v.photos && v.photos.length > 0)) return false;
   if (s.hasNote && !(v.note && v.note.trim())) return false;
-  if (s.minPop > 0 && v.place.kind === "city") {
-    const c = ref.cityById(v.place.id);
-    if ((c?.population ?? 0) < s.minPop) return false;
+  if (s.minPop > 0) {
+    const pop = populationFor(v, ref);
+    // Only kinds that HAVE a population (city, custom) are gated; null = exempt.
+    if (pop !== null && pop < s.minPop) return false;
   }
   if (s.continent && ref.continentOf(v.place.countryId) !== s.continent) return false;
   return true;
 }
 
-/** Population of a visit's place for sorting (cities only; others sort as 0). */
+/** Population of a visit's place for sorting (city + custom; others sort as 0). */
 function popOf(v: Visit, ref: ReferenceData): number {
-  if (v.place.kind !== "city") return 0;
-  return ref.cityById(v.place.id)?.population ?? 0;
+  return populationFor(v, ref) ?? 0;
 }
 
 const collator = new Intl.Collator(undefined, { sensitivity: "base" });

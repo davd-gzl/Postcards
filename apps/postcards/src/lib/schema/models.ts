@@ -43,6 +43,11 @@ export const PlaceRefSchema = z
     // (user-authored points have no reference-data entry to look coords up in).
     lat: z.number().min(-90).max(90).optional(),
     lon: z.number().min(-180).max(180).optional(),
+    // Population the user typed for a "custom" point (their own place has no
+    // reference-data population). Personal annotation, never reference data — lets
+    // a custom place carry a real headcount so it isn't treated as 0 by the
+    // population filter. Absent = unknown = counts as 0 for filtering.
+    population: z.number().int().min(0).max(100_000_000).optional(),
   })
   .strict();
 
