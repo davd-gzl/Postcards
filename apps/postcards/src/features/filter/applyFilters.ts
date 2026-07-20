@@ -28,6 +28,12 @@ export function placeMatches(v: Visit, ref: ReferenceData, s: FilterState): bool
   // selected ones (empty = all). A saved record is never "unvisited", so a filter
   // of only "unvisited" excludes every saved place.
   if (s.status.length > 0 && !s.status.includes(v.status as FilterStatus)) return false;
+  // Kind filter — the shared map "mode". "cities" also covers your own custom pins
+  // (they ride with cities on the map); "monuments" = heritage sites; "airports" =
+  // airports. "all" (the default) filters nothing by kind.
+  if (s.mode === "cities" && v.place.kind !== "city" && v.place.kind !== "custom") return false;
+  if (s.mode === "monuments" && v.place.kind !== "heritage") return false;
+  if (s.mode === "airports" && v.place.kind !== "airport") return false;
   if (!mapDateMatches(v.date, s.date)) return false;
   if (s.folder && v.folder !== s.folder) return false;
   if (s.favoritesOnly && !v.favorite) return false;

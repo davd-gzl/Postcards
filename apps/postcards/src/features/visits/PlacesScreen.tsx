@@ -18,7 +18,7 @@ import { PassportScreen } from "../passport/PassportScreen";
 import { ExperiencesScreen } from "../experiences/ExperiencesScreen";
 import { PhotoWall } from "./PhotoWall";
 import { ListPager } from "../../ui/ListPager";
-import { useFilters, currentFilters, type FilterStatus } from "../../lib/store/useFilters";
+import { useFilters, currentFilters, type FilterStatus, type FilterMode } from "../../lib/store/useFilters";
 import { placeMatches, sortPlaces, activeChips } from "../filter/applyFilters";
 import { FilterPanel } from "../../ui/FilterPanel";
 import { FilterSummary } from "../../ui/FilterSummary";
@@ -434,6 +434,7 @@ export function PlacesScreen() {
       filters.folder,
       filters.minPop,
       filters.sort,
+      filters.mode,
       filters.favoritesOnly,
       filters.hasPhoto,
       filters.hasNote,
@@ -594,31 +595,30 @@ export function PlacesScreen() {
     setShown(100);
   };
 
-  // Moments / Photos / Passport are self-contained collections: the view-switcher
-  // tabs (Visited/Wishlist/…) do nothing there, and Moments/Passport render their
-  // own heading — so drop that double chrome and reclaim a header band on mobile.
-  const isCollection = view === "moments" || view === "photos" || view === "passport";
+  // Moments / Passport render their own heading, so hide the "Places" title there
+  // to avoid a double heading — but the view-switcher tabs stay (see the header).
   const hideTitle = view === "moments" || view === "passport";
 
   return (
     <section aria-label={t("places.aria")}>
       <div className="section-head">
         {!hideTitle && <h2>{t("places.title")}</h2>}
-        {!isCollection && (
-          <div className="segmented wrap" role="group" aria-label={t("places.viewAria")}>
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                aria-pressed={view === t.id}
-                className={view === t.id ? "seg-on" : ""}
-                onClick={() => switchView(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* The view tabs stay visible in EVERY view — including the Moments/Photos/
+            Passport collections — so opening a collection doesn't wipe the page and
+            strand you; one tap on Visited/Favorites/… is always the way back. */}
+        <div className="segmented wrap" role="group" aria-label={t("places.viewAria")}>
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              aria-pressed={view === t.id}
+              className={view === t.id ? "seg-on" : ""}
+              onClick={() => switchView(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
         <div
           className="segmented wrap places-collections"
           role="group"
@@ -679,6 +679,22 @@ export function PlacesScreen() {
           sort / growth are shared, so both screens agree. */}
       {isListView && (
         <div className="places-filter-row">
+          {/* Filter the list by place kind (the app's ONE shared "mode", so the map
+              agrees): All / Cities / Monuments / Airports — "Cities" also covers your
+              own custom pins. */}
+          <div className="segmented wrap places-kind" role="group" aria-label={t("filter.mode.title")}>
+            {(["all", "cities", "monuments", "airports"] as FilterMode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={filters.mode === m}
+                className={filters.mode === m ? "seg-on" : ""}
+                onClick={() => filters.set({ mode: m })}
+              >
+                {t(`filter.mode.${m}` as const)}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             className={"chip filter-open-chip" + (placesFilterActive ? " chip-on" : "")}
