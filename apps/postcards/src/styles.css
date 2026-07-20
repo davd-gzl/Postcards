@@ -3912,6 +3912,22 @@ button.brand:focus-visible {
 .moment-main > .city-line {
   width: auto;
   flex: 0 1 auto;
+  /* A moment's TITLE is a sentence ("Stand before the Pyramids"), not a place
+     name — let it and its hint wrap onto more lines rather than truncate to
+     "Stand before the Pyram…". Overrides the dense single-line city-row look. */
+  flex-wrap: wrap;
+}
+.moment-main .city-line .city-name {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+.moment-main .city-line .city-sub {
+  /* Keep the hint at its own size (don't squeeze it to nothing) so it stays
+     readable, flowing after the title or wrapping just below it. */
+  flex: 0 1 auto;
+  white-space: normal;
+  overflow: visible;
 }
 .moment-spots {
   display: flex;
