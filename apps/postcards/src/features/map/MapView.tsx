@@ -1887,17 +1887,12 @@ export function MapView({
       offset: focus.popup ? [0, cardSeatOffsetY(map)] : [0, 0],
       duration: dur,
     });
-    // A list tap on a not-visited city opens its preview card — same popup as
-    // tapping the dot, above the marker — once the marker has eased to centre so
-    // there's room for it on screen.
+    // Open the card IMMEDIATELY (anchored to the place's coordinates) and let the
+    // map ease beneath it — the popup stays pinned to the marker and rides along
+    // with the move. Tapping a list row shows the card at once, exactly like
+    // tapping the dot, instead of waiting for the camera to finish settling.
     const pop = focus.popup;
-    if (pop) {
-      const open = () => {
-        if (map && loadedRef.current) openPlacePopup(map, [focus.lon, focus.lat], pop, pop.showImage);
-      };
-      if (dur === 0) open();
-      else setTimeout(open, dur + 40);
-    }
+    if (pop && loadedRef.current) openPlacePopup(map, [focus.lon, focus.lat], pop, pop.showImage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.key]);
 
