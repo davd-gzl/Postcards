@@ -197,16 +197,12 @@ export function App() {
   }, []);
 
   // The phone Back gesture used to quit the whole app. Trap it: Back retraces
-  // YOUR actual steps — close an open dialog, then return to the previous
-  // screen you were on (tab or page, via the app's own history), one step per
-  // press. In an installed (standalone) app Back never exits (use the home
-  // gesture); in a browser tab a Back with no app history left is allowed
-  // through so the tab can still navigate away normally.
+  // YOUR actual steps — close an open dialog, then return to the previous screen
+  // you were on (tab or page, via the app's own history), one step per press.
+  // Back NEVER quits the app: at the home screen (map, empty history) it just
+  // re-arms and stays put — like a native app, where you leave with the home/tab
+  // gesture, not by backing out into a blank page.
   useEffect(() => {
-    const standalone =
-      (typeof matchMedia !== "undefined" && matchMedia("(display-mode: standalone)").matches) ||
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (navigator as any).standalone === true;
     const arm = () => history.pushState({ pc: true }, "");
     arm();
     function onPop() {
@@ -236,8 +232,11 @@ export function App() {
         arm();
         return;
       }
-      // Nothing left to go back to: keep a standalone app open; let a browser tab go.
-      if (standalone) arm();
+      // At the home screen (map) with nothing left in history: DON'T let Back quit
+      // the app — re-arm so the map is the terminal home for the Back gesture
+      // (matches a native app; use the tab/home gesture to actually leave). Fixes
+      // "map → places → country → back back … quit the application".
+      arm();
     }
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
