@@ -170,7 +170,6 @@ export function TravelScreen() {
   const year = useUi((s) => s.tripYear) as YearFilter;
   const month = useUi((s) => s.tripMonth) as MonthFilter;
   const setTripPeriod = useUi((s) => s.setTripPeriod);
-  const flyTo = useUi((s) => s.flyTo);
 
   const years = useMemo(() => tripYears(trips), [trips]);
   const months = useMemo(() => (year === "all" ? [] : tripMonths(trips, year)), [trips, year]);
@@ -575,7 +574,16 @@ export function TravelScreen() {
                     className="city-focus"
                     type="button"
                     title={t("travel.airports.focusAria", { name: airport.name })}
-                    onClick={() => flyTo(airport.lon, airport.lat)}
+                    onClick={() =>
+                      // Show on the map = open the airport's marker card, not a
+                      // silent re-centre (matches tapping its dot on the map).
+                      useUi.getState().selectPlace(airport.lon, airport.lat, {
+                        kind: "airport",
+                        id: airport.id,
+                        name: `${airport.name} (${airport.id})`,
+                        countryId: airport.countryIso2,
+                      })
+                    }
                   >
                     <CityLine
                       flag={countryFlag(airport.countryIso2)}

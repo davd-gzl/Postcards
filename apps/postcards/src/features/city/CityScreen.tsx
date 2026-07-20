@@ -78,7 +78,7 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
   const ref = useMemo(() => getReferenceData(), []);
   const visits = useVisits((s) => s.visits);
   const stories = useStories((s) => s.stories);
-  const flyTo = useUi((s) => s.flyTo);
+  const selectPlace = useUi((s) => s.selectPlace);
   const openJournalDraft = useUi((s) => s.openJournalDraft);
 
   // The page serves cities, World Heritage monuments, airports, and your own
@@ -207,7 +207,15 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
               </strong>{" "}
               {t("city.fact.latLon")}
             </span>
-            <button className="mini-btn" type="button" onClick={() => flyTo(lon, lat)}>
+            <button
+              className="mini-btn"
+              type="button"
+              onClick={() => {
+                // "Show on map" opens the place's marker card (been-there /
+                // Details), not just a silent re-centre — same as tapping its dot.
+                if (place) selectPlace(lon, lat, place);
+              }}
+            >
               {t("city.showOnMap")}
             </button>
           </>
@@ -321,7 +329,12 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
           <ul className="city-list">
             {nearby.monuments.map((h) => (
               <li key={h.id} className="city-row compact">
-                <button className="city-focus" type="button" onClick={() => flyTo(h.lon, h.lat)}>
+                <button
+                  className="city-focus"
+                  type="button"
+                  onClick={() => useUi.getState().openCity(h.id)}
+                  aria-label={t("places.row.openAria", { name: h.name })}
+                >
                   <CityLine flag="🏛️" name={h.name} sub={<>· {t("city.away", { km: formatKm(h.km) })}</>} multiline />
                 </button>
                 <StateToggles
@@ -339,7 +352,12 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
           <ul className="city-list">
             {nearby.airports.map((a) => (
               <li key={a.id} className="city-row compact">
-                <button className="city-focus" type="button" onClick={() => flyTo(a.lon, a.lat)}>
+                <button
+                  className="city-focus"
+                  type="button"
+                  onClick={() => useUi.getState().openCity(a.id)}
+                  aria-label={t("places.row.openAria", { name: `${a.name} (${a.id})` })}
+                >
                   <CityLine
                     flag="✈️"
                     name={`${a.name} (${a.id})`}

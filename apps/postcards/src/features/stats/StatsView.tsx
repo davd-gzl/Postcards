@@ -343,7 +343,15 @@ export function StatsView() {
   function flyToCity(iso2: string) {
     return (name: string) => {
       const c = ref.citiesOf(iso2).find((x) => x.name === name);
-      if (c) flyTo(c.lon, c.lat);
+      // A record tile ("Show X on the map") opens the city's marker card, same
+      // as tapping its dot — not just a silent re-centre.
+      if (c)
+        useUi.getState().selectPlace(c.lon, c.lat, {
+          kind: "city",
+          id: c.id,
+          name: c.name,
+          countryId: c.countryIso2,
+        });
     };
   }
   // Open the visited Places list narrowed to a population band (0 = all cities,
