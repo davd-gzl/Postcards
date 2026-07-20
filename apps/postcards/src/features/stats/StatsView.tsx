@@ -484,13 +484,44 @@ export function StatsView() {
         <div className="kpi-row" aria-label={t("stats.totalsAria")}>
           <button
             type="button"
-            className="kpi"
+            className="kpi kpi-hero"
             title={t("stats.kpi.visitedTitle")}
             onClick={() => useUi.getState().openPlaces("visited")}
           >
             <span className="kpi-num kpi-been">{formatInt(coverage.citiesVisited)}</span>
             <span className="kpi-label">{t("stats.kpi.cities")}</span>
           </button>
+          <button
+            type="button"
+            className="kpi"
+            title={t("stats.kpi.countriesTitle")}
+            onClick={() => useUi.getState().openPlaces("countries")}
+          >
+            <span className="kpi-num kpi-air">{formatInt(coverage.countriesVisited)}</span>
+            <span className="kpi-label">{t("stats.kpi.countries")}</span>
+          </button>
+          {bands.mega + bands.large > 0 && (
+            <button
+              type="button"
+              className="kpi"
+              title={t("stats.kpi.visitedTitle")}
+              onClick={() => useUi.getState().openPlaces("visited")}
+            >
+              <span className="kpi-num kpi-been">{formatInt(bands.mega + bands.large)}</span>
+              <span className="kpi-label">{t("stats.kpi.bigCities")}</span>
+            </button>
+          )}
+          {bands.mega > 0 && (
+            <button
+              type="button"
+              className="kpi"
+              title={t("stats.kpi.visitedTitle")}
+              onClick={() => useUi.getState().openPlaces("visited")}
+            >
+              <span className="kpi-num kpi-been">{formatInt(bands.mega)}</span>
+              <span className="kpi-label">{t("stats.kpi.megaCities")}</span>
+            </button>
+          )}
           {coverage.airportsVisited > 0 && (
             <button
               type="button"
