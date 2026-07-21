@@ -105,8 +105,22 @@ export const useVisits = create<VisitsState>((set, get) => ({
   async load() {
     // Migrate any legacy single-photo records into the `photos` gallery, and
     // backfill `updatedAt` from `addedAt` for records made before sync existed.
-    const visits = (await db.getAllVisits()).map(normalizeVisitPhotos).map(backfillUpdatedAt);
-    set({ visits, loaded: true });
+    const dbVisits = (await db.getAllVisits()).map(normalizeVisitPhotos).map(backfillUpdatedAt);
+    // Don't clobber optimistic writes that landed DURING this async read: marking a
+    // place and immediately opening a list would otherwise blank it (the snapshot
+    // predated the in-flight putVisit). Merge by id, newest `updatedAt` winning —
+    // a no-op on the normal path where nothing was written yet (in-memory empty).
+    const inMem = get().visits;
+    if (inMem.length === 0) {
+      set({ visits: dbVisits, loaded: true });
+      return;
+    }
+    const byId = new Map(dbVisits.map((v) => [v.visitId, v]));
+    for (const v of inMem) {
+      const prior = byId.get(v.visitId);
+      if (!prior || (v.updatedAt ?? "") >= (prior.updatedAt ?? "")) byId.set(v.visitId, v);
+    }
+    set({ visits: [...byId.values()], loaded: true });
   },
   async addVisit({ place, date = null, note = null, status = "visited", favorite = false }) {
     const existing = findByPlace(get().visits, place);

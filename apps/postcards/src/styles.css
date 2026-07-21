@@ -2209,6 +2209,27 @@ h1.brand {
   margin-bottom: 10px;
 }
 
+/* The two independent Places axes (kind × status, spec 018): each on its own row,
+   a short label + the reused segmented control. The controls keep the segmented
+   ≥44px touch targets; the label just names the axis for sighted users (the group
+   itself is aria-labelled). */
+.places-axes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+.places-axis {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.places-axis-label {
+  min-width: 44px;
+  font-weight: 600;
+}
+
 /* Fit-to-my-places button over the map */
 /* Active (keyboard) search option (never the trailing Add chip) */
 .results li button.opt-active,

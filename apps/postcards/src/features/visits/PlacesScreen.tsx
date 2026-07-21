@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
-import { useUi } from "../../lib/store/useUi";
+import { useUi, type PlacesView } from "../../lib/store/useUi";
 import { registerEscape } from "../../lib/store/escapeStack";
 import { useSettings } from "../../lib/store/useSettings";
 import { countryFlag } from "../../lib/format/format";
@@ -18,35 +18,90 @@ import { PassportScreen } from "../passport/PassportScreen";
 import { ExperiencesScreen } from "../experiences/ExperiencesScreen";
 import { PhotoWall } from "./PhotoWall";
 import { ListPager } from "../../ui/ListPager";
-import { useFilters, currentFilters, type FilterStatus, type FilterMode } from "../../lib/store/useFilters";
+import { browseList, type BrowseRow } from "./browseList";
+import {
+  useFilters,
+  currentFilters,
+  type FilterStatus,
+  type FilterMode,
+} from "../../lib/store/useFilters";
 import { placeMatches, sortPlaces, activeChips } from "../filter/applyFilters";
 import { FilterPanel } from "../../ui/FilterPanel";
 import { FilterSummary } from "../../ui/FilterSummary";
 import { useT, type TFunction } from "../../lib/i18n";
 
-// Everything place-shaped lives here, one view each — including Favorites (its
-// own view, not a mode that repaints "Visited"), Moments and the Passport.
-type View = "visited" | "favorites" | "wishlist" | "countries" | "monuments" | "moments" | "passport" | "photos";
-const VIEWS: readonly View[] = ["visited", "favorites", "wishlist", "countries", "monuments", "moments", "passport"];
-// The screen unmounts on every tab switch — remember the last view so coming
-// back lands where you were, not on "Visited".
-const VIEW_KEY = "postcards-places-view";
-function loadView(): View {
+// The Places screen is ONE unified explore-&-track surface (spec 018): two
+// independent single-select axes drive it — a KIND (what you're looking at) and a
+// STATUS/scope (which of them) — plus a separate COLLECTIONS cluster (Moments /
+// Photos / Passport) for the cross-cutting views that are not a place kind. No
+// concept lives in two controls: each place kind appears only on the kind axis.
+type Kind = "all" | "cities" | "monuments" | "airports" | "countries";
+type Status = "all" | "visited" | "wishlist" | "favorites" | "notVisited";
+type Collection = "moments" | "photos" | "passport";
+
+const KINDS: readonly Kind[] = ["all", "cities", "monuments", "airports", "countries"];
+const STATUSES: readonly Status[] = ["all", "visited", "wishlist", "favorites", "notVisited"];
+
+// The three axis/collection selections persist, so returning to Places lands where
+// you were (the screen unmounts on every tab switch). Defaults show the personal
+// records (kind=all, status=all) — a brand-new user still gets a full world to
+// browse the moment they pick a kind.
+const KIND_KEY = "postcards-places-kind";
+const STATUS_KEY = "postcards-places-status";
+const COLLECTION_KEY = "postcards-places-collection";
+function loadKind(): Kind {
   try {
-    const v = localStorage.getItem(VIEW_KEY);
-    return (VIEWS as readonly string[]).includes(v ?? "") ? (v as View) : "visited";
+    const v = localStorage.getItem(KIND_KEY);
+    return (KINDS as readonly string[]).includes(v ?? "") ? (v as Kind) : "all";
   } catch {
-    return "visited";
+    return "all";
   }
 }
-function saveView(v: View): void {
+function loadStatus(): Status {
   try {
-    localStorage.setItem(VIEW_KEY, v);
+    const v = localStorage.getItem(STATUS_KEY);
+    return (STATUSES as readonly string[]).includes(v ?? "") ? (v as Status) : "all";
+  } catch {
+    return "all";
+  }
+}
+function loadCollection(): Collection | null {
+  try {
+    const v = localStorage.getItem(COLLECTION_KEY);
+    return v === "moments" || v === "photos" || v === "passport" ? v : null;
+  } catch {
+    return null;
+  }
+}
+function save(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
   } catch {
     /* private mode: not persisted */
   }
 }
 
+// A view request from elsewhere (the map's counter strip, the "f"/"x" shortcuts)
+// still speaks the old PlacesView vocabulary — map each onto the new axes so the
+// callers keep working unchanged.
+function mapRequest(view: PlacesView): { kind?: Kind; status?: Status; collection: Collection | null } {
+  switch (view) {
+    case "visited":
+      return { kind: "all", status: "visited", collection: null };
+    case "favorites":
+      return { kind: "all", status: "favorites", collection: null };
+    case "wishlist":
+      return { kind: "all", status: "wishlist", collection: null };
+    case "countries":
+      return { kind: "countries", status: "all", collection: null };
+    case "monuments":
+      return { kind: "monuments", status: "all", collection: null };
+    case "moments":
+      return { collection: "moments" };
+    case "passport":
+      return { collection: "passport" };
+  }
+}
 
 /** Map coordinate to fly to (if known) and the secondary "· type · place" label for a visit. */
 function placeMeta(
@@ -311,6 +366,49 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
   );
 });
 
+/** One reference-browse row (spec 018 US2): the whole world of a kind, each row
+ *  status-marked from the user's records and toggleable in place. */
+const BrowseRowItem = memo(function BrowseRowItem({ r }: { r: BrowseRow }) {
+  const t = useT();
+  const glyph =
+    r.kind === "city"
+      ? countryFlag(r.countryIso2)
+      : r.kind === "airport"
+        ? "✈️"
+        : heritageGlyph(r.category);
+  // Only a real dataset category becomes a tag — never an invented one (FR-008).
+  const cat =
+    r.kind === "heritage" &&
+    (r.category === "cultural" || r.category === "natural" || r.category === "mixed")
+      ? r.category
+      : null;
+  return (
+    <li className="city-row compact">
+      <button
+        className="city-focus"
+        type="button"
+        onClick={() => useUi.getState().openCity(r.id)}
+        aria-label={t("places.row.openAria", { name: r.name })}
+      >
+        <CityLine
+          flag={glyph}
+          name={r.name}
+          multiline={r.kind !== "city"}
+          sub={
+            <>
+              · {r.sub}
+              {cat ? (
+                <span className="folder-chip">{t(`filter.category.${cat}` as const)}</span>
+              ) : null}
+            </>
+          }
+        />
+      </button>
+      <StateToggles place={r.place} />
+    </li>
+  );
+});
+
 /** The "nothing matches" line — with a one-tap Clear when a name search caused it,
  *  so a search for a place you haven't logged isn't a dead end (the native ✕ on a
  *  type=search box is unreliable on Android/Capacitor). */
@@ -328,7 +426,8 @@ function NoMatch({ q, onClear }: { q: string; onClear: () => void }) {
   );
 }
 
-/** Your visited places, your wish-to-go list, monuments, + a checklist of every country. */
+/** Browse and track every place kind — one kind axis × one status axis, plus the
+ *  cross-cutting Moments / Photos / Passport collections. */
 export function PlacesScreen() {
   const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
@@ -336,42 +435,88 @@ export function PlacesScreen() {
 
   const scope = useSettings((s) => s.countryScope);
   const filters = useFilters();
-  const [view, setView] = useState<View>(loadView);
+  const [kind, setKind] = useState<Kind>(loadKind);
+  const [status, setStatus] = useState<Status>(loadStatus);
+  const [collection, setCollection] = useState<Collection | null>(loadCollection);
   const [filter, setFilter] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [shown, setShown] = useState(100);
   const [groupBy, setGroupBy] = useState<"none" | "country" | "year">("none");
   const q = filter.trim().toLowerCase();
 
-  // Another screen (the map's counter strip) asked for a specific view.
+  // The kind axis IS the app's shared map "mode" (FR-012): selecting a place kind
+  // keeps the map and Places in lock-step. Countries is a Places-only kind (the
+  // map has no country mode), so it leaves the mode untouched.
+  useEffect(() => {
+    if (kind === "countries") return;
+    const target: FilterMode = kind; // "all" | "cities" | "monuments" | "airports"
+    if (useFilters.getState().mode !== target) useFilters.getState().set({ mode: target });
+  }, [kind]);
+
+  const selectKind = useCallback((k: Kind) => {
+    setKind(k);
+    save(KIND_KEY, k);
+    setCollection(null);
+    save(COLLECTION_KEY, "");
+    setFilter("");
+    setShown(100);
+  }, []);
+  const selectStatus = useCallback((s: Status) => {
+    setStatus(s);
+    save(STATUS_KEY, s);
+    setCollection(null);
+    save(COLLECTION_KEY, "");
+    setShown(100);
+  }, []);
+  const selectCollection = useCallback((c: Collection) => {
+    setCollection(c);
+    save(COLLECTION_KEY, c);
+    setFilter("");
+    setShown(100);
+  }, []);
+
+  // Another screen (the map's counter strip, the passport/moments shortcuts) asked
+  // for a specific view — translate it onto the two axes / a collection.
   const request = useUi((s) => s.placesViewRequest);
   useEffect(() => {
     if (!request) return;
-    setView(request.view);
-    saveView(request.view);
+    const m = mapRequest(request.view);
+    if (m.kind !== undefined) {
+      setKind(m.kind);
+      save(KIND_KEY, m.kind);
+    }
+    if (m.status !== undefined) {
+      setStatus(m.status);
+      save(STATUS_KEY, m.status);
+    }
+    setCollection(m.collection);
+    save(COLLECTION_KEY, m.collection ?? "");
     setFilter("");
+    setShown(100);
     // Consume the request — a plain Places-tab tap later should land on the
-    // last-used view, not replay this one forever.
+    // last-used selection, not replay this one forever.
     useUi.setState({ placesViewRequest: null });
   }, [request?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Escape/Back steps out of a collection (Moments/Photos/Passport are little
-  // screens of their own) back to the Visited list, before leaving the tab.
+  // screens of their own) back to the browse, before leaving the tab.
   useEffect(() => {
     return registerEscape(() => {
-      if (view === "moments" || view === "photos" || view === "passport") {
-        setView("visited");
-        saveView("visited");
+      if (collection) {
+        setCollection(null);
+        save(COLLECTION_KEY, "");
         setFilter("");
         setShown(100);
         return true;
       }
       return false;
     });
-  }, [view]);
+  }, [collection]);
 
   const heritageAvailable = useMemo(() => ref.allHeritage().length > 0, [ref]);
 
+  // ── Personal records (kind = All): the user's own saved places, all kinds mixed,
+  // narrowed by the status axis. ────────────────────────────────────────────────
   const visitedRaw = useMemo(() => visits.filter((v) => v.status === "visited"), [visits]);
   // Display order is favourites-first + A–Z, but FROZEN for the visit: toggling ★
   // must not make a row jump out from under your finger. The order is re-derived
@@ -405,27 +550,9 @@ export function PlacesScreen() {
     [visits],
   );
 
-  // Visited places grouped for the Countries checklist: how many sub-places
-  // (cities/airports/monuments) sit in each country, and which countries carry an
-  // explicit country record. A country counts as visited if EITHER is true — so a
-  // country is "visited" simply by visiting a city in it (no per-country record).
-  const countryVisited = useMemo(() => {
-    const sub = new Map<string, number>();
-    const explicit = new Set<string>();
-    for (const v of visits) {
-      if (v.status === "wishlist") continue;
-      if (v.place.kind === "country") explicit.add(v.place.countryId);
-      // Airports don't make a country visited: changing planes there is not
-      // being there (matches visitedCountryIds in Stats/Passport).
-      else if (v.place.kind !== "airport" && v.place.countryId !== "ZZ")
-        sub.set(v.place.countryId, (sub.get(v.place.countryId) ?? 0) + 1);
-    }
-    return { sub, explicit };
-  }, [visits]);
-
-  // Places owns status via its tabs; every OTHER dimension (date / folder /
-  // population / sort / growth) comes from the ONE shared filter store, so the
-  // map and Places never disagree (spec 016 US3). The name box is separate.
+  // Places owns status via the status axis; every OTHER dimension (date / folder /
+  // population / sort / growth) comes from the ONE shared filter store, so the map
+  // and Places never disagree (spec 016 US3). The name box is separate.
   const listState = useMemo(
     () => ({ ...currentFilters(filters), status: [] as FilterStatus[] }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -452,19 +579,32 @@ export function PlacesScreen() {
     },
     [q, ref, listState],
   );
-  // Each list view reads its filtered rows three times per render (the slice
-  // and two length checks) — filter once, and only when the inputs change.
-  const visitedShown = useMemo(() => filterVisits(visited), [filterVisits, visited]);
-  const favoritesShown = useMemo(() => filterVisits(favorites), [filterVisits, favorites]);
-  const wishlistShown = useMemo(() => filterVisits(wishlist), [filterVisits, wishlist]);
+  // The base personal list for the chosen status: All = everything you've saved
+  // (visited + want-list), the rest are the matching slice. Not-visited has no
+  // personal records — it's the cue to pick a kind and browse the world.
+  const personalBase = useMemo<Visit[]>(() => {
+    switch (status) {
+      case "visited":
+        return visited;
+      case "wishlist":
+        return wishlist;
+      case "favorites":
+        return favorites;
+      case "all":
+        return [...visited, ...wishlist];
+      default:
+        return [];
+    }
+  }, [status, visited, wishlist, favorites]);
+  const personalShown = useMemo(() => filterVisits(personalBase), [filterVisits, personalBase]);
 
-  // "Many ways to see the data": the visited list can also be GROUPED — into
+  // "Many ways to see the data": the kind=All list can also be GROUPED — into
   // expandable country sections (passport-style) or under the year you went. The
   // same filter/sort feeds it, so the groups always agree with the flat list.
-  const visitedGroups = useMemo(() => {
+  const personalGroups = useMemo(() => {
     if (groupBy === "none") return null;
     const m = new Map<string, { key: string; label: string; flag: string; visits: Visit[] }>();
-    for (const v of visitedShown) {
+    for (const v of personalShown) {
       const key =
         groupBy === "country" ? v.place.countryId || "ZZ" : v.date?.slice(0, 4) || "—";
       const g = m.get(key);
@@ -484,7 +624,15 @@ export function PlacesScreen() {
       arr.sort((a, b) => b.visits.length - a.visits.length || a.label.localeCompare(b.label));
     else arr.sort((a, b) => (a.key === "—" ? 1 : b.key === "—" ? -1 : b.key.localeCompare(a.key)));
     return arr;
-  }, [groupBy, visitedShown, ref, t]);
+  }, [groupBy, personalShown, ref, t]);
+
+  // ── World browse (kind = Cities / Monuments / Airports): the whole gazetteer of
+  // the chosen kind, status-overlaid, via the tested pure engine. ────────────────
+  const browseRows = useMemo<BrowseRow[]>(() => {
+    if (kind !== "cities" && kind !== "monuments" && kind !== "airports") return [];
+    return browseList(kind, status, currentFilters(filters), ref, visits, filter.trim());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, status, filters.continent, filters.minPop, filters.category, ref, visits, filter]);
 
   // The years your visits span, newest first, for the date filter chips.
   const years = useMemo(() => {
@@ -516,7 +664,7 @@ export function PlacesScreen() {
   }, [visits, ref]);
 
   // The active dimensions Places actually acts on (status + map mode are excluded —
-  // status is the tab, mode is map-only). Drives the Filter button's badge.
+  // status is the axis, mode is map-only). Drives the Filter button's badge.
   const placesFilterChips = useMemo(
     () => activeChips(currentFilters(filters), t).filter((c) => c.field !== "status" && c.field !== "mode"),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -533,188 +681,187 @@ export function PlacesScreen() {
     ],
   );
   const placesFilterActive = placesFilterChips.length > 0;
-  const isListView = view === "visited" || view === "favorites" || view === "wishlist";
 
-  const countryRows = useMemo(() => {
-    const all = ref.countries.filter((c) => inScope(c.sovereignty, scope));
-    const list = !q ? [...all] : all.filter((c) => c.name.toLowerCase().includes(q));
-    // Your countries first; the rest stay alphabetical below them.
-    const seen = (c: (typeof list)[number]) =>
-      (countryVisited.sub.get(c.iso2) ?? 0) > 0 || countryVisited.explicit.has(c.iso2) ? 0 : 1;
-    return list.sort((a, b) => seen(a) - seen(b) || a.name.localeCompare(b.name));
-  }, [ref, q, scope, countryVisited]);
-
-  const [hideSeen, setHideSeen] = useState(false);
-  const seenHeritage = useMemo(
-    () =>
-      new Set(
-        visits
-          .filter((v) => v.place.kind === "heritage" && v.status !== "wishlist")
-          .map((v) => v.place.id),
-      ),
-    [visits],
-  );
-  const monuments = useMemo(() => {
-    // A search keeps the ranker's best-match-first order; only the full
-    // unfiltered list reads better alphabetically.
-    let base = q
-      ? ref.searchHeritage(q, 200)
-      : [...ref.allHeritage()].sort((a, b) => a.name.localeCompare(b.name));
-    // Searchable BY COUNTRY too (FR-007): a query that names a country surfaces
-    // that country's sites, not only ones whose own name matches the query.
-    if (q) {
-      const iso2s = new Set(ref.searchCountries(q, 3).map((c) => c.iso2));
-      if (iso2s.size) {
-        const have = new Set(base.map((h) => h.id));
-        base = [...base, ...ref.allHeritage().filter((h) => iso2s.has(h.countryIso2) && !have.has(h.id))];
+  // ── Countries (kind = Countries): the whole-world checklist, all shown at once. ─
+  // A country counts as visited if EITHER an explicit country record exists OR a
+  // (non-airport) place inside it is visited — coverage is derived. Wishlist /
+  // favorite country records give the status axis something to narrow on too.
+  const countryStatus = useMemo(() => {
+    const sub = new Map<string, number>();
+    const explicit = new Set<string>();
+    const wish = new Set<string>();
+    const fav = new Set<string>();
+    for (const v of visits) {
+      if (v.place.kind === "country") {
+        if (v.status === "wishlist") wish.add(v.place.countryId);
+        else explicit.add(v.place.countryId);
+        if (v.favorite) fav.add(v.place.countryId);
+      } else if (v.status !== "wishlist" && v.place.kind !== "airport" && v.place.countryId !== "ZZ") {
+        sub.set(v.place.countryId, (sub.get(v.place.countryId) ?? 0) + 1);
       }
     }
-    // Category tag filter (cultural / natural / mixed) — read from the dataset.
-    if (filters.category) base = base.filter((h) => h.category === filters.category);
-    return hideSeen ? base.filter((h) => !seenHeritage.has(h.id)) : base;
-  }, [ref, q, hideSeen, seenHeritage, filters.category]);
+    return { sub, explicit, wish, fav };
+  }, [visits]);
+  const isCountryVisited = useCallback(
+    (iso2: string) => (countryStatus.sub.get(iso2) ?? 0) > 0 || countryStatus.explicit.has(iso2),
+    [countryStatus],
+  );
+  const countryRows = useMemo(() => {
+    const all = ref.countries.filter((c) => inScope(c.sovereignty, scope));
+    let list = !q ? [...all] : all.filter((c) => c.name.toLowerCase().includes(q));
+    // The status axis narrows the checklist too.
+    if (status === "visited") list = list.filter((c) => isCountryVisited(c.iso2));
+    else if (status === "notVisited") list = list.filter((c) => !isCountryVisited(c.iso2));
+    else if (status === "wishlist") list = list.filter((c) => countryStatus.wish.has(c.iso2));
+    else if (status === "favorites") list = list.filter((c) => countryStatus.fav.has(c.iso2));
+    // Your countries first; the rest stay alphabetical below them.
+    const seen = (c: (typeof list)[number]) => (isCountryVisited(c.iso2) ? 0 : 1);
+    return list.sort((a, b) => seen(a) - seen(b) || a.name.localeCompare(b.name));
+  }, [ref, q, scope, status, countryStatus, isCountryVisited]);
 
-  const TABS: { id: View; label: string }[] = [
-    { id: "visited", label: t("places.tab.visited", { count: visited.length }) },
-    // Favorites earns its spot once you've starred something (it never repaints
-    // the Visited tab — that read as the section disappearing).
-    ...(favorites.length > 0 || view === "favorites"
-      ? [{ id: "favorites" as const, label: t("places.tab.favorites", { count: favorites.length }) }]
-      : []),
-    { id: "wishlist", label: t("places.tab.wishlist", { count: wishlist.length }) },
-    { id: "monuments", label: t("places.tab.monuments") },
-    { id: "countries", label: t("places.tab.countries") },
-  ];
-  // Moments and the Passport aren't list views of your places — they're little
-  // screens of their own. They get a separate cluster so they don't blend into
-  // the view switcher above.
-  const COLLECTIONS: { id: View; label: string; emoji: string }[] = [
-    { id: "moments", label: t("places.collection.moments"), emoji: "✨" },
-    { id: "photos", label: t("places.collection.photos"), emoji: "📷" },
-    { id: "passport", label: t("places.collection.passport"), emoji: "🛂" },
-  ];
-
-  function switchView(id: View) {
-    setView(id);
-    saveView(id);
-    setFilter("");
-    setShown(100);
-  }
+  const kindLabel = (k: Kind): string =>
+    k === "countries" ? t("places.tab.countries") : t(`filter.mode.${k}` as const);
 
   const clearSearch = () => {
     setFilter("");
     setShown(100);
   };
 
-  // Every view names itself in ONE consistent place — the header title below. It
-  // used to sit above the tabs for the lists but be rendered lower, by the
-  // Moments/Passport screens themselves, so the label jumped around. Collections
-  // show their own name here; the personal lists share the "Places" section title.
-  const viewTitle =
-    view === "moments"
+  // The single header title names the current view. Collections show their own
+  // name here; the browse shares the "Places" section title.
+  const title =
+    collection === "moments"
       ? t("moments.title")
-      : view === "passport"
+      : collection === "passport"
         ? t("passport.title")
-        : view === "photos"
+        : collection === "photos"
           ? t("places.collection.photos")
           : t("places.title");
+
+  const isBrowseKind = kind === "cities" || kind === "monuments" || kind === "airports";
+  // The search box (and its filter row) belong to the browse; countries has its
+  // own inline search, collections have none, and an empty personal list / the
+  // "pick a kind" hint have nothing to filter.
+  const showSearch =
+    !collection &&
+    kind !== "countries" &&
+    !(kind === "all" && (status === "notVisited" || personalBase.length === 0));
+  const searchPlaceholder =
+    kind === "monuments"
+      ? t("places.filter.monumentsPlaceholder")
+      : kind === "all"
+        ? t("places.filter.placesPlaceholder")
+        : t("places.browse.searchPlaceholder");
+  const searchAria =
+    kind === "monuments"
+      ? t("places.filter.monumentsAria")
+      : kind === "all"
+        ? t("places.filter.placesAria")
+        : t("places.browse.searchAria");
+  const personalEmptyKey =
+    status === "wishlist"
+      ? "places.wishlist.empty"
+      : status === "favorites"
+        ? "places.favorites.empty"
+        : "places.visited.empty";
+  const personalEmptyEmoji = status === "wishlist" ? "⚑" : status === "favorites" ? "♥" : "🧳";
 
   return (
     <section aria-label={t("places.aria")}>
       <div className="section-head">
-        <h2>{viewTitle}</h2>
-        {/* The view tabs stay visible in EVERY view — including the Moments/Photos/
-            Passport collections — so opening a collection doesn't wipe the page and
-            strand you; one tap on Visited/Favorites/… is always the way back. */}
-        <div className="segmented wrap" role="group" aria-label={t("places.viewAria")}>
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              aria-pressed={view === t.id}
-              className={view === t.id ? "seg-on" : ""}
-              onClick={() => switchView(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <h2>{title}</h2>
+        {/* Moments / Photos / Passport: cross-cutting collections, not a place kind
+            — a separate (unfilled) cluster so they don't blend into the axes. */}
         <div
           className="segmented wrap places-collections"
           role="group"
           aria-label={t("places.collectionsAria")}
         >
-          {COLLECTIONS.map((c) => (
+          {(["moments", "photos", "passport"] as const).map((c) => (
             <button
-              key={c.id}
+              key={c}
               type="button"
-              aria-pressed={view === c.id}
-              className={view === c.id ? "seg-on" : ""}
-              onClick={() => switchView(c.id)}
+              aria-pressed={collection === c}
+              className={collection === c ? "seg-on" : ""}
+              onClick={() => selectCollection(c)}
             >
-              <span aria-hidden>{c.emoji}</span> {c.label}
+              <span aria-hidden>{c === "moments" ? "✨" : c === "photos" ? "📷" : "🛂"}</span>{" "}
+              {t(`places.collection.${c}` as const)}
             </button>
           ))}
         </div>
       </div>
 
-      {(view === "visited" || view === "favorites" || view === "wishlist" || view === "monuments") &&
-        (view !== "visited" || visited.length > 0) &&
-        (view !== "favorites" || favorites.length > 0) &&
-        (view !== "wishlist" || wishlist.length > 0) &&
-        (view !== "monuments" || heritageAvailable) && (
-          <div className="search">
-            <input
-              type="search"
-              className="search-input places-filter has-clear"
-              placeholder={
-                view === "monuments"
-                  ? t("places.filter.monumentsPlaceholder")
-                  : t("places.filter.placesPlaceholder")
-              }
-              aria-label={
-                view === "monuments"
-                  ? t("places.filter.monumentsAria")
-                  : t("places.filter.placesAria")
-              }
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            />
-            {filter && (
+      {/* The two independent axes. Each place kind appears in exactly ONE control
+          (the kind axis) — no kind duplicated in a status/collection row (US1). */}
+      <div className="places-axes">
+        <div className="places-axis">
+          <span className="places-axis-label muted small" aria-hidden>
+            {t("places.kindLabel")}
+          </span>
+          <div className="segmented wrap" role="group" aria-label={t("places.kindAria")}>
+            {KINDS.map((k) => (
               <button
+                key={k}
                 type="button"
-                className="search-clear"
-                aria-label={t("search.clear")}
-                title={t("search.clear")}
-                onClick={clearSearch}
+                aria-pressed={!collection && kind === k}
+                className={!collection && kind === k ? "seg-on" : ""}
+                onClick={() => selectKind(k)}
               >
-                ✕
-              </button>
-            )}
-          </div>
-        )}
-
-      {/* The ONE Filter (spec 016 US3): the same panel the map uses, minus status
-          (the tabs above own it) and mode (map-only). Date / folder / population /
-          sort / growth are shared, so both screens agree. */}
-      {isListView && (
-        <div className="places-filter-row">
-          {/* Filter the list by place kind (the app's ONE shared "mode", so the map
-              agrees): All / Cities / Monuments / Airports — "Cities" also covers your
-              own custom pins. */}
-          <div className="segmented wrap places-kind" role="group" aria-label={t("filter.mode.title")}>
-            {(["all", "cities", "monuments", "airports"] as FilterMode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={filters.mode === m}
-                className={filters.mode === m ? "seg-on" : ""}
-                onClick={() => filters.set({ mode: m })}
-              >
-                {t(`filter.mode.${m}` as const)}
+                {kindLabel(k)}
               </button>
             ))}
           </div>
+        </div>
+        <div className="places-axis">
+          <span className="places-axis-label muted small" aria-hidden>
+            {t("places.statusLabel")}
+          </span>
+          <div className="segmented wrap" role="group" aria-label={t("places.statusAria")}>
+            {STATUSES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={!collection && status === s}
+                className={!collection && status === s ? "seg-on" : ""}
+                onClick={() => selectStatus(s)}
+              >
+                {t(`places.status.${s}` as const)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {showSearch && (
+        <div className="search">
+          <input
+            type="search"
+            className="search-input places-filter has-clear"
+            placeholder={searchPlaceholder}
+            aria-label={searchAria}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+          {filter && (
+            <button
+              type="button"
+              className="search-clear"
+              aria-label={t("search.clear")}
+              title={t("search.clear")}
+              onClick={clearSearch}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* The ONE Filter (spec 016 US3): the same panel the map uses, minus status
+          (the status axis owns it) and mode (map-only). Shown for the browse and
+          the personal list — not countries (its own controls) or a collection. */}
+      {!collection && kind !== "countries" && (
+        <div className="places-filter-row">
           <button
             type="button"
             className={"chip filter-open-chip" + (placesFilterActive ? " chip-on" : "")}
@@ -730,9 +877,9 @@ export function PlacesScreen() {
             ⚙ {t("filter.open")}
             {placesFilterActive ? ` · ${placesFilterChips.length}` : ""}
           </button>
-          {/* Group-by lives on the SAME line as Filter (visited list only) so the
-              two controls read as one toolbar, not two stacked rows. */}
-          {view === "visited" && visitedShown.length > 0 && (
+          {/* Group-by lives on the SAME line as Filter (kind=All only) so the two
+              controls read as one toolbar, not two stacked rows. */}
+          {kind === "all" && personalShown.length > 0 && (
             <div className="places-groupby btn-row" role="group" aria-label={t("places.groupBy")}>
               {(["none", "country", "year"] as const).map((g) => (
                 <button
@@ -747,30 +894,60 @@ export function PlacesScreen() {
               ))}
             </div>
           )}
+          {/* Category tag filter (cultural / natural / mixed), read from the dataset
+              — only for the Monuments kind. */}
+          {kind === "monuments" && (
+            <div
+              className="segmented wrap places-kind"
+              role="group"
+              aria-label={t("filter.category.aria")}
+            >
+              {(["", "cultural", "natural", "mixed"] as const).map((cat) => (
+                <button
+                  key={cat || "all"}
+                  type="button"
+                  aria-pressed={filters.category === cat}
+                  className={filters.category === cat ? "seg-on" : ""}
+                  onClick={() => filters.set({ category: cat })}
+                >
+                  {t(`filter.category.${cat || "all"}` as const)}
+                </button>
+              ))}
+            </div>
+          )}
           <FilterSummary exclude={["status", "mode"]} />
         </div>
       )}
 
-      {view === "visited" && (
+      {/* ── kind = All: your saved places, all kinds mixed, by status ── */}
+      {!collection && kind === "all" && (
         <>
-          {visited.length === 0 && (
+          {status === "notVisited" ? (
             <p className="muted empty">
               <span className="empty-emoji" aria-hidden>
-                🧳
+                🧭
               </span>
-              {t("places.visited.empty")}
+              {t("places.all.notVisitedHint")}{" "}
+              <button className="link" type="button" onClick={() => selectKind("cities")}>
+                {t("places.all.discoverBtn")}
+              </button>
             </p>
-          )}
-          {visited.length > 0 && visitedShown.length === 0 && (
+          ) : personalBase.length === 0 ? (
+            <p className="muted empty">
+              <span className="empty-emoji" aria-hidden>
+                {personalEmptyEmoji}
+              </span>
+              {t(personalEmptyKey)}
+            </p>
+          ) : personalShown.length === 0 ? (
             <NoMatch q={q} onClear={clearSearch} />
-          )}
-          {visitedGroups ? (
+          ) : personalGroups ? (
             <div className="places-groups">
-              {visitedGroups.map((grp) => (
+              {personalGroups.map((grp) => (
                 <details
                   key={grp.key}
                   className="journal-place-group"
-                  open={visitedGroups.length <= 6}
+                  open={personalGroups.length <= 6}
                 >
                   <summary className="journal-place-summary">
                     <span className="journal-place-name">
@@ -783,7 +960,7 @@ export function PlacesScreen() {
                   </summary>
                   <ul className="city-list">
                     {grp.visits.map((v) => (
-                      <VisitRow key={v.visitId} v={v} />
+                      <VisitRow key={v.visitId} v={v} wishlist={v.status === "wishlist"} />
                     ))}
                   </ul>
                 </details>
@@ -792,14 +969,14 @@ export function PlacesScreen() {
           ) : (
             <>
               <ul className="city-list">
-                {visitedShown.slice(0, shown).map((v) => (
-                  <VisitRow key={v.visitId} v={v} />
+                {personalShown.slice(0, shown).map((v) => (
+                  <VisitRow key={v.visitId} v={v} wishlist={v.status === "wishlist"} />
                 ))}
               </ul>
-              {visitedShown.length > shown && (
+              {personalShown.length > shown && (
                 <ListPager
                   shown={shown}
-                  total={visitedShown.length}
+                  total={personalShown.length}
                   step={100}
                   onMore={() => setShown((n) => n + 100)}
                 />
@@ -809,67 +986,10 @@ export function PlacesScreen() {
         </>
       )}
 
-      {view === "favorites" && (
+      {/* ── kind = Cities / Monuments / Airports: browse the whole world ── */}
+      {!collection && isBrowseKind && (
         <>
-          {favorites.length === 0 && (
-            <p className="muted empty">
-              <span className="empty-emoji" aria-hidden>
-                ♥
-              </span>
-              {t("places.favorites.empty")}
-            </p>
-          )}
-          {favorites.length > 0 && favoritesShown.length === 0 && (
-            <NoMatch q={q} onClear={clearSearch} />
-          )}
-          <ul className="city-list">
-            {favoritesShown.slice(0, shown).map((v) => (
-              <VisitRow key={v.visitId} v={v} />
-            ))}
-          </ul>
-          {favoritesShown.length > shown && (
-            <ListPager
-              shown={shown}
-              total={favoritesShown.length}
-              step={100}
-              onMore={() => setShown((n) => n + 100)}
-            />
-          )}
-        </>
-      )}
-
-      {view === "wishlist" && (
-        <>
-          {wishlist.length === 0 && (
-            <p className="muted empty">
-              <span className="empty-emoji" aria-hidden>
-                ⚑
-              </span>
-              {t("places.wishlist.empty")}
-            </p>
-          )}
-          {wishlist.length > 0 && wishlistShown.length === 0 && (
-            <NoMatch q={q} onClear={clearSearch} />
-          )}
-          <ul className="city-list">
-            {wishlistShown.slice(0, shown).map((v) => (
-              <VisitRow key={v.visitId} v={v} wishlist />
-            ))}
-          </ul>
-          {wishlistShown.length > shown && (
-            <ListPager
-              shown={shown}
-              total={wishlistShown.length}
-              step={100}
-              onMore={() => setShown((n) => n + 100)}
-            />
-          )}
-        </>
-      )}
-
-      {view === "monuments" && (
-        <>
-          {!heritageAvailable ? (
+          {kind === "monuments" && !heritageAvailable ? (
             <p className="muted empty">
               <span className="empty-emoji" aria-hidden>
                 🏛️
@@ -878,88 +998,30 @@ export function PlacesScreen() {
               <code>scripts/build-heritage-full.mjs</code>
               {t("places.monuments.emptyBuildPost")}
             </p>
+          ) : browseRows.length === 0 ? (
+            q ? (
+              <NoMatch q={q} onClear={clearSearch} />
+            ) : (
+              <p className="muted empty">
+                {t("places.browse.emptyStatus")}{" "}
+                {status !== "all" && (
+                  <button className="link" type="button" onClick={() => selectStatus("all")}>
+                    {t("places.browse.widen")}
+                  </button>
+                )}
+              </p>
+            )
           ) : (
             <>
-              <div className="countries-head">
-                <p className="muted small places-intro" style={{ margin: 0 }}>
-                  {t("places.monuments.desc")}
-                </p>
-                <button
-                  type="button"
-                  className={"chip" + (hideSeen ? " chip-on" : "")}
-                  aria-pressed={hideSeen}
-                  onClick={() => setHideSeen((v) => !v)}
-                >
-                  {t("places.monuments.hideSeen")}
-                </button>
-              </div>
-              {/* Filter by the dataset category (cultural / natural / mixed). */}
-              <div
-                className="segmented wrap places-kind"
-                role="group"
-                aria-label={t("filter.category.aria")}
-              >
-                {(["", "cultural", "natural", "mixed"] as const).map((cat) => (
-                  <button
-                    key={cat || "all"}
-                    type="button"
-                    aria-pressed={filters.category === cat}
-                    className={filters.category === cat ? "seg-on" : ""}
-                    onClick={() => filters.set({ category: cat })}
-                  >
-                    {t(`filter.category.${cat || "all"}` as const)}
-                  </button>
-                ))}
-              </div>
-              {monuments.length === 0 && (
-                <NoMatch q={q} onClear={clearSearch} />
-              )}
               <ul className="city-list">
-                {monuments.slice(0, shown).map((h) => {
-                  const country = ref.countryByIso2(h.countryIso2)?.name ?? h.countryIso2;
-                  const cat =
-                    h.category === "cultural" || h.category === "natural" || h.category === "mixed"
-                      ? h.category
-                      : null;
-                  const place = {
-                    kind: "heritage" as const,
-                    id: h.id,
-                    name: h.name,
-                    countryId: h.countryIso2,
-                  };
-                  return (
-                    <li key={h.id} className="city-row compact">
-                      <button
-                        className="city-focus"
-                        type="button"
-                        onClick={() => useUi.getState().openCity(h.id)}
-                        aria-label={t("places.row.openAria", { name: h.name })}
-                      >
-                        {/* The category glyph (🏛/🌲/🏞) matches the map markers;
-                            the country name + a category tag read on the sub line. */}
-                        <CityLine
-                          flag={heritageGlyph(h.category)}
-                          name={h.name}
-                          sub={
-                            <>
-                              · {country}
-                              {cat ? (
-                                <span className="folder-chip">{t(`filter.category.${cat}` as const)}</span>
-                              ) : null}
-                            </>
-                          }
-                          multiline
-                        />
-                      </button>
-                      <StateToggles place={place} />
-                    </li>
-                  );
-                })}
+                {browseRows.slice(0, shown).map((r) => (
+                  <BrowseRowItem key={`${r.kind}:${r.id}`} r={r} />
+                ))}
               </ul>
-              {monuments.length > shown && (
+              {browseRows.length > shown && (
                 <ListPager
                   shown={shown}
-                  total={monuments.length}
+                  total={browseRows.length}
                   step={100}
                   onMore={() => setShown((n) => n + 100)}
                 />
@@ -969,11 +1031,14 @@ export function PlacesScreen() {
         </>
       )}
 
-      {view === "countries" && (
+      {/* ── kind = Countries: the whole-world checklist, all shown at once ── */}
+      {!collection && kind === "countries" && (
         <>
           <div className="countries-head">
             <ScopeToggle />
-            <span className="muted small">{t("places.countries.count", { count: countryRows.length })}</span>
+            <span className="muted small">
+              {t("places.countries.count", { count: countryRows.length })}
+            </span>
           </div>
           <p className="muted small" style={{ margin: "0 0 6px" }}>
             {t("places.countries.desc")}
@@ -999,16 +1064,13 @@ export function PlacesScreen() {
               </button>
             )}
           </div>
-          {countryRows.length === 0 && (
-            <NoMatch q={q} onClear={clearSearch} />
-          )}
+          {countryRows.length === 0 && <NoMatch q={q} onClear={clearSearch} />}
           <ul className="city-list" style={{ marginTop: 8 }}>
             {/* Only ~250 countries — show them ALL at once (no pager); the name
                 search narrows live and visited countries sort first. */}
             {countryRows.map((c) => {
-              const subCount = countryVisited.sub.get(c.iso2) ?? 0;
-              const explicit = countryVisited.explicit.has(c.iso2);
-              const isVisited = subCount > 0 || explicit;
+              const subCount = countryStatus.sub.get(c.iso2) ?? 0;
+              const isVisited = isCountryVisited(c.iso2);
               const place = { kind: "country" as const, id: c.iso2, name: c.name, countryId: c.iso2 };
               return (
                 <li key={c.iso2} className="city-row compact dense">
@@ -1031,7 +1093,10 @@ export function PlacesScreen() {
                   {isVisited && subCount > 0 && (
                     // Visited through its cities/monuments — already counted; the
                     // chip says so, and ⚑ Want-to-go is suppressed (you've been).
-                    <span className="chip chip-on" aria-label={t("places.country.visitedAria", { name: c.name })}>
+                    <span
+                      className="chip chip-on"
+                      aria-label={t("places.country.visitedAria", { name: c.name })}
+                    >
                       ✓ {t("places.country.visitedChip")}
                     </span>
                   )}
@@ -1043,11 +1108,11 @@ export function PlacesScreen() {
         </>
       )}
 
-      {view === "moments" && <ExperiencesScreen embedded />}
+      {collection === "moments" && <ExperiencesScreen embedded />}
 
-      {view === "photos" && <PhotoWall />}
+      {collection === "photos" && <PhotoWall />}
 
-      {view === "passport" && <PassportScreen embedded />}
+      {collection === "passport" && <PassportScreen embedded />}
 
       <FilterPanel
         open={filterOpen}
