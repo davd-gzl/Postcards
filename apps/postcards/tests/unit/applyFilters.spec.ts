@@ -83,6 +83,30 @@ describe("placeMatches", () => {
     expect(placeMatches(cityVisit(paris, { folder: "Japan" }), ref, st({ folder: "Japan" }))).toBe(true);
     expect(placeMatches(cityVisit(paris), ref, st({ folder: "Japan" }))).toBe(false);
   });
+
+  it("monument category gates heritage only; no-op for other kinds and when unset", () => {
+    // A focused ref: the sync unit gazetteer carries no heritage, so stub the one
+    // lookup the category gate uses. Two tagged sites + one untagged.
+    const catRef = {
+      ...ref,
+      heritageById: (id: string) =>
+        id === "cult" ? { category: "cultural" } : id === "nat" ? { category: "natural" } : undefined,
+      continentOf: () => "Europe",
+    } as unknown as typeof ref;
+    const heritage = (id: string): Visit => ({
+      ...cityVisit(paris),
+      place: { kind: "heritage", id, name: id, countryId: "FR" },
+    });
+
+    // The filter keeps only the matching category…
+    expect(placeMatches(heritage("cult"), catRef, st({ category: "cultural" }))).toBe(true);
+    expect(placeMatches(heritage("nat"), catRef, st({ category: "cultural" }))).toBe(false);
+    // …a site the dataset can't classify is excluded only by an explicit filter…
+    expect(placeMatches(heritage("unknown"), catRef, st({ category: "cultural" }))).toBe(false);
+    expect(placeMatches(heritage("unknown"), catRef, DEFAULT_FILTERS)).toBe(true);
+    // …and the category axis never touches non-monuments.
+    expect(placeMatches(cityVisit(paris), ref, st({ category: "cultural" }))).toBe(true);
+  });
 });
 
 describe("sortPlaces", () => {

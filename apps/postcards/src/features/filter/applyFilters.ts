@@ -34,6 +34,11 @@ export function placeMatches(v: Visit, ref: ReferenceData, s: FilterState): bool
   if (s.mode === "cities" && v.place.kind !== "city" && v.place.kind !== "custom") return false;
   if (s.mode === "monuments" && v.place.kind !== "heritage") return false;
   if (s.mode === "airports" && v.place.kind !== "airport") return false;
+  // Monument category (cultural / natural / mixed) — a dataset tag, honoured only
+  // for heritage so the Places browse and the personal list agree (FR-008/FR-012).
+  // No-op for every other kind and when no category is selected.
+  if (s.category && v.place.kind === "heritage" && ref.heritageById(v.place.id)?.category !== s.category)
+    return false;
   if (!mapDateMatches(v.date, s.date)) return false;
   if (s.folder && v.folder !== s.folder) return false;
   if (s.favoritesOnly && !v.favorite) return false;

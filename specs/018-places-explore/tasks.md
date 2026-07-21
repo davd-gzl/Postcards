@@ -9,14 +9,14 @@ and the constitution requires automated coverage of core logic.
 
 ## Phase 1: Setup
 
-- [ ] T001 Add en/fr/ko i18n keys for the new Places controls (kind labels reuse `filter.mode.*`; add status-axis labels `places.status.{all,visited,wishlist,favorites,notVisited}`, `places.browse.*` empty/aria strings, `filter.category.{all,cultural,natural,mixed}`) with parity across `src/lib/i18n/{en,fr,ko}.ts`.
+- [x] T001 Add en/fr/ko i18n keys for the new Places controls (kind labels reuse `filter.mode.*`; add status-axis labels `places.status.{all,visited,wishlist,favorites,notVisited}`, `places.browse.*` empty/aria strings, `filter.category.{all,cultural,natural,mixed}`) with parity across `src/lib/i18n/{en,fr,ko}.ts`.
 - [x] T002 [P] Create stub `src/features/visits/browseList.ts` exporting `browseList(...)` and its `BrowseRow` type per `contracts/places-explore.md` (empty impl returning `[]`), so downstream files can import it.
 
 ## Phase 2: Foundational (blocking prerequisites)
 
 - [x] T003 Extend `FilterState` in `src/lib/store/useFilters.ts` with `category: "" | "cultural" | "natural" | "mixed"` (default `""`, session-scoped, added to `DEFAULT_FILTERS`, `currentFilters`, `isDefault`, `withFieldCleared`).
 - [x] T004 [P] Add a status-axis helper in `src/lib/store/useFilters.ts` (or a small `placesStatus.ts`) mapping the single UI status value (`all|visited|wishlist|favorites|notVisited`) ↔ the existing `status`/`favoritesOnly` fields per research D3; unit-cover the mapping.
-- [ ] T005 Extend `placeMatches` in `src/features/filter/applyFilters.ts` to honor `filter.category` when the place is a monument (heritage); no-op for other kinds; keep existing `mode`/status/minPop behavior.
+- [x] T005 Extend `placeMatches` in `src/features/filter/applyFilters.ts` to honor `filter.category` when the place is a monument (heritage); no-op for other kinds; keep existing `mode`/status/minPop behavior.
 - [x] T006 Implement `browseList(kind, filter, ref, visits, query)` in `src/features/visits/browseList.ts`: source reference rows for the kind (`ref.allCities()/allHeritage()/allAirports()/countries`), overlay status/favorite via `visitIndex(visits)`, apply status axis + `minPop`/`category`/`continent` + `query`, order per `sort`; for cities rank by population and return a bounded/paged working set (reuse `features/map/viewport.ts` ranking) — never all 135k.
 - [x] T007 [P] Extend search to match monuments & airports by country in `src/features/visits/search.ts` (and heritage/airport search paths): a query also matches `countryIso2` + country name for those kinds, alongside name/IATA/city.
 
@@ -64,7 +64,7 @@ and the constitution requires automated coverage of core logic.
 
 - [x] T021 [US4] Show the dataset category as a row tag (via `heritageGlyph()` + label) on monument `BrowseRow`s in `PlacesScreen.tsx`; graceful when a record has no category.
 - [x] T022 [US4] Add a category filter control (All/Cultural/Natural/Mixed) shown only for the Monuments kind, driving `filter.category`, in `PlacesScreen.tsx`.
-- [ ] T023 [P] [US4] Unit `tests/unit/applyFilters.spec.ts` (or browseList): category filter narrows monuments; no-category record excluded only by an explicit filter.
+- [x] T023 [P] [US4] Unit `tests/unit/applyFilters.spec.ts` (or browseList): category filter narrows monuments; no-category record excluded only by an explicit filter.
 - [x] T024 [US4] E2E in `places-explore.spec.ts`: category tag visible + category filter narrows.
 
 ## Phase 7: User Story 5 — All countries at once (P5)
