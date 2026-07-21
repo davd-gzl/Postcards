@@ -101,6 +101,45 @@ test("marking a browsed city visited updates in place", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Places" })).toBeVisible();
 });
 
+// US3 + FR-007/SC-005: search finds monuments & airports BY COUNTRY. Choosing the
+// Monuments (or Airports) kind and typing a country name narrows the browse to
+// that country's places — even though the country name matches none of their own.
+test("Monuments + a country query narrows the browse to that country's monuments", async ({
+  page,
+}) => {
+  await openPlaces(page);
+  await page
+    .getByRole("group", { name: KIND })
+    .getByRole("button", { name: "Monuments", exact: true })
+    .click();
+
+  await page.getByLabel("Search monuments").fill("France");
+  const list = page.locator(".city-list").first();
+  await expect(list.locator("li").first()).toBeVisible();
+  // Every surfaced monument sits in France (its sub-line names the country),
+  // and none belongs to an unrelated country like Japan.
+  const rows = list.locator("li");
+  expect(await rows.count()).toBeGreaterThan(0);
+  await expect(list.getByText("France").first()).toBeVisible();
+  await expect(list.getByText("Japan")).toHaveCount(0);
+});
+
+test("Airports + a country query narrows the browse to that country's airports", async ({
+  page,
+}) => {
+  await openPlaces(page);
+  await page
+    .getByRole("group", { name: KIND })
+    .getByRole("button", { name: "Airports", exact: true })
+    .click();
+
+  await page.getByLabel("Search all places").fill("Japan");
+  const list = page.locator(".city-list").first();
+  await expect(list.locator("li").first()).toBeVisible();
+  expect(await list.locator("li").count()).toBeGreaterThan(0);
+  await expect(list.getByText("Japan").first()).toBeVisible();
+});
+
 // US5 + SC-007: the country checklist shows every country at once — no pager —
 // and its name search still narrows live.
 test("Countries shows all at once with no load-more pager, still searchable", async ({ page }) => {

@@ -102,9 +102,18 @@ export function browseList(
   }
 
   if (kind === "monuments") {
-    const base: HeritageSite[] = q
+    let base: HeritageSite[] = q
       ? ref.searchHeritage(q, 500)
       : [...ref.allHeritage()].sort((a, b) => a.name.localeCompare(b.name));
+    // Searchable BY COUNTRY (FR-007): a query that names a country surfaces that
+    // country's sites, not only ones whose own name matches the query.
+    if (q) {
+      const iso2s = new Set(ref.searchCountries(q, 3).map((c) => c.iso2));
+      if (iso2s.size) {
+        const have = new Set(base.map((h) => h.id));
+        base = [...base, ...ref.allHeritage().filter((h) => iso2s.has(h.countryIso2) && !have.has(h.id))];
+      }
+    }
     for (const h of base) {
       if (filter.category && h.category !== filter.category) continue;
       if (!continentOk(h.countryIso2)) continue;
@@ -121,7 +130,15 @@ export function browseList(
   }
 
   // airports
-  const base = q ? ref.searchAirports(q, 500) : ref.allAirports();
+  let base = q ? ref.searchAirports(q, 500) : ref.allAirports();
+  // Searchable BY COUNTRY (FR-007): a query naming a country surfaces its airports.
+  if (q) {
+    const iso2s = new Set(ref.searchCountries(q, 3).map((c) => c.iso2));
+    if (iso2s.size) {
+      const have = new Set(base.map((a) => a.id));
+      base = [...base, ...ref.allAirports().filter((a) => iso2s.has(a.countryIso2) && !have.has(a.id))];
+    }
+  }
   for (const a of base) {
     if (!continentOk(a.countryIso2)) continue;
     const name = `${a.name} (${a.id})`;

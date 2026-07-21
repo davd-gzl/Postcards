@@ -18,7 +18,7 @@ and the constitution requires automated coverage of core logic.
 - [x] T004 [P] Add a status-axis helper in `src/lib/store/useFilters.ts` (or a small `placesStatus.ts`) mapping the single UI status value (`all|visited|wishlist|favorites|notVisited`) ↔ the existing `status`/`favoritesOnly` fields per research D3; unit-cover the mapping.
 - [ ] T005 Extend `placeMatches` in `src/features/filter/applyFilters.ts` to honor `filter.category` when the place is a monument (heritage); no-op for other kinds; keep existing `mode`/status/minPop behavior.
 - [x] T006 Implement `browseList(kind, filter, ref, visits, query)` in `src/features/visits/browseList.ts`: source reference rows for the kind (`ref.allCities()/allHeritage()/allAirports()/countries`), overlay status/favorite via `visitIndex(visits)`, apply status axis + `minPop`/`category`/`continent` + `query`, order per `sort`; for cities rank by population and return a bounded/paged working set (reuse `features/map/viewport.ts` ranking) — never all 135k.
-- [ ] T007 [P] Extend search to match monuments & airports by country in `src/features/visits/search.ts` (and heritage/airport search paths): a query also matches `countryIso2` + country name for those kinds, alongside name/IATA/city.
+- [x] T007 [P] Extend search to match monuments & airports by country in `src/features/visits/search.ts` (and heritage/airport search paths): a query also matches `countryIso2` + country name for those kinds, alongside name/IATA/city.
 
 **Checkpoint**: shared filter, browse builder, predicates, and search-by-country exist and are unit-tested — every story below builds on these.
 
@@ -52,9 +52,9 @@ and the constitution requires automated coverage of core logic.
 
 **Independent test**: search a country → its monuments & airports appear; search a monument name / airport code resolves; offline.
 
-- [ ] T018 [US3] Wire the Places search box to filter `browseList` by `query` for the active kind, and confirm the global top-bar search (`search.ts`) surfaces monuments/airports by country, in `PlacesScreen.tsx`.
-- [ ] T019 [P] [US3] Unit `tests/unit/search.spec.ts` additions: monuments & airports match by country name + ISO2; cities unaffected.
-- [ ] T020 [US3] E2E in `places-explore.spec.ts`: Monuments kind + country query → only that country's monuments; Airports kind + country query → that country's airports.
+- [x] T018 [US3] Wire the Places search box to filter `browseList` by `query` for the active kind, and confirm the global top-bar search (`search.ts`) surfaces monuments/airports by country, in `PlacesScreen.tsx`.
+- [x] T019 [P] [US3] Unit `tests/unit/search.spec.ts` additions: monuments & airports match by country name + ISO2; cities unaffected.
+- [x] T020 [US3] E2E in `places-explore.spec.ts`: Monuments kind + country query → only that country's monuments; Airports kind + country query → that country's airports.
 
 ## Phase 6: User Story 4 — Monument category tags + filter (P4)
 

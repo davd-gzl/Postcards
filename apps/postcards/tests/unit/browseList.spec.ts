@@ -30,6 +30,7 @@ const ref = {
   searchCities: (q: string) => cities.filter((c) => lc(c.name).includes(lc(q))),
   searchHeritage: (q: string) => heritage.filter((h) => lc(h.name).includes(lc(q))),
   searchAirports: (q: string) => airports.filter((a) => lc(a.name).includes(lc(q)) || lc(a.id) === lc(q)),
+  searchCountries: (q: string) => Object.values(countries).filter((c) => lc(c.name).includes(lc(q))),
   countryByIso2: (iso2: string) => countries[iso2],
   continentOf: (iso2: string) => countries[iso2]?.continent ?? "",
 } as unknown as ReferenceData;
@@ -87,6 +88,17 @@ describe("browseList — reference browse + personal status overlay (spec 018 US
     const rows = browseList("airports", "all", F, ref, [], "");
     expect(rows.map((r) => r.id).sort()).toEqual(["CDG", "HND"]);
     expect(rows.find((r) => r.id === "CDG")?.name).toContain("(CDG)");
+  });
+
+  it("monuments & airports are searchable BY COUNTRY (FR-007)", () => {
+    // "France" matches no monument NAME, but France's site (h1) surfaces by country.
+    const mon = browseList("monuments", "all", F, ref, [], "France");
+    expect(mon.map((r) => r.id)).toContain("h1");
+    expect(mon.map((r) => r.id)).not.toContain("h2"); // Japan's site excluded
+    // "Japan" surfaces Japanese airports by country (HND), not French ones (CDG).
+    const air = browseList("airports", "all", F, ref, [], "Japan");
+    expect(air.map((r) => r.id)).toContain("HND");
+    expect(air.map((r) => r.id)).not.toContain("CDG");
   });
 
   it("continent filter narrows every kind", () => {

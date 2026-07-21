@@ -59,4 +59,26 @@ describe("searchPlaces (aggregator-only, real gazetteer)", () => {
     const results = searchPlaces(ref, "Paris");
     expect(results[0]!.place.kind).not.toBe("airport");
   });
+
+  it("surfaces a country's airports when the query NAMES the country (FR-007)", () => {
+    // "France" matches those airports by COUNTRY, not by their own name. (Heritage
+    // is fetched lazily and absent from the sync unit gazetteer, so the by-country
+    // heritage path is covered by browseList.spec.ts with a mock; here we assert the
+    // bundled airports.)
+    const results = searchPlaces(ref, "France");
+    expect(results[0]!.place.kind).toBe("country");
+    expect(results[0]!.place.id).toBe("FR");
+    // Several FRENCH airports appear even though "France" matches none of their
+    // names — that's the by-country surfacing. (A few name-matched airports from
+    // other countries may also ride along in the ranked tail; that's expected.)
+    const frAirports = results.filter((r) => r.place.kind === "airport" && r.place.countryId === "FR");
+    expect(frAirports.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("leaves ordinary city queries unaffected by country intent (no country injected for 'Tokyo')", () => {
+    const results = searchPlaces(ref, "Tokyo");
+    // No country whose name starts with "tokyo" ⇒ the first hit stays a place.
+    expect(results[0]!.place.kind).not.toBe("country");
+    expect(results.some((r) => r.place.kind === "city")).toBe(true);
+  });
 });

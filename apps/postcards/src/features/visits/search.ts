@@ -71,11 +71,47 @@ export function searchPlaces(ref: ReferenceData, query: string, limit = 8): Sear
     if (n.includes(` ${nq}`) || n.includes(`-${nq}`)) return 1; // word start ("new york" for "york")
     return 2;
   };
-  return grouped
+  const ranked = grouped
     .map((r, i) => ({ r, i, rank: rank(r.place.name) }))
     .sort((a, b) => a.rank - b.rank || a.i - b.i)
-    .map((x) => x.r)
-    .slice(0, limit * 2);
+    .map((x) => x.r);
+
+  // Country-intent: when the query NAMES a country, also surface that country's
+  // monuments & airports (searchable BY COUNTRY, FR-007), boosted above places
+  // whose own name merely matches — so "France" shows French sites & airports,
+  // not only the country. Only for a clear country-name prefix, so city/place
+  // queries are unaffected.
+  const topCountry = ref.searchCountries(q, 1)[0];
+  if (topCountry && nq.length >= 3 && normalizeQuery(topCountry.name).startsWith(nq)) {
+    const iso2 = topCountry.iso2;
+    const cName = topCountry.name;
+    const her: SearchResult[] = ref.heritageOf(iso2).slice(0, limit).map((h) => ({
+      place: { kind: "heritage", id: h.id, name: h.name, countryId: iso2 },
+      detail: `Heritage site · ${cName}`,
+    }));
+    const air: SearchResult[] = ref
+      .allAirports()
+      .filter((a) => a.countryIso2 === iso2)
+      .slice(0, limit)
+      .map((a) => ({
+        place: { kind: "airport", id: a.id, name: `${a.name} (${a.id})`, countryId: iso2 },
+        detail: `Airport · ${[a.city, cName].filter(Boolean).join(", ")}`,
+      }));
+    const country: SearchResult = {
+      place: { kind: "country", id: iso2, name: cName, countryId: iso2 },
+      detail: "Country",
+    };
+    const seen = new Set<string>();
+    return [country, ...her, ...air, ...ranked]
+      .filter((r) => {
+        const k = `${r.place.kind}:${r.place.id}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
+      .slice(0, limit * 3);
+  }
+  return ranked.slice(0, limit * 2);
 }
 
 /** Same folding the reference indexes use: diacritics off, lowercase. */
