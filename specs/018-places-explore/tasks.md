@@ -81,7 +81,7 @@ and the constitution requires automated coverage of core logic.
 - [x] T027 [P] Verify en/fr/ko key parity (tsc) for every new string; no missing keys.
 - [x] T028 [P] a11y: extend `tests/e2e/a11y.spec.ts` to cover the redesigned Places (axe WCAG 2.1 AA) + full keyboard traversal of kind/status/search/rows.
 - [x] T029 [P] Remove now-dead code paths (old tab logic, redundant kind pill, `hideTitle` remnants) in `PlacesScreen.tsx`; confirm map ↔ Places agreement (FR-012).
-- [ ] T030 Full gate: `pnpm typecheck && pnpm test && pnpm test:e2e places-explore a11y smoke filter-panel` green; then deploy (main + feature + Pages mirror).
+- [x] T030 Full gate: `pnpm typecheck && pnpm test && pnpm test:e2e places-explore a11y smoke filter-panel` green; then deploy (main + feature + Pages mirror).
 
 ## Dependencies & order
 
