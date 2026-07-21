@@ -560,6 +560,15 @@ export function PlacesScreen() {
     let base = q
       ? ref.searchHeritage(q, 200)
       : [...ref.allHeritage()].sort((a, b) => a.name.localeCompare(b.name));
+    // Searchable BY COUNTRY too (FR-007): a query that names a country surfaces
+    // that country's sites, not only ones whose own name matches the query.
+    if (q) {
+      const iso2s = new Set(ref.searchCountries(q, 3).map((c) => c.iso2));
+      if (iso2s.size) {
+        const have = new Set(base.map((h) => h.id));
+        base = [...base, ...ref.allHeritage().filter((h) => iso2s.has(h.countryIso2) && !have.has(h.id))];
+      }
+    }
     // Category tag filter (cultural / natural / mixed) — read from the dataset.
     if (filters.category) base = base.filter((h) => h.category === filters.category);
     return hideSeen ? base.filter((h) => !seenHeritage.has(h.id)) : base;
