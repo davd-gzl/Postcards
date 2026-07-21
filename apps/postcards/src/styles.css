@@ -3121,8 +3121,37 @@ h1.brand {
   width: auto;
   flex: 1;
 }
-.add-place-row .btn {
+.add-place-row .btn,
+.add-place-row .btn-ghost {
   padding: 8px 14px;
+}
+.add-place-row .btn-ghost {
+  flex: 1;
+}
+/* The pinned point, shown human-readable so nobody has to read raw inputs. */
+.pin-summary {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--surface-2, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+}
+/* Manual lat/lon entry is a disclosure — hidden until asked for. */
+.add-place-manual > summary {
+  cursor: pointer;
+  padding: 6px 2px;
+  font-size: 13px;
+  color: var(--text-muted, inherit);
+  list-style-position: inside;
+}
+.add-place-manual[open] > summary {
+  margin-bottom: 6px;
+}
+.add-place-manual > div + div,
+.add-place-manual > p {
+  margin-top: 6px;
 }
 
 /* Desktop: map buttons live at the TOP corners; About modal goes two-column. */
