@@ -1,6 +1,6 @@
 {
   "$id": "https://github.com/davd-gzl/Postcards/blob/main/apps/postcards/src/lib/schema/portable-file.schema.json",
-  "title": "Postcards portable data file (schemaVersion 10)",
+  "title": "Postcards portable data file (schemaVersion 11)",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
@@ -293,6 +293,62 @@
             ],
             "additionalProperties": false
           },
+          "stops": {
+            "minItems": 2,
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "country",
+                    "city",
+                    "airport",
+                    "heritage",
+                    "custom"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "countryId": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{2}$"
+                },
+                "lat": {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90
+                },
+                "lon": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "population": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100000000
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "name",
+                "countryId"
+              ],
+              "additionalProperties": false
+            }
+          },
           "mode": {
             "default": "flight",
             "type": "string",
@@ -309,7 +365,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                "pattern": "^\\d{4}(-\\d{2}(-\\d{2})?)?$"
               },
               {
                 "type": "null"

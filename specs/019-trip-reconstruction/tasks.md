@@ -16,16 +16,16 @@ constitution requires automated coverage of core logic (distance, schema, import
 
 ## Phase 2: Foundational (blocking prerequisites)
 
-- [ ] T002 [P] Extend `TripSchema` in `src/lib/schema/models.ts` with optional ordered
+- [x] T002 [P] Extend `TripSchema` in `src/lib/schema/models.ts` with optional ordered
   `stops: z.array(PlaceRefSchema).min(2).max(200).optional()` (transform-before-optional so the key
   is never injected on parse), and widen `date` regex to `^\d{4}(-\d{2}(-\d{2})?)?$` (still
   nullable/optional); bump `SCHEMA_VERSION` 10 → 11 in `src/lib/schema/helpers.ts` with a v11
   changelog entry (per data-model.md).
-- [ ] T003 [P] Create `src/features/travel/tripStops.ts` — pure `addStop`/`removeStop`/`moveStop`
+- [x] T003 [P] Create `src/features/travel/tripStops.ts` — pure `addStop`/`removeStop`/`moveStop`
   (immutable, clamped)/`endpoints(stops)` per `contracts/trip-reconstruction.md`.
-- [ ] T004 [P] Create `src/features/travel/tripDate.ts` — pure `parseTripDate`/`formatTripDate`/
+- [x] T004 [P] Create `src/features/travel/tripDate.ts` — pure `parseTripDate`/`formatTripDate`/
   `compareTripDate`/`isValidTripDate` for `YYYY | YYYY-MM | YYYY-MM-DD | null`.
-- [ ] T005 Extend `src/features/travel/distance.ts` — add `tripPathKm(stops, ref): { km,
+- [x] T005 Extend `src/features/travel/distance.ts` — add `tripPathKm(stops, ref): { km,
   unresolvedLegs }`; make `tripDistanceKm(trip, ref)` sum the `stops` path when present (else
   legacy `from → to`); make `travelTotals` stops-aware.
 - [ ] T006 Add the composer page-layer state to `src/lib/store/useUi.ts` — `tripEditId: string |
@@ -34,13 +34,13 @@ constitution requires automated coverage of core logic (distance, schema, import
 
 **Checkpoint**: schema, pure helpers, distance, and nav plumbing exist — every story builds on these.
 
-- [ ] T007 [P] Unit `tests/unit/tripStops.spec.ts`: add/remove/reorder immutability + clamping;
+- [x] T007 [P] Unit `tests/unit/tripStops.spec.ts`: add/remove/reorder immutability + clamping;
   `endpoints` returns null for <2 stops, first/last otherwise.
-- [ ] T008 [P] Unit `tests/unit/tripDate.spec.ts`: parse/format/compare/validate for year-only,
+- [x] T008 [P] Unit `tests/unit/tripDate.spec.ts`: parse/format/compare/validate for year-only,
   month, full-day, and null; undated sorts last.
-- [ ] T009 [P] Unit `tests/unit/tripPathKm.spec.ts`: multi-stop sum equals Σ haversine legs; an
+- [x] T009 [P] Unit `tests/unit/tripPathKm.spec.ts`: multi-stop sum equals Σ haversine legs; an
   unresolvable stop skips its two legs and increments `unresolvedLegs`; <2 stops → 0.
-- [ ] T010 [P] Unit (extend `tests/unit/` schema/backup round-trip): a v11 multi-stop trip
+- [x] T010 [P] Unit (extend `tests/unit/` schema/backup round-trip): a v11 multi-stop trip
   validates; a v10 file (no `stops`, full date) still validates and round-trips byte-identically
   (no `stops` key injected); a `YYYY`/`YYYY-MM` date validates.
 

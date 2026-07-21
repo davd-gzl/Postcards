@@ -177,10 +177,23 @@ export const TripSchema = z
       .optional(),
     from: PlaceRefSchema,
     to: PlaceRefSchema,
+    /**
+     * Optional ordered chain of stops for a MULTI-STOP journey (spec 019). When
+     * present it lists every waypoint in order (airport → city → …); `from`/`to`
+     * mirror the first/last stop, so an older build reading a multi-stop trip still
+     * sees a valid `from → to` leg (graceful degradation). Additive & optional with
+     * no default, so the key is NEVER injected on parse — v1–v10 files (no `stops`)
+     * validate and round-trip byte-identically. A reconstructed trip needs ≥2 stops.
+     */
+    stops: z.array(PlaceRefSchema).min(2).max(200).optional(),
     mode: TravelModeSchema.optional().default("flight"),
+    // Approximate/"vague" date (spec 019): a full day `YYYY-MM-DD`, a month
+    // `YYYY-MM`, or a year `YYYY` — all optional/nullable (an undated trip is fine).
+    // The wider regex is a RELAXATION, so every previously-valid full-day value
+    // still validates (v1–v10 files import unchanged).
     date: z
       .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .regex(/^\d{4}(-\d{2}(-\d{2})?)?$/)
       .nullable()
       .optional()
       .transform((v) => v ?? null),

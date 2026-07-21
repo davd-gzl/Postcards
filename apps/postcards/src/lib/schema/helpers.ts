@@ -42,7 +42,14 @@ export const FORMAT = "postcards" as const;
 // v10 makes a journal story's `title` and `text` BOTH optional (an image-only entry),
 // guarded so a story still needs a title, text, or a photo. A relaxation, so v1–v9
 // files still validate; only a file that actually omits a story title needs v10.
-export const SCHEMA_VERSION = 10;
+// v11 adds an optional ordered `stops` array on a trip (multi-stop journey
+// reconstruction, spec 019) and widens a trip's `date` to accept a year (`YYYY`) or
+// month (`YYYY-MM`), not only a full day. Both are additive/relaxing: v1–v10 files
+// validate and round-trip byte-identically (`stops` has no default, so it is never
+// injected on parse; the date regex only accepts MORE). `from`/`to` mirror the
+// first/last stop, so an older build reading a v11 multi-stop trip still sees a valid
+// `from → to` leg.
+export const SCHEMA_VERSION = 11;
 
 /** Most photos one place's gallery may hold (bounds the inline portable file). */
 export const MAX_PHOTOS_PER_VISIT = 48;

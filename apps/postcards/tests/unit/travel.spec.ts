@@ -5,6 +5,7 @@ import {
   haversineKm,
   travelTotals,
   tripDistanceKm,
+  tripPathKm,
 } from "../../src/features/travel/distance";
 import { serializeFile } from "../../src/features/backup/exportJson";
 import { importFile } from "../../src/features/backup/importJson";
@@ -182,5 +183,97 @@ describe("trips are portable (round-trip + backward compatible)", () => {
     const parsed = PostcardsFileSchema.safeParse(evil);
     expect(parsed.success).toBe(true);
     if (parsed.success) expect(parsed.data.trips[0]!.carrier!.startsWith("=")).toBe(false);
+  });
+});
+
+describe("multi-stop trips (spec 019)", () => {
+  function multiTrip(iatas: string[], date: string | null = null): Trip {
+    const stops = iatas.map(airportRef);
+    return {
+      tripId: crypto.randomUUID(),
+      from: stops[0]!,
+      to: stops[stops.length - 1]!,
+      stops,
+      mode: "flight",
+      date,
+      carrier: null,
+      note: null,
+      addedAt: new Date().toISOString(),
+    };
+  }
+
+  it("distance sums the whole path, not just from → to", () => {
+    const t = multiTrip(["CDG", "JFK", "LHR"]);
+    const legs =
+      haversineKm(coordsOf(airportRef("CDG"), ref)!, coordsOf(airportRef("JFK"), ref)!) +
+      haversineKm(coordsOf(airportRef("JFK"), ref)!, coordsOf(airportRef("LHR"), ref)!);
+    expect(tripPathKm(t.stops!, ref).km).toBeCloseTo(legs, 6);
+    expect(tripDistanceKm(t, ref)).toBeCloseTo(legs, 6); // trip-level uses the path
+    // The path (Paris → New York → London) is far longer than the CDG→LHR endpoint hop.
+    expect(tripDistanceKm(t, ref)!).toBeGreaterThan(
+      haversineKm(coordsOf(airportRef("CDG"), ref)!, coordsOf(airportRef("LHR"), ref)!),
+    );
+  });
+
+  it("totals include a multi-stop trip's full path distance", () => {
+    const t = multiTrip(["CDG", "JFK", "LHR"]);
+    const totals = travelTotals([t], ref);
+    expect(totals.trips).toBe(1);
+    expect(totals.totalKm).toBeCloseTo(tripPathKm(t.stops!, ref).km, 3);
+  });
+
+  it("round-trips a multi-stop trip unchanged (stops preserved)", () => {
+    const trips = [multiTrip(["CDG", "JFK", "LHR"], "2024-08")];
+    const result = importFile(serializeFile([], trips));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.trips[0]!.stops!.map((s) => s.id)).toEqual(["CDG", "JFK", "LHR"]);
+      expect(result.trips).toEqual(trips);
+    }
+  });
+
+  it("never injects a `stops` key on a single-leg trip (byte-identical round-trip)", () => {
+    const single = [trip(airportRef("CDG"), airportRef("JFK"))];
+    const result = importFile(serializeFile([], single));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect("stops" in result.trips[0]!).toBe(false);
+      expect(result.trips).toEqual(single);
+    }
+  });
+
+  it("accepts approximate (year / month) trip dates", () => {
+    for (const date of ["2024", "2024-08", "2024-08-12"]) {
+      const parsed = PostcardsFileSchema.safeParse({
+        format: "postcards",
+        schemaVersion: 11,
+        exportedAt: new Date().toISOString(),
+        visits: [],
+        trips: [multiTrip(["CDG", "JFK"], date)],
+      });
+      expect(parsed.success, `date ${date}`).toBe(true);
+    }
+    // A date that doesn't match the year/month/day digit shape is rejected by the
+    // schema (range-checking of month/day is the UI's job via isValidTripDate; the
+    // portable schema stays as lenient as it was for full-day dates).
+    const bad = PostcardsFileSchema.safeParse({
+      format: "postcards",
+      schemaVersion: 11,
+      exportedAt: new Date().toISOString(),
+      visits: [],
+      trips: [multiTrip(["CDG", "JFK"], "2024-8")], // single-digit month → not \d{2}
+    });
+    expect(bad.success).toBe(false);
+  });
+
+  it("rejects a stops array with fewer than two entries", () => {
+    const bad = PostcardsFileSchema.safeParse({
+      format: "postcards",
+      schemaVersion: 11,
+      exportedAt: new Date().toISOString(),
+      visits: [],
+      trips: [{ ...trip(airportRef("CDG"), airportRef("JFK")), stops: [airportRef("CDG")] }],
+    });
+    expect(bad.success).toBe(false);
   });
 });

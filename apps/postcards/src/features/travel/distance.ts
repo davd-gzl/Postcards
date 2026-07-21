@@ -37,8 +37,35 @@ export function haversineKm(
   return 2 * R_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-/** A trip's great-circle distance, or null when an endpoint has no coordinate. */
+/**
+ * Total great-circle distance along an ordered chain of stops (spec 019): the sum of
+ * the leg distances between consecutive stops. A leg touching a stop with no
+ * coordinate contributes nothing and is counted in `unresolvedLegs`, so one missing
+ * point never zeroes the whole trip. Fewer than two stops → zero.
+ */
+export function tripPathKm(
+  stops: PlaceRef[],
+  ref: ReferenceData,
+): { km: number; unresolvedLegs: number } {
+  let km = 0;
+  let unresolvedLegs = 0;
+  for (let i = 0; i < stops.length - 1; i++) {
+    const a = coordsOf(stops[i]!, ref);
+    const b = coordsOf(stops[i + 1]!, ref);
+    if (a && b) km += haversineKm(a, b);
+    else unresolvedLegs += 1;
+  }
+  return { km, unresolvedLegs };
+}
+
+/**
+ * A trip's great-circle distance. A multi-stop trip (stops present) sums its path;
+ * a legacy single-leg trip uses its `from → to` endpoints. Returns null only when a
+ * single-leg trip has an unresolvable endpoint (a multi-stop trip always returns a
+ * number — possibly 0 — because partial paths still count).
+ */
 export function tripDistanceKm(trip: Trip, ref: ReferenceData): number | null {
+  if (trip.stops && trip.stops.length >= 2) return tripPathKm(trip.stops, ref).km;
   const from = coordsOf(trip.from, ref);
   const to = coordsOf(trip.to, ref);
   if (!from || !to) return null;
