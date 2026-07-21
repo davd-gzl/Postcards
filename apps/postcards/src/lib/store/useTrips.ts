@@ -15,6 +15,8 @@ interface TripsState {
   addTrip: (input: {
     from: PlaceRef;
     to: PlaceRef;
+    /** Ordered stops for a multi-stop journey (spec 019); ≥2 or omitted. */
+    stops?: PlaceRef[];
     mode?: TravelMode;
     date?: string | null;
     carrier?: string | null;
@@ -24,7 +26,9 @@ interface TripsState {
   }) => Promise<Trip>;
   updateTrip: (
     tripId: string,
-    changes: Partial<Pick<Trip, "from" | "to" | "mode" | "date" | "carrier" | "note" | "name">>,
+    changes: Partial<
+      Pick<Trip, "from" | "to" | "stops" | "mode" | "date" | "carrier" | "note" | "name">
+    >,
   ) => Promise<void>;
   removeTrip: (tripId: string) => Promise<void>;
   setAll: (trips: Trip[]) => Promise<void>;
@@ -38,12 +42,24 @@ export const useTrips = create<TripsState>((set, get) => ({
     const trips = (await db.getAllTrips()).map(backfillUpdatedAt);
     set({ trips, loaded: true });
   },
-  async addTrip({ from, to, mode = "flight", date = null, carrier = null, note = null, name = null }) {
+  async addTrip({
+    from,
+    to,
+    stops,
+    mode = "flight",
+    date = null,
+    carrier = null,
+    note = null,
+    name = null,
+  }) {
     const at = new Date().toISOString();
     const trip: Trip = {
       tripId: uuid(),
       from,
       to,
+      // Only carry `stops` for a real multi-stop journey (≥2); a single-leg trip
+      // stays lean and never gains the key (mirrors the schema's optional field).
+      ...(stops && stops.length >= 2 ? { stops } : {}),
       mode,
       date,
       carrier,

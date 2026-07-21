@@ -5,7 +5,8 @@ import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
 import { useUi } from "../../lib/store/useUi";
 import { registerEscape } from "../../lib/store/escapeStack";
-import { countryFlag, formatDate, formatKm } from "../../lib/format/format";
+import { countryFlag, formatKm } from "../../lib/format/format";
+import { formatTripDate } from "./tripDate";
 import type { PlaceRef, TravelMode, Trip } from "../../lib/schema/models";
 import { julianToDate, type BcbpResult } from "../../lib/bcbp/parse";
 import { CityLine } from "../../ui/CityLine";
@@ -253,12 +254,20 @@ export function TravelScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [passOpen, editingId, addOpen]);
 
+  // "New trip" keeps the quick single-leg inline form (precise dates, boarding-pass
+  // parity). "Reconstruct a journey" opens the full-page multi-stop composer
+  // (spec 019). Editing follows the trip's own shape: a multi-stop trip opens in the
+  // composer; a single leg stays in the inline form (so its exact date stays editable).
   function openNewTrip() {
     resetForm();
     setAddOpen(true);
   }
 
   function startEdit(t: Trip) {
+    if (t.stops && t.stops.length >= 2) {
+      useUi.getState().openTripComposer(t.tripId);
+      return;
+    }
     loadForm(
       { from: t.from, to: t.to, mode: t.mode, date: t.date ?? "", note: t.note ?? "", name: t.name ?? "" },
       t.tripId,
@@ -393,8 +402,11 @@ export function TravelScreen() {
             name={label}
             sub={
               <>
+                {trip.stops && trip.stops.length > 2
+                  ? `· ${t.plural("trip.list.stopsCount", trip.stops.length)} `
+                  : ""}
                 {km == null ? "" : `· ${formatKm(km)}`}
-                {trip.date ? ` · ${formatDate(trip.date)}` : ""}
+                {trip.date ? ` · ${formatTripDate(trip.date, locale)}` : ""}
                 {trip.note ? ` · ${trip.note}` : ""}
               </>
             }
@@ -425,9 +437,18 @@ export function TravelScreen() {
       <div className="section-head">
         <h2>{t("travel.title")}</h2>
         {!addOpen && (
-          <button type="button" className="btn" onClick={openNewTrip}>
-            ＋ {t("travel.newTrip")}
-          </button>
+          <div className="section-head-actions">
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => useUi.getState().openTripComposer("new")}
+            >
+              🧵 {t("travel.reconstructBtn")}
+            </button>
+            <button type="button" className="btn" onClick={openNewTrip}>
+              ＋ {t("travel.newTrip")}
+            </button>
+          </div>
         )}
       </div>
 
@@ -573,17 +594,11 @@ export function TravelScreen() {
                   <button
                     className="city-focus"
                     type="button"
-                    title={t("travel.airports.focusAria", { name: airport.name })}
-                    onClick={() =>
-                      // Show on the map = open the airport's marker card, not a
-                      // silent re-centre (matches tapping its dot on the map).
-                      useUi.getState().selectPlace(airport.lon, airport.lat, {
-                        kind: "airport",
-                        id: airport.id,
-                        name: `${airport.name} (${airport.id})`,
-                        countryId: airport.countryIso2,
-                      })
-                    }
+                    title={t("places.row.openAria", { name: airport.name })}
+                    // A row opens the place's DETAIL page (page layer), so one Back
+                    // returns to the Travel list (spec 019 US3) — not the map card,
+                    // which left the first Back only closing the popup on the map.
+                    onClick={() => useUi.getState().openCity(airport.id)}
                   >
                     <CityLine
                       flag={countryFlag(airport.countryIso2)}

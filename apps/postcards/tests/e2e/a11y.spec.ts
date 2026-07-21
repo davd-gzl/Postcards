@@ -51,3 +51,20 @@ test("map, stats and places screens pass the axe WCAG 2.1 AA gate", async ({ pag
   await expect(page.getByRole("heading", { name: "Your data" })).toBeVisible();
   await assertNoSeriousViolations(page, "settings");
 });
+
+// Spec 019: the multi-stop trip composer must pass the same gate, with its stop
+// list, reorder controls, date fields, and distance readout all present.
+test("the trip composer passes the axe WCAG 2.1 AA gate", async ({ page }) => {
+  await page.goto("/");
+  await gotoTab(page, "Trips");
+  await page.getByRole("button", { name: "Reconstruct a journey" }).click();
+  await expect(page.getByRole("heading", { name: "New trip" })).toBeVisible();
+
+  await page.getByRole("combobox", { name: "Add a stop" }).fill("CDG");
+  await page.getByRole("option").filter({ hasText: "CDG" }).first().click();
+  await page.getByRole("combobox", { name: "Add a stop" }).fill("JFK");
+  await page.getByRole("option").filter({ hasText: "JFK" }).first().click();
+  await expect(page.locator(".trip-stops li")).toHaveCount(2);
+
+  await assertNoSeriousViolations(page, "trip composer");
+});

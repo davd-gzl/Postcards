@@ -24,10 +24,11 @@ describe("tripDate — approximate trip dates (spec 019)", () => {
     expect(isValidTripDate("24-08")).toBe(false);
   });
 
-  it("formats each granularity (locale month names)", () => {
+  it("formats each granularity (year, month, full day)", () => {
     expect(formatTripDate("2024", "en")).toBe("2024");
     expect(formatTripDate("2024-08", "en")).toBe("Aug 2024");
-    expect(formatTripDate("2024-08-12", "en")).toBe("12 Aug 2024");
+    // A full day reuses the app-wide medium format (matches visits/journal rows).
+    expect(formatTripDate("2024-08-12", "en")).toBe("Aug 12, 2024");
     expect(formatTripDate(null, "en")).toBe("");
   });
 

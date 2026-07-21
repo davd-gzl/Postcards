@@ -2526,6 +2526,144 @@ h1.brand {
   flex: 1;
   min-width: 130px;
 }
+
+.section-head-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Multi-stop trip composer (spec 019) ──────────────────────────────────── */
+.trip-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.trip-composer-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.trip-composer-head h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.back-link {
+  padding: 6px 4px;
+  font-weight: 600;
+}
+.trip-section-head {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+.trip-stops {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.trip-stop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.trip-stop-index {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--surface-2, var(--border));
+  color: var(--text-muted, inherit);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.trip-stop-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trip-stop-actions {
+  display: flex;
+  gap: 2px;
+}
+.icon-btn {
+  min-width: 36px;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+}
+.icon-btn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.trip-distance {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.trip-distance-label {
+  font-size: 13px;
+  color: var(--text-muted, inherit);
+}
+.trip-distance-km {
+  font-size: 18px;
+}
+.trip-composer-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.trip-when {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.trip-when .trip-year {
+  max-width: 120px;
+}
+.trip-composer-actions {
+  display: flex;
+  gap: 8px;
+}
+.trip-composer-actions .btn,
+.trip-composer-actions .btn-ghost {
+  flex: 1;
+}
 /* Trip folders — group legs under their shared trip name. */
 .trip-folders {
   display: flex;

@@ -14,10 +14,15 @@ export function PlacePicker({
   label,
   value,
   onPick,
+  include,
+  placeholder,
 }: {
   label: string;
   value: PlaceRef | null;
   onPick: (place: PlaceRef | null) => void;
+  /** Restrict results to these place kinds (e.g. ["airport","city"] for trip stops). */
+  include?: Array<PlaceRef["kind"]>;
+  placeholder?: string;
 }) {
   const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
@@ -29,7 +34,10 @@ export function PlacePicker({
   // Defer the scan off the keystroke render (see PlaceSearch): typing paints
   // immediately; the search runs in an interruptible follow-up render.
   const dq = useDeferredValue(q);
-  const results = useMemo(() => searchPlaces(ref, dq), [ref, dq]);
+  const results = useMemo(() => {
+    const all = searchPlaces(ref, dq);
+    return include ? all.filter((r) => include.includes(r.place.kind)) : all;
+  }, [ref, dq, include]);
   const open = q.trim().length >= 1 && !value && results.length > 0;
 
   function choose(place: PlaceRef) {
@@ -49,7 +57,8 @@ export function PlacePicker({
     } else if (e.key === "Enter") {
       // Deferred results can lag a fast typist by a keystroke — recompute
       // synchronously for the action so Enter never picks stale or nothing.
-      const list = q === dq ? results : searchPlaces(ref, q);
+      const fresh = searchPlaces(ref, q);
+      const list = q === dq ? results : include ? fresh.filter((r) => include.includes(r.place.kind)) : fresh;
       const r = list[active >= 0 && active < list.length ? active : 0];
       if (r) choose(r.place);
       e.preventDefault();
@@ -97,7 +106,7 @@ export function PlacePicker({
           ref={inputRef}
           type="search"
           className="search-input"
-          placeholder={t("placePicker.placeholder")}
+          placeholder={placeholder ?? t("placePicker.placeholder")}
           role="combobox"
           aria-expanded={open}
           aria-controls={open ? listId : undefined}

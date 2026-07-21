@@ -7,6 +7,7 @@ import { runEscapeInterceptors } from "../lib/store/escapeStack";
 import { StatsView } from "../features/stats/StatsView";
 import { PlacesScreen } from "../features/visits/PlacesScreen";
 import { TravelScreen } from "../features/travel/TravelScreen";
+import { TripComposer } from "../features/travel/TripComposer";
 import { JournalScreen } from "../features/journal/JournalScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { CityScreen } from "../features/city/CityScreen";
@@ -62,6 +63,7 @@ export function App() {
   const setTab = useUi((s) => s.setTab);
   const cityPageId = useUi((s) => s.cityPageId);
   const countryPageId = useUi((s) => s.countryPageId);
+  const tripEditId = useUi((s) => s.tripEditId);
   const [showHelp, setShowHelp] = useState(false);
   const { canInstall, install } = useInstallPrompt();
   const [showAbout, setShowAbout] = useState(false);
@@ -80,7 +82,7 @@ export function App() {
   // the tab already re-renders on change, so a ref is enough to remember it.
   const mapShown = useRef(false);
   if (tab === "map") mapShown.current = true;
-  const mapVisible = tab === "map" && !cityPageId && !countryPageId;
+  const mapVisible = tab === "map" && !cityPageId && !countryPageId && !tripEditId;
   const firstRender = useRef(true);
 
   // Scroll memory. <main> is the single scroll container reused across tabs and
@@ -90,12 +92,14 @@ export function App() {
   // you exactly where you were. A CITY page is the exception — it always opens at
   // the TOP (you drilled into a new thing), so its scroll is never saved. A country
   // page IS a long list you open cities from, so it's remembered like a tab.
-  const forceTop = !!cityPageId;
+  const forceTop = !!cityPageId || !!tripEditId;
   const viewKey = cityPageId
     ? `city:${cityPageId}`
     : countryPageId
       ? `country:${countryPageId}`
-      : `tab:${tab}`;
+      : tripEditId
+        ? `trip:${tripEditId}`
+        : `tab:${tab}`;
   const scrollTops = useRef<Map<string, number>>(new Map());
   const viewKeyRef = useRef(viewKey);
   const onMainScroll = () => {
@@ -150,7 +154,7 @@ export function App() {
           // step out of a LOCAL sub-view first (Journal's map/timeline, a Places
           // collection), and only walk tab history if it didn't handle it.
           const ui = useUi.getState();
-          if (ui.cityPageId || ui.countryPageId) ui.closePages();
+          if (ui.cityPageId || ui.countryPageId || ui.tripEditId) ui.closePages();
           else if (!runEscapeInterceptors()) ui.goBack();
         }
         return;
@@ -227,7 +231,7 @@ export function App() {
       // A detail page is still open with no history behind it (e.g. deep-linked or
       // opened from search): close it in place — Back must never fall through and
       // quit the app while you're looking at a city/country page.
-      if (ui.cityPageId || ui.countryPageId) {
+      if (ui.cityPageId || ui.countryPageId || ui.tripEditId) {
         ui.closePages();
         arm();
         return;
@@ -363,6 +367,11 @@ export function App() {
               <CityScreen cityId={cityPageId} onBack={() => useUi.getState().closeCity()} />
             ) : countryPageId ? (
               <CountryScreen iso2={countryPageId} onBack={() => useUi.getState().closeCity()} />
+            ) : tripEditId ? (
+              <TripComposer
+                tripId={tripEditId === "new" ? null : tripEditId}
+                onClose={() => useUi.getState().closeTripComposer()}
+              />
             ) : (
               <>
                 {tab === "stats" && (

@@ -1,3 +1,5 @@
+import { formatDate } from "../../lib/format/format";
+
 // Approximate ("vague") trip dates (spec 019). A trip date is deliberately coarse:
 // a full day `YYYY-MM-DD`, a month `YYYY-MM`, a year `YYYY`, or nothing. These pure
 // helpers parse/format/compare that one string consistently so partial and full
@@ -34,17 +36,20 @@ export function isValidTripDate(s: string): boolean {
   return parseTripDate(s) != null;
 }
 
-/** Human label for the granularity present: "2024", "Aug 2024", "12 Aug 2024", or
- *  "" for undated. Uses the given locale for month names; falls back gracefully. */
+/** Human label for the granularity present: a year "2024", a month "Aug 2024", or a
+ *  full day formatted like every other date in the app (via `formatDate`), and "" for
+ *  undated. Keeps full-date display identical to the rest of the UI. */
 export function formatTripDate(s: TripDate, locale: string): string {
   const p = parseTripDate(s);
   if (!p) return "";
   if (p.month == null) return String(p.year);
-  const monthName = new Intl.DateTimeFormat(locale, { month: "short" }).format(
-    new Date(Date.UTC(2000, p.month - 1, 1)),
-  );
-  if (p.day == null) return `${monthName} ${p.year}`;
-  return `${p.day} ${monthName} ${p.year}`;
+  if (p.day == null) {
+    return new Intl.DateTimeFormat(locale, { year: "numeric", month: "short" }).format(
+      new Date(Date.UTC(p.year, p.month - 1, 1)),
+    );
+  }
+  // A full day reuses the app-wide date format so trip rows match visits/journal.
+  return formatDate(s, locale);
 }
 
 /** A single sortable number for a trip date; undated sorts LAST. Year-only counts

@@ -9,7 +9,7 @@ constitution requires automated coverage of core logic (distance, schema, import
 
 ## Phase 1: Setup
 
-- [ ] T001 Add en/fr/ko i18n keys for the trip composer, approximate date, and any new nav strings
+- [x] T001 Add en/fr/ko i18n keys for the trip composer, approximate date, and any new nav strings
   (`trip.compose.*` — title/newTrip/addStop/removeStop/moveUp/moveDown/name/date/save/cancel/
   distance/unmeasuredLegs; `trip.date.*` — year/month/placeholder; `trip.list.*` — stops count)
   with compile-time parity across `src/lib/i18n/{en,fr,ko}.ts`.
@@ -28,7 +28,7 @@ constitution requires automated coverage of core logic (distance, schema, import
 - [x] T005 Extend `src/features/travel/distance.ts` — add `tripPathKm(stops, ref): { km,
   unresolvedLegs }`; make `tripDistanceKm(trip, ref)` sum the `stops` path when present (else
   legacy `from → to`); make `travelTotals` stops-aware.
-- [ ] T006 Add the composer page-layer state to `src/lib/store/useUi.ts` — `tripEditId: string |
+- [x] T006 Add the composer page-layer state to `src/lib/store/useUi.ts` — `tripEditId: string |
   null` on state + `NavState`, `openTripComposer(id)` (pushHistory), `closeTripComposer()` (prefer
   `goBack`), and include `tripEditId` in `pushHistory`/`goBack`/`closePages` snapshots.
 
@@ -52,21 +52,21 @@ cities), with a name and a rough date, saved to the file.
 **Independent test**: Create a trip, add ≥3 ordered stops, name it, set a rough date, save; it
 appears as one multi-stop journey and reopening restores it — all offline.
 
-- [ ] T011 [US1] Create `src/features/travel/TripComposer.tsx` — the page: an ordered stops list
+- [x] T011 [US1] Create `src/features/travel/TripComposer.tsx` — the page: an ordered stops list
   (each row a `PlacePicker` restricted to `kind ∈ {airport, city}` via `searchPlaces`), add-stop,
   remove, reorder (keyboard up/down buttons), a name field, an approximate-date field (year +
   optional month), and Save/Cancel; Escape/Back handled by the page layer.
-- [ ] T012 [US1] Render `<TripComposer/>` in `src/app/App.tsx` when `tripEditId` is set (alongside
+- [x] T012 [US1] Render `<TripComposer/>` in `src/app/App.tsx` when `tripEditId` is set (alongside
   `cityPageId`/`countryPageId`); close via `closeTripComposer`, and ensure `closePages` clears
   `tripEditId`.
-- [ ] T013 [US1] Wire entry points in `src/features/travel/TravelScreen.tsx`: a clear "New trip"
+- [x] T013 [US1] Wire entry points in `src/features/travel/TravelScreen.tsx`: a clear "New trip"
   control opens `openTripComposer("new")`; editing an existing trip opens `openTripComposer(tripId)`.
-- [ ] T014 [P] [US1] Style the composer + stop rows in `src/styles.css` (≥44px targets, keyboard
+- [x] T014 [P] [US1] Style the composer + stop rows in `src/styles.css` (≥44px targets, keyboard
   reorder buttons, wrap on mobile, clear focus/active states).
-- [ ] T015 [US1] Save path in `TripComposer.tsx`: build `Trip { tripId, name, stops, from:
+- [x] T015 [US1] Save path in `TripComposer.tsx`: build `Trip { tripId, name, stops, from:
   stops[0], to: stops[last], mode, date }` → `useTrips.addTrip`/`updateTrip`; **no visit records
   written** (FR-008); Cancel/Back discards.
-- [ ] T016 [US1] E2E `tests/e2e/trip-reconstruction.spec.ts`: open composer, add ≥3 stops, reorder
+- [x] T016 [US1] E2E `tests/e2e/trip-reconstruction.spec.ts`: open composer, add ≥3 stops, reorder
   and remove, save, confirm it lists as one multi-stop journey, reopen restores stops/name/date.
 
 ## Phase 4: User Story 2 — See how far you went (P2)
@@ -76,11 +76,11 @@ appears as one multi-stop journey and reopening restores it — all offline.
 **Independent test**: Total equals Σ great-circle legs (within tolerance); editing a stop updates
 it immediately; Travel totals include the trip.
 
-- [ ] T017 [US2] In `TripComposer.tsx`, show the running **total km** (`tripPathKm`) and, when any
+- [x] T017 [US2] In `TripComposer.tsx`, show the running **total km** (`tripPathKm`) and, when any
   leg is unmeasured, a clear "some legs unmeasured" note; recompute on every add/remove/reorder.
-- [ ] T018 [US2] In `TravelScreen.tsx`, render each multi-stop trip's distance + stop count in the
+- [x] T018 [US2] In `TravelScreen.tsx`, render each multi-stop trip's distance + stop count in the
   list row, and confirm the totals strip (via stops-aware `travelTotals`, T005) includes them.
-- [ ] T019 [US2] E2E in `trip-reconstruction.spec.ts`: distance updates live on add/remove/reorder;
+- [x] T019 [US2] E2E in `trip-reconstruction.spec.ts`: distance updates live on add/remove/reorder;
   Travel totals reflect the reconstructed trip; a stop with no coordinate doesn't zero the total.
 
 ## Phase 5: User Story 3 — Back from a place returns to the Travel list (P2)
@@ -90,12 +90,12 @@ stranding on the map or exiting.
 
 **Independent test**: From Travel, open an airport; one Back/Escape/Android-back returns to the list.
 
-- [ ] T020 [US3] In `src/features/travel/TravelScreen.tsx`, change the most-visited-airports row
+- [x] T020 [US3] In `src/features/travel/TravelScreen.tsx`, change the most-visited-airports row
   `onClick` from `selectPlace(lon, lat, …)` to `useUi.getState().openCity(airport.id)` (row →
   detail page layer; `CityScreen` already serves airport ids).
-- [ ] T021 [US3] Audit other place-opening clicks reachable from the Travel screen for the same
+- [x] T021 [US3] Audit other place-opening clicks reachable from the Travel screen for the same
   row→details rule; confirm `closePages` (App.tsx / useUi) also leaves the composer page layer.
-- [ ] T022 [US3] E2E in `trip-reconstruction.spec.ts` (or `escape-subviews.spec.ts`): open an
+- [x] T022 [US3] E2E in `trip-reconstruction.spec.ts` (or `escape-subviews.spec.ts`): open an
   airport from Travel; assert a single Back, a single Escape, and the Android back path each return
   to the Travel list, and the app never exits.
 
@@ -106,15 +106,15 @@ stranding on the map or exiting.
 **Independent test**: No station dataset ⇒ builder works with airports + cities and shows no broken
 stations affordance; the stop model (PlaceRef) would accept a `"station"` kind unchanged.
 
-- [ ] T023 [US4] Confirm the stop model stays place-kind-agnostic (stops are `PlaceRef`; `coordsOf`
+- [x] T023 [US4] Confirm the stop model stays place-kind-agnostic (stops are `PlaceRef`; `coordsOf`
   keys on kind) and document the station deferral (a short note in `src/features/travel/` and/or
   `public/reference/PROVENANCE.md`) — stations require a future named, openly-licensed dataset; no
   invented data, no broken UI when absent.
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T024 [P] Verify en/fr/ko key parity (tsc) for every new string; no missing keys.
-- [ ] T025 [P] a11y: extend `tests/e2e/a11y.spec.ts` to cover the composer (axe WCAG 2.1 AA) + full
+- [x] T024 [P] Verify en/fr/ko key parity (tsc) for every new string; no missing keys.
+- [x] T025 [P] a11y: extend `tests/e2e/a11y.spec.ts` to cover the composer (axe WCAG 2.1 AA) + full
   keyboard traversal (add/reorder/remove stops, date, save/cancel).
 - [ ] T026 [P] (Optional nice-to-have) In `src/features/map/MapScreen.tsx`/`MapView.tsx`, draw each
   **leg** of a multi-stop trip's arc (not only `from → to`), reusing `tripArcs`.

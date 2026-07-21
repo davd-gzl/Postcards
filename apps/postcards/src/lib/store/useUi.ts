@@ -18,6 +18,8 @@ interface NavState {
   tab: Tab;
   cityPageId: string | null;
   countryPageId: string | null;
+  /** Open trip composer page ("new" | tripId | null) — a peer page layer (spec 019). */
+  tripEditId: string | null;
 }
 
 // Small cross-cutting UI store:
@@ -49,6 +51,10 @@ interface UiState {
   /** ISO2 of the open country page (null = closed). */
   countryPageId: string | null;
   openCountry: (iso2: string) => void;
+  /** The trip composer page layer: "new" for a fresh trip, a tripId to edit, or null. */
+  tripEditId: string | null;
+  openTripComposer: (id: string) => void;
+  closeTripComposer: () => void;
   placesViewRequest: { view: PlacesView; nonce: number } | null;
   openPlaces: (view: PlacesView) => void;
   journalDraftRequest: { place: PlaceRef; nonce: number } | null;
@@ -70,14 +76,15 @@ const HISTORY_CAP = 24;
 export const useUi = create<UiState>((set, get) => {
   /** Snapshot the current screen onto the history stack (deduped, capped). */
   function pushHistory(): NavState[] {
-    const { tab, cityPageId, countryPageId, history } = get();
-    const snap: NavState = { tab, cityPageId, countryPageId };
+    const { tab, cityPageId, countryPageId, tripEditId, history } = get();
+    const snap: NavState = { tab, cityPageId, countryPageId, tripEditId };
     const last = history[history.length - 1];
     if (
       last &&
       last.tab === snap.tab &&
       last.cityPageId === snap.cityPageId &&
-      last.countryPageId === snap.countryPageId
+      last.countryPageId === snap.countryPageId &&
+      last.tripEditId === snap.tripEditId
     ) {
       return history;
     }
@@ -86,7 +93,8 @@ export const useUi = create<UiState>((set, get) => {
 
   return {
     tab: "map",
-    setTab: (tab) => set({ history: pushHistory(), tab, cityPageId: null, countryPageId: null }),
+    setTab: (tab) =>
+      set({ history: pushHistory(), tab, cityPageId: null, countryPageId: null, tripEditId: null }),
     searchFocusNonce: 0,
     focusSearch: () => set({ searchFocusNonce: get().searchFocusNonce + 1 }),
     mapFocus: null,
@@ -96,6 +104,7 @@ export const useUi = create<UiState>((set, get) => {
         tab: "map",
         cityPageId: null,
         countryPageId: null,
+        tripEditId: null,
         mapFocus: { lon, lat, nonce: (get().mapFocus?.nonce ?? 0) + 1 },
       }),
     selectedPlace: null,
@@ -107,16 +116,26 @@ export const useUi = create<UiState>((set, get) => {
         tab: "map",
         cityPageId: null,
         countryPageId: null,
+        tripEditId: null,
         selectedPlace: { place, lon, lat, nonce: (get().selectedPlace?.nonce ?? 0) + 1 },
       }),
     cityPageId: null,
-    openCity: (id) => set({ history: pushHistory(), cityPageId: id, countryPageId: null }),
+    openCity: (id) =>
+      set({ history: pushHistory(), cityPageId: id, countryPageId: null, tripEditId: null }),
     closeCity: () => {
       // Prefer real back-navigation; fall back to just closing the page.
-      if (!get().goBack()) set({ cityPageId: null, countryPageId: null });
+      if (!get().goBack()) set({ cityPageId: null, countryPageId: null, tripEditId: null });
     },
     countryPageId: null,
-    openCountry: (iso2) => set({ history: pushHistory(), countryPageId: iso2, cityPageId: null }),
+    openCountry: (iso2) =>
+      set({ history: pushHistory(), countryPageId: iso2, cityPageId: null, tripEditId: null }),
+    tripEditId: null,
+    openTripComposer: (id) =>
+      set({ history: pushHistory(), tripEditId: id, cityPageId: null, countryPageId: null }),
+    closeTripComposer: () => {
+      // Prefer real back-navigation; fall back to just closing the composer page.
+      if (!get().goBack()) set({ tripEditId: null, cityPageId: null, countryPageId: null });
+    },
     placesViewRequest: null,
     openPlaces: (view) =>
       set({
@@ -124,6 +143,7 @@ export const useUi = create<UiState>((set, get) => {
         tab: "places",
         cityPageId: null,
         countryPageId: null,
+        tripEditId: null,
         placesViewRequest: { view, nonce: (get().placesViewRequest?.nonce ?? 0) + 1 },
       }),
     journalDraftRequest: null,
@@ -133,6 +153,7 @@ export const useUi = create<UiState>((set, get) => {
         tab: "journal",
         cityPageId: null,
         countryPageId: null,
+        tripEditId: null,
         journalDraftRequest: { place, nonce: (get().journalDraftRequest?.nonce ?? 0) + 1 },
       }),
     history: [],
@@ -149,10 +170,14 @@ export const useUi = create<UiState>((set, get) => {
     // button keeps the full history via goBack.
     closePages: () => {
       const h = [...get().history];
-      while (h.length && (h[h.length - 1]!.cityPageId || h[h.length - 1]!.countryPageId)) h.pop();
+      while (
+        h.length &&
+        (h[h.length - 1]!.cityPageId || h[h.length - 1]!.countryPageId || h[h.length - 1]!.tripEditId)
+      )
+        h.pop();
       const target = h.pop();
-      if (target) set({ ...target, cityPageId: null, countryPageId: null, history: h });
-      else set({ cityPageId: null, countryPageId: null, history: h });
+      if (target) set({ ...target, cityPageId: null, countryPageId: null, tripEditId: null, history: h });
+      else set({ cityPageId: null, countryPageId: null, tripEditId: null, history: h });
     },
     tripYear: "all",
     tripMonth: "all",
