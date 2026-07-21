@@ -557,11 +557,13 @@ export function PlacesScreen() {
   const monuments = useMemo(() => {
     // A search keeps the ranker's best-match-first order; only the full
     // unfiltered list reads better alphabetically.
-    const base = q
+    let base = q
       ? ref.searchHeritage(q, 200)
       : [...ref.allHeritage()].sort((a, b) => a.name.localeCompare(b.name));
+    // Category tag filter (cultural / natural / mixed) — read from the dataset.
+    if (filters.category) base = base.filter((h) => h.category === filters.category);
     return hideSeen ? base.filter((h) => !seenHeritage.has(h.id)) : base;
-  }, [ref, q, hideSeen, seenHeritage]);
+  }, [ref, q, hideSeen, seenHeritage, filters.category]);
 
   const TABS: { id: View; label: string }[] = [
     { id: "visited", label: t("places.tab.visited", { count: visited.length }) },
@@ -882,12 +884,34 @@ export function PlacesScreen() {
                   {t("places.monuments.hideSeen")}
                 </button>
               </div>
+              {/* Filter by the dataset category (cultural / natural / mixed). */}
+              <div
+                className="segmented wrap places-kind"
+                role="group"
+                aria-label={t("filter.category.aria")}
+              >
+                {(["", "cultural", "natural", "mixed"] as const).map((cat) => (
+                  <button
+                    key={cat || "all"}
+                    type="button"
+                    aria-pressed={filters.category === cat}
+                    className={filters.category === cat ? "seg-on" : ""}
+                    onClick={() => filters.set({ category: cat })}
+                  >
+                    {t(`filter.category.${cat || "all"}` as const)}
+                  </button>
+                ))}
+              </div>
               {monuments.length === 0 && (
                 <NoMatch q={q} onClear={clearSearch} />
               )}
               <ul className="city-list">
                 {monuments.slice(0, shown).map((h) => {
                   const country = ref.countryByIso2(h.countryIso2)?.name ?? h.countryIso2;
+                  const cat =
+                    h.category === "cultural" || h.category === "natural" || h.category === "mixed"
+                      ? h.category
+                      : null;
                   const place = {
                     kind: "heritage" as const,
                     id: h.id,
@@ -902,7 +926,21 @@ export function PlacesScreen() {
                         onClick={() => useUi.getState().openCity(h.id)}
                         aria-label={t("places.row.openAria", { name: h.name })}
                       >
-                        <CityLine flag={countryFlag(h.countryIso2)} name={h.name} sub={<>· {country}</>} multiline />
+                        {/* The category glyph (🏛/🌲/🏞) matches the map markers;
+                            the country name + a category tag read on the sub line. */}
+                        <CityLine
+                          flag={heritageGlyph(h.category)}
+                          name={h.name}
+                          sub={
+                            <>
+                              · {country}
+                              {cat ? (
+                                <span className="folder-chip">{t(`filter.category.${cat}` as const)}</span>
+                              ) : null}
+                            </>
+                          }
+                          multiline
+                        />
                       </button>
                       <StateToggles place={place} />
                     </li>
@@ -956,10 +994,9 @@ export function PlacesScreen() {
             <NoMatch q={q} onClear={clearSearch} />
           )}
           <ul className="city-list" style={{ marginTop: 8 }}>
-            {/* Paged like every other long list here — 250 country rows (each
-                with its toggles) re-reconciled per keystroke janked filtering.
-                Visited countries sort first, so they always sit on page one. */}
-            {countryRows.slice(0, shown).map((c) => {
+            {/* Only ~250 countries — show them ALL at once (no pager); the name
+                search narrows live and visited countries sort first. */}
+            {countryRows.map((c) => {
               const subCount = countryVisited.sub.get(c.iso2) ?? 0;
               const explicit = countryVisited.explicit.has(c.iso2);
               const isVisited = subCount > 0 || explicit;
@@ -994,14 +1031,6 @@ export function PlacesScreen() {
               );
             })}
           </ul>
-          {countryRows.length > shown && (
-            <ListPager
-              shown={shown}
-              total={countryRows.length}
-              step={100}
-              onMore={() => setShown((n) => n + 100)}
-            />
-          )}
         </>
       )}
 
