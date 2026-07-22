@@ -142,16 +142,30 @@ function CountryRow({
     if (hit) useUi.getState().openCity(hit.id);
   };
 
+  // Tapping a metric drills into Places, scoped to THIS country + the tier — and the
+  // filter is the shared store, so it survives leaving and returning to the list.
+  const drill = (view: "cities" | "monuments", minPop: number) => () => {
+    useFilters.getState().set({ country: c.iso2, minPop, listOnly: false });
+    useUi.getState().openPlaces(view);
+  };
+  // Cities coverage is a sliver of a huge denominator, so it often rounds to 0 —
+  // floor a real, non-zero share to "<1%" so it never reads as "nothing seen".
+  const pctText = (p: number) => {
+    const s = formatPercent(p);
+    return p > 0 && s === formatPercent(0) ? "<1%" : s;
+  };
+
   // Slim summary meter: a tiny label + percentage + bar.
   const meter = (labelKey: MessageKey, ariaKey: MessageKey, pctVal: number, color?: string) => (
     <div className="cmeter">
       <span className="cmeter-cap">
-        {t(labelKey)} <b>{formatPercent(pctVal)}</b>
+        {t(labelKey)} <b>{pctText(pctVal)}</b>
       </span>
       <Bar value={pctVal} label={t(ariaKey, { name: c.name })} color={color} />
     </div>
   );
-  // Full metric row (expanded): label, "x/y · pct" detail, bar.
+  // Full metric row (expanded): label, "x/y · pct" detail, bar. With an onClick it
+  // renders as a button that opens the matching, country-scoped Places list.
   const metric = (
     labelKey: MessageKey,
     detailKey: MessageKey,
@@ -159,20 +173,35 @@ function CountryRow({
     visited: number,
     total: number,
     pctVal: number,
-    color?: string,
-  ) => (
-    <div className="metric">
-      <div className="metric-label">
-        <span>{t(labelKey)}</span>
-        <span className="muted">{t(detailKey, { pct: formatPercent(pctVal), visited, total })}</span>
-      </div>
-      <Bar value={pctVal} label={t(ariaKey, { name: c.name })} color={color} />
-    </div>
-  );
+    color: string | undefined,
+    onClick?: () => void,
+  ) => {
+    const body = (
+      <>
+        <div className="metric-label">
+          <span>{t(labelKey)}</span>
+          <span className="muted">{t(detailKey, { pct: pctText(pctVal), visited, total })}</span>
+        </div>
+        <Bar value={pctVal} label={t(ariaKey, { name: c.name })} color={color} />
+      </>
+    );
+    if (!onClick) return <div className="metric">{body}</div>;
+    return (
+      <button
+        type="button"
+        className="metric metric-btn"
+        onClick={onClick}
+        title={t("stats.country.exploreHint", { label: t(labelKey), name: c.name })}
+      >
+        {body}
+      </button>
+    );
+  };
 
   const hasMega = c.megaCitiesTotal > 0;
   const MEGA_COLOR = "var(--stat-fav)";
   const BIG_COLOR = "var(--stat-been)";
+  const CITY_COLOR = "var(--stat-air)";
   const REGION_COLOR = "var(--accent)";
 
   return (
@@ -188,13 +217,16 @@ function CountryRow({
         <span className="country-caret" aria-hidden>
           ›
         </span>
-        {/* Only the meaningful tiers — mega (1M+), big (100k+), regions. Hidden once
-            open (the body shows the same, with counts) so nothing is duplicated. */}
-        {(hasMega || c.bigCitiesTotal > 0 || c.regionsTotal > 0) && (
+        {/* Coverage tiers at a glance — cities (all), big (100k+), mega (1M+) and
+            regions. Hidden once open (the body shows the same, with counts and as
+            tappable drill-downs) so nothing is duplicated. */}
+        {(c.citiesTotal > 0 || c.regionsTotal > 0) && (
           <div className="country-meters">
-            {hasMega && meter("stats.country.metricMega", "stats.country.megaCityBarAria", c.megaCityPct, MEGA_COLOR)}
+            {c.citiesTotal > 0 &&
+              meter("stats.country.metricCities", "stats.country.cityBarAria", c.cityPct, CITY_COLOR)}
             {c.bigCitiesTotal > 0 &&
               meter("stats.country.metricBigCities", "stats.country.bigCityBarAria", c.bigCityPct, BIG_COLOR)}
+            {hasMega && meter("stats.country.metricMega", "stats.country.megaCityBarAria", c.megaCityPct, MEGA_COLOR)}
             {c.regionsTotal > 0 &&
               meter("stats.country.metricRegions", "stats.country.regionBarAria", c.regionPct, REGION_COLOR)}
           </div>
@@ -211,15 +243,19 @@ function CountryRow({
           {t("stats.country.openPage")} <span aria-hidden>↗</span>
         </button>
 
-        {hasMega &&
+        {/* Each tier is tappable — it opens Places filtered to this country + tier,
+            so you can browse (and add) exactly what it counts. Regions have no
+            Places list of their own, so that one opens the country's full page. */}
+        {c.citiesTotal > 0 &&
           metric(
-            "stats.country.metricMega",
-            "stats.country.metricMegaDetail",
-            "stats.country.megaCityBarAria",
-            c.megaCitiesVisited,
-            c.megaCitiesTotal,
-            c.megaCityPct,
-            MEGA_COLOR,
+            "stats.country.metricCities",
+            "stats.country.metricCitiesDetail",
+            "stats.country.cityBarAria",
+            c.citiesVisited,
+            c.citiesTotal,
+            c.cityPct,
+            CITY_COLOR,
+            drill("cities", 0),
           )}
         {c.bigCitiesTotal > 0 &&
           metric(
@@ -230,6 +266,18 @@ function CountryRow({
             c.bigCitiesTotal,
             c.bigCityPct,
             BIG_COLOR,
+            drill("cities", 100_000),
+          )}
+        {hasMega &&
+          metric(
+            "stats.country.metricMega",
+            "stats.country.metricMegaDetail",
+            "stats.country.megaCityBarAria",
+            c.megaCitiesVisited,
+            c.megaCitiesTotal,
+            c.megaCityPct,
+            MEGA_COLOR,
+            drill("cities", 1_000_000),
           )}
         {c.regionsTotal > 0 &&
           metric(
@@ -240,6 +288,7 @@ function CountryRow({
             c.regionsTotal,
             c.regionPct,
             REGION_COLOR,
+            () => useUi.getState().openCountry(c.iso2),
           )}
         {c.heritageTotal > 0 &&
           metric(
@@ -250,6 +299,7 @@ function CountryRow({
             c.heritageTotal,
             c.heritagePct,
             "var(--stat-want)",
+            drill("monuments", 0),
           )}
 
         {detail && (
@@ -316,7 +366,9 @@ export function StatsView() {
   // 100k = big cities, 1M = megacities) via the app's ONE shared filter, so the
   // tile drills into exactly the cities it counts.
   function openCitiesFiltered(minPop: number) {
-    useFilters.getState().set({ minPop });
+    // A world-level tile: clear any country drill-down a card left set, so this
+    // shows the tier across every country, not just the last one you opened.
+    useFilters.getState().set({ minPop, country: "" });
     useUi.getState().openPlaces("visited");
   }
   function flyToRegion(iso2: string) {

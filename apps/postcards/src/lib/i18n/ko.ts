@@ -223,6 +223,7 @@ export const ko: Messages = {
   "stats.country.metricMegaDetail": "{pct} · {visited}/{total} 도시 (100만+)",
   "stats.country.megaCityBarAria": "{name}: 방문한 메가시티(100만+)",
   "stats.country.openPage": "전체 페이지 열기",
+  "stats.country.exploreHint": "{name}의 {label}을(를) 장소에서 보기",
   "stats.country.metricRegions": "지역",
   "stats.country.metricRegionsDetail": "{pct} · 지역 {visited}/{total}",
   "stats.country.datasetNotLoaded": "데이터셋 미로드",

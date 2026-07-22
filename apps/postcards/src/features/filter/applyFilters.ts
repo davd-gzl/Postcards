@@ -2,6 +2,7 @@ import type { Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
 import type { FilterState, FilterStatus } from "../../lib/store/useFilters";
 import { mapDateMatches, rangeExactYear } from "../travel/period";
+import { countryFlag } from "../../lib/format/format";
 import type { TFunction, MessageKey } from "../../lib/i18n";
 
 // Pure predicates shared by every screen that slices places (spec 016 D3). No I/O,
@@ -50,6 +51,9 @@ export function placeMatches(v: Visit, ref: ReferenceData, s: FilterState): bool
     if (pop !== null && pop < s.minPop) return false;
   }
   if (s.continent && ref.continentOf(v.place.countryId) !== s.continent) return false;
+  // One-country drill-down (set from the Stats country card). ISO codes compare
+  // directly; a place with no country ("ZZ") never matches a real code.
+  if (s.country && v.place.countryId !== s.country) return false;
   return true;
 }
 
@@ -74,8 +78,9 @@ export interface ActiveFilterChip {
 }
 
 /** Localised, ordered summary of every non-default dimension (one chip each). The
- *  caller wires each chip's ✕ to clearField(field). Pure: no store dependency. */
-export function activeChips(s: FilterState, t: TFunction): ActiveFilterChip[] {
+ *  caller wires each chip's ✕ to clearField(field). Pure: no store dependency.
+ *  `ref` (optional) names the country chip — without it, the ISO code shows. */
+export function activeChips(s: FilterState, t: TFunction, ref?: ReferenceData): ActiveFilterChip[] {
   const chips: ActiveFilterChip[] = [];
   // Only a partial selection is a "filter" (empty or all three = show everything).
   if (s.status.length > 0 && s.status.length < 3) {
@@ -100,6 +105,10 @@ export function activeChips(s: FilterState, t: TFunction): ActiveFilterChip[] {
   if (s.hasPhoto) chips.push({ field: "hasPhoto", label: t("filter.hasPhoto") });
   if (s.hasNote) chips.push({ field: "hasNote", label: t("filter.hasNote") });
   if (s.continent) chips.push({ field: "continent", label: s.continent });
+  if (s.country) {
+    const name = ref?.countryByIso2(s.country)?.name ?? s.country;
+    chips.push({ field: "country", label: `${countryFlag(s.country)} ${name}` });
+  }
   if (s.sort !== "pop") chips.push({ field: "sort", label: t("filter.sort.az") });
   return chips;
 }

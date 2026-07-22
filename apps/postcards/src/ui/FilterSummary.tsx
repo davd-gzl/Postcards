@@ -1,5 +1,6 @@
 import { useFilters, currentFilters, type FilterState } from "../lib/store/useFilters";
 import { activeChips } from "../features/filter/applyFilters";
+import { getReferenceData } from "../lib/reference/referenceData";
 import { useT } from "../lib/i18n";
 
 /**
@@ -15,7 +16,7 @@ export function FilterSummary({ exclude = [] }: { exclude?: (keyof FilterState)[
   const t = useT();
   const f = useFilters();
   const state = currentFilters(f);
-  const chips = activeChips(state, t).filter((c) => !exclude.includes(c.field));
+  const chips = activeChips(state, t, getReferenceData()).filter((c) => !exclude.includes(c.field));
   if (chips.length === 0) return null;
   return (
     <div className="filter-summary" role="group" aria-label={t("filter.summaryAria")}>
