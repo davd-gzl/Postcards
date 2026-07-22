@@ -66,6 +66,17 @@ const ref = {
   heritageById: () => undefined,
 } as unknown as ReferenceData;
 
+describe("custom stops draw + measure (regression: coordsOf ignored kind=custom)", () => {
+  const cA: PlaceRef = { kind: "custom", id: "a", name: "Cabin", countryId: "FR", lon: 2, lat: 48 };
+  const cB: PlaceRef = { kind: "custom", id: "b", name: "Lake", countryId: "FR", lon: 9, lat: 45 };
+  it("a leg between two custom pins draws an arc and contributes distance", async () => {
+    const { tripPathKm } = await import("../../src/features/travel/distance");
+    expect(stopsArcs([cA, cB], ref, "car").features).toHaveLength(1);
+    expect(tripPathKm([cA, cB], ref).km).toBeGreaterThan(0);
+    expect(tripPathKm([cA, cB], ref).unresolvedLegs).toBe(0);
+  });
+});
+
 describe("stopsArcs tags each leg with its own mode", () => {
   it("uses legModes[i] when present, else the trip default", () => {
     const fc = stopsArcs([P, T, O], ref, "flight", ["flight", "train"]);

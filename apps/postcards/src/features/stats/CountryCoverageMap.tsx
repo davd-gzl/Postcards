@@ -94,23 +94,38 @@ export function CountryCoverageMap({ iso2, name }: { iso2: string; name: string 
   }, [land, iso2, ref]);
 
   const layout = useMemo(() => {
-    const xs: number[] = [];
-    const ys: number[] = [];
-    const push = (lon: number, lat: number) => {
-      xs.push((lon * Math.PI) / 180);
-      ys.push(mercY(lat));
-    };
     // Frame to the MAINLAND — the ring with the most points — so a country with
     // far-flung overseas territories (France, the US…) doesn't zoom out to the
     // whole globe. Everything else still draws, clipped by the viewBox.
     let mainRing: Position[] | null = null;
     for (const r of rings) if (r.length > (mainRing?.length ?? 0)) mainRing = r;
-    if (mainRing) for (const p of mainRing) push(p[0]!, p[1]!);
+    const frameLons: number[] = [];
+    const frameLats: number[] = [];
+    if (mainRing)
+      for (const p of mainRing) {
+        frameLons.push(p[0]!);
+        frameLats.push(p[1]!);
+      }
     else {
-      for (const p of model.visitedPoints) push(p.lon, p.lat);
-      for (const m of model.missing) push(m.lon, m.lat);
+      for (const p of model.visitedPoints) {
+        frameLons.push(p.lon);
+        frameLats.push(p.lat);
+      }
+      for (const m of model.missing) {
+        frameLons.push(m.lon);
+        frameLats.push(m.lat);
+      }
     }
-    if (!xs.length) return null;
+    if (!frameLons.length) return null;
+    // Unwrap across the antimeridian: when the frame spans > 180° of raw longitude
+    // the land wraps the date line (Russia, Fiji…), so shift western lons by +360
+    // and project EVERYTHING (rings, dots, blobs) in that continuous space — else
+    // the silhouette collapses to a distorted, off-centre sliver.
+    const unwrap = Math.max(...frameLons) - Math.min(...frameLons) > 180;
+    const wrapLon = (lon: number) => (unwrap && lon < 0 ? lon + 360 : lon);
+
+    const xs = frameLons.map((lon) => (wrapLon(lon) * Math.PI) / 180);
+    const ys = frameLats.map(mercY);
     let minX = Math.min(...xs);
     let maxX = Math.max(...xs);
     let minY = Math.min(...ys);
@@ -124,7 +139,7 @@ export function CountryCoverageMap({ iso2, name }: { iso2: string; name: string 
     const scale = Math.min((W - 2 * PAD) / (maxX - minX), (H - 2 * PAD) / (maxY - minY));
     const midX = (minX + maxX) / 2;
     const midY = (minY + maxY) / 2;
-    const sx = (lon: number) => W / 2 + ((lon * Math.PI) / 180 - midX) * scale;
+    const sx = (lon: number) => W / 2 + ((wrapLon(lon) * Math.PI) / 180 - midX) * scale;
     const sy = (lat: number) => H / 2 - (mercY(lat) - midY) * scale;
     const degToPx = (scale * Math.PI) / 180; // ~px per degree at this scale
 
