@@ -1,4 +1,13 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  memo,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useVisits } from "../../lib/store/useVisits";
 import { useToast } from "../../lib/store/useToast";
@@ -442,7 +451,13 @@ export function PlacesScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [shown, setShown] = useState(100);
   const [groupBy, setGroupBy] = useState<"none" | "country" | "year">("none");
-  const q = filter.trim().toLowerCase();
+  // Defer the query that drives the heavy lists (browse over the gazetteer + the
+  // personal-list filter) off the keystroke: the input stays instant (bound to raw
+  // `filter`), while the expensive recompute + re-render of up to 100 rows runs in
+  // an interruptible follow-up pass — matching the map's search, so the Places list
+  // no longer lags behind typing.
+  const deferredFilter = useDeferredValue(filter);
+  const q = deferredFilter.trim().toLowerCase();
 
   // The kind axis IS the app's shared map "mode" (FR-012): selecting a place kind
   // keeps the map and Places in lock-step. Countries is a Places-only kind (the
@@ -630,9 +645,9 @@ export function PlacesScreen() {
   // the chosen kind, status-overlaid, via the tested pure engine. ────────────────
   const browseRows = useMemo<BrowseRow[]>(() => {
     if (kind !== "cities" && kind !== "monuments" && kind !== "airports") return [];
-    return browseList(kind, status, currentFilters(filters), ref, visits, filter.trim());
+    return browseList(kind, status, currentFilters(filters), ref, visits, deferredFilter.trim());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, status, filters.continent, filters.minPop, filters.category, ref, visits, filter]);
+  }, [kind, status, filters.continent, filters.minPop, filters.category, ref, visits, deferredFilter]);
 
   // The years your visits span, newest first, for the date filter chips.
   const years = useMemo(() => {
