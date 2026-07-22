@@ -31,20 +31,17 @@ function NameList({
   label,
   items,
   onPick,
-  hint,
   max = 12,
 }: {
   label: string;
   items: string[];
   onPick: (name: string) => void;
-  hint?: string;
   max?: number;
 }) {
   const t = useT();
   const [expanded, setExpanded] = useState(false);
   if (items.length === 0) return null;
   const shown = expanded ? items : items.slice(0, max);
-  const hintText = hint ?? t("common.open");
   return (
     <div className="name-list">
       <span className="name-list-label">
@@ -62,7 +59,7 @@ function NameList({
               type="button"
               className="name-list-link"
               onClick={() => onPick(n)}
-              title={`${hintText} ${n}`}
+              title={`${t("common.open")} ${n}`}
             >
               {n}
             </button>

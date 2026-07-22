@@ -1,11 +1,10 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { searchPlaces } from "../visits/search";
-import { countryFlag } from "../../lib/format/format";
 import { RouteMap } from "./RouteMap";
 import { useT } from "../../lib/i18n";
 import type { PlaceRef, TravelMode } from "../../lib/schema/models";
-import type { MyPlace } from "./myPlaces";
+import { placeFlag, type MyPlace } from "./myPlaces";
 
 // Pick trip stops fast. Two ways:
 //  • List — the places you've BEEN (visited + past trips) as instant taps, AND a
@@ -14,8 +13,6 @@ import type { MyPlace } from "./myPlaces";
 //  • Map — the app's REAL MapLibre map (offline, bundled land) of your places; tap a
 //    pin to add it in sequence and watch the route draw (see RouteMap).
 // Flags everywhere for instant recognition (spec 019).
-
-const flagFor = (p: PlaceRef) => (p.kind === "airport" ? "✈️" : countryFlag(p.countryId));
 
 export function MyPlacesPicker({
   places,
@@ -92,7 +89,7 @@ export function MyPlacesPicker({
                       onClick={() => onPick(r.place)}
                     >
                       <span className="flag" aria-hidden>
-                        {flagFor(r.place)}
+                        {placeFlag(r.place)}
                       </span>
                       <span className="myplaces-name">{r.place.name}</span>
                       <span className="muted small myplaces-detail">{r.detail}</span>
@@ -114,7 +111,7 @@ export function MyPlacesPicker({
                     onClick={() => onPick(p.place)}
                   >
                     <span className="flag" aria-hidden>
-                      {flagFor(p.place)}
+                      {placeFlag(p.place)}
                     </span>
                     <span className="myplaces-name">{p.name}</span>
                     {addedKeys.has(p.key) && (

@@ -30,6 +30,14 @@ import { SYNC_PATH, shouldGuardRemoval, type RemoteConfig } from "./syncConfig";
 
 const kinds: TombstoneKind[] = ["visit", "trip", "story"];
 
+/** Project a tombstone list to the {id, deletedAt} pairs for ONE kind. */
+const partitionTombs = (list: SyncTombstone[], kind: TombstoneKind) =>
+  list.filter((t) => t.kind === kind).map(({ id, deletedAt }) => ({ id, deletedAt }));
+
+/** The snapshot (records + tombstones) for one kind out of a merged set. */
+const snapFor = (merged: StoreSnapshots, kind: TombstoneKind) =>
+  kind === "visit" ? merged.visits : kind === "trip" ? merged.trips : merged.stories;
+
 /** The result of one run — a discriminated union so callers branch without relying
  *  on thrown control-flow. `blocked` is the safety guard; `error` carries an i18n
  *  code (see `sync.log.*`) so messages localise at render time. */
@@ -93,8 +101,7 @@ export async function runDeviceSync(
     ]);
 
     const localTombs = await getAllTombstones();
-    const pickTombs = (kind: TombstoneKind) =>
-      localTombs.filter((t) => t.kind === kind).map(({ id, deletedAt }) => ({ id, deletedAt }));
+    const pickTombs = (kind: TombstoneKind) => partitionTombs(localTombs, kind);
 
     const local: StoreSnapshots = {
       visits: { records: useVisits.getState().visits, tombstones: pickTombs("visit") },
@@ -107,8 +114,7 @@ export async function runDeviceSync(
     const parse = (text: string): StoreSnapshots => {
       const r = importFile(text);
       if (!r.ok) throw new Error(r.error);
-      const partition = (kind: TombstoneKind) =>
-        r.tombstones.filter((t) => t.kind === kind).map(({ id, deletedAt }) => ({ id, deletedAt }));
+      const partition = (kind: TombstoneKind) => partitionTombs(r.tombstones, kind);
       return {
         visits: { records: r.visits.map(backfillUpdatedAt), tombstones: partition("visit") },
         trips: { records: r.trips.map(backfillUpdatedAt), tombstones: partition("trip") },
@@ -119,8 +125,7 @@ export async function runDeviceSync(
     // The token is NOT part of the serialized file — only records + tombstones.
     const serialize = (merged: StoreSnapshots): string => {
       const tombs: SyncTombstone[] = kinds.flatMap((kind) => {
-        const snap =
-          kind === "visit" ? merged.visits : kind === "trip" ? merged.trips : merged.stories;
+        const snap = snapFor(merged, kind);
         return snap.tombstones.map((t) => ({ kind, id: t.id, deletedAt: t.deletedAt }));
       });
       return serializeFile(
@@ -134,8 +139,7 @@ export async function runDeviceSync(
 
     const persist = async (merged: StoreSnapshots): Promise<void> => {
       const records: TombstoneRecord[] = kinds.flatMap((kind) => {
-        const snap =
-          kind === "visit" ? merged.visits : kind === "trip" ? merged.trips : merged.stories;
+        const snap = snapFor(merged, kind);
         return snap.tombstones.map((t) => ({
           key: `${kind}:${t.id}`,
           kind,

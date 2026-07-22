@@ -55,15 +55,9 @@ export function dataUrlToBlob(dataUrl: string): Blob {
   const base64 = /;base64$/i.test(meta);
   const mime = meta.replace(/;base64$/i, "") || "application/octet-stream";
   const payload = dataUrl.slice(comma + 1);
-  if (base64) {
-    const bin = atob(payload);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new Blob([bytes], { type: mime });
-  }
-  const text = decodeURIComponent(payload);
-  const bytes = new Uint8Array(text.length);
-  for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
+  const str = base64 ? atob(payload) : decodeURIComponent(payload);
+  const bytes = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i);
   return new Blob([bytes], { type: mime });
 }
 

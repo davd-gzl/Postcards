@@ -70,9 +70,9 @@ export function PassportScreen({ embedded }: { embedded?: boolean } = {}) {
   }, [posterUrl]);
 
   const visitedIds = useMemo(() => visitedCountryIds(visits), [visits]);
-  const { collected, missing, continents } = useMemo(() => {
+  const { collectedCount, missing, continents } = useMemo(() => {
     const all = ref.countries.filter((c) => inScope(c.sovereignty, scope));
-    const collected = all.filter((c) => visitedIds.has(c.iso2));
+    const collectedCount = all.filter((c) => visitedIds.has(c.iso2)).length;
     const missing = all.filter((c) => !visitedIds.has(c.iso2));
     // Collected flags grouped by continent, each with its own progress, so the
     // passport reads like pages of a real one.
@@ -88,7 +88,7 @@ export function PassportScreen({ embedded }: { embedded?: boolean } = {}) {
       .filter(([, g]) => g.done.length > 0)
       .map(([name, g]) => ({ name, done: g.done, total: g.total }))
       .sort((a, b) => b.done.length - a.done.length || a.name.localeCompare(b.name));
-    return { collected, missing, continents };
+    return { collectedCount, missing, continents };
   }, [ref, visitedIds, scope]);
   const [shownMissing, setShownMissing] = useState(60);
 
@@ -152,15 +152,15 @@ export function PassportScreen({ embedded }: { embedded?: boolean } = {}) {
 
       <div className="passport-head">
         <p className="muted">
-          <strong className="flags-count">{formatInt(collected.length)}</strong>{" "}
-          {t("passport.ofFlags", { total: formatInt(collected.length + missing.length) })}
+          <strong className="flags-count">{formatInt(collectedCount)}</strong>{" "}
+          {t("passport.ofFlags", { total: formatInt(collectedCount + missing.length) })}
         </p>
         <button className="btn" type="button" disabled={rendering} onClick={() => void exportPoster()}>
           {rendering ? t("passport.rendering") : `🖼 ${t("passport.worldPoster")}`}
         </button>
       </div>
 
-      {collected.length === 0 ? (
+      {collectedCount === 0 ? (
         <p className="muted empty">
           <span className="empty-emoji" aria-hidden>
             🛂

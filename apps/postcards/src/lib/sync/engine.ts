@@ -134,16 +134,14 @@ const DEFAULT_MESSAGE = "Sync Postcards via device sync";
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_GC_HORIZON_DAYS = 90;
 
-const visitTs = (v: Visit) => v.updatedAt ?? v.addedAt;
-const tripTs = (t: Trip) => t.updatedAt ?? t.addedAt;
-const storyTs = (s: Story) => s.updatedAt ?? s.addedAt;
+const ts = <R extends { updatedAt?: string; addedAt: string }>(r: R): string => r.updatedAt ?? r.addedAt;
 
 /** Merge every collection newest-wins, honouring tombstones (reuses ./merge). */
 function mergeAll(local: StoreSnapshots, remote: StoreSnapshots): StoreSnapshots {
   return {
-    visits: mergeById(local.visits, remote.visits, (v) => v.visitId, visitTs),
-    trips: mergeById(local.trips, remote.trips, (t) => t.tripId, tripTs),
-    stories: mergeById(local.stories, remote.stories, (s) => s.storyId, storyTs),
+    visits: mergeById(local.visits, remote.visits, (v) => v.visitId, ts),
+    trips: mergeById(local.trips, remote.trips, (t) => t.tripId, ts),
+    stories: mergeById(local.stories, remote.stories, (s) => s.storyId, ts),
   };
 }
 

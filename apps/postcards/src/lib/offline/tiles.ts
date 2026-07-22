@@ -92,6 +92,41 @@ function connectionTooLimited(): boolean {
   return !!c.saveData || c.effectiveType === "2g" || c.effectiveType === "slow-2g";
 }
 
+/** The default network fetch used when a caller doesn't inject its own. */
+const defaultFetch = (...a: Parameters<typeof fetch>) => fetch(...a);
+
+/** Passive tile prefetch is a nicety — never run it offline, nor on a data-saver
+ *  / slow link where it would contend with the visible tiles. */
+function prefetchDisabled(): boolean {
+  return (typeof navigator !== "undefined" && !navigator.onLine) || connectionTooLimited();
+}
+
+/** Fetch a list of tile URLs at low priority with 2 workers; a failed tile is
+ *  dropped from the seen-set so a later pass can retry it. An optional abort
+ *  signal stops in-flight work (used by the viewport ring). */
+function runPrefetchPool(urls: string[], doFetch: typeof fetch, signal?: AbortSignal): void {
+  let i = 0;
+  async function worker() {
+    while (i < urls.length) {
+      if (signal?.aborted) return;
+      const url = urls[i++]!;
+      try {
+        await doFetch(url, {
+          mode: "cors",
+          referrerPolicy: "strict-origin-when-cross-origin",
+          priority: "low",
+          ...(signal ? { signal } : {}),
+        } as PrefetchInit);
+      } catch {
+        prefetched.delete(url); // offline blip / aborted — let a later pass retry it
+      }
+    }
+  }
+  // Low concurrency (2) so the pool never saturates the per-origin socket budget
+  // MapLibre needs for the tiles actually on screen.
+  for (let w = 0; w < 2; w++) void worker();
+}
+
 // In-flight ring prefetch, aborted when the next pan starts so stale off-screen
 // requests never keep contending with the new viewport's visible tiles.
 let ringAbort: AbortController | null = null;
@@ -125,12 +160,9 @@ export function prefetchAroundBounds(
   zoom: number,
   opts: { maxTiles?: number; template?: string; fetchFn?: typeof fetch } = {},
 ): void {
-  if (typeof navigator !== "undefined" && !navigator.onLine) return;
-  // The passive ring is a pure nicety — never spend a data-saver / 2g user's
-  // budget on off-screen tiles, and never let it contend on a slow pipe.
-  if (connectionTooLimited()) return;
+  if (prefetchDisabled()) return;
   const maxTiles = opts.maxTiles ?? 40;
-  const doFetch = opts.fetchFn ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
+  const doFetch = opts.fetchFn ?? defaultFetch;
   // Target the DISPLAY level (round(zoom + 1) for 256px tiles), not the coarser
   // round(zoom) — otherwise we warm parent tiles and the crisp ones stay cold.
   const z = zoom + RASTER_ZOOM_OFFSET;
@@ -146,26 +178,7 @@ export function prefetchAroundBounds(
   ringAbort?.abort();
   ringAbort = new AbortController();
   const signal = ringAbort.signal;
-  let i = 0;
-  async function worker() {
-    while (i < ring.length) {
-      if (signal.aborted) return;
-      const url = ring[i++]!;
-      try {
-        await doFetch(url, {
-          mode: "cors",
-          referrerPolicy: "strict-origin-when-cross-origin",
-          priority: "low",
-          signal,
-        } as PrefetchInit);
-      } catch {
-        prefetched.delete(url); // offline blip / aborted — let a later pause retry it
-      }
-    }
-  }
-  // Low concurrency (2) so the ring never saturates the per-origin socket budget
-  // MapLibre needs for the tiles actually on screen.
-  for (let w = 0; w < 2; w++) void worker();
+  runPrefetchPool(ring, doFetch, signal);
 }
 
 /**
@@ -180,8 +193,7 @@ export function prefetchAroundPoint(
   zoom: number,
   opts: { template?: string; fetchFn?: typeof fetch } = {},
 ): void {
-  if (typeof navigator !== "undefined" && !navigator.onLine) return;
-  if (connectionTooLimited()) return;
+  if (prefetchDisabled()) return;
   // Match the display level (round(zoom + 1) for 256px tiles) so the block we
   // warm is the one the camera actually renders on arrival.
   const z = clamp(Math.round(zoom + RASTER_ZOOM_OFFSET), 1, MAX_ZOOM);
@@ -189,7 +201,7 @@ export function prefetchAroundPoint(
   const cx = lon2x(lon, z);
   const cy = lat2y(lat, z);
   const template = opts.template ?? OSM_TILE_TEMPLATE;
-  const doFetch = opts.fetchFn ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
+  const doFetch = opts.fetchFn ?? defaultFetch;
   const urls: string[] = [];
   for (let dx = -2; dx <= 2; dx++) {
     for (let dy = -2; dy <= 2; dy++) {
@@ -203,24 +215,7 @@ export function prefetchAroundPoint(
   if (urls.length === 0) return;
   if (prefetched.size > PREFETCH_SEEN_CAP) prefetched.clear();
   for (const url of urls) prefetched.add(url);
-  let i = 0;
-  async function worker() {
-    while (i < urls.length) {
-      const url = urls[i++]!;
-      try {
-        await doFetch(url, {
-          mode: "cors",
-          referrerPolicy: "strict-origin-when-cross-origin",
-          priority: "low",
-        } as PrefetchInit);
-      } catch {
-        prefetched.delete(url);
-      }
-    }
-  }
-  // Two workers, low priority: warm the destination without starving the
-  // visible tiles MapLibre is streaming for the current view mid-fly.
-  for (let w = 0; w < 2; w++) void worker();
+  runPrefetchPool(urls, doFetch);
 }
 
 export interface SaveProgress {
@@ -250,7 +245,7 @@ export async function saveAreaOffline(
   const maxTiles = opts.maxTiles ?? 800;
   const urls = [...new Set(tilesForBounds(bounds, baseZoom, opts.levels ?? 3, maxTiles, opts.template))];
   const capped = urls.length >= maxTiles;
-  const doFetch = opts.fetchFn ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
+  const doFetch = opts.fetchFn ?? defaultFetch;
   const total = urls.length;
   let done = 0;
   let failed = 0;

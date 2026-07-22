@@ -3,11 +3,10 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { useTrips } from "../../lib/store/useTrips";
 import { useVisits } from "../../lib/store/useVisits";
 import { placeKey } from "../../lib/schema/helpers";
-import { countryFlag } from "../../lib/format/format";
 import { useT, useLocale } from "../../lib/i18n";
 import type { PlaceRef, TravelMode } from "../../lib/schema/models";
 import { MyPlacesPicker } from "./MyPlacesPicker";
-import { myPlaces } from "./myPlaces";
+import { myPlaces, placeFlag } from "./myPlaces";
 import { addStop, moveStop, removeStop } from "./tripStops";
 import { tripPathKm } from "./distance";
 import { MODE_ORDER } from "./modes";
@@ -112,7 +111,7 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
                 {i + 1}
               </span>
               <span className="flag" aria-hidden>
-                {s.kind === "airport" ? "✈️" : countryFlag(s.countryId)}
+                {placeFlag(s)}
               </span>
               <span className="trip-stop-name" title={s.name}>
                 {s.name}

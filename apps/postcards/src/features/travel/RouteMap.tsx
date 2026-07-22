@@ -3,12 +3,11 @@ import maplibregl, { type StyleSpecification } from "maplibre-gl";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useSettings } from "../../lib/store/useSettings";
 import { usePrefersReducedMotion } from "../../lib/hooks/usePrefersReducedMotion";
-import { countryFlag } from "../../lib/format/format";
 import { stopsArcs } from "../map/visitedLayers";
 import { fitBounds } from "../map/mapFit";
 import { useT } from "../../lib/i18n";
 import type { PlaceRef, TravelMode } from "../../lib/schema/models";
-import type { MyPlace } from "./myPlaces";
+import { placeFlag, type MyPlace } from "./myPlaces";
 import { getLand } from "./landGeometry";
 import { pickPointsFC } from "./pickPoints";
 
@@ -21,8 +20,6 @@ import { pickPointsFC } from "./pickPoints";
 // The map is a POINTER enhancement, not the only path: a companion list of the same
 // places (real <button>s with flags) sits beneath the canvas as the keyboard/AT
 // route, and an aria-live region announces every add.
-
-const flagFor = (p: PlaceRef) => (p.kind === "airport" ? "✈️" : countryFlag(p.countryId));
 
 function resolveDark(theme: "system" | "light" | "dark"): boolean {
   if (theme === "dark") return true;
@@ -214,7 +211,7 @@ export function RouteMap({
               onClick={() => onPick(p.place)}
             >
               <span className="flag" aria-hidden>
-                {flagFor(p.place)}
+                {placeFlag(p.place)}
               </span>
               <span className="myplaces-name">{p.name}</span>
               {addedKeys.has(p.key) && (

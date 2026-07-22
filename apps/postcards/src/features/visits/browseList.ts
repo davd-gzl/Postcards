@@ -30,8 +30,6 @@ export interface BrowseRow {
   status: "visited" | "wishlist" | "none";
   favorite: boolean;
   category?: string;
-  lat?: number;
-  lon?: number;
 }
 
 /** A page of browse rows plus whether more remain (drives infinite load-more). */
@@ -132,7 +130,7 @@ export function browseList(
       if (!passStatus(o.status, o.favorite)) continue;
       if (take({
         kind: "city", id: c.id, name: c.name, sub: countryName(c.countryIso2),
-        countryIso2: c.countryIso2, place, status: o.status, favorite: o.favorite, lat: c.lat, lon: c.lon,
+        countryIso2: c.countryIso2, place, status: o.status, favorite: o.favorite,
       })) break;
     }
     return { rows, hasMore };
@@ -162,8 +160,7 @@ export function browseList(
       if (!passStatus(o.status, o.favorite)) continue;
       if (take({
         kind: "heritage", id: h.id, name: h.name, sub: countryName(h.countryIso2),
-        countryIso2: h.countryIso2, place, status: o.status, favorite: o.favorite,
-        category: h.category, lat: h.lat, lon: h.lon,
+        countryIso2: h.countryIso2, place, status: o.status, favorite: o.favorite, category: h.category,
       })) break;
     }
     return { rows, hasMore };
@@ -188,7 +185,7 @@ export function browseList(
     if (!passStatus(o.status, o.favorite)) continue;
     if (take({
       kind: "airport", id: a.id, name, sub: [a.city, countryName(a.countryIso2)].filter(Boolean).join(" · "),
-      countryIso2: a.countryIso2, place, status: o.status, favorite: o.favorite, lat: a.lat, lon: a.lon,
+      countryIso2: a.countryIso2, place, status: o.status, favorite: o.favorite,
     })) break;
   }
   return { rows, hasMore };
