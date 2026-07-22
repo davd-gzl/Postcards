@@ -159,10 +159,14 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // same store the Places lists read — and the single Filter panel is where they
   // change. These aliases keep the rest of the map reading the familiar names.
   const filters = useFilters();
-  const cityFilter = filters.status;
-  const minPop = filters.minPop;
-  const dateFilter: MapDate = filters.date;
-  const folder = filters.folder;
+  // "Apply to list only" (Filter panel): when on, the MAP ignores the slicing
+  // dimensions and shows everything — the filter still narrows the Places lists.
+  // The place-kind pill (`mode`) is a map control, not a filter, so it always applies.
+  const listOnly = filters.listOnly;
+  const cityFilter = listOnly ? [] : filters.status;
+  const minPop = listOnly ? 0 : filters.minPop;
+  const dateFilter: MapDate = listOnly ? { mode: "all" } : filters.date;
+  const folder = listOnly ? "" : filters.folder;
   const trips = useTrips((s) => s.trips);
   // Remembered across sessions, like the basemap and globe (default on).
   const [showTrips, setShowTrips] = useState(() => loadPref(TRIPS_LAYER_KEY, (v) => v !== "0"));
@@ -364,9 +368,11 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   // growth dimensions (favourites-only / has-photo / has-note / continent filter
   // saved records; see Places). So they don't count toward the map's badge or its
   // summary chips.
-  const mapChips = activeChips(currentFilters(filters), t).filter(
-    (c) => !MAP_HIDDEN_FIELDS.includes(c.field),
-  );
+  // With "list only" on, the map isn't filtered — so it shows no active-filter
+  // chips or badge (the filter's effect lives on the Places lists).
+  const mapChips = listOnly
+    ? []
+    : activeChips(currentFilters(filters), t).filter((c) => !MAP_HIDDEN_FIELDS.includes(c.field));
   const filterActive = mapChips.length > 0;
   const activeCount = mapChips.length;
   // A short human label for the active window (for the trip-arc period tag etc.).
@@ -921,7 +927,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
           </span>
         </div>
 
-        <FilterSummary exclude={MAP_HIDDEN_FIELDS} />
+        {/* With "list only" on, the map isn't filtered — hide its chip summary too
+            (the filter's effect shows on the Places lists, not here). */}
+        {!listOnly && <FilterSummary exclude={MAP_HIDDEN_FIELDS} />}
 
         {poi ? (
           poi.items.length === 0 ? (

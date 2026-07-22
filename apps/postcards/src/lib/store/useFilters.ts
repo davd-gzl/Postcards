@@ -44,6 +44,10 @@ export interface FilterState {
   hasNote: boolean;
   /** "" = all continents. */
   continent: string;
+  /** Scope: when true, the filter applies to the LISTS only and the MAP shows
+   *  everything (its markers ignore status/people/date/folder). Session-scoped; a
+   *  meta-flag, so it never counts as an "active filter" chip. */
+  listOnly: boolean;
 }
 
 export const POP_CHOICES = [0, 10_000, 100_000, 1_000_000] as const;
@@ -60,6 +64,7 @@ export const DEFAULT_FILTERS: FilterState = {
   hasPhoto: false,
   hasNote: false,
   continent: "",
+  listOnly: false,
 };
 
 // Persisted preference dimensions reuse the keys the old inline controls used, so
@@ -173,5 +178,6 @@ export function currentFilters(s: FilterStore): FilterState {
     hasPhoto: s.hasPhoto,
     hasNote: s.hasNote,
     continent: s.continent,
+    listOnly: s.listOnly,
   };
 }

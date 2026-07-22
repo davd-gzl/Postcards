@@ -57,6 +57,40 @@ test("the one Filter panel drives the map; the old inline controls are gone", as
   await expect(panel).toBeHidden();
 });
 
+test("'Lists only' scope stops the filter from touching the map", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Search a city or country").fill("Paris");
+  await page.getByRole("button", { name: "Mark Paris visited" }).first().click();
+  await page.keyboard.press("Escape");
+
+  const openFilter = () =>
+    page.locator(".map-ctl-right").getByRole("button", { name: /Filter/ }).click();
+  const panel = page.getByRole("dialog", { name: "Filters" });
+
+  // Apply a filter — the map shows its chip summary.
+  await openFilter();
+  await panel.getByRole("button", { name: "1M+", exact: true }).click();
+  await panel.getByRole("button", { name: "Done" }).click();
+  await expect(page.locator(".filter-summary")).toContainText("1M+");
+
+  // Switch scope to "Lists only" → the map is no longer filtered: its chip summary
+  // disappears even though the filter is still set (Places would still apply it).
+  await openFilter();
+  await panel.getByRole("button", { name: "Lists only", exact: true }).click();
+  await panel.getByRole("button", { name: "Done" }).click();
+  await expect(page.locator(".filter-summary")).toHaveCount(0);
+
+  // Back to "Map & lists" restores the map filter.
+  await openFilter();
+  await expect(panel.getByRole("button", { name: "Lists only", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await panel.getByRole("button", { name: "Map & lists", exact: true }).click();
+  await panel.getByRole("button", { name: "Done" }).click();
+  await expect(page.locator(".filter-summary")).toContainText("1M+");
+});
+
 test("status is MULTI-SELECT: pick any combination, deselect to show all", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Postcards")).toBeVisible();

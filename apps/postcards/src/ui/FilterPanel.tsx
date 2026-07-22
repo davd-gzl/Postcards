@@ -106,6 +106,30 @@ export function FilterPanel({
           </button>
         </div>
 
+        {/* Scope — apply the filter to the map + lists, or narrow the lists only
+            while the map keeps every place. A meta-choice, so it's up top. */}
+        <div className="filter-section">
+          <span className="filter-section-title">{t("filter.scope.title")}</span>
+          <div className="segmented wrap" role="group" aria-label={t("filter.scope.title")}>
+            <button
+              type="button"
+              aria-pressed={!f.listOnly}
+              className={!f.listOnly ? "seg-on" : ""}
+              onClick={() => f.set({ listOnly: false })}
+            >
+              {t("filter.scope.both")}
+            </button>
+            <button
+              type="button"
+              aria-pressed={f.listOnly}
+              className={f.listOnly ? "seg-on" : ""}
+              onClick={() => f.set({ listOnly: true })}
+            >
+              {t("filter.scope.listOnly")}
+            </button>
+          </div>
+        </div>
+
         {/* Place-kind mode (cities / monuments / airports) is NOT here: it's a
             first-class map control (its own prominent pill), because those are
             different datasets, not just another way to slice one list. */}
