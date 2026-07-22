@@ -8,6 +8,9 @@ import type { CountryScope, Sovereignty } from "./scope";
  *  per-country big-city coverage; also the "large" size-band floor. Precomputed
  *  once into Country.bigCityCount so coverage never rescans the gazetteer. */
 export const BIG_CITY_MIN_POPULATION = 100_000;
+/** Population floor for a "mega city" (a metropolis, 1M+). Denominator for the
+ *  per-country mega-city coverage bar; precomputed like bigCityCount. */
+export const MEGA_CITY_MIN_POPULATION = 1_000_000;
 
 export interface Country {
   iso2: string;
@@ -17,6 +20,7 @@ export interface Country {
   continent: string; // Europe|Asia|Africa|Americas|Oceania|Antarctic (from world-countries)
   cityCount: number; // # of gazetteer cities in this country (denominator for % of cities)
   bigCityCount: number; // # of gazetteer cities with 100k+ people (denominator for % of big cities)
+  megaCityCount: number; // # of gazetteer cities with 1M+ people (denominator for % of mega cities)
   subdivisionCount: number; // # of first-level subdivisions (denominator for % of regions)
   sovereignty: Sovereignty; // "un" member vs dependent "territory" (from world-countries)
 }

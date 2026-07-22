@@ -1798,6 +1798,53 @@ h1.brand {
   padding-top: 8px;
   border-top: 1px solid var(--border);
 }
+/* Keep the expanded panel compact — tighter than the standalone continent
+   metrics so a country card doesn't grow into a wall when opened. */
+.country-body .metric {
+  margin-top: 7px;
+}
+.country-body .metric-label {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+/* "What's left to explore" as plain, scannable text — a label + count, then
+   names as accent links joined by thin separators. Far lighter than the old
+   rounded-chip wall, and it wraps cleanly on a narrow phone. */
+.name-list {
+  margin-top: 12px;
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+.name-list-label {
+  display: block;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 1px;
+}
+.name-list-label .muted {
+  font-weight: 400;
+}
+.name-list-names {
+  color: var(--muted);
+}
+.name-list-sep {
+  color: var(--border);
+}
+.name-list-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  font-weight: 500;
+}
+.name-list-link:hover {
+  text-decoration: underline;
+}
+.name-list-more {
+  font-weight: 600;
+  margin-left: 4px;
+}
 .metric {
   margin-top: 8px;
 }
@@ -3904,8 +3951,13 @@ textarea.select {
 .topbar-search .search-input {
   height: 32px;
   font-size: 14px;
-  /* Room for the leading 🔍 and the trailing ✕. */
-  padding: 0 32px 0 34px;
+  /* Leading 🔍 always; trailing space reserved for ✕ only WHEN it's shown
+     (i.e. once you've typed). Empty, the placeholder reclaims that room so it
+     reads fully instead of clipping to "Se…" on a narrow phone bar. */
+  padding: 0 12px 0 34px;
+}
+.topbar-search .search-input.has-clear {
+  padding-right: 32px;
 }
 /* Dropdowns anchor under the bar, not in the page flow. */
 .topbar-search .results {
@@ -3930,8 +3982,11 @@ textarea.select {
 @media (max-width: 899.98px) {
   .topbar-search .search-input {
     height: 30px;
-    padding: 0 30px 0 32px; /* room for 🔍 + ✕ */
+    padding: 0 10px 0 32px; /* leading 🔍; ✕ room added only when typing */
     font-size: 16px; /* below 16px, iOS zooms the page on focus */
+  }
+  .topbar-search .search-input.has-clear {
+    padding-right: 30px;
   }
   /* The input can be narrow between the brand and the icons — span the
      dropdowns across the viewport instead of the input's own width. */

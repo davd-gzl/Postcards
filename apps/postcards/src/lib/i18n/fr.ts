@@ -218,6 +218,10 @@ export const fr: Messages = {
   "stats.country.metricBigCities": "Grandes villes",
   "stats.country.metricBigCitiesDetail": "{pct} · {visited}/{total} villes de 100k+",
   "stats.country.bigCityBarAria": "{name} : grandes villes (100k+) visitées",
+  "stats.country.metricMega": "Mégapoles",
+  "stats.country.metricMegaDetail": "{pct} · {visited}/{total} villes de 1M+",
+  "stats.country.megaCityBarAria": "{name} : mégapoles (1M+) visitées",
+  "stats.country.openPage": "Ouvrir la page",
   "stats.country.metricRegions": "Régions",
   "stats.country.metricRegionsDetail": "{pct} · {visited}/{total} régions",
   "stats.country.datasetNotLoaded": "jeu de données non chargé",
@@ -782,6 +786,7 @@ export const fr: Messages = {
 
   // ── Global place search (top bar) ────────────────────────────────────────
   "search.placeholder": "Rechercher une ville ou un pays…",
+  "search.placeholderShort": "Rechercher…",
   "search.aria": "Rechercher une ville ou un pays",
   "search.clear": "Effacer la recherche",
   "search.noMatches": "Aucun résultat pour {q}",

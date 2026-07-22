@@ -225,6 +225,10 @@ export const en = {
   "stats.country.metricBigCities": "Big cities",
   "stats.country.metricBigCitiesDetail": "{pct} · {visited}/{total} cities of 100k+",
   "stats.country.bigCityBarAria": "{name}: big cities (100k+) visited",
+  "stats.country.metricMega": "Mega cities",
+  "stats.country.metricMegaDetail": "{pct} · {visited}/{total} cities of 1M+",
+  "stats.country.megaCityBarAria": "{name}: mega cities (1M+) visited",
+  "stats.country.openPage": "Open full page",
   "stats.country.metricRegions": "Regions",
   "stats.country.metricRegionsDetail": "{pct} · {visited}/{total} regions",
   "stats.country.datasetNotLoaded": "dataset not loaded",
@@ -787,6 +791,7 @@ export const en = {
 
   // ── Global place search (top bar) ────────────────────────────────────────
   "search.placeholder": "Search a city or country…",
+  "search.placeholderShort": "Search…",
   "search.aria": "Search a city or country",
   "search.clear": "Clear search",
   "search.noMatches": "No matches for {q}",

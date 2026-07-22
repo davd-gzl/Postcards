@@ -32,6 +32,21 @@ export function PlaceSearch({
   const listRef = useRef<HTMLUListElement>(null);
   const focusNonce = useUi((s) => s.searchFocusNonce);
 
+  // On a phone the top-bar field is narrow (it shares the row with the brand and
+  // the action icons), so the full "Search a city or country…" placeholder gets
+  // clipped mid-word. Use a short placeholder there — it stays fully readable,
+  // and the leading 🔍 plus the accessible name still convey what it searches.
+  const [narrow, setNarrow] = useState(
+    () => typeof matchMedia !== "undefined" && matchMedia("(max-width: 899.98px)").matches,
+  );
+  useEffect(() => {
+    if (typeof matchMedia === "undefined") return;
+    const mq = matchMedia("(max-width: 899.98px)");
+    const onChange = (e: MediaQueryListEvent) => setNarrow(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   // Focus when the "/" shortcut asks (nonce > 0 avoids grabbing focus on mount).
   useEffect(() => {
     if (focusNonce > 0) inputRef.current?.focus();
@@ -146,8 +161,8 @@ export function PlaceSearch({
       <input
         ref={inputRef}
         type="search"
-        className="search-input"
-        placeholder={t("search.placeholder")}
+        className={"search-input" + (q ? " has-clear" : "")}
+        placeholder={narrow ? t("search.placeholderShort") : t("search.placeholder")}
         aria-label={t("search.aria")}
         role="combobox"
         aria-expanded={results.length > 0}
