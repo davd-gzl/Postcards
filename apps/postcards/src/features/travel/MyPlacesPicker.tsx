@@ -1,18 +1,26 @@
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
+import { getReferenceData } from "../../lib/reference/referenceData";
+import { searchPlaces } from "../visits/search";
 import { countryFlag } from "../../lib/format/format";
 import { LAND_OUTLINE } from "../../lib/publish/landOutline";
 import { useT } from "../../lib/i18n";
+import type { PlaceRef } from "../../lib/schema/models";
 import type { MyPlace } from "./myPlaces";
 
-// Pick trip stops from the places you've BEEN — a tappable list, or a lightweight
-// offline SVG map of your places (no MapLibre/tiles). One tap adds a stop. Built for
-// speed: flags for instant recognition, no gazetteer typing (spec 019).
+// Pick trip stops fast. Two ways:
+//  • List — the places you've BEEN (visited + past trips) as instant taps, AND a
+//    search that reaches ANY airport or city in the gazetteer (airports are central
+//    to reconstructing flights, and most people never log them as visits).
+//  • Map — a lightweight offline SVG map of your places (no MapLibre/tiles); tap a pin.
+// Flags everywhere for instant recognition (spec 019).
 
 const W = 720;
 const H = 380;
 const PAD = 34;
 const MIN_SPAN = 0.35;
 const mercY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (Math.max(-85, Math.min(85, lat)) * Math.PI) / 360));
+
+const flagFor = (p: PlaceRef) => (p.kind === "airport" ? "✈️" : countryFlag(p.countryId));
 
 export function MyPlacesPicker({
   places,
@@ -21,20 +29,23 @@ export function MyPlacesPicker({
 }: {
   places: MyPlace[];
   addedKeys: Set<string>;
-  onPick: (p: MyPlace) => void;
+  onPick: (place: PlaceRef) => void;
 }) {
   const t = useT();
+  const ref = useMemo(() => getReferenceData(), []);
   const [mode, setMode] = useState<"list" | "map">("list");
   const [q, setQ] = useState("");
+  const dq = useDeferredValue(q);
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    return s ? places.filter((p) => p.name.toLowerCase().includes(s)) : places;
-  }, [places, q]);
-
-  if (places.length === 0) {
-    return <p className="muted empty">{t("trip.compose.noPlaces")}</p>;
-  }
+  // With a query, search the whole gazetteer for airports + cities (any airport is
+  // reachable); with no query, the instant list is the places you've been.
+  const searchRows = useMemo(() => {
+    const s = dq.trim();
+    if (!s) return null;
+    return searchPlaces(ref, s, 12)
+      .filter((r) => r.place.kind === "airport" || r.place.kind === "city")
+      .map((r) => ({ place: r.place, detail: r.detail }));
+  }, [ref, dq]);
 
   return (
     <div className="myplaces-picker">
@@ -63,33 +74,62 @@ export function MyPlacesPicker({
             type="search"
             className="search-input"
             value={q}
-            placeholder={t("trip.compose.filterPlaces")}
-            aria-label={t("trip.compose.filterPlaces")}
+            placeholder={t("trip.compose.searchPlaceholder")}
+            aria-label={t("trip.compose.searchPlaceholder")}
             onChange={(e) => setQ(e.target.value)}
           />
-          <ul className="myplaces-list">
-            {filtered.map((p) => (
-              <li key={p.key}>
-                <button
-                  type="button"
-                  className="myplaces-pick"
-                  aria-label={t("trip.compose.pickAria", { name: p.name })}
-                  onClick={() => onPick(p)}
-                >
-                  <span className="flag" aria-hidden>
-                    {p.place.kind === "airport" ? "✈️" : countryFlag(p.countryId)}
-                  </span>
-                  <span className="myplaces-name">{p.name}</span>
-                  {addedKeys.has(p.key) && (
-                    <span className="myplaces-added" aria-hidden>
-                      ✓
+          {searchRows ? (
+            searchRows.length === 0 ? (
+              <p className="muted small">{t("trip.compose.noMatch")}</p>
+            ) : (
+              <ul className="myplaces-list">
+                {searchRows.map((r) => (
+                  <li key={`${r.place.kind}:${r.place.id}`}>
+                    <button
+                      type="button"
+                      className="myplaces-pick"
+                      aria-label={t("trip.compose.pickAria", { name: r.place.name })}
+                      onClick={() => onPick(r.place)}
+                    >
+                      <span className="flag" aria-hidden>
+                        {flagFor(r.place)}
+                      </span>
+                      <span className="myplaces-name">{r.place.name}</span>
+                      <span className="muted small myplaces-detail">{r.detail}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : places.length === 0 ? (
+            <p className="muted small">{t("trip.compose.searchPrompt")}</p>
+          ) : (
+            <ul className="myplaces-list">
+              {places.map((p) => (
+                <li key={p.key}>
+                  <button
+                    type="button"
+                    className="myplaces-pick"
+                    aria-label={t("trip.compose.pickAria", { name: p.name })}
+                    onClick={() => onPick(p.place)}
+                  >
+                    <span className="flag" aria-hidden>
+                      {flagFor(p.place)}
                     </span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
+                    <span className="myplaces-name">{p.name}</span>
+                    {addedKeys.has(p.key) && (
+                      <span className="myplaces-added" aria-hidden>
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </>
+      ) : places.length === 0 ? (
+        <p className="muted empty">{t("trip.compose.noPlaces")}</p>
       ) : (
         <PickMap places={places} addedKeys={addedKeys} onPick={onPick} />
       )}
@@ -106,7 +146,7 @@ function PickMap({
 }: {
   places: MyPlace[];
   addedKeys: Set<string>;
-  onPick: (p: MyPlace) => void;
+  onPick: (place: PlaceRef) => void;
 }) {
   const t = useT();
   const layout = useMemo(() => {
@@ -174,7 +214,7 @@ function PickMap({
       <svg className="storymap-svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t("trip.compose.mapAria")}>
         {layout.land && <path className="storymap-land" d={layout.land} />}
         {layout.dots.map((p) => (
-          <g key={p.key} className="storymap-pin" aria-hidden onClick={() => onPick(p)}>
+          <g key={p.key} className="storymap-pin" aria-hidden onClick={() => onPick(p.place)}>
             <circle cx={p.x} cy={p.y} r={addedKeys.has(p.key) ? 8 : 6} className="storymap-pin-dot" />
           </g>
         ))}
@@ -186,9 +226,9 @@ function PickMap({
               type="button"
               className="link"
               aria-label={t("trip.compose.pickAria", { name: p.name })}
-              onClick={() => onPick(p)}
+              onClick={() => onPick(p.place)}
             >
-              {p.place.kind === "airport" ? "✈️" : countryFlag(p.countryId)} {p.name}
+              {flagFor(p.place)} {p.name}
               {addedKeys.has(p.key) && (
                 <span className="myplaces-added" aria-hidden>
                   {" "}

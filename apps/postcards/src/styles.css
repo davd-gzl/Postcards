@@ -2722,6 +2722,13 @@ h1.brand {
   color: var(--accent);
   font-weight: 700;
 }
+.myplaces-detail {
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .myplaces-legend {
   max-height: 200px;
   overflow-y: auto;

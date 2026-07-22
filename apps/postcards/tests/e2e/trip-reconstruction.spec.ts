@@ -52,6 +52,22 @@ test("build a multi-stop trip from your visited places", async ({ page }) => {
   await expect(page.locator(".trip-stops li")).toHaveCount(3);
 });
 
+// US1 — airports are reachable by search even with nothing logged yet (flights are
+// central to reconstruction, and airports are rarely logged as visits).
+test("airports are reachable by search with no prior visits", async ({ page }) => {
+  await page.goto("/");
+  await openComposer(page); // fresh profile — no visited places
+
+  const search = page.getByRole("searchbox");
+  await search.fill("CDG");
+  await page.getByRole("button", { name: /Add .*CDG.* to the trip/ }).first().click();
+  await search.fill("JFK");
+  await page.getByRole("button", { name: /Add .*JFK.* to the trip/ }).first().click();
+
+  await expect(page.locator(".trip-stops li")).toHaveCount(2);
+  await expect(page.locator(".trip-distance-km")).toContainText("km");
+});
+
 // US2 — the total distance shows and grows as stops are added.
 test("distance is shown and updates live as stops change", async ({ page }) => {
   await page.goto("/");

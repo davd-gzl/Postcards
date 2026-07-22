@@ -157,7 +157,7 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
       <MyPlacesPicker
         places={pool}
         addedKeys={addedKeys}
-        onPick={(mp) => setStops((st) => addStop(st, mp.place))}
+        onPick={(place) => setStops((st) => addStop(st, place))}
       />
 
       {/* Optional details — name now, date whenever. */}
