@@ -204,21 +204,26 @@ function greatCircle(
 }
 
 /**
- * Great-circle arcs for logged trips whose endpoints resolve to coordinates,
- * tagged with the travel mode so the map can colour them. Trips with a
- * coordinate-less endpoint (e.g. a whole country) are skipped — nothing invented.
+ * Great-circle arcs for logged trips, tagged with the travel mode so the map can
+ * colour them. A MULTI-STOP trip (spec 019) draws one arc per consecutive leg, so
+ * the line traces the actual route (Paris → Tokyo → Osaka), not a single endpoint
+ * shortcut; a single-leg trip draws its one `from → to` arc. Any leg touching a
+ * coordinate-less stop (e.g. a whole country) is skipped — nothing invented.
  */
 export function tripArcs(trips: Trip[], ref: ReferenceData): FeatureCollection<LineString> {
   const features: Feature<LineString>[] = [];
   for (const t of trips) {
-    const from = coordsOf(t.from, ref);
-    const to = coordsOf(t.to, ref);
-    if (!from || !to) continue;
-    features.push({
-      type: "Feature",
-      geometry: { type: "LineString", coordinates: greatCircle(from, to) },
-      properties: { mode: t.mode },
-    });
+    const chain = t.stops && t.stops.length >= 2 ? t.stops : [t.from, t.to];
+    for (let i = 0; i < chain.length - 1; i++) {
+      const from = coordsOf(chain[i]!, ref);
+      const to = coordsOf(chain[i + 1]!, ref);
+      if (!from || !to) continue;
+      features.push({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: greatCircle(from, to) },
+        properties: { mode: t.mode },
+      });
+    }
   }
   return { type: "FeatureCollection", features };
 }

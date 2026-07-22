@@ -238,4 +238,34 @@ describe("trip arcs", () => {
     const fc = tripArcs([trip(country, airport("JFK"))], ref);
     expect(fc.features).toHaveLength(0);
   });
+
+  it("draws one arc PER LEG for a multi-stop trip (spec 019)", () => {
+    // CDG → JFK → LHR: two legs, so two arc features (not one endpoint shortcut).
+    const multi: Trip = {
+      ...trip(airport("CDG"), airport("LHR")),
+      stops: [airport("CDG"), airport("JFK"), airport("LHR")],
+    };
+    const fc = tripArcs([multi], ref);
+    expect(fc.features).toHaveLength(2);
+    // Each leg is its own great-circle arc, tagged with the mode.
+    for (const f of fc.features) expect(f.properties?.mode).toBe("flight");
+    // Leg 1 starts at CDG, leg 2 ends at LHR — the route is traced through JFK.
+    const cdg = ref.airportById("CDG")!;
+    const lhr = ref.airportById("LHR")!;
+    const first = fc.features[0]!.geometry.coordinates;
+    const last = fc.features[1]!.geometry.coordinates;
+    expect(first[0]![0]).toBeCloseTo(cdg.lon, 3);
+    expect(last[last.length - 1]![1]).toBeCloseTo(lhr.lat, 3);
+  });
+
+  it("skips only the unresolvable leg of a multi-stop trip", () => {
+    const country: PlaceRef = { kind: "country", id: "FR", name: "France", countryId: "FR" };
+    // CDG → [country] → JFK: both legs touch the coordinate-less country → 0 arcs;
+    // but CDG → JFK → LHR with a good middle keeps both.
+    const withGap: Trip = {
+      ...trip(airport("CDG"), airport("JFK")),
+      stops: [airport("CDG"), country, airport("JFK")],
+    };
+    expect(tripArcs([withGap], ref).features).toHaveLength(0);
+  });
 });

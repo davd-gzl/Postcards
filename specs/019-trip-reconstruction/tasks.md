@@ -116,7 +116,7 @@ stations affordance; the stop model (PlaceRef) would accept a `"station"` kind u
 - [x] T024 [P] Verify en/fr/ko key parity (tsc) for every new string; no missing keys.
 - [x] T025 [P] a11y: extend `tests/e2e/a11y.spec.ts` to cover the composer (axe WCAG 2.1 AA) + full
   keyboard traversal (add/reorder/remove stops, date, save/cancel).
-- [ ] T026 [P] (Optional nice-to-have, DEFERRED) In `src/features/map/MapScreen.tsx`/`MapView.tsx`,
+- [x] T026 [P] [US2] Draw each LEG of a multi-stop trip's arc on the map (not only from → to), reusing greatCircle in tripArcs; one arc feature per consecutive resolvable leg.
   draw each **leg** of a multi-stop trip's arc (not only `from → to`), reusing `tripArcs`. Left for a
   follow-up — the map still draws the endpoint arc for multi-stop trips, so nothing is broken.
 - [x] T027 Full gate: `pnpm typecheck && pnpm test && pnpm test:e2e trip-reconstruction a11y smoke`
