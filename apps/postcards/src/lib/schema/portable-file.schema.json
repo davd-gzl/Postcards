@@ -1,6 +1,6 @@
 {
   "$id": "https://github.com/davd-gzl/Postcards/blob/main/apps/postcards/src/lib/schema/portable-file.schema.json",
-  "title": "Postcards portable data file (schemaVersion 11)",
+  "title": "Postcards portable data file (schemaVersion 12)",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
@@ -360,6 +360,21 @@
               "car",
               "other"
             ]
+          },
+          "legModes": {
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "flight",
+                "train",
+                "bus",
+                "ferry",
+                "car",
+                "other"
+              ]
+            }
           },
           "date": {
             "anyOf": [

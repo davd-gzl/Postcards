@@ -458,6 +458,7 @@ export const ko: Messages = {
   "trip.compose.nameLabel": "이름 (선택)",
   "trip.compose.namePlaceholder": "이 여행 이름 지정",
   "trip.compose.modeLabel": "수단",
+  "trip.compose.legModeAria": "{from}에서 {to}까지 이동 수단",
   "trip.compose.addDate": "날짜 추가 (선택)",
   "trip.compose.whenLabel": "언제 (대략)",
   "trip.compose.yearPlaceholder": "연도",

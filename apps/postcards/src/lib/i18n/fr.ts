@@ -459,6 +459,7 @@ export const fr: Messages = {
   "trip.compose.nameLabel": "Nom (facultatif)",
   "trip.compose.namePlaceholder": "Nommez ce voyage",
   "trip.compose.modeLabel": "Comment",
+  "trip.compose.legModeAria": "Transport de {from} à {to}",
   "trip.compose.addDate": "Ajouter une date (facultatif)",
   "trip.compose.whenLabel": "Quand (environ)",
   "trip.compose.yearPlaceholder": "Année",

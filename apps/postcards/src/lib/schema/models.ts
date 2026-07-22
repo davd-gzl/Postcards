@@ -182,6 +182,15 @@ export const TripSchema = z
      */
     stops: z.array(PlaceRefSchema).min(2).max(200).optional(),
     mode: TravelModeSchema.optional().default("flight"),
+    /**
+     * Per-LEG transport (spec 019): the mode of the leg from stop i to stop i+1, so
+     * one journey can mix transports — fly Paris→Tokyo→Osaka, then take the train
+     * Osaka→Kyoto — and a run of the same mode reads as a sub-trip. When present its
+     * length is `stops.length - 1`; a leg with no entry falls back to `mode`.
+     * Additive & optional with no default, so the key is never injected on parse —
+     * a trip with a single `mode` (and every v1–v11 file) round-trips byte-identically.
+     */
+    legModes: z.array(TravelModeSchema).max(200).optional(),
     // Approximate/"vague" date (spec 019): a full day `YYYY-MM-DD`, a month
     // `YYYY-MM`, or a year `YYYY` — all optional/nullable (an undated trip is fine).
     // The wider regex is a RELAXATION, so every previously-valid full-day value

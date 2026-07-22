@@ -464,6 +464,7 @@ export const en = {
   "trip.compose.nameLabel": "Name (optional)",
   "trip.compose.namePlaceholder": "Name this trip",
   "trip.compose.modeLabel": "How",
+  "trip.compose.legModeAria": "Transport from {from} to {to}",
   "trip.compose.addDate": "Add a date (optional)",
   "trip.compose.whenLabel": "When (roughly)",
   "trip.compose.yearPlaceholder": "Year",
