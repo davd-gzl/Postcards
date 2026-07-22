@@ -24,6 +24,9 @@ const KIND_GROUP: Record<string, "explore" | "understand" | "phrasebook"> = {
 };
 const GROUP_ORDER = ["explore", "understand", "phrasebook"] as const;
 
+/** Whether the device is offline right now (guides are online-only, opt-in). */
+const isOffline = () => typeof navigator !== "undefined" && !navigator.onLine;
+
 /** Resolve the names a place's guides are built from (common country name —
  *  the real Wikivoyage article title, e.g. "Russia", not "Russian Federation"). */
 function guideNames(place: PlaceRef) {
@@ -203,7 +206,7 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
   const tried = useRef(false);
   useEffect(() => {
     if (tried.current || summary || wpSummary || !autoLoad) return;
-    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+    if (isOffline()) return;
     tried.current = true;
     void loadOverview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -271,7 +274,7 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
           )}
         {!overview && state === "empty" && (
           <p className="muted small">
-            {typeof navigator !== "undefined" && !navigator.onLine
+            {isOffline()
               ? t("guide.emptyOffline")
               : t("guide.emptyOnline")}{" "}
             <button type="button" className="mini-btn" onClick={loadOverview}>
@@ -321,7 +324,7 @@ function GuideContent({ placeName, names }: { placeName: string; names: GuideNam
         )}
         {fullState === "empty" && (
           <p className="muted small">
-            {typeof navigator !== "undefined" && !navigator.onLine
+            {isOffline()
               ? t("guide.fullOffline")
               : t("guide.fullEmpty")}{" "}
             <button type="button" className="mini-btn" onClick={() => void loadFullGuide()}>

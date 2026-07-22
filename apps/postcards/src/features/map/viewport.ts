@@ -169,7 +169,7 @@ export function citiesInView(
 
 /** The personal statuses the map shows (multi-select; empty = show all). Kept as
  *  a bare string list so viewport.ts stays free of store imports. */
-export type CityStatus = "visited" | "wishlist" | "unvisited";
+type CityStatus = "visited" | "wishlist" | "unvisited";
 
 /** Working set considered "in view" before the on-map marker cap — the same
  *  size the MapScreen list snapshots, so the map dots and the list stay in

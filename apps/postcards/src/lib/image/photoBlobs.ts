@@ -25,7 +25,7 @@ export interface PhotoBlobKV {
 }
 
 /** A photo as persisted on the visit record: the id of its blob + its caption. */
-export interface PhotoRef {
+interface PhotoRef {
   id: string;
   caption: string | null;
 }

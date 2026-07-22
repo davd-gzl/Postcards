@@ -1,12 +1,11 @@
 import { create } from "zustand";
-import { backfillUpdatedAt } from "../schema/helpers";
+import { backfillUpdatedAt, stampNow } from "../schema/helpers";
 import type { PlaceRef, TravelMode, Trip } from "../schema/models";
 import * as db from "../db/tripsDb";
 import * as visitsDb from "../db/visitsDb";
 import { uuid } from "./uuid";
 
 /** Now, as the ISO stamp written to `updatedAt` on every mutating path (spec 013). */
-const stampNow = () => new Date().toISOString();
 
 interface TripsState {
   trips: Trip[];

@@ -87,3 +87,7 @@ export function normalizeVisitPhotos(v: Visit): Visit {
 export function backfillUpdatedAt<T extends { addedAt: string; updatedAt?: string }>(r: T): T {
   return r.updatedAt ? r : { ...r, updatedAt: r.addedAt };
 }
+
+/** Current instant as an ISO-8601 string — the `updatedAt`/tombstone timestamp every
+ *  store stamps on a write (one definition instead of a copy per store). */
+export const stampNow = (): string => new Date().toISOString();

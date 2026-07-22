@@ -5,7 +5,7 @@ import { useUi, type PlacesView } from "../../lib/store/useUi";
 import { useFilters } from "../../lib/store/useFilters";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { computeCoverage } from "./computeStats";
-import { formatInt, formatPercent } from "../../lib/format/format";
+import { formatInt, formatPercent, formatPercentFloor } from "../../lib/format/format";
 import { useT } from "../../lib/i18n";
 
 /** Compact counter strip. Every counter is a shortcut: tap it to open the
@@ -46,12 +46,7 @@ export function StatStrip() {
   }) {
     // A tiny-but-nonzero coverage rounds to "0%", which reads as "none visited"
     // even after you've been somewhere. Floor it to "<1%" (same as the hero).
-    const pctLabel =
-      pct != null && pct > 0 && formatPercent(pct) === formatPercent(0)
-        ? "<1%"
-        : pct != null
-          ? formatPercent(pct)
-          : null;
+    const pctLabel = pct != null ? formatPercentFloor(pct) : null;
     const aria =
       pct != null
         ? t("statStrip.visitedAria", {

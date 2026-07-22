@@ -514,7 +514,7 @@ export interface MapFit {
 }
 
 export type Basemap = "simple" | "osm" | "detail";
-export type MapMode = "all" | "cities" | "monuments" | "airports";
+type MapMode = "all" | "cities" | "monuments" | "airports";
 
 const MODE_LAYERS: Record<Exclude<MapMode, "all">, string[]> = {
   cities: ["cities-visited", "cities-inview", "cities-all", "cities-wishlist"],
@@ -1237,9 +1237,7 @@ export function MapView({
   }
 
   function applyTripArcs(map: MlMap) {
-    (map.getSource("trip-arcs") as GeoJSONSource | undefined)?.setData(
-      tripArcsRef.current ?? { type: "FeatureCollection", features: [] },
-    );
+    (map.getSource("trip-arcs") as GeoJSONSource | undefined)?.setData(tripArcsRef.current ?? EMPTY_FC);
   }
 
   function applyTheme(map: MlMap, isDark: boolean) {

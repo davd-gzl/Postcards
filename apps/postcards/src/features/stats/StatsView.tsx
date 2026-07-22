@@ -18,7 +18,7 @@ import { travelTotals } from "../travel/distance";
 import { MODE_GLYPH } from "../travel/modes";
 import { useUi, type PlacesView } from "../../lib/store/useUi";
 import { useFilters } from "../../lib/store/useFilters";
-import { countryFlag, formatDate, formatInt, formatKm, formatPercent } from "../../lib/format/format";
+import { countryFlag, formatDate, formatInt, formatKm, formatPercent, formatPercentFloor } from "../../lib/format/format";
 import { CONTINENT_COLORS, CONTINENT_ORDER } from "../../lib/reference/continents";
 import { ScopeToggle } from "../../ui/ScopeToggle";
 import { useT, type MessageKey } from "../../lib/i18n";
@@ -148,18 +148,12 @@ function CountryRow({
     useFilters.getState().set({ country: c.iso2, minPop, listOnly: false });
     useUi.getState().openPlaces(view);
   };
-  // Cities coverage is a sliver of a huge denominator, so it often rounds to 0 —
-  // floor a real, non-zero share to "<1%" so it never reads as "nothing seen".
-  const pctText = (p: number) => {
-    const s = formatPercent(p);
-    return p > 0 && s === formatPercent(0) ? "<1%" : s;
-  };
 
   // Slim summary meter: a tiny label + percentage + bar.
   const meter = (labelKey: MessageKey, ariaKey: MessageKey, pctVal: number, color?: string) => (
     <div className="cmeter">
       <span className="cmeter-cap">
-        {t(labelKey)} <b>{pctText(pctVal)}</b>
+        {t(labelKey)} <b>{formatPercentFloor(pctVal)}</b>
       </span>
       <Bar value={pctVal} label={t(ariaKey, { name: c.name })} color={color} />
     </div>
@@ -180,7 +174,7 @@ function CountryRow({
       <>
         <div className="metric-label">
           <span>{t(labelKey)}</span>
-          <span className="muted">{t(detailKey, { pct: pctText(pctVal), visited, total })}</span>
+          <span className="muted">{t(detailKey, { pct: formatPercentFloor(pctVal), visited, total })}</span>
         </div>
         <Bar value={pctVal} label={t(ariaKey, { name: c.name })} color={color} />
       </>
@@ -403,17 +397,11 @@ export function StatsView() {
   );
   /* eslint-enable react-hooks/exhaustive-deps */
 
-  // World-coverage %, with a floor so a real visit that rounds to 0 still reads
-  // as progress rather than a discouraging "0%".
-  const worldPctText = formatPercent(coverage.worldPct);
-  const worldPctLabel =
-    coverage.worldPct > 0 && worldPctText === formatPercent(0) ? "<1%" : worldPctText;
-  // City coverage is a sliver of a huge denominator (every 15k+ town on Earth),
-  // so a real visit almost always rounds to 0% — floor it to "<1%" so progress
-  // never reads as nothing.
-  const cityPctText = formatPercent(coverage.cityPct);
-  const cityPctLabel =
-    coverage.cityPct > 0 && cityPctText === formatPercent(0) ? "<1%" : cityPctText;
+  // Coverage %s, floored so a real visit that rounds to 0 still reads as progress
+  // ("<1%") rather than a discouraging "0%" (city coverage sits over a huge
+  // denominator — every 15k+ town on Earth — so it almost always rounds to 0).
+  const worldPctLabel = formatPercentFloor(coverage.worldPct);
+  const cityPctLabel = formatPercentFloor(coverage.cityPct);
 
   // Continent constellation: a dot per continent, lit when it's been touched.
   // Antarctica only earns a dot once visited (nobody's "missing" Antarctica).

@@ -197,7 +197,7 @@ export function Backup() {
       setMessage({ kind: "err", text: result.error });
       return;
     }
-    if (visits.length > 0 || trips.length > 0 || stories.length > 0) {
+    if (hasData) {
       const ok = window.confirm(
         t("backup.confirm.replace", {
           curPlaces: visits.length,
