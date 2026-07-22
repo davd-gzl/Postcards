@@ -244,63 +244,68 @@ function CountryRow({
         </button>
 
         {/* Each tier is tappable — it opens Places filtered to this country + tier,
-            so you can browse (and add) exactly what it counts. Regions have no
-            Places list of their own, so that one opens the country's full page. */}
-        {c.citiesTotal > 0 &&
-          metric(
-            "stats.country.metricCities",
-            "stats.country.metricCitiesDetail",
-            "stats.country.cityBarAria",
-            c.citiesVisited,
-            c.citiesTotal,
-            c.cityPct,
-            CITY_COLOR,
-            drill("cities", 0),
-          )}
-        {c.bigCitiesTotal > 0 &&
-          metric(
-            "stats.country.metricBigCities",
-            "stats.country.metricBigCitiesDetail",
-            "stats.country.bigCityBarAria",
-            c.bigCitiesVisited,
-            c.bigCitiesTotal,
-            c.bigCityPct,
-            BIG_COLOR,
-            drill("cities", 100_000),
-          )}
-        {hasMega &&
-          metric(
-            "stats.country.metricMega",
-            "stats.country.metricMegaDetail",
-            "stats.country.megaCityBarAria",
-            c.megaCitiesVisited,
-            c.megaCitiesTotal,
-            c.megaCityPct,
-            MEGA_COLOR,
-            drill("cities", 1_000_000),
-          )}
-        {c.regionsTotal > 0 &&
-          metric(
-            "stats.country.metricRegions",
-            "stats.country.metricRegionsDetail",
-            "stats.country.regionBarAria",
-            c.regionsVisited,
-            c.regionsTotal,
-            c.regionPct,
-            REGION_COLOR,
-            () => useUi.getState().openCountry(c.iso2),
-          )}
-        {c.heritageTotal > 0 &&
-          metric(
-            "stats.country.metricSites",
-            "stats.country.metricSitesDetail",
-            "stats.country.heritageBarAria",
-            c.heritageVisited,
-            c.heritageTotal,
-            c.heritagePct,
-            "var(--stat-want)",
-            drill("monuments", 0),
-          )}
+            so you can browse (and add) exactly what it counts. The three city
+            tiers share one row; regions + sites sit on the row below. Regions have
+            no Places list of their own, so that one opens the country's full page. */}
+        <div className="tier-grid">
+          {c.citiesTotal > 0 &&
+            metric(
+              "stats.country.metricCities",
+              "stats.country.metricCitiesDetail",
+              "stats.country.cityBarAria",
+              c.citiesVisited,
+              c.citiesTotal,
+              c.cityPct,
+              CITY_COLOR,
+              drill("cities", 0),
+            )}
+          {c.bigCitiesTotal > 0 &&
+            metric(
+              "stats.country.metricBigCities",
+              "stats.country.metricBigCitiesDetail",
+              "stats.country.bigCityBarAria",
+              c.bigCitiesVisited,
+              c.bigCitiesTotal,
+              c.bigCityPct,
+              BIG_COLOR,
+              drill("cities", 100_000),
+            )}
+          {hasMega &&
+            metric(
+              "stats.country.metricMega",
+              "stats.country.metricMegaDetail",
+              "stats.country.megaCityBarAria",
+              c.megaCitiesVisited,
+              c.megaCitiesTotal,
+              c.megaCityPct,
+              MEGA_COLOR,
+              drill("cities", 1_000_000),
+            )}
+        </div>
+        <div className="tier-grid">
+          {c.regionsTotal > 0 &&
+            metric(
+              "stats.country.metricRegions",
+              "stats.country.metricRegionsDetail",
+              "stats.country.regionBarAria",
+              c.regionsVisited,
+              c.regionsTotal,
+              c.regionPct,
+              REGION_COLOR,
+              () => useUi.getState().openCountry(c.iso2),
+            )}
+          {c.heritageTotal > 0 &&
+            metric(
+              "stats.country.metricSites",
+              "stats.country.metricSitesDetail",
+              "stats.country.heritageBarAria",
+              c.heritageVisited,
+              c.heritageTotal,
+              c.heritagePct,
+              "var(--stat-want)",
+              drill("monuments", 0),
+            )}
+        </div>
 
         {detail && (
           <>
