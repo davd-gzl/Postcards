@@ -1,88 +1,94 @@
 import { test, expect, type Page } from "@playwright/test";
 import { gotoTab } from "./nav-helper";
 
-// Spec 019 — Trip Reconstruction. A dedicated composer page assembles a past trip
-// as an ordered chain of stops (airports + cities), shows the running great-circle
-// distance, and fixes the Travel back-navigation bug.
+// Spec 019 — Trip Reconstruction. Fast reconstruction: tap the places you've BEEN
+// (list or map, with flags) to build an ordered chain of stops; the date is
+// optional. Plus the Travel back-navigation fix.
+
+async function markVisited(page: Page, city: string): Promise<void> {
+  await page.getByLabel("Search a city or country").fill(city);
+  await page.getByRole("button", { name: `Mark ${city} visited` }).first().click();
+  await page.keyboard.press("Escape");
+}
 
 async function openComposer(page: Page): Promise<void> {
-  await page.goto("/");
   await gotoTab(page, "Trips");
   await page.getByRole("button", { name: "Reconstruct a journey" }).click();
   await expect(page.getByRole("heading", { name: "New trip" })).toBeVisible();
-}
-
-async function addStop(page: Page, query: string, code: string): Promise<void> {
-  await page.getByRole("combobox", { name: "Add a stop" }).fill(query);
-  await page.getByRole("option").filter({ hasText: code }).first().click();
 }
 
 function kmOf(text: string | null): number {
   return Number((text ?? "").replace(/[^\d]/g, "")) || 0;
 }
 
-// US1 — build a multi-stop trip, reorder, save, and see it listed; reopen restores it.
-test("build a multi-stop trip, save it, and reopen to edit", async ({ page }) => {
+// US1 — build a multi-stop trip by tapping your visited places; save (no date); reopen.
+test("build a multi-stop trip from your visited places", async ({ page }) => {
+  await page.goto("/");
+  for (const city of ["Paris", "Tokyo", "London"]) await markVisited(page, city);
   await openComposer(page);
 
-  await addStop(page, "CDG", "CDG"); // Paris airport
-  await addStop(page, "Tokyo", "Tokyo"); // city
-  await addStop(page, "JFK", "JFK"); // New York airport
+  // Tap three places from the list of where you've been.
+  await page.getByRole("button", { name: "Add Paris to the trip" }).click();
+  await page.getByRole("button", { name: "Add Tokyo to the trip" }).click();
+  await page.getByRole("button", { name: "Add London to the trip" }).click();
 
   const stops = page.locator(".trip-stops li");
   await expect(stops).toHaveCount(3);
-  await expect(stops.nth(0)).toContainText("CDG");
-  await expect(stops.nth(2)).toContainText("JFK");
+  await expect(stops.nth(0)).toContainText("Paris");
+  await expect(stops.nth(2)).toContainText("London");
 
-  // Reorder: move the last stop up, then confirm the order changed.
-  await page.getByRole("button", { name: /Move .*JFK.* up/ }).click();
-  await expect(page.locator(".trip-stops li").nth(1)).toContainText("JFK");
+  // Reorder: move the last stop up.
+  await page.getByRole("button", { name: /Move .*London.* up/ }).click();
+  await expect(page.locator(".trip-stops li").nth(1)).toContainText("London");
 
-  // Name + a rough (year-only) date, then save.
-  await page.getByLabel("Trip name").fill("Round the world");
-  await page.getByLabel("Year").fill("2024");
+  // Save with NO date (the date is optional / deferred).
   await page.getByRole("button", { name: "Save trip" }).click();
-
-  // Back on the Trips list: the journey is there with its stop count.
   await expect(page.getByRole("heading", { name: "Travel log" })).toBeVisible();
   await expect(page.getByText(/3 stops/)).toBeVisible();
 
-  // Reopen it → the composer restores the three stops.
+  // Reopen it → the three stops are restored.
   await page.getByRole("button", { name: /Edit trip/ }).first().click();
   await expect(page.getByRole("heading", { name: "Edit trip" })).toBeVisible();
   await expect(page.locator(".trip-stops li")).toHaveCount(3);
 });
 
-// US2 — the total distance is shown and grows as stops are added.
+// US2 — the total distance shows and grows as stops are added.
 test("distance is shown and updates live as stops change", async ({ page }) => {
+  await page.goto("/");
+  for (const city of ["Paris", "Tokyo", "Berlin"]) await markVisited(page, city);
   await openComposer(page);
 
-  await addStop(page, "CDG", "CDG");
-  await addStop(page, "JFK", "JFK");
+  await page.getByRole("button", { name: "Add Paris to the trip" }).click();
+  await page.getByRole("button", { name: "Add Tokyo to the trip" }).click();
   const two = kmOf(await page.locator(".trip-distance-km").textContent());
-  expect(two).toBeGreaterThan(5000); // CDG↔JFK ≈ 5,800 km
+  expect(two).toBeGreaterThan(4000); // Paris↔Tokyo ≈ 9,700 km
 
-  await addStop(page, "Tokyo", "Tokyo");
+  await page.getByRole("button", { name: "Add Berlin to the trip" }).click();
   const three = kmOf(await page.locator(".trip-distance-km").textContent());
   expect(three).toBeGreaterThan(two); // adding a leg only grows the great-circle path
 });
 
 // US3 — opening an airport from the Travel screen and pressing Back returns to the
-// Travel list (not a dead-end on the map, and never exiting the app).
+// Travel list (not a dead-end on the map). Seeded via the quick single-leg form.
 test("Back from a Travel airport returns to the Travel list", async ({ page }) => {
-  // Seed an airport into the roll-up by saving a quick trip first.
-  await openComposer(page);
-  await addStop(page, "CDG", "CDG");
-  await addStop(page, "JFK", "JFK");
-  await page.getByRole("button", { name: "Save trip" }).click();
-  await expect(page.getByRole("heading", { name: "Travel log" })).toBeVisible();
+  await page.goto("/");
+  await gotoTab(page, "Trips");
 
-  // Open an airport from the most-visited roll-up → its detail page.
+  // Quick single-leg trip between two airports → seeds the most-visited roll-up.
+  await page.getByRole("button", { name: "New trip" }).click();
+  await page.getByLabel("From", { exact: true }).fill("CDG");
+  await page.getByRole("option").filter({ hasText: "CDG" }).first().click();
+  await page.getByLabel("To", { exact: true }).fill("JFK");
+  await page.getByRole("option").filter({ hasText: "JFK" }).first().click();
+  await page.getByRole("button", { name: "Add trip" }).click();
+  await expect(page.locator(".travel-totals")).toContainText("1 trip");
+
+  // Open an airport from the roll-up → its detail page (a page layer covers Travel).
   const rollup = page.locator(".airport-rollup");
   await rollup.getByRole("button").filter({ hasText: "CDG" }).first().click();
-  await expect(page.getByRole("heading", { name: "Travel log" })).toHaveCount(0); // a page layer covers it
+  await expect(page.getByRole("heading", { name: "Travel log" })).toHaveCount(0);
 
-  // A single Escape returns to the Travel list — not the map, and the app stays.
+  // A single Escape returns to the Travel list — not the map, app never exits.
   await page.keyboard.press("Escape");
   await expect(page.getByRole("heading", { name: "Travel log" })).toBeVisible();
 });

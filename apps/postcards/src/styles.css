@@ -2664,6 +2664,68 @@ h1.brand {
 .trip-composer-actions .btn-ghost {
   flex: 1;
 }
+.trip-chain-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.trip-date-details > summary {
+  cursor: pointer;
+  padding: 6px 2px;
+  font-size: 13px;
+  font-weight: 600;
+  list-style-position: inside;
+}
+
+/* Pick trip stops from the places you've been (list or map). */
+.myplaces-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.myplaces-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.myplaces-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.myplaces-pick:hover {
+  border-color: var(--border-strong);
+}
+.myplaces-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.myplaces-added {
+  color: var(--accent);
+  font-weight: 700;
+}
+.myplaces-legend {
+  max-height: 200px;
+  overflow-y: auto;
+}
 /* Trip folders — group legs under their shared trip name. */
 .trip-folders {
   display: flex;

@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useTrips } from "../../lib/store/useTrips";
+import { useVisits } from "../../lib/store/useVisits";
+import { placeKey } from "../../lib/schema/helpers";
 import { countryFlag } from "../../lib/format/format";
 import { useT, useLocale } from "../../lib/i18n";
 import type { PlaceRef, TravelMode } from "../../lib/schema/models";
-import { PlacePicker } from "./PlacePicker";
+import { MyPlacesPicker } from "./MyPlacesPicker";
+import { myPlaces } from "./myPlaces";
 import { addStop, moveStop, removeStop } from "./tripStops";
 import { tripPathKm } from "./distance";
 import { parseTripDate } from "./tripDate";
@@ -13,21 +16,27 @@ const MODES: TravelMode[] = ["flight", "train", "bus", "ferry", "car", "other"];
 const MONTHS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
 
 /**
- * Full-page composer for a MULTI-STOP journey (spec 019). Assemble an ordered chain
- * of stops (airports + cities), name it, give it a rough date, and see the running
- * great-circle distance. Retrospective, not a planner — it records "what I did, and
- * roughly how far." A pure summary: saving never touches visit records.
+ * Full-page composer for a MULTI-STOP journey (spec 019). Built to be fast: tap the
+ * places you've BEEN (a list or a map, with flags) to build an ordered chain, see
+ * the running great-circle distance, and save — the date is optional and can be
+ * added later. Retrospective, not a planner; a pure summary (visits untouched).
  */
 export function TripComposer({ tripId, onClose }: { tripId: string | null; onClose: () => void }) {
   const t = useT();
   const locale = useLocale();
   const ref = useMemo(() => getReferenceData(), []);
+  const trips = useTrips((s) => s.trips);
+  const visits = useVisits((s) => s.visits);
   const addTrip = useTrips((s) => s.addTrip);
   const updateTrip = useTrips((s) => s.updateTrip);
-  const existing = useTrips((s) => (tripId ? s.trips.find((x) => x.tripId === tripId) : undefined));
+  const existing = useMemo(
+    () => (tripId ? trips.find((x) => x.tripId === tripId) : undefined),
+    [tripId, trips],
+  );
 
-  // Seed from an existing trip: its stops if any, else its from→to as two stops so
-  // a legacy single-leg trip opens editable in the same page.
+  // The pool of places you've been — visited records + places already used in trips.
+  const pool = useMemo(() => myPlaces(visits, trips, ref), [visits, trips, ref]);
+
   const [stops, setStops] = useState<PlaceRef[]>(() => {
     if (existing?.stops && existing.stops.length >= 2) return existing.stops;
     if (existing) return [existing.from, existing.to];
@@ -41,6 +50,7 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
     seededDate?.month != null ? String(seededDate.month).padStart(2, "0") : "",
   );
 
+  const addedKeys = useMemo(() => new Set(stops.map((s) => placeKey(s))), [stops]);
   const { km, unresolvedLegs } = useMemo(() => tripPathKm(stops, ref), [stops, ref]);
   const canSave = stops.length >= 2;
 
@@ -59,7 +69,6 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
     const to = stops[stops.length - 1]!;
     const date = composeDate();
     if (tripId && existing) {
-      // updateTrip trims/clears the label itself; an empty string drops the folder.
       await updateTrip(tripId, { from, to, stops, mode, date, name: name.trim() });
     } else {
       await addTrip({ from, to, stops, mode, date, name: name.trim() || null });
@@ -68,19 +77,33 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
   }
 
   return (
-    <section className="screen trip-composer" aria-label={t(tripId ? "trip.compose.editTitle" : "trip.compose.newTitle")}>
+    <section
+      className="screen trip-composer"
+      aria-label={t(tripId ? "trip.compose.editTitle" : "trip.compose.newTitle")}
+    >
       <div className="trip-composer-head">
-        <button type="button" className="link back-link" onClick={onClose} aria-label={t("trip.compose.back")}>
+        <button
+          type="button"
+          className="link back-link"
+          onClick={onClose}
+          aria-label={t("trip.compose.back")}
+        >
           ← {t("trip.compose.back")}
         </button>
         <h2>{t(tripId ? "trip.compose.editTitle" : "trip.compose.newTitle")}</h2>
       </div>
 
-      {/* Stops — the ordered chain */}
-      <h3 className="trip-section-head">{t("trip.compose.stopsHeading")}</h3>
-      <p className="muted small">{t("trip.compose.stopsHint")}</p>
+      {/* Your trip — the ordered chain being built, with the running distance. */}
+      <div className="trip-chain-head">
+        <h3 className="trip-section-head">{t("trip.compose.stopsHeading")}</h3>
+        {stops.length >= 2 && (
+          <span className="trip-distance-km" role="status">
+            {t("trip.compose.km", { km: Math.round(km).toLocaleString(locale) })}
+          </span>
+        )}
+      </div>
       {stops.length === 0 ? (
-        <p className="muted empty">{t("trip.compose.emptyStops")}</p>
+        <p className="muted small">{t("trip.compose.emptyStops")}</p>
       ) : (
         <ol className="trip-stops">
           {stops.map((s, i) => (
@@ -126,44 +149,43 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
           ))}
         </ol>
       )}
+      {unresolvedLegs > 0 && <p className="muted small">{t("trip.compose.unmeasured")}</p>}
 
-      {/* Add a stop — aggregator-only search, restricted to airports + cities for
-          the MVP. A stop is a kind-agnostic PlaceRef, so railway STATIONS slot in
-          here unchanged once a named, openly-licensed station dataset exists
-          (Constitution I: the app never invents reference data; missing data
-          becomes a separate shareable dataset). Until then, no stations are offered
-          and nothing breaks — the feature works on airports + cities. (spec 019 US4) */}
-      <PlacePicker
-        label={t("trip.compose.addStop")}
-        placeholder={t("trip.compose.addStopPlaceholder")}
-        value={null}
-        include={["airport", "city"]}
-        onPick={(place) => place && setStops((st) => addStop(st, place))}
+      {/* Pick from the places you've been — the fast, primary interaction. */}
+      <h3 className="trip-section-head">{t("trip.compose.pickHeading")}</h3>
+      <p className="muted small">{t("trip.compose.tapHint")}</p>
+      <MyPlacesPicker
+        places={pool}
+        addedKeys={addedKeys}
+        onPick={(mp) => setStops((st) => addStop(st, mp.place))}
       />
 
-      {/* Distance readout */}
-      <div className="trip-distance" role="status">
-        <span className="trip-distance-label">{t("trip.compose.distanceLabel")}</span>
-        <strong className="trip-distance-km">
-          {t("trip.compose.km", { km: Math.round(km).toLocaleString(locale) })}
-        </strong>
-        {unresolvedLegs > 0 && <span className="muted small">{t("trip.compose.unmeasured")}</span>}
-      </div>
+      {/* Optional details — name now, date whenever. */}
+      <label className="field">
+        <span className="field-label">{t("trip.compose.nameLabel")}</span>
+        <input
+          className="search-input"
+          type="text"
+          maxLength={80}
+          value={name}
+          placeholder={t("trip.compose.namePlaceholder")}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </label>
 
-      {/* Name, when, mode */}
-      <div className="trip-composer-fields">
-        <label className="field">
-          <span className="field-label">{t("trip.compose.nameLabel")}</span>
-          <input
-            className="search-input"
-            type="text"
-            maxLength={80}
-            value={name}
-            placeholder={t("trip.compose.namePlaceholder")}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
+      <label className="field">
+        <span className="field-label">{t("trip.compose.modeLabel")}</span>
+        <select className="select" value={mode} onChange={(e) => setMode(e.target.value as TravelMode)}>
+          {MODES.map((m) => (
+            <option key={m} value={m}>
+              {t(`travel.mode.${m}` as const)}
+            </option>
+          ))}
+        </select>
+      </label>
 
+      <details className="trip-date-details" open={!!year}>
+        <summary>{t("trip.compose.addDate")}</summary>
         <fieldset className="field trip-when">
           <legend className="field-label">{t("trip.compose.whenLabel")}</legend>
           <input
@@ -192,22 +214,7 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
             ))}
           </select>
         </fieldset>
-
-        <label className="field">
-          <span className="field-label">{t("trip.compose.modeLabel")}</span>
-          <select
-            className="select"
-            value={mode}
-            onChange={(e) => setMode(e.target.value as TravelMode)}
-          >
-            {MODES.map((m) => (
-              <option key={m} value={m}>
-                {t(`travel.mode.${m}` as const)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      </details>
 
       <div className="trip-composer-actions">
         <button type="button" className="btn-ghost" onClick={onClose}>

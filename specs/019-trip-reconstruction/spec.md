@@ -167,6 +167,22 @@ works with airports + cities and shows no broken "stations" affordance.
 - Q: What date granularity for the "vague" date? → A: **Month (YYYY-MM) or year (YYYY), both
   optional**; no exact calendar day required, undated allowed (FR-006).
 
+### Session 2026-07-22 (fast-reconstruction refinement)
+
+The reconstruction flow must be **extremely easy and fast**. Refinements (supersede the earlier
+"whole gazetteer" pool decision for the reconstruct composer):
+
+- Q: Where do stops come from in the reconstruct composer? → A: **Only places you've already been**
+  — the user's visited places (visit records) plus places already used in their trips — shown with
+  **country flags**, tap to add. No gazetteer typing. (Revises FR-007 for the composer; the quick
+  single-leg form keeps full search.)
+- Q: How do you pick a stop? → A: **Choice of List or Map** — a tappable list of your places, or a
+  lightweight offline map of your places (tap a pin). One tap adds a stop.
+- Q: Is a date required? → A: **No — add it later.** The composer saves with no date; the date is a
+  deferred, optional control (you can set it on the trip afterwards).
+- Q: Any default trip/folder name? → A: **No default name** — never prefill or suggest "Japan 2024"
+  (or any name); the name field is empty and optional.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
