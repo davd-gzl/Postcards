@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { zipStore, unzipStore, looksLikeZip, crc32 } from "../../src/lib/backup/zip";
 import { buildArchive, archiveToJson, MANIFEST_NAME } from "../../src/features/backup/archiveZip";
 import { importFile } from "../../src/features/backup/importJson";
-import type { Visit } from "../../src/lib/schema/models";
+import type { Story, Visit } from "../../src/lib/schema/models";
 
 const enc = (s: string) => new TextEncoder().encode(s);
 const dec = (b: Uint8Array) => new TextDecoder().decode(b);
@@ -90,5 +90,41 @@ describe('"Save everything" archive round-trip (data + photos-as-files)', () => 
     const result = importFile(archiveToJson(stripped));
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.visits[0]!.photos ?? []).toHaveLength(0);
+  });
+
+  it("round-trips an image/jpg photo to a schema-valid mime (regression: was .bin → reject)", () => {
+    // The schema accepts data:image/jpg (jpe?g); the archive must not turn it into
+    // an un-restorable .bin. AAAA is valid base64 (3 zero bytes).
+    const jpg = "data:image/jpg;base64,AAAA";
+    const bytes = buildArchive([{ ...visit(), photos: [{ src: jpg, caption: null }] }], [], []);
+    // Stored as .jpg, not .bin.
+    expect(unzipStore(bytes).some((e) => e.name === "photos/0001.jpg")).toBe(true);
+    const result = importFile(archiveToJson(bytes));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.visits[0]!.photos![0]!.src).toMatch(/^data:image\/jpeg;base64,/);
+  });
+
+  it("does NOT throw on a schema-valid non-base64 photo (regression: atob threw, aborting export)", () => {
+    const nonB64 = "data:image/png;charset=utf-8,hello";
+    expect(() => buildArchive([{ ...visit(), photos: [{ src: nonB64, caption: null }] }], [], [])).not.toThrow();
+  });
+
+  it("drops an image-only story whose image went missing rather than aborting the whole restore", () => {
+    const story: Story = {
+      storyId: crypto.randomUUID(),
+      place: { kind: "city", id: "paris-fr", name: "Paris", countryId: "FR" },
+      date: "2019-08-12",
+      photos: [{ src: dataUrl, caption: null }], // image-only (no title/text)
+      addedAt: new Date().toISOString(),
+    } as Story;
+    const bytes = buildArchive([visit()], [], [story]);
+    // Rebuild the archive WITHOUT the story's image (only the manifest survives).
+    const stripped = zipStore(unzipStore(bytes).filter((e) => e.name === MANIFEST_NAME));
+    const result = importFile(archiveToJson(stripped));
+    expect(result.ok).toBe(true); // the visit still restores…
+    if (result.ok) {
+      expect(result.visits).toHaveLength(1);
+      expect(result.stories).toHaveLength(0); // …and the now-empty story is dropped, not fatal
+    }
   });
 });

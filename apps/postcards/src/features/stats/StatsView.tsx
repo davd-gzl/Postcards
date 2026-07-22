@@ -281,10 +281,12 @@ export function StatsView() {
     useFilters.getState().set({ minPop, country: "" });
     useUi.getState().openPlaces("visited");
   }
-  // The coverage-hero + KPI tiles are all world-level: drop any country
-  // drill-down before opening the view so they never stay narrowed to one country.
+  // The coverage-hero + KPI tiles are all world-level: drop the WHOLE country
+  // drill-down (country AND its population tier) before opening the view, so a
+  // world "Cities" bar never opens a list still truncated to 1M+ from a prior
+  // mega-city drill (mirrors openCitiesFiltered, which already resets both).
   function openWorld(view: PlacesView) {
-    useFilters.getState().set({ country: "" });
+    useFilters.getState().set({ country: "", minPop: 0 });
     useUi.getState().openPlaces(view);
   }
   const continentCov = useMemo(

@@ -61,9 +61,10 @@ export function StatStrip() {
         type="button"
         className="ss-item"
         onClick={() => {
-          // World-level shortcut — drop any country drill-down so it shows the
-          // whole world, not the last country you opened from a stats card.
-          useFilters.getState().set({ country: "" });
+          // World-level shortcut — drop the WHOLE country drill-down a stats card
+          // may have set (country AND minPop), so the list matches this counter's
+          // number instead of staying gated at the last tier you opened.
+          useFilters.getState().set({ country: "", minPop: 0 });
           openPlaces(view);
         }}
         title={t("statStrip.openAria", { label })}

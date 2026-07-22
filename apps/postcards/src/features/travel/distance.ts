@@ -17,6 +17,12 @@ export function coordsOf(place: PlaceRef, ref: ReferenceData): { lon: number; la
     // Some sites have no coordinate in the source (stored as 0,0) — treat as unknown.
     return h && (h.lat !== 0 || h.lon !== 0) ? { lon: h.lon, lat: h.lat } : null;
   }
+  // A user-authored "custom" pin carries its own coordinates on the record (there's
+  // no reference entry to look up). The trip pool already resolves these the same
+  // way, so a custom stop's leg must draw + measure here too — not vanish.
+  if (place.kind === "custom") {
+    return place.lat != null && place.lon != null ? { lon: place.lon, lat: place.lat } : null;
+  }
   return null; // countries have no single coordinate
 }
 

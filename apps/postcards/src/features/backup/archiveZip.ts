@@ -13,8 +13,13 @@ import { buildFile } from "./exportJson";
 export const ARCHIVE_FILENAME = "postcards-backup.zip";
 export const MANIFEST_NAME = "backup.postcards.json";
 
+// Extensions must cover EVERY mime the photo schema admits (png|jpe?g|webp|gif|
+// avif — note both image/jpeg AND image/jpg pass its regex), so a written file
+// always maps back to a schema-valid image mime on read. An unknown image mime
+// falls back to its subtype so it still round-trips rather than becoming ".bin".
 const EXT_OF: Record<string, string> = {
   "image/jpeg": "jpg",
+  "image/jpg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
   "image/gif": "gif",
@@ -29,17 +34,29 @@ const MIME_OF: Record<string, string> = {
   avif: "image/avif",
 };
 
+const extForMime = (mime: string): string =>
+  EXT_OF[mime] ?? (mime.replace(/^image\//, "").replace(/[^a-z0-9]/gi, "").toLowerCase() || "bin");
+const mimeForExt = (ext: string): string => MIME_OF[ext] ?? `image/${ext}`;
+
 const B64_CHUNK = 0x8000;
 
-/** Decode a `data:<mime>;base64,<payload>` URL into raw bytes + its mime. */
+/** Decode a `data:<mime>[;base64],<payload>` URL into raw bytes + its (parameter-
+ *  stripped) mime. Handles both base64 and percent-encoded/plain payloads so a
+ *  schema-valid but non-base64 photo can't throw and abort the whole archive. */
 function decodeDataUrl(dataUrl: string): { bytes: Uint8Array; mime: string } {
   const comma = dataUrl.indexOf(",");
   const meta = dataUrl.slice(5, comma); // between "data:" and ","
-  const mime = meta.replace(/;base64$/i, "") || "application/octet-stream";
-  const bin = atob(dataUrl.slice(comma + 1));
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return { bytes, mime };
+  const isBase64 = /;base64$/i.test(meta);
+  // Strip the ;base64 flag AND any ;charset=… parameters to get the bare mime.
+  const mime = meta.replace(/;base64$/i, "").split(";")[0] || "application/octet-stream";
+  const payload = dataUrl.slice(comma + 1);
+  if (isBase64) {
+    const bin = atob(payload);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { bytes, mime };
+  }
+  return { bytes: new TextEncoder().encode(decodeURIComponent(payload)), mime };
 }
 
 /** Re-encode raw image bytes as an inline base64 data URL. */
@@ -66,8 +83,7 @@ export function buildArchive(
   const stash = (photos?: PhotoLike[]) =>
     photos?.map((p) => {
       const { bytes, mime } = decodeDataUrl(p.src);
-      const ext = EXT_OF[mime] ?? "bin";
-      const name = `photos/${String(++n).padStart(4, "0")}.${ext}`;
+      const name = `photos/${String(++n).padStart(4, "0")}.${extForMime(mime)}`;
       photoEntries.push({ name, data: bytes });
       return { src: `zip:${name}`, caption: p.caption ?? null };
     });
@@ -101,7 +117,7 @@ export function archiveToJson(bytes: Uint8Array): string {
           const data = fileMap.get(name);
           if (!data) return null; // referenced image missing — drop rather than break restore
           const ext = name.split(".").pop()?.toLowerCase() ?? "";
-          return { src: bytesToDataUrl(data, MIME_OF[ext] ?? "application/octet-stream"), caption: ph.caption ?? null };
+          return { src: bytesToDataUrl(data, mimeForExt(ext)), caption: ph.caption ?? null };
         }
         return ph;
       })
@@ -111,6 +127,19 @@ export function archiveToJson(bytes: Uint8Array): string {
     return r.photos ? { ...r, photos: reinline(r.photos) } : r;
   };
   if (Array.isArray(obj.visits)) obj.visits = obj.visits.map(withPhotos);
-  if (Array.isArray(obj.stories)) obj.stories = obj.stories.map(withPhotos);
+  if (Array.isArray(obj.stories)) {
+    obj.stories = (obj.stories as unknown[])
+      .map(withPhotos)
+      // A story may be image-only (no title/text). If its images went missing from
+      // the archive, re-inlining empties it — which the schema rejects, aborting the
+      // WHOLE restore. Drop such a now-empty story instead so the rest still loads.
+      .filter((rec) => {
+        const s = rec as { title?: unknown; text?: unknown; photos?: unknown[] };
+        const hasText = typeof s.title === "string" && s.title.trim().length > 0;
+        const hasBody = typeof s.text === "string" && s.text.trim().length > 0;
+        const hasPhotos = Array.isArray(s.photos) && s.photos.length > 0;
+        return hasText || hasBody || hasPhotos;
+      });
+  }
   return JSON.stringify(obj);
 }

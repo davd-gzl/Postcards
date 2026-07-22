@@ -91,7 +91,10 @@ export function RouteMap({
 
     map.on("load", () => {
       void getLand().then((land) => {
-        if (!mapRef.current || !land) return;
+        // Guard on IDENTITY, not just truthiness: a fast Map→List→Map toggle can
+        // remove this map and create a new one while the (shared, cached) land
+        // promise is in flight — touching the removed map would throw.
+        if (mapRef.current !== map || !land) return;
         if (map.getSource("land")) return;
         map.addSource("land", { type: "geojson", data: land });
         map.addLayer({
