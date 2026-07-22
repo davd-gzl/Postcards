@@ -9,11 +9,11 @@ import {
   computeCityBands,
   computeContinentCoverage,
   computeRecords,
-  countryDetail,
   visitedCountriesList,
   type CountryCoverage,
   type CountrySort,
 } from "./computeStats";
+import { CountryCoverageMap } from "./CountryCoverageMap";
 import { travelTotals } from "../travel/distance";
 import { MODE_GLYPH } from "../travel/modes";
 import { useUi, type PlacesView } from "../../lib/store/useUi";
@@ -22,62 +22,6 @@ import { countryFlag, formatDate, formatInt, formatKm, formatPercent, formatPerc
 import { CONTINENT_COLORS, CONTINENT_ORDER } from "../../lib/reference/continents";
 import { ScopeToggle } from "../../ui/ScopeToggle";
 import { useT, type MessageKey } from "../../lib/i18n";
-
-/** A row of tappable chips, capped so a huge country doesn't flood the card. */
-/** A compact, readable list of place names as plain links — a label, a count, then
- *  names separated by "·", expandable past a small cap. Replaces the hard-to-read
- *  rounded-chip wall for regions/monuments (easier to scan, less visual weight). */
-function NameList({
-  label,
-  items,
-  onPick,
-  max = 12,
-}: {
-  label: string;
-  items: string[];
-  onPick: (name: string) => void;
-  max?: number;
-}) {
-  const t = useT();
-  const [expanded, setExpanded] = useState(false);
-  if (items.length === 0) return null;
-  const shown = expanded ? items : items.slice(0, max);
-  return (
-    <div className="name-list">
-      <span className="name-list-label">
-        {label} <span className="muted">· {items.length}</span>
-      </span>
-      <span className="name-list-names">
-        {shown.map((n, i) => (
-          <span key={n}>
-            {i > 0 && (
-              <span className="name-list-sep" aria-hidden>
-                {" · "}
-              </span>
-            )}
-            <button
-              type="button"
-              className="name-list-link"
-              onClick={() => onPick(n)}
-              title={`${t("common.open")} ${n}`}
-            >
-              {n}
-            </button>
-          </span>
-        ))}
-        {items.length > max && (
-          <button
-            type="button"
-            className="name-list-link name-list-more"
-            onClick={() => setExpanded((e) => !e)}
-          >
-            {expanded ? t("common.less") : t("common.moreCount", { count: items.length - max })}
-          </button>
-        )}
-      </span>
-    </div>
-  );
-}
 
 /** A record's city name — a button that flies the map to it. */
 function RecordCity({ name, onPick }: { name: string; onPick: (name: string) => void }) {
@@ -117,27 +61,9 @@ function Bar({ value, label, color }: { value: number; label: string; color?: st
  * "cities %" (a sliver of every 15k+ town) is dropped — it read as noise. Detail
  * lists are lazy (computed on open), refreshed when the full gazetteer lands.
  */
-function CountryRow({
-  c,
-  flyToRegion,
-}: {
-  c: CountryCoverage;
-  flyToRegion: (name: string) => void;
-}) {
+function CountryRow({ c }: { c: CountryCoverage }) {
   const t = useT();
-  const ref = useMemo(() => getReferenceData(), []);
-  const gazGen = useGazetteerGeneration(); // city lists grow when the full gazetteer lands
-  const visits = useVisits((s) => s.visits);
   const [open, setOpen] = useState(false);
-  const detail = useMemo(
-    () => (open ? countryDetail(visits, ref, c.iso2) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [open, visits, ref, c.iso2, gazGen],
-  );
-  const openByName = (list: { id: string; name: string }[]) => (name: string) => {
-    const hit = list.find((x) => x.name === name);
-    if (hit) useUi.getState().openCity(hit.id);
-  };
 
   // Tapping a metric drills into Places, scoped to THIS country + the tier — and the
   // filter is the shared store, so it survives leaving and returning to the list.
@@ -298,21 +224,10 @@ function CountryRow({
             )}
         </div>
 
-        {detail && (
-          <>
-            {/* What's LEFT to explore — plain, scannable name lists (not a chip wall). */}
-            <NameList
-              label={t("stats.country.chipRegionsToVisit")}
-              items={detail.regionsRemainingNames}
-              onPick={flyToRegion}
-            />
-            <NameList
-              label={t("stats.country.chipMonumentsToSee")}
-              items={detail.monumentsRemaining.map((m) => m.name)}
-              onPick={openByName(detail.monumentsRemaining)}
-            />
-          </>
-        )}
+        {/* What's left to explore, at a glance: a static coverage map — cities
+            you've been as dots, the regions you haven't as soft "missing" blobs.
+            The full, tappable lists live on the country's own page (above). */}
+        {open && <CountryCoverageMap iso2={c.iso2} name={c.name} />}
       </div>
     </details>
   );
@@ -324,7 +239,6 @@ export function StatsView() {
   const gazGen = useGazetteerGeneration(); // denominators change when the full gazetteer lands
   const visits = useVisits((s) => s.visits);
   const trips = useTrips((s) => s.trips);
-  const flyTo = useUi((s) => s.flyTo);
 
   const scope = useSettings((s) => s.countryScope);
   const [sortBy, setSortBy] = useState<CountrySort>("cities");
@@ -372,17 +286,6 @@ export function StatsView() {
   function openWorld(view: PlacesView) {
     useFilters.getState().set({ country: "" });
     useUi.getState().openPlaces(view);
-  }
-  function flyToRegion(iso2: string) {
-    return (name: string) => {
-      const sub = ref.subdivisionsOf(iso2).find((s) => s.name === name);
-      if (!sub) return;
-      const cities = ref.citiesOf(iso2).filter((c) => c.subdivisionId === sub.id);
-      if (!cities.length) return;
-      const lat = cities.reduce((s, c) => s + c.lat, 0) / cities.length;
-      const lon = cities.reduce((s, c) => s + c.lon, 0) / cities.length;
-      flyTo(lon, lat);
-    };
   }
   const continentCov = useMemo(
     () => computeContinentCoverage(visits, ref, scope),
@@ -757,7 +660,7 @@ export function StatsView() {
       {countries.length === 0 && <p className="muted empty">{t("stats.byCountry.empty")}</p>}
 
       {countries.map((c) => (
-        <CountryRow key={c.iso2} c={c} flyToRegion={flyToRegion(c.iso2)} />
+        <CountryRow key={c.iso2} c={c} />
       ))}
 
       <p className="muted small">
