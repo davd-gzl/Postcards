@@ -1,6 +1,6 @@
 import type { Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
-import { BIG_CITY_MIN_POPULATION } from "../../lib/reference/types";
+import { BIG_CITY_MIN_POPULATION, MEGA_CITY_MIN_POPULATION } from "../../lib/reference/types";
 import { inScope, type CountryScope } from "../../lib/reference/scope";
 
 /** Whether a visited country id counts under the chosen scope (unknown ids: only under "all"). */
@@ -37,6 +37,11 @@ export interface CountryCoverage {
   bigCitiesVisited: number;
   bigCitiesTotal: number;
   bigCityPct: number; // 0..1
+  /** Cities with 1M+ people — the metropolises (see MEGA_CITY_MIN_POPULATION).
+   *  Only meaningful when megaCitiesTotal > 0 (many countries have none). */
+  megaCitiesVisited: number;
+  megaCitiesTotal: number;
+  megaCityPct: number; // 0..1
   regionsVisited: number;
   regionsTotal: number;
   regionPct: number; // 0..1
@@ -146,6 +151,7 @@ export function computeCountryCoverage(
   const country = ref.countryByIso2(iso2);
   const visitedCityIds = new Set<string>();
   const visitedBigCityIds = new Set<string>();
+  const visitedMegaCityIds = new Set<string>();
   const visitedRegionIds = new Set<string>();
   for (const v of onlyVisited(visits)) {
     if (v.place.kind !== "city") continue;
@@ -154,13 +160,16 @@ export function computeCountryCoverage(
     const city = ref.cityById(v.place.id);
     if (!city || city.countryIso2 !== iso2) continue;
     visitedCityIds.add(v.place.id);
-    if ((city.population ?? 0) >= BIG_CITY_MIN_POPULATION) visitedBigCityIds.add(v.place.id);
+    const pop = city.population ?? 0;
+    if (pop >= BIG_CITY_MIN_POPULATION) visitedBigCityIds.add(v.place.id);
+    if (pop >= MEGA_CITY_MIN_POPULATION) visitedMegaCityIds.add(v.place.id);
     if (city.subdivisionId) visitedRegionIds.add(city.subdivisionId);
   }
   // Denominator: how many 100k+ cities the country has. Precomputed in one pass
   // over the gazetteer (Country.bigCityCount), so this is an O(1) lookup — never a
   // per-country rescan. Like cityCount it's refreshed when the full gazetteer lands.
   const bigCitiesTotal = country?.bigCityCount ?? 0;
+  const megaCitiesTotal = country?.megaCityCount ?? 0;
   // Heritage sites (a "category"): visited sites in this country vs the total there.
   // Membership is by the country's own site list (heritageOf), so a transnational
   // site that spans several countries counts toward each — matching the denominator.
@@ -183,6 +192,9 @@ export function computeCountryCoverage(
     bigCitiesVisited: visitedBigCityIds.size,
     bigCitiesTotal,
     bigCityPct: pct(visitedBigCityIds.size, bigCitiesTotal),
+    megaCitiesVisited: visitedMegaCityIds.size,
+    megaCitiesTotal,
+    megaCityPct: pct(visitedMegaCityIds.size, megaCitiesTotal),
     regionsVisited: visitedRegionIds.size,
     regionsTotal,
     regionPct: pct(visitedRegionIds.size, regionsTotal),

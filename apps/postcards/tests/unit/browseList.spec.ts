@@ -18,8 +18,8 @@ const airports: Airport[] = [
   { id: "HND", name: "Haneda", city: "Tokyo", countryIso2: "JP", lat: 35.5, lon: 139.8 },
 ];
 const countries: Record<string, Country> = {
-  FR: { iso2: "FR", iso3: "FRA", numeric: "250", name: "France", continent: "Europe", cityCount: 2, bigCityCount: 2, subdivisionCount: 1, sovereignty: "un" },
-  JP: { iso2: "JP", iso3: "JPN", numeric: "392", name: "Japan", continent: "Asia", cityCount: 1, bigCityCount: 1, subdivisionCount: 1, sovereignty: "un" },
+  FR: { iso2: "FR", iso3: "FRA", numeric: "250", name: "France", continent: "Europe", cityCount: 2, bigCityCount: 2, megaCityCount: 1, subdivisionCount: 1, sovereignty: "un" },
+  JP: { iso2: "JP", iso3: "JPN", numeric: "392", name: "Japan", continent: "Asia", cityCount: 1, bigCityCount: 1, megaCityCount: 1, subdivisionCount: 1, sovereignty: "un" },
 };
 
 const lc = (s: string) => s.toLowerCase();

@@ -21,50 +21,60 @@ import { useFilters } from "../../lib/store/useFilters";
 import { countryFlag, formatDate, formatInt, formatKm, formatPercent } from "../../lib/format/format";
 import { CONTINENT_COLORS, CONTINENT_ORDER } from "../../lib/reference/continents";
 import { ScopeToggle } from "../../ui/ScopeToggle";
-import { useT } from "../../lib/i18n";
+import { useT, type MessageKey } from "../../lib/i18n";
 
 /** A row of tappable chips, capped so a huge country doesn't flood the card. */
-function ChipRow({
+/** A compact, readable list of place names as plain links — a label, a count, then
+ *  names separated by "·", expandable past a small cap. Replaces the hard-to-read
+ *  rounded-chip wall for regions/monuments (easier to scan, less visual weight). */
+function NameList({
   label,
-  names,
-  done,
+  items,
   onPick,
   hint,
-  max = 16,
+  max = 12,
 }: {
   label: string;
-  names: string[];
-  /** Style as already-seen (filled) vs still-to-do (outlined). */
-  done?: boolean;
-  onPick?: (name: string) => void;
-  /** Tooltip verb; chips either open a page or fly the map. */
+  items: string[];
+  onPick: (name: string) => void;
   hint?: string;
   max?: number;
 }) {
   const t = useT();
   const [expanded, setExpanded] = useState(false);
-  if (names.length === 0) return null;
-  const shown = expanded ? names : names.slice(0, max);
+  if (items.length === 0) return null;
+  const shown = expanded ? items : items.slice(0, max);
   const hintText = hint ?? t("common.open");
   return (
-    <div className="chip-row">
-      <span className="chip-row-label">{label}</span>
-      <span className="chip-row-chips">
-        {shown.map((n) => (
-          <button
-            key={n}
-            type="button"
-            className={"place-chip" + (done ? " chip-done" : "")}
-            onClick={onPick ? () => onPick(n) : undefined}
-            disabled={!onPick}
-            title={onPick ? `${hintText} ${n}` : undefined}
-          >
-            {n}
-          </button>
+    <div className="name-list">
+      <span className="name-list-label">
+        {label} <span className="muted">· {items.length}</span>
+      </span>
+      <span className="name-list-names">
+        {shown.map((n, i) => (
+          <span key={n}>
+            {i > 0 && (
+              <span className="name-list-sep" aria-hidden>
+                {" · "}
+              </span>
+            )}
+            <button
+              type="button"
+              className="name-list-link"
+              onClick={() => onPick(n)}
+              title={`${hintText} ${n}`}
+            >
+              {n}
+            </button>
+          </span>
         ))}
-        {names.length > max && (
-          <button type="button" className="place-chip chip-more" onClick={() => setExpanded((e) => !e)}>
-            {expanded ? t("common.less") : t("common.moreCount", { count: names.length - max })}
+        {items.length > max && (
+          <button
+            type="button"
+            className="name-list-link name-list-more"
+            onClick={() => setExpanded((e) => !e)}
+          >
+            {expanded ? t("common.less") : t("common.moreCount", { count: items.length - max })}
           </button>
         )}
       </span>
@@ -103,11 +113,12 @@ function Bar({ value, label, color }: { value: number; label: string; color?: st
 }
 
 /**
- * One country as a native <details>: the collapsed <summary> is a scannable
- * roster row (flag + name + tag pills + one slim cities meter); expanding reveals
- * the three metrics and the place chips. The chip name-lists are computed only
- * once the row is opened (lazy, keyed off onToggle), and recompute when the full
- * gazetteer lands (gazGen).
+ * One country as a native <details>: the collapsed <summary> is a scannable row —
+ * flag + name + a compact meter for the tiers that actually mean something (mega/
+ * big cities and regions). Expanding reveals the same metrics with counts plus the
+ * places still to explore, as plain readable lists (no chip wall). The overall
+ * "cities %" (a sliver of every 15k+ town) is dropped — it read as noise. Detail
+ * lists are lazy (computed on open), refreshed when the full gazetteer lands.
  */
 function CountryRow({
   c,
@@ -126,185 +137,132 @@ function CountryRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [open, visits, ref, c.iso2, gazGen],
   );
-  // Tapping a city or monument chip opens its detail page directly (you clicked
-  // the place, so show the place), never just a map fly-by.
   const openByName = (list: { id: string; name: string }[]) => (name: string) => {
     const hit = list.find((x) => x.name === name);
     if (hit) useUi.getState().openCity(hit.id);
   };
+
+  // Slim summary meter: a tiny label + percentage + bar.
+  const meter = (labelKey: MessageKey, ariaKey: MessageKey, pctVal: number, color?: string) => (
+    <div className="cmeter">
+      <span className="cmeter-cap">
+        {t(labelKey)} <b>{formatPercent(pctVal)}</b>
+      </span>
+      <Bar value={pctVal} label={t(ariaKey, { name: c.name })} color={color} />
+    </div>
+  );
+  // Full metric row (expanded): label, "x/y · pct" detail, bar.
+  const metric = (
+    labelKey: MessageKey,
+    detailKey: MessageKey,
+    ariaKey: MessageKey,
+    visited: number,
+    total: number,
+    pctVal: number,
+    color?: string,
+  ) => (
+    <div className="metric">
+      <div className="metric-label">
+        <span>{t(labelKey)}</span>
+        <span className="muted">{t(detailKey, { pct: formatPercent(pctVal), visited, total })}</span>
+      </div>
+      <Bar value={pctVal} label={t(ariaKey, { name: c.name })} color={color} />
+    </div>
+  );
+
+  const hasMega = c.megaCitiesTotal > 0;
+  const MEGA_COLOR = "var(--stat-fav)";
+  const BIG_COLOR = "var(--stat-been)";
+  const REGION_COLOR = "var(--accent)";
+
   return (
     <details className="country-card" onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary className="country-summary">
-        {/* Plain label so the whole row toggles the <details> — keeping an
-            interactive control out of <summary> (no nested-interactive). The
-            "open the country page" action lives as a real button on expand. */}
+        {/* Flag + name shown ONCE here (the expanded body no longer repeats them). */}
         <span className="country-name">
           <span className="flag" aria-hidden>
             {countryFlag(c.iso2)}
           </span>{" "}
           {c.name}
         </span>
-        <span className="country-tags">
-          <span className="country-tag">{t("stats.country.citiesTag", { count: formatInt(c.citiesVisited) })}</span>
-          <span className="country-tag">{t("stats.country.regionsTag", { count: formatInt(c.regionsVisited) })}</span>
-          {c.heritageTotal > 0 && (
-            <span className="country-tag">{t("stats.country.sitesTag", { count: formatInt(c.heritageVisited) })}</span>
-          )}
-        </span>
         <span className="country-caret" aria-hidden>
           ›
         </span>
-        {/* Cities, big cities (100k+) and regions side by side, so every coverage %
-            reads at a glance — no need to expand the row to compare them. Hidden
-            once the row is open (the body shows the same, with counts) so nothing
-            is duplicated. */}
-        {(c.citiesTotal > 0 || c.bigCitiesTotal > 0 || c.regionsTotal > 0) && (
+        {/* Only the meaningful tiers — mega (1M+), big (100k+), regions. Hidden once
+            open (the body shows the same, with counts) so nothing is duplicated. */}
+        {(hasMega || c.bigCitiesTotal > 0 || c.regionsTotal > 0) && (
           <div className="country-meters">
-            {c.citiesTotal > 0 && (
-              <div className="cmeter">
-                <span className="cmeter-cap">
-                  {t("stats.country.metricCities")} <b>{formatPercent(c.cityPct)}</b>
-                </span>
-                <Bar value={c.cityPct} label={t("stats.country.cityBarAria", { name: c.name })} />
-              </div>
-            )}
-            {c.bigCitiesTotal > 0 && (
-              <div className="cmeter">
-                <span className="cmeter-cap">
-                  {t("stats.country.metricBigCities")} <b>{formatPercent(c.bigCityPct)}</b>
-                </span>
-                <Bar
-                  value={c.bigCityPct}
-                  label={t("stats.country.bigCityBarAria", { name: c.name })}
-                  color="var(--stat-been)"
-                />
-              </div>
-            )}
-            {c.regionsTotal > 0 && (
-              <div className="cmeter">
-                <span className="cmeter-cap">
-                  {t("stats.country.metricRegions")} <b>{formatPercent(c.regionPct)}</b>
-                </span>
-                <Bar
-                  value={c.regionPct}
-                  label={t("stats.country.regionBarAria", { name: c.name })}
-                  color="var(--accent)"
-                />
-              </div>
-            )}
+            {hasMega && meter("stats.country.metricMega", "stats.country.megaCityBarAria", c.megaCityPct, MEGA_COLOR)}
+            {c.bigCitiesTotal > 0 &&
+              meter("stats.country.metricBigCities", "stats.country.bigCityBarAria", c.bigCityPct, BIG_COLOR)}
+            {c.regionsTotal > 0 &&
+              meter("stats.country.metricRegions", "stats.country.regionBarAria", c.regionPct, REGION_COLOR)}
           </div>
         )}
       </summary>
 
       <div className="country-body">
+        {/* Open the full page — no repeated flag/name (that was "France" twice). */}
         <button
           type="button"
-          className="country-open country-open-page"
-          title={t("stats.country.open", { name: c.name })}
+          className="country-open-page link"
           onClick={() => useUi.getState().openCountry(c.iso2)}
         >
-          <span className="flag" aria-hidden>
-            {countryFlag(c.iso2)}
-          </span>{" "}
-          {t("stats.country.open", { name: c.name })}{" "}
-          <span aria-hidden>↗</span>
+          {t("stats.country.openPage")} <span aria-hidden>↗</span>
         </button>
 
-        <div className="metric">
-          <div className="metric-label">
-            <span>{t("stats.country.metricCities")}</span>
-            <span className="muted">
-              {c.citiesTotal > 0
-                ? t("stats.country.metricCitiesDetail", {
-                    pct: formatPercent(c.cityPct),
-                    visited: c.citiesVisited,
-                    total: c.citiesTotal,
-                  })
-                : t("stats.country.noCityData")}
-            </span>
-          </div>
-          {c.citiesTotal > 0 && <Bar value={c.cityPct} label={t("stats.country.cityBarAria", { name: c.name })} />}
-        </div>
-
-        {c.bigCitiesTotal > 0 && (
-          <div className="metric">
-            <div className="metric-label">
-              <span>{t("stats.country.metricBigCities")}</span>
-              <span className="muted">
-                {t("stats.country.metricBigCitiesDetail", {
-                  pct: formatPercent(c.bigCityPct),
-                  visited: c.bigCitiesVisited,
-                  total: c.bigCitiesTotal,
-                })}
-              </span>
-            </div>
-            <Bar
-              value={c.bigCityPct}
-              label={t("stats.country.bigCityBarAria", { name: c.name })}
-              color="var(--stat-been)"
-            />
-          </div>
-        )}
-
-        <div className="metric">
-          <div className="metric-label">
-            <span>{t("stats.country.metricRegions")}</span>
-            <span className="muted">
-              {c.regionsTotal > 0
-                ? t("stats.country.metricRegionsDetail", {
-                    pct: formatPercent(c.regionPct),
-                    visited: c.regionsVisited,
-                    total: c.regionsTotal,
-                  })
-                : t("stats.country.datasetNotLoaded")}
-            </span>
-          </div>
-          {c.regionsTotal > 0 && (
-            <Bar value={c.regionPct} label={t("stats.country.regionBarAria", { name: c.name })} color="var(--accent)" />
+        {hasMega &&
+          metric(
+            "stats.country.metricMega",
+            "stats.country.metricMegaDetail",
+            "stats.country.megaCityBarAria",
+            c.megaCitiesVisited,
+            c.megaCitiesTotal,
+            c.megaCityPct,
+            MEGA_COLOR,
           )}
-        </div>
-
-        {c.heritageTotal > 0 && (
-          <div className="metric">
-            <div className="metric-label">
-              <span>{t("stats.country.metricSites")}</span>
-              <span className="muted">
-                {t("stats.country.metricSitesDetail", {
-                  pct: formatPercent(c.heritagePct),
-                  visited: c.heritageVisited,
-                  total: c.heritageTotal,
-                })}
-              </span>
-            </div>
-            <Bar
-              value={c.heritagePct}
-              label={t("stats.country.heritageBarAria", { name: c.name })}
-              color="var(--stat-want)"
-            />
-          </div>
-        )}
+        {c.bigCitiesTotal > 0 &&
+          metric(
+            "stats.country.metricBigCities",
+            "stats.country.metricBigCitiesDetail",
+            "stats.country.bigCityBarAria",
+            c.bigCitiesVisited,
+            c.bigCitiesTotal,
+            c.bigCityPct,
+            BIG_COLOR,
+          )}
+        {c.regionsTotal > 0 &&
+          metric(
+            "stats.country.metricRegions",
+            "stats.country.metricRegionsDetail",
+            "stats.country.regionBarAria",
+            c.regionsVisited,
+            c.regionsTotal,
+            c.regionPct,
+            REGION_COLOR,
+          )}
+        {c.heritageTotal > 0 &&
+          metric(
+            "stats.country.metricSites",
+            "stats.country.metricSitesDetail",
+            "stats.country.heritageBarAria",
+            c.heritageVisited,
+            c.heritageTotal,
+            c.heritagePct,
+            "var(--stat-want)",
+          )}
 
         {detail && (
           <>
-            {/* No per-city OR per-region "visited" chip wall: a country can have
-                dozens of each and the "done" chips add noise without insight (the %
-                bars above already summarize them; the names live in Places / the map).
-                Only "what's LEFT" stays — regions and monuments still to see are the
-                actionable, space-worthy lists. */}
-            <ChipRow
+            {/* What's LEFT to explore — plain, scannable name lists (not a chip wall). */}
+            <NameList
               label={t("stats.country.chipRegionsToVisit")}
-              names={detail.regionsRemainingNames}
+              items={detail.regionsRemainingNames}
               onPick={flyToRegion}
             />
-            <ChipRow
-              label={t("stats.country.chipMonumentsSeen")}
-              names={detail.monumentsVisited.map((m) => m.name)}
-              done
-              onPick={openByName(detail.monumentsVisited)}
-            />
-            <ChipRow
+            <NameList
               label={t("stats.country.chipMonumentsToSee")}
-              names={detail.monumentsRemaining.map((m) => m.name)}
+              items={detail.monumentsRemaining.map((m) => m.name)}
               onPick={openByName(detail.monumentsRemaining)}
             />
           </>

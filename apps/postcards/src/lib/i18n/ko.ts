@@ -219,6 +219,10 @@ export const ko: Messages = {
   "stats.country.metricBigCities": "대도시",
   "stats.country.metricBigCitiesDetail": "{pct} · 10만+ 도시 {visited}/{total}",
   "stats.country.bigCityBarAria": "{name}: 방문한 대도시(10만+)",
+  "stats.country.metricMega": "메가시티",
+  "stats.country.metricMegaDetail": "{pct} · {visited}/{total} 도시 (100만+)",
+  "stats.country.megaCityBarAria": "{name}: 방문한 메가시티(100만+)",
+  "stats.country.openPage": "전체 페이지 열기",
   "stats.country.metricRegions": "지역",
   "stats.country.metricRegionsDetail": "{pct} · 지역 {visited}/{total}",
   "stats.country.datasetNotLoaded": "데이터셋 미로드",
@@ -781,6 +785,7 @@ export const ko: Messages = {
 
   // ── Global place search (top bar) ────────────────────────────────────────
   "search.placeholder": "도시나 국가 검색…",
+  "search.placeholderShort": "검색…",
   "search.aria": "도시나 국가 검색",
   "search.clear": "검색 지우기",
   "search.noMatches": "{q}에 대한 결과 없음",
