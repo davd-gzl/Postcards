@@ -99,6 +99,7 @@ export function browseList(
     }
   };
   const continentOk = (iso2: string) => !filter.continent || ref.continentOf(iso2) === filter.continent;
+  const countryOk = (iso2: string) => !filter.country || iso2 === filter.country;
   const countryName = (iso2: string) => ref.countryByIso2(iso2)?.name ?? iso2;
 
   const rows: BrowseRow[] = [];
@@ -115,8 +116,15 @@ export function browseList(
   };
 
   if (kind === "cities") {
-    const base: City[] = q ? ref.searchCities(q, 500) : populousCities(ref);
+    // Country drill-down browses ALL of that country's cities (already population-
+    // desc), not just the global top-2000 pool, so nothing is missing from it.
+    const base: City[] = q
+      ? ref.searchCities(q, 500)
+      : filter.country
+        ? ref.citiesOf(filter.country)
+        : populousCities(ref);
     for (const c of base) {
+      if (!countryOk(c.countryIso2)) continue;
       if (!continentOk(c.countryIso2)) continue;
       if (filter.minPop > 0 && (c.population ?? 0) < filter.minPop) continue;
       const place: PlaceRef = { kind: "city", id: c.id, name: c.name, countryId: c.countryIso2 };
@@ -131,7 +139,11 @@ export function browseList(
   }
 
   if (kind === "monuments") {
-    let base: HeritageSite[] = q ? ref.searchHeritage(q, 500) : sortedMonuments(ref);
+    let base: HeritageSite[] = q
+      ? ref.searchHeritage(q, 500)
+      : filter.country
+        ? ref.heritageOf(filter.country)
+        : sortedMonuments(ref);
     // Searchable BY COUNTRY (FR-007): a query that names a country surfaces that
     // country's sites, not only ones whose own name matches the query.
     if (q) {
@@ -143,6 +155,7 @@ export function browseList(
     }
     for (const h of base) {
       if (filter.category && h.category !== filter.category) continue;
+      if (!countryOk(h.countryIso2)) continue;
       if (!continentOk(h.countryIso2)) continue;
       const place: PlaceRef = { kind: "heritage", id: h.id, name: h.name, countryId: h.countryIso2 };
       const o = overlay(place);
@@ -167,6 +180,7 @@ export function browseList(
     }
   }
   for (const a of base) {
+    if (!countryOk(a.countryIso2)) continue;
     if (!continentOk(a.countryIso2)) continue;
     const name = `${a.name} (${a.id})`;
     const place: PlaceRef = { kind: "airport", id: a.id, name, countryId: a.countryIso2 };

@@ -55,6 +55,9 @@ const MAP_HIDDEN_FIELDS: (keyof FilterState)[] = [
   "hasPhoto",
   "hasNote",
   "continent",
+  // One-country drill-down is a lists action (set from the Stats card); on the map
+  // you just pan to the country, so it neither filters the markers nor shows a chip.
+  "country",
   // Place-kind mode is its own prominent pill now, not a filter — its state is
   // visible in the pill itself, so it must not double up as a summary chip or
   // light the Filter badge.

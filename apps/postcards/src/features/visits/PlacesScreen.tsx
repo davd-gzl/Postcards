@@ -104,6 +104,8 @@ function mapRequest(view: PlacesView): { kind?: Kind; status?: Status; collectio
       return { kind: "all", status: "wishlist", collection: null };
     case "countries":
       return { kind: "countries", status: "all", collection: null };
+    case "cities":
+      return { kind: "cities", status: "all", collection: null };
     case "monuments":
       return { kind: "monuments", status: "all", collection: null };
     case "moments":
@@ -582,6 +584,7 @@ export function PlacesScreen() {
       filters.hasPhoto,
       filters.hasNote,
       filters.continent,
+      filters.country,
     ],
   );
   const filterVisits = useCallback(
@@ -652,7 +655,7 @@ export function PlacesScreen() {
       return { rows: [] as BrowseRow[], hasMore: false };
     return browseList(kind, status, currentFilters(filters), ref, visits, deferredFilter.trim(), shown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, status, filters.continent, filters.minPop, filters.category, ref, visits, deferredFilter, shown]);
+  }, [kind, status, filters.continent, filters.minPop, filters.category, filters.country, ref, visits, deferredFilter, shown]);
   const browseRows = browse.rows;
 
   // The years your visits span, newest first, for the date filter chips.
@@ -687,7 +690,7 @@ export function PlacesScreen() {
   // The active dimensions Places actually acts on (status + map mode are excluded —
   // status is the axis, mode is map-only). Drives the Filter button's badge.
   const placesFilterChips = useMemo(
-    () => activeChips(currentFilters(filters), t).filter((c) => c.field !== "status" && c.field !== "mode"),
+    () => activeChips(currentFilters(filters), t, ref).filter((c) => c.field !== "status" && c.field !== "mode"),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       filters.date,
@@ -698,6 +701,8 @@ export function PlacesScreen() {
       filters.hasPhoto,
       filters.hasNote,
       filters.continent,
+      filters.country,
+      ref,
       t,
     ],
   );

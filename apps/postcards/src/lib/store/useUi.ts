@@ -9,6 +9,7 @@ export type PlacesView =
   | "favorites"
   | "wishlist"
   | "countries"
+  | "cities"
   | "monuments"
   | "moments"
   | "passport";

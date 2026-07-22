@@ -38,6 +38,10 @@ export interface FilterState {
   /** Monument category filter (kind = monuments): "" (all) | cultural | natural | mixed.
    *  Session-scoped, like date/folder; the map ignores it. */
   category: string;
+  /** Narrow every list to ONE country (ISO 3166-1 alpha-2; "" = all). Set from the
+   *  Stats country card ("show France's mega cities…"); session-scoped and, like
+   *  category, a lists dimension the map ignores (you pan to a country there). */
+  country: string;
   // Growth dimensions (US4) — off by default, hosted in the one panel.
   favoritesOnly: boolean;
   hasPhoto: boolean;
@@ -60,6 +64,7 @@ export const DEFAULT_FILTERS: FilterState = {
   sort: "pop",
   mode: "all",
   category: "",
+  country: "",
   favoritesOnly: false,
   hasPhoto: false,
   hasNote: false,
@@ -126,6 +131,7 @@ export function isDefault(s: FilterState): boolean {
     s.sort === "pop" &&
     s.mode === "all" &&
     s.category === "" &&
+    s.country === "" &&
     !s.favoritesOnly &&
     !s.hasPhoto &&
     !s.hasNote &&
@@ -174,6 +180,7 @@ export function currentFilters(s: FilterStore): FilterState {
     sort: s.sort,
     mode: s.mode,
     category: s.category,
+    country: s.country,
     favoritesOnly: s.favoritesOnly,
     hasPhoto: s.hasPhoto,
     hasNote: s.hasNote,

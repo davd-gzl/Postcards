@@ -222,6 +222,7 @@ export const fr: Messages = {
   "stats.country.metricMegaDetail": "{pct} · {visited}/{total} villes de 1M+",
   "stats.country.megaCityBarAria": "{name} : mégapoles (1M+) visitées",
   "stats.country.openPage": "Ouvrir la page",
+  "stats.country.exploreHint": "Voir {label} de {name} dans Lieux",
   "stats.country.metricRegions": "Régions",
   "stats.country.metricRegionsDetail": "{pct} · {visited}/{total} régions",
   "stats.country.datasetNotLoaded": "jeu de données non chargé",

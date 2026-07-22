@@ -1763,7 +1763,8 @@ h1.brand {
 .country-meters {
   grid-area: meter;
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
   margin-top: 3px;
 }
 /* The collapsed row's mini-meters are the at-a-glance summary; once open, the
@@ -1772,7 +1773,8 @@ h1.brand {
   display: none;
 }
 .cmeter {
-  flex: 1 1 0;
+  /* Two per row (so up to four tiers stay legible on a phone), growing to fill. */
+  flex: 1 1 calc(50% - 12px);
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -1806,6 +1808,26 @@ h1.brand {
 .country-body .metric-label {
   font-size: 12px;
   margin-bottom: 4px;
+}
+/* A tappable tier row: it opens Places scoped to this country + tier. Looks like
+   the metric it wraps, with a hover/focus wash and a bit of bleed so the target
+   spans the card's full width. */
+.metric-btn {
+  display: block;
+  width: calc(100% + 16px);
+  margin-left: -8px;
+  margin-right: -8px;
+  padding: 6px 8px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.metric-btn:hover,
+.metric-btn:focus-visible {
+  background: var(--bg-sub);
 }
 /* "What's left to explore" as plain, scannable text — a label + count, then
    names as accent links joined by thin separators. Far lighter than the old

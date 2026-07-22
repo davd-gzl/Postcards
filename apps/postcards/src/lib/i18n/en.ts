@@ -229,6 +229,7 @@ export const en = {
   "stats.country.metricMegaDetail": "{pct} · {visited}/{total} cities of 1M+",
   "stats.country.megaCityBarAria": "{name}: mega cities (1M+) visited",
   "stats.country.openPage": "Open full page",
+  "stats.country.exploreHint": "Show {label} of {name} in Places",
   "stats.country.metricRegions": "Regions",
   "stats.country.metricRegionsDetail": "{pct} · {visited}/{total} regions",
   "stats.country.datasetNotLoaded": "dataset not loaded",

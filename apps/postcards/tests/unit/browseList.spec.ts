@@ -27,6 +27,9 @@ const ref = {
   allCities: () => cities,
   allHeritage: () => heritage,
   allAirports: () => airports,
+  citiesOf: (iso2: string) =>
+    cities.filter((c) => c.countryIso2 === iso2).sort((a, b) => (b.population ?? 0) - (a.population ?? 0)),
+  heritageOf: (iso2: string) => heritage.filter((h) => h.countryIso2 === iso2),
   searchCities: (q: string) => cities.filter((c) => lc(c.name).includes(lc(q))),
   searchHeritage: (q: string) => heritage.filter((h) => lc(h.name).includes(lc(q))),
   searchAirports: (q: string) => airports.filter((a) => lc(a.name).includes(lc(q)) || lc(a.id) === lc(q)),
@@ -105,6 +108,16 @@ describe("browseList — reference browse + personal status overlay (spec 018 US
   it("continent filter narrows every kind", () => {
     const rows = bl("cities", "all", { ...F, continent: "Asia" }, ref, [], "");
     expect(rows.map((r) => r.id)).toEqual(["tokyo"]);
+  });
+
+  it("country filter scopes every kind to one country (stats drill-down)", () => {
+    const fr = { ...F, country: "FR" };
+    // Cities drill from the country's own list (all of them), population-desc.
+    expect(bl("cities", "all", fr, ref, [], "").map((r) => r.id)).toEqual(["paris", "lyon"]);
+    expect(bl("monuments", "all", fr, ref, [], "").map((r) => r.id)).toEqual(["h1"]);
+    expect(bl("airports", "all", fr, ref, [], "").map((r) => r.id)).toEqual(["CDG"]);
+    // Country + population tier compose: only FR cities over the threshold.
+    expect(bl("cities", "all", { ...fr, minPop: 1_000_000 }, ref, [], "").map((r) => r.id)).toEqual(["paris"]);
   });
 
   it("pages with a limit and reports hasMore (uncapped load-more, perf)", () => {
