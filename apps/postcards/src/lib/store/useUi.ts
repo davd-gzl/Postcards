@@ -11,6 +11,7 @@ export type PlacesView =
   | "countries"
   | "cities"
   | "monuments"
+  | "airports"
   | "moments"
   | "passport";
 

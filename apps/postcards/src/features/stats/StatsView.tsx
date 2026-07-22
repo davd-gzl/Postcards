@@ -16,7 +16,7 @@ import {
 } from "./computeStats";
 import { travelTotals } from "../travel/distance";
 import { MODE_GLYPH } from "../travel/modes";
-import { useUi } from "../../lib/store/useUi";
+import { useUi, type PlacesView } from "../../lib/store/useUi";
 import { useFilters } from "../../lib/store/useFilters";
 import { countryFlag, formatDate, formatInt, formatKm, formatPercent } from "../../lib/format/format";
 import { CONTINENT_COLORS, CONTINENT_ORDER } from "../../lib/reference/continents";
@@ -376,6 +376,12 @@ export function StatsView() {
     useFilters.getState().set({ minPop, country: "" });
     useUi.getState().openPlaces("visited");
   }
+  // The coverage-hero + KPI tiles are all world-level: drop any country
+  // drill-down before opening the view so they never stay narrowed to one country.
+  function openWorld(view: PlacesView) {
+    useFilters.getState().set({ country: "" });
+    useUi.getState().openPlaces(view);
+  }
   function flyToRegion(iso2: string) {
     return (name: string) => {
       const sub = ref.subdivisionsOf(iso2).find((s) => s.name === name);
@@ -444,7 +450,7 @@ export function StatsView() {
               total: formatInt(coverage.worldCountryCount),
               pct: worldPctLabel,
             })}
-            onClick={() => useUi.getState().openPlaces("countries")}
+            onClick={() => openWorld("countries")}
           >
             <span className="stat-bar-top">
               <span className="stat-bar-name">{t("stats.bars.countries")}</span>
@@ -468,7 +474,7 @@ export function StatsView() {
               total: formatInt(coverage.worldCityCount),
               pct: cityPctLabel,
             })}
-            onClick={() => useUi.getState().openPlaces("visited")}
+            onClick={() => openWorld("visited")}
           >
             <span className="stat-bar-top">
               <span className="stat-bar-name">{t("stats.bars.cities")}</span>
@@ -526,7 +532,7 @@ export function StatsView() {
             type="button"
             className="kpi"
             title={t("stats.kpi.countriesTitle")}
-            onClick={() => useUi.getState().openPlaces("countries")}
+            onClick={() => openWorld("countries")}
           >
             <span className="kpi-num kpi-air">{formatInt(coverage.countriesVisited)}</span>
             <span className="kpi-label">{t("stats.kpi.countries")}</span>
@@ -558,7 +564,7 @@ export function StatsView() {
               type="button"
               className="kpi"
               title={t("stats.kpi.visitedTitle")}
-              onClick={() => useUi.getState().openPlaces("visited")}
+              onClick={() => openWorld("airports")}
             >
               <span className="kpi-num kpi-air">{formatInt(coverage.airportsVisited)}</span>
               <span className="kpi-label">{t("stats.kpi.airports")}</span>
@@ -569,7 +575,7 @@ export function StatsView() {
               type="button"
               className="kpi"
               title={t("stats.kpi.monumentsTitle")}
-              onClick={() => useUi.getState().openPlaces("monuments")}
+              onClick={() => openWorld("monuments")}
             >
               <span className="kpi-num kpi-want">{formatInt(coverage.monumentsVisited)}</span>
               <span className="kpi-label">{t("stats.kpi.monuments")}</span>

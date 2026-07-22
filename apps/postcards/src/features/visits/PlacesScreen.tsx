@@ -108,6 +108,10 @@ function mapRequest(view: PlacesView): { kind?: Kind; status?: Status; collectio
       return { kind: "cities", status: "all", collection: null };
     case "monuments":
       return { kind: "monuments", status: "all", collection: null };
+    case "airports":
+      // The airports you've actually been through (the count these tiles show),
+      // not the whole world of airports.
+      return { kind: "airports", status: "visited", collection: null };
     case "moments":
       return { collection: "moments" };
     case "passport":
