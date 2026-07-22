@@ -18,7 +18,7 @@ import { MapView, hasSavedCamera, type Basemap, type MapFocus, type MapFit } fro
 import { tripArcs } from "./visitedLayers";
 import { fitBounds } from "./mapFit";
 import { dateBuckets, mapDateMatches, rangeExactYear, type MapDate } from "../travel/period";
-import { citiesInView, type Bounds } from "./viewport";
+import { citiesInView, IN_VIEW_CAP, type Bounds } from "./viewport";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
 import type { City } from "../../lib/reference/types";
 import type { PlaceRef } from "../../lib/schema/models";
@@ -42,7 +42,6 @@ import { useT, type MessageKey } from "../../lib/i18n";
 // most relevant cities) — reactions to a toggle stay instant even at world
 // zoom instead of recounting 135k rows.
 const PAGE = 30;
-const IN_VIEW_CAP = 2000;
 const POI_LIST_CAP = 50;
 const collator = new Intl.Collator(); // hoisted: per-pair localeCompare over 135k rows janks pans
 const BASEMAP_KEY = "postcards-basemap";

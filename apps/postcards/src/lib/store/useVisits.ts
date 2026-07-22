@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { backfillUpdatedAt, MAX_PHOTOS_PER_VISIT, normalizeVisitPhotos, placeKey } from "../schema/helpers";
+import { backfillUpdatedAt, MAX_PHOTOS_PER_VISIT, normalizeVisitPhotos, placeKey, stampNow } from "../schema/helpers";
 import type { Photo, PlaceRef, Visit } from "../schema/models";
 import { sanitizeText } from "../schema/sanitize";
 import * as db from "../db/visitsDb";
@@ -7,7 +7,6 @@ import { stampPlaceCoords } from "../reference/placeCoords";
 import { uuid } from "./uuid";
 
 /** Now, as the ISO stamp written to `updatedAt` on every mutating path (spec 013). */
-const stampNow = () => new Date().toISOString();
 
 /**
  * Pure dedupe/upsert: at most one visit per (kind, id) (FR-015).

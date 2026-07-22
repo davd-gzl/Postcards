@@ -45,6 +45,13 @@ export function formatPercent(value: number, locale = activeLocale, digits = 0):
   }).format(value);
 }
 
+/** Like formatPercent, but a real but tiny share (rounds to 0%) floors to "<1%" so
+ *  progress never reads as "nothing" (coverage %s over huge denominators). */
+export function formatPercentFloor(value: number, locale = activeLocale): string {
+  const s = formatPercent(value, locale);
+  return value > 0 && s === formatPercent(0, locale) ? "<1%" : s;
+}
+
 /** ISO YYYY-MM-DD -> localized date; passthrough if unparseable. */
 export function formatDate(iso: string | null, locale = activeLocale): string {
   if (!iso) return "";

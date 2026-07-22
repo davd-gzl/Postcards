@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { backfillUpdatedAt } from "../schema/helpers";
+import { backfillUpdatedAt, stampNow } from "../schema/helpers";
 import type { Photo, PlaceRef, Story } from "../schema/models";
 import * as db from "../db/storiesDb";
 import * as visitsDb from "../db/visitsDb";
@@ -7,7 +7,6 @@ import { stampPlaceCoords } from "../reference/placeCoords";
 import { uuid } from "./uuid";
 
 /** Now, as the ISO stamp written to `updatedAt` on every mutating path (spec 013). */
-const stampNow = () => new Date().toISOString();
 
 /** Journal order: newest story date first (ties broken by newest addedAt). */
 export function sortStories(stories: Story[]): Story[] {

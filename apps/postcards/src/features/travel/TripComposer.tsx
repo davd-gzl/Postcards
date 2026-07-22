@@ -10,9 +10,9 @@ import { MyPlacesPicker } from "./MyPlacesPicker";
 import { myPlaces } from "./myPlaces";
 import { addStop, moveStop, removeStop } from "./tripStops";
 import { tripPathKm } from "./distance";
+import { MODE_ORDER } from "./modes";
 import { parseTripDate } from "./tripDate";
 
-const MODES: TravelMode[] = ["flight", "train", "bus", "ferry", "car", "other"];
 const MONTHS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
 
 /**
@@ -178,7 +178,7 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
       <label className="field">
         <span className="field-label">{t("trip.compose.modeLabel")}</span>
         <select className="select" value={mode} onChange={(e) => setMode(e.target.value as TravelMode)}>
-          {MODES.map((m) => (
+          {MODE_ORDER.map((m) => (
             <option key={m} value={m}>
               {t(`travel.mode.${m}` as const)}
             </option>

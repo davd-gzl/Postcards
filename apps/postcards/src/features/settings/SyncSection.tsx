@@ -111,7 +111,7 @@ export function SyncSection() {
   }
 
   async function onDownloadData() {
-    const [{ serializeFile }] = await Promise.all([import("../backup/exportJson")]);
+    const { serializeFile } = await import("../backup/exportJson");
     const text = serializeFile(
       useVisits.getState().visits,
       useTrips.getState().trips,

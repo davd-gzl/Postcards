@@ -85,7 +85,7 @@ function flagAnchor(geom: Polygon | MultiPolygon): [number, number] {
   return project(best!);
 }
 
-export interface PosterStats {
+interface PosterStats {
   countries: number;
   cities: number;
 }
