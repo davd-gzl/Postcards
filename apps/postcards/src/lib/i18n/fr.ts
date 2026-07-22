@@ -445,7 +445,8 @@ export const fr: Messages = {
   "trip.compose.searchPrompt": "Recherchez un aéroport (ex. CDG) ou une ville à ajouter.",
   "trip.compose.noMatch": "Aucun résultat — essayez un code d’aéroport (ex. CDG) ou une ville.",
   "trip.compose.pickAria": "Ajouter {name} au voyage",
-  "trip.compose.mapAria": "Carte de vos lieux — touchez-en un pour l’ajouter",
+  "trip.compose.mapCanvasAria": "Carte de vos lieux — touchez un point pour l’ajouter au voyage",
+  "trip.compose.addedLive": "{name} ajouté — étape {index}",
   "trip.compose.noPlaces":
     "Aucun lieu à afficher — passez en Liste et recherchez un aéroport ou une ville.",
   "trip.compose.removeStop": "Retirer {name}",

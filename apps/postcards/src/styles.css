@@ -2788,6 +2788,28 @@ h1.brand {
   flex-direction: column;
   gap: 8px;
 }
+/* The composer's real map picker (RouteMap): a sized, relative canvas the absolute
+   MapLibre .map-canvas fills, with the keyboard/AT companion list beneath it. */
+.route-map {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.route-map-canvas {
+  position: relative;
+  width: 100%;
+  height: clamp(220px, 42vh, 460px);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #d9e6f1;
+}
+.route-map-canvas .maplibregl-canvas {
+  border-radius: var(--radius);
+}
+.route-map-list {
+  max-height: 180px;
+}
 .myplaces-list {
   list-style: none;
   margin: 0;
