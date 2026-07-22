@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useVisits } from "../../lib/store/useVisits";
 import { useSettings } from "../../lib/store/useSettings";
 import { useUi, type PlacesView } from "../../lib/store/useUi";
+import { useFilters } from "../../lib/store/useFilters";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { computeCoverage } from "./computeStats";
 import { formatInt, formatPercent } from "../../lib/format/format";
@@ -64,7 +65,12 @@ export function StatStrip() {
       <button
         type="button"
         className="ss-item"
-        onClick={() => openPlaces(view)}
+        onClick={() => {
+          // World-level shortcut — drop any country drill-down so it shows the
+          // whole world, not the last country you opened from a stats card.
+          useFilters.getState().set({ country: "" });
+          openPlaces(view);
+        }}
         title={t("statStrip.openAria", { label })}
         aria-label={aria}
       >
@@ -90,7 +96,7 @@ export function StatStrip() {
       <span className="ss-sep" aria-hidden />
       <Counter num={stats.cov.citiesVisited} label={t("statStrip.been")} cls="ss-been" view="visited" />
       {stats.cov.airportsVisited > 0 && (
-        <Counter num={stats.cov.airportsVisited} label={t("statStrip.airports")} cls="ss-air" view="visited" />
+        <Counter num={stats.cov.airportsVisited} label={t("statStrip.airports")} cls="ss-air" view="airports" />
       )}
       <Counter num={stats.want} label={t("statStrip.want")} cls="ss-want" view="wishlist" />
       <Counter num={stats.fav} label={t("statStrip.fav")} cls="ss-fav" view="favorites" />

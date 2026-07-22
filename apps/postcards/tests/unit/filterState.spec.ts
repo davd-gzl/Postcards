@@ -60,4 +60,33 @@ describe("useFilters store", () => {
     expect(localStorage.getItem("postcards-city-minpop")).toBe("1000000");
     expect(localStorage.getItem("postcards-list-sort")).toBe("az");
   });
+
+  it("persists EVERY value dimension (date/folder/category/country/continent/growth) across sessions", () => {
+    useFilters.getState().set({
+      date: { mode: "range", from: "2020-01-01", to: "2020-12-31" },
+      folder: "Japan 2019",
+      category: "cultural",
+      country: "FR",
+      continent: "Europe",
+      favoritesOnly: true,
+      hasPhoto: true,
+      hasNote: true,
+    });
+    const blob = JSON.parse(localStorage.getItem("postcards-filter-extra") ?? "{}");
+    expect(blob.date).toEqual({ mode: "range", from: "2020-01-01", to: "2020-12-31" });
+    expect(blob.folder).toBe("Japan 2019");
+    expect(blob.category).toBe("cultural");
+    expect(blob.country).toBe("FR");
+    expect(blob.continent).toBe("Europe");
+    expect(blob.favoritesOnly).toBe(true);
+    expect(blob.hasPhoto).toBe(true);
+    expect(blob.hasNote).toBe(true);
+    // clearAll wipes the persisted blob back to defaults.
+    useFilters.getState().clearAll();
+    const cleared = JSON.parse(localStorage.getItem("postcards-filter-extra") ?? "{}");
+    expect(cleared.country).toBe("");
+    expect(cleared.folder).toBe("");
+    expect(cleared.favoritesOnly).toBe(false);
+    expect(cleared.date).toEqual({ mode: "all" });
+  });
 });

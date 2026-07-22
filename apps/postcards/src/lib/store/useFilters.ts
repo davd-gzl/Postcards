@@ -72,12 +72,16 @@ export const DEFAULT_FILTERS: FilterState = {
   listOnly: false,
 };
 
-// Persisted preference dimensions reuse the keys the old inline controls used, so
-// upgrading users keep their choices; session dimensions are never written.
+// Every filter VALUE persists across sessions (the map and the lists both read
+// this store, so both reopen exactly as you left them). status/minPop/sort/mode
+// keep their own legacy keys (so upgrading users keep those choices); the rest
+// ride in one JSON blob. `listOnly` is the only thing NOT saved — it's a per-
+// session scope toggle (whether the filter also narrows the map), not a value.
 const STATUS_KEY = "postcards-city-filter";
 const MINPOP_KEY = "postcards-city-minpop";
 const SORT_KEY = "postcards-list-sort";
 const MODE_KEY = "postcards-map-mode";
+const EXTRA_KEY = "postcards-filter-extra";
 
 function readLocal(key: string): string | null {
   try {
@@ -114,11 +118,67 @@ function loadMode(): FilterMode {
   return v === "cities" || v === "monuments" || v === "airports" ? v : "all";
 }
 
+/** The remaining value dimensions (date/folder/category/country/continent/growth),
+ *  restored from the JSON blob and validated field-by-field so a corrupt or stale
+ *  entry falls back to its default rather than throwing. */
+function loadExtra(): Pick<
+  FilterState,
+  "date" | "folder" | "category" | "country" | "continent" | "favoritesOnly" | "hasPhoto" | "hasNote"
+> {
+  const base = {
+    date: DEFAULT_FILTERS.date,
+    folder: DEFAULT_FILTERS.folder,
+    category: DEFAULT_FILTERS.category,
+    country: DEFAULT_FILTERS.country,
+    continent: DEFAULT_FILTERS.continent,
+    favoritesOnly: DEFAULT_FILTERS.favoritesOnly,
+    hasPhoto: DEFAULT_FILTERS.hasPhoto,
+    hasNote: DEFAULT_FILTERS.hasNote,
+  };
+  const raw = readLocal(EXTRA_KEY);
+  if (!raw) return base;
+  try {
+    const p = JSON.parse(raw) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+    const bool = (v: unknown) => (typeof v === "boolean" ? v : undefined);
+    let date: FilterDate = DEFAULT_FILTERS.date;
+    const d = p.date as Record<string, unknown> | undefined;
+    if (d && d.mode === "undated") date = { mode: "undated" };
+    else if (d && d.mode === "range" && typeof d.from === "string" && typeof d.to === "string")
+      date = { mode: "range", from: d.from, to: d.to };
+    return {
+      date,
+      folder: str(p.folder) ?? base.folder,
+      category: str(p.category) ?? base.category,
+      country: str(p.country) ?? base.country,
+      continent: str(p.continent) ?? base.continent,
+      favoritesOnly: bool(p.favoritesOnly) ?? base.favoritesOnly,
+      hasPhoto: bool(p.hasPhoto) ?? base.hasPhoto,
+      hasNote: bool(p.hasNote) ?? base.hasNote,
+    };
+  } catch {
+    return base;
+  }
+}
+
 function persist(state: FilterState): void {
   writeLocal(STATUS_KEY, state.status.join(","));
   writeLocal(MINPOP_KEY, String(state.minPop));
   writeLocal(SORT_KEY, state.sort);
   writeLocal(MODE_KEY, state.mode);
+  writeLocal(
+    EXTRA_KEY,
+    JSON.stringify({
+      date: state.date,
+      folder: state.folder,
+      category: state.category,
+      country: state.country,
+      continent: state.continent,
+      favoritesOnly: state.favoritesOnly,
+      hasPhoto: state.hasPhoto,
+      hasNote: state.hasNote,
+    }),
+  );
 }
 
 /** True iff every dimension is at its default (⇒ no active filters, empty summary). */
@@ -156,6 +216,7 @@ export const useFilters = create<FilterStore>((set, get) => ({
   minPop: loadMinPop(),
   sort: loadSort(),
   mode: loadMode(),
+  ...loadExtra(),
   set: (partial) => {
     set(partial);
     persist(get());
