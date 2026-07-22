@@ -1,6 +1,12 @@
 import type { PlaceRef, Trip, Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
 import { placeKey } from "../../lib/schema/helpers";
+import { countryFlag } from "../../lib/format/format";
+
+/** The emoji that stands in for a place in the trip UI — a plane for airports,
+ *  else the country flag. One definition shared by every trip picker/row. */
+export const placeFlag = (p: PlaceRef): string =>
+  p.kind === "airport" ? "✈️" : countryFlag(p.countryId);
 
 // The pool the trip composer picks stops from (spec 019, fast-reconstruction): ONLY
 // places you've already been — your visited records plus every place already used in

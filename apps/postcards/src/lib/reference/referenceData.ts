@@ -39,16 +39,13 @@ export const GAZETTEER_UPGRADED_EVENT = "postcards:gazetteer-upgraded";
 // records the user's one-tap opt-in; once set, later launches re-load the full set
 // straight from the service-worker cache (offline-friendly). Default off.
 const FULL_CITIES_KEY = "postcards-full-cities";
-function fullCitiesOptedIn(): boolean {
+/** Has the user opted into (downloaded) the full world city list? Default off. */
+export function fullCitiesEnabled(): boolean {
   try {
     return localStorage.getItem(FULL_CITIES_KEY) === "1";
   } catch {
     return false;
   }
-}
-/** Has the user opted into (downloaded) the full world city list? */
-export function fullCitiesEnabled(): boolean {
-  return fullCitiesOptedIn();
 }
 const SUBDIVISIONS_URL = `${import.meta.env.BASE_URL}reference/subdivisions.json`;
 const AIRPORTS_URL = `${import.meta.env.BASE_URL}reference/airports.json`;
@@ -383,7 +380,7 @@ export async function initReferenceData(): Promise<ReferenceData> {
     // The full 135k-city set is NOT auto-fetched — it's a one-tap download in
     // Settings (like a tile pack). Only re-load it here if the user already opted
     // in on a previous run; then it comes straight from the SW cache.
-    if (fullCitiesOptedIn()) void upgradeToFullGazetteer(ref as ReferenceDataImpl);
+    if (fullCitiesEnabled()) void upgradeToFullGazetteer(ref as ReferenceDataImpl);
     return ref;
   } catch {
     console.warn("Postcards: reference data failed to load; continuing without cities.");

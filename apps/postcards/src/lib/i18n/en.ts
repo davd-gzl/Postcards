@@ -239,6 +239,9 @@ export const en = {
   "stats.country.chipRegionsToVisit": "Regions to visit",
   "stats.country.chipMonumentsSeen": "Monuments seen",
   "stats.country.chipMonumentsToSee": "Monuments to see",
+  "stats.country.mapAria": "{name}: {visited} of {total} regions visited — dots mark cities you've been, shaded areas are regions still to explore",
+  "stats.country.mapVisited": "Been",
+  "stats.country.mapMissing": "To explore",
   "stats.country.showOnMapHint": "Show on the map:",
 
   // ── Stat strip (compact counters) ────────────────────────────────────────
@@ -461,6 +464,7 @@ export const en = {
   "trip.compose.nameLabel": "Name (optional)",
   "trip.compose.namePlaceholder": "Name this trip",
   "trip.compose.modeLabel": "How",
+  "trip.compose.legModeAria": "Transport from {from} to {to}",
   "trip.compose.addDate": "Add a date (optional)",
   "trip.compose.whenLabel": "When (roughly)",
   "trip.compose.yearPlaceholder": "Year",

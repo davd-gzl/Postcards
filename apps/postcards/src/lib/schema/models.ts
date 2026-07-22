@@ -75,15 +75,33 @@ const photoDataUrl = z
  * rendered via <img src>, never executed, and never leaves the device except in an
  * explicit export. Downscaled on capture.
  */
+/** A nullable free-text field: bounded, sanitized to inert text, null-preserving
+ *  (absent/null stays null; present text is sanitized to the same bound). */
+const nullableSanitized = (max: number) =>
+  z
+    .string()
+    .max(max)
+    .nullable()
+    .optional()
+    .transform((v) => (v == null ? null : sanitizeText(v, max)));
+
+/** An optional label (folder / trip name): bounded + sanitized, with `.transform`
+ *  BEFORE `.optional` so the KEY stays optional and older files round-trip
+ *  byte-identically; a value that sanitizes away is dropped rather than stored empty. */
+const optionalLabel = (max = 80) =>
+  z
+    .string()
+    .max(max)
+    .transform((v) => {
+      const s = sanitizeText(v, max);
+      return s.length ? s : undefined;
+    })
+    .optional();
+
 export const PhotoSchema = z
   .object({
     src: photoDataUrl,
-    caption: z
-      .string()
-      .max(300)
-      .nullable()
-      .optional()
-      .transform((v) => (v == null ? null : sanitizeText(v, 300))),
+    caption: nullableSanitized(300),
   })
   .strict();
 
@@ -100,12 +118,7 @@ export const VisitSchema = z.object({
     .nullable()
     .optional()
     .transform((v) => v ?? null),
-  note: z
-    .string()
-    .max(2000)
-    .nullable()
-    .optional()
-    .transform((v) => (v == null ? null : sanitizeText(v, 2000))),
+  note: nullableSanitized(2000),
   /**
    * Legacy single "postcard" photo (schema ≤ v2). Kept so v1/v2 files import
    * unchanged; on load it is migrated into `photos[0]` (see normalizeVisitPhotos).
@@ -124,14 +137,7 @@ export const VisitSchema = z.object({
    * files validating and round-tripping byte-identically. Sanitized to inert text
    * when present; a value that sanitizes away is dropped rather than stored empty.
    */
-  folder: z
-    .string()
-    .max(80)
-    .transform((v) => {
-      const s = sanitizeText(v, 80);
-      return s.length ? s : undefined;
-    })
-    .optional(),
+  folder: optionalLabel(),
   addedAt: z.string().datetime({ offset: true }),
   /**
    * When this record was last mutated (device sync, spec 013). Optional so files
@@ -163,18 +169,7 @@ export const TripSchema = z
      * validating and round-tripping byte-identically. Sanitized to inert text when
      * present; a value that sanitizes away is dropped rather than stored empty.
      */
-    name: z
-      .string()
-      .max(80)
-      // `.transform` BEFORE `.optional` keeps the KEY optional (name?: string) so
-      // existing trips without a name still typecheck and round-trip byte-identically;
-      // the transform runs only when a value is present, sanitizing it to inert text
-      // and dropping it entirely if it sanitizes away.
-      .transform((v) => {
-        const s = sanitizeText(v, 80);
-        return s.length ? s : undefined;
-      })
-      .optional(),
+    name: optionalLabel(),
     from: PlaceRefSchema,
     to: PlaceRefSchema,
     /**
@@ -187,6 +182,15 @@ export const TripSchema = z
      */
     stops: z.array(PlaceRefSchema).min(2).max(200).optional(),
     mode: TravelModeSchema.optional().default("flight"),
+    /**
+     * Per-LEG transport (spec 019): the mode of the leg from stop i to stop i+1, so
+     * one journey can mix transports — fly Paris→Tokyo→Osaka, then take the train
+     * Osaka→Kyoto — and a run of the same mode reads as a sub-trip. When present its
+     * length is `stops.length - 1`; a leg with no entry falls back to `mode`.
+     * Additive & optional with no default, so the key is never injected on parse —
+     * a trip with a single `mode` (and every v1–v11 file) round-trips byte-identically.
+     */
+    legModes: z.array(TravelModeSchema).max(200).optional(),
     // Approximate/"vague" date (spec 019): a full day `YYYY-MM-DD`, a month
     // `YYYY-MM`, or a year `YYYY` — all optional/nullable (an undated trip is fine).
     // The wider regex is a RELAXATION, so every previously-valid full-day value
@@ -197,18 +201,8 @@ export const TripSchema = z
       .nullable()
       .optional()
       .transform((v) => v ?? null),
-    carrier: z
-      .string()
-      .max(120)
-      .nullable()
-      .optional()
-      .transform((v) => (v == null ? null : sanitizeText(v, 120))),
-    note: z
-      .string()
-      .max(2000)
-      .nullable()
-      .optional()
-      .transform((v) => (v == null ? null : sanitizeText(v, 2000))),
+    carrier: nullableSanitized(120),
+    note: nullableSanitized(2000),
     addedAt: z.string().datetime({ offset: true }),
     /** Last-mutated stamp for device sync (spec 013); see Visit.updatedAt. */
     updatedAt: z.string().datetime({ offset: true }).optional(),
@@ -252,18 +246,7 @@ export const StorySchema = z
      * inert text when present; a value that sanitizes away is dropped rather than
      * stored empty.
      */
-    folder: z
-      .string()
-      .max(80)
-      // `.transform` BEFORE `.optional` keeps the KEY optional (folder?: string) so
-      // existing stories without a folder still typecheck and round-trip byte-identically;
-      // the transform runs only when a value is present, sanitizing it to inert text
-      // and dropping it entirely if it sanitizes away.
-      .transform((v) => {
-        const s = sanitizeText(v, 80);
-        return s.length ? s : undefined;
-      })
-      .optional(),
+    folder: optionalLabel(),
     photos: z.array(PhotoSchema).max(MAX_PHOTOS_PER_STORY).optional(),
     addedAt: z.string().datetime({ offset: true }),
     /** Last-mutated stamp for device sync (spec 013); see Visit.updatedAt. */

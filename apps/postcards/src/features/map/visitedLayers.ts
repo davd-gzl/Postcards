@@ -214,15 +214,16 @@ export function tripArcs(trips: Trip[], ref: ReferenceData): FeatureCollection<L
   const features: Feature<LineString>[] = [];
   for (const t of trips) {
     const chain = t.stops && t.stops.length >= 2 ? t.stops : [t.from, t.to];
-    features.push(...stopsArcs(chain, ref, t.mode).features);
+    features.push(...stopsArcs(chain, ref, t.mode, t.legModes).features);
   }
   return { type: "FeatureCollection", features };
 }
 
 /**
  * Great-circle arcs for an ORDERED chain of stops (spec 019) — one arc per
- * consecutive resolvable leg, tagged with the travel `mode`. Powers the live
- * route drawn while reconstructing a journey (the composer's real map). A leg
+ * consecutive resolvable leg, each tagged with ITS transport so the map can colour
+ * a mixed-mode journey correctly (leg i uses `legModes[i]`, else the trip default
+ * `mode`). Powers the live route drawn while reconstructing a journey. A leg
  * touching a coordinate-less stop is skipped — nothing invented (FR-013); fewer
  * than two stops → an empty collection. Takes raw stops, NOT a Trip.
  */
@@ -230,6 +231,7 @@ export function stopsArcs(
   stops: PlaceRef[],
   ref: ReferenceData,
   mode: TravelMode,
+  legModes?: TravelMode[],
 ): FeatureCollection<LineString> {
   const features: Feature<LineString>[] = [];
   for (let i = 0; i < stops.length - 1; i++) {
@@ -239,7 +241,7 @@ export function stopsArcs(
     features.push({
       type: "Feature",
       geometry: { type: "LineString", coordinates: greatCircle(from, to) },
-      properties: { mode },
+      properties: { mode: legModes?.[i] ?? mode },
     });
   }
   return { type: "FeatureCollection", features };

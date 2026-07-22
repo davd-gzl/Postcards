@@ -11,6 +11,12 @@ import {
 } from "../../lib/schema/models";
 import { getReferenceData } from "../../lib/reference/referenceData";
 
+/** Drop an empty `photos` array so a photo-less record stays lean in the file. */
+function dropEmptyPhotos<T extends { photos?: unknown[] }>(rec: T): T | Omit<T, "photos"> {
+  const { photos, ...rest } = rec;
+  return photos && photos.length ? { ...rest, photos } : rest;
+}
+
 /** Build the canonical portable file object from the current visits + trips + stories.
  *  `tombstones` is written only for device sync; a plain backup passes none, so the
  *  exported file stays free of an empty `tombstones` key. */
@@ -32,9 +38,9 @@ export function buildFile(
     schemaVersion: SCHEMA_VERSION,
     exportedAt: now.toISOString(),
     // Drop empty `photos` arrays so a photo-less export stays lean and readable.
-    visits: visits.map(({ photos, ...rest }) => (photos && photos.length ? { ...rest, photos } : rest)),
+    visits: visits.map(dropEmptyPhotos),
     trips,
-    stories: stories.map(({ photos, ...rest }) => (photos && photos.length ? { ...rest, photos } : rest)),
+    stories: stories.map(dropEmptyPhotos),
     ...(tombstones.length ? { tombstones } : {}),
     referenceSources,
   };

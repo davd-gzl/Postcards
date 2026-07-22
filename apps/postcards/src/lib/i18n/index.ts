@@ -12,10 +12,6 @@ import { useSettings } from "../store/useSettings";
 import { translate, type Locale, type MessageKey, type TParams } from "./core";
 
 export {
-  translate,
-  detectLocale,
-  applyLangAttr,
-  isLocale,
   LOCALES,
   LOCALE_LABELS,
   type Locale,

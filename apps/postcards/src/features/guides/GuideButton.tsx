@@ -29,7 +29,7 @@ const isOffline = () => typeof navigator !== "undefined" && !navigator.onLine;
 
 /** Resolve the names a place's guides are built from (common country name —
  *  the real Wikivoyage article title, e.g. "Russia", not "Russian Federation"). */
-function guideNames(place: PlaceRef) {
+function guideNames(place: PlaceRef): GuideNames | null {
   const ref = getReferenceData();
   const country = ref.countryByIso2(place.countryId);
   if (!country) return null;

@@ -82,8 +82,8 @@ export function importFile(text: string): ImportResult {
   // lists a place twice, keep the first record's identity but UNION the galleries
   // (photos are now the payload — dropping one silently would lose data).
   const byPlace = new Map<string, Visit>();
-  for (const raw of parsed.data.visits) {
-    const v = normalizeVisitPhotos(raw);
+  for (const rawVisit of parsed.data.visits) {
+    const v = normalizeVisitPhotos(rawVisit);
     const key = placeKey(v.place);
     const existing = byPlace.get(key);
     if (!existing) {

@@ -79,17 +79,33 @@ export interface TravelTotals {
   byMode: { mode: TravelMode; trips: number; km: number }[];
 }
 
-/** Aggregate totals across trips; distance sums only trips with two resolvable endpoints. */
+/** Aggregate totals across trips. Distance is summed PER LEG under that leg's own
+ *  transport (spec 019 per-leg modes), so a mixed-mode journey splits correctly;
+ *  a trip is counted once under each distinct mode it uses. */
 export function travelTotals(trips: Trip[], ref: ReferenceData): TravelTotals {
   const per = new Map<TravelMode, { trips: number; km: number }>();
+  const slot = (m: TravelMode) => {
+    const s = per.get(m) ?? { trips: 0, km: 0 };
+    per.set(m, s);
+    return s;
+  };
   let totalKm = 0;
   for (const t of trips) {
-    const km = tripDistanceKm(t, ref) ?? 0;
-    totalKm += km;
-    const slot = per.get(t.mode) ?? { trips: 0, km: 0 };
-    slot.trips += 1;
-    slot.km += km;
-    per.set(t.mode, slot);
+    const chain = t.stops && t.stops.length >= 2 ? t.stops : [t.from, t.to];
+    const modesUsed = new Set<TravelMode>();
+    for (let i = 0; i < chain.length - 1; i++) {
+      const mode = t.legModes?.[i] ?? t.mode;
+      modesUsed.add(mode);
+      const a = coordsOf(chain[i]!, ref);
+      const b = coordsOf(chain[i + 1]!, ref);
+      if (a && b) {
+        const km = haversineKm(a, b);
+        totalKm += km;
+        slot(mode).km += km;
+      }
+    }
+    // Count the trip once per distinct transport it used (single-mode → its mode).
+    for (const m of modesUsed) slot(m).trips += 1;
   }
   const byMode = MODE_ORDER.filter((m) => per.has(m)).map((mode) => ({ mode, ...per.get(mode)! }));
   return { trips: trips.length, totalKm, byMode };

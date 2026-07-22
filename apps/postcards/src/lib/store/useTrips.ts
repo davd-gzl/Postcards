@@ -17,6 +17,8 @@ interface TripsState {
     /** Ordered stops for a multi-stop journey (spec 019); ≥2 or omitted. */
     stops?: PlaceRef[];
     mode?: TravelMode;
+    /** Per-leg transport (spec 019); omitted when every leg uses `mode`. */
+    legModes?: TravelMode[];
     date?: string | null;
     carrier?: string | null;
     note?: string | null;
@@ -26,7 +28,7 @@ interface TripsState {
   updateTrip: (
     tripId: string,
     changes: Partial<
-      Pick<Trip, "from" | "to" | "stops" | "mode" | "date" | "carrier" | "note" | "name">
+      Pick<Trip, "from" | "to" | "stops" | "mode" | "legModes" | "date" | "carrier" | "note" | "name">
     >,
   ) => Promise<void>;
   removeTrip: (tripId: string) => Promise<void>;
@@ -46,6 +48,7 @@ export const useTrips = create<TripsState>((set, get) => ({
     to,
     stops,
     mode = "flight",
+    legModes,
     date = null,
     carrier = null,
     note = null,
@@ -60,6 +63,9 @@ export const useTrips = create<TripsState>((set, get) => ({
       // stays lean and never gains the key (mirrors the schema's optional field).
       ...(stops && stops.length >= 2 ? { stops } : {}),
       mode,
+      // Only carry per-leg modes when a leg actually differs from `mode` (a
+      // uniform trip stays lean and byte-identical to a pre-legModes file).
+      ...(legModes && legModes.length ? { legModes } : {}),
       date,
       carrier,
       note,
@@ -84,6 +90,9 @@ export const useTrips = create<TripsState>((set, get) => ({
       if (nm) updated.name = nm;
       else delete updated.name;
     }
+    // Drop `legModes` when it's cleared (a uniform-mode edit), so the trip never
+    // keeps a stale per-leg array and stays lean.
+    if ("legModes" in changes && !changes.legModes?.length) delete updated.legModes;
     set({ trips: get().trips.map((t) => (t.tripId === tripId ? updated : t)) });
     await db.putTrip(updated);
   },

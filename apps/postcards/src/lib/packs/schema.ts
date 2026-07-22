@@ -11,7 +11,7 @@ import { z } from "zod";
 import { sanitizeText } from "../schema/sanitize";
 
 /** Bounds on a pack so a hostile/oversized file can't OOM the device. */
-export const MAX_PACK_PLACES = 50_000;
+const MAX_PACK_PLACES = 50_000;
 
 const nonEmptySanitized = (max: number) =>
   z
@@ -44,7 +44,6 @@ export const PackPlaceSchema = z
   })
   .strict();
 
-export type PackPlace = z.infer<typeof PackPlaceSchema>;
 
 /** A community data pack. `license` is REQUIRED — provenance is non-negotiable. */
 export const DataPackSchema = z

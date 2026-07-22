@@ -1801,6 +1801,59 @@ h1.brand {
   padding-top: 8px;
   border-top: 1px solid var(--border);
 }
+/* Static per-country coverage map: the country silhouette, soft "still to explore"
+   region blobs, and a dot per city you've been. Non-interactive (a glance, not a
+   control) — the tappable lists live on the country's full page. */
+.country-cov-map {
+  margin: 12px 0 2px;
+}
+.country-cov-map svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--bg-sub);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.ccov-land {
+  fill: var(--surface);
+  stroke: var(--border-strong);
+  stroke-width: 0.6;
+}
+.ccov-missing {
+  fill: var(--stat-want);
+  opacity: 0.18;
+}
+.ccov-visited {
+  fill: var(--stat-been);
+  stroke: #fff;
+  stroke-width: 0.6;
+}
+.country-cov-legend {
+  display: flex;
+  gap: 14px;
+  margin: 5px 2px 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.country-cov-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ccov-key {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+.ccov-key-visited {
+  background: var(--stat-been);
+}
+.ccov-key-missing {
+  background: var(--stat-want);
+  opacity: 0.4;
+}
 /* Keep the expanded panel compact — tighter than the standalone continent
    metrics so a country card doesn't grow into a wall when opened. */
 .country-body .metric {
@@ -2670,12 +2723,34 @@ h1.brand {
 }
 .trip-stop-row {
   display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.trip-stop-main {
+  display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
+}
+/* The leg connector between two stops: a short line + a compact transport picker,
+   left-aligned under the stop's number so the route reads top-to-bottom and a run
+   of one transport looks like a sub-trip. */
+.trip-leg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 2px 14px;
+  margin-left: 9px;
+  border-left: 2px dashed var(--border-strong);
+}
+.trip-leg-mode .select {
+  height: 30px;
+  padding: 0 24px 0 8px;
+  font-size: 12.5px;
+  min-height: 0;
 }
 .trip-stop-index {
   min-width: 20px;

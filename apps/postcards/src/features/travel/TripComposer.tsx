@@ -3,14 +3,13 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { useTrips } from "../../lib/store/useTrips";
 import { useVisits } from "../../lib/store/useVisits";
 import { placeKey } from "../../lib/schema/helpers";
-import { countryFlag } from "../../lib/format/format";
 import { useT, useLocale } from "../../lib/i18n";
 import type { PlaceRef, TravelMode } from "../../lib/schema/models";
 import { MyPlacesPicker } from "./MyPlacesPicker";
-import { myPlaces } from "./myPlaces";
-import { addStop, moveStop, removeStop } from "./tripStops";
+import { myPlaces, placeFlag } from "./myPlaces";
+import { appendStop, moveStopTo, removeStopAt, setLegMode, type StopChain } from "./tripStops";
 import { tripPathKm } from "./distance";
-import { MODE_ORDER } from "./modes";
+import { MODE_ORDER, MODE_GLYPH } from "./modes";
 import { parseTripDate } from "./tripDate";
 
 const MONTHS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
@@ -37,13 +36,30 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
   // The pool of places you've been — visited records + places already used in trips.
   const pool = useMemo(() => myPlaces(visits, trips, ref), [visits, trips, ref]);
 
-  const [stops, setStops] = useState<PlaceRef[]>(() => {
+  const initialStops = (): PlaceRef[] => {
     if (existing?.stops && existing.stops.length >= 2) return existing.stops;
     if (existing) return [existing.from, existing.to];
     return [];
+  };
+  const [stops, setStops] = useState<PlaceRef[]>(initialStops);
+  // Per-leg transport (spec 019): one mode per leg, seeded from the trip's saved
+  // modes (or its single `mode`), so a journey can mix transports and a run of one
+  // mode reads as a sub-trip. Kept the right length as stops change.
+  const [legModes, setLegModes] = useState<TravelMode[]>(() => {
+    const s0 = initialStops();
+    const need = Math.max(0, s0.length - 1);
+    const base = (existing?.legModes ?? []).slice(0, need);
+    while (base.length < need) base.push(existing?.mode ?? "flight");
+    return base;
   });
+  const applyChain = (c: StopChain) => {
+    setStops(c.stops);
+    setLegModes(c.legModes);
+  };
+  // New legs continue the last leg's transport (so tapping stops in a row keeps
+  // one mode until you change it — that's what makes a sub-trip).
+  const nextFill = (): TravelMode => legModes[legModes.length - 1] ?? existing?.mode ?? "flight";
   const [name, setName] = useState(existing?.name ?? "");
-  const [mode, setMode] = useState<TravelMode>(existing?.mode ?? "flight");
   const seededDate = parseTripDate(existing?.date ?? null);
   const [year, setYear] = useState(seededDate ? String(seededDate.year) : "");
   const [month, setMonth] = useState(
@@ -68,10 +84,15 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
     const from = stops[0]!;
     const to = stops[stops.length - 1]!;
     const date = composeDate();
+    // The primary mode is the first leg's; per-leg modes are saved only when a leg
+    // actually differs (a uniform trip stays a plain single-mode trip).
+    const mode = legModes[0] ?? existing?.mode ?? "flight";
+    const mixed = legModes.some((m) => m !== mode);
+    const legModesToSave = mixed ? legModes : undefined;
     if (tripId && existing) {
-      await updateTrip(tripId, { from, to, stops, mode, date, name: name.trim() });
+      await updateTrip(tripId, { from, to, stops, mode, legModes: legModesToSave, date, name: name.trim() });
     } else {
-      await addTrip({ from, to, stops, mode, date, name: name.trim() || null });
+      await addTrip({ from, to, stops, mode, legModes: legModesToSave, date, name: name.trim() || null });
     }
     onClose();
   }
@@ -108,43 +129,70 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
         <ol className="trip-stops">
           {stops.map((s, i) => (
             <li key={`${s.kind}:${s.id}:${i}`} className="trip-stop-row">
-              <span className="trip-stop-index" aria-hidden>
-                {i + 1}
-              </span>
-              <span className="flag" aria-hidden>
-                {s.kind === "airport" ? "✈️" : countryFlag(s.countryId)}
-              </span>
-              <span className="trip-stop-name" title={s.name}>
-                {s.name}
-              </span>
-              <span className="trip-stop-actions">
-                <button
-                  type="button"
-                  className="icon-btn"
-                  disabled={i === 0}
-                  aria-label={t("trip.compose.moveUp", { name: s.name })}
-                  onClick={() => setStops((st) => moveStop(st, i, i - 1))}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  disabled={i === stops.length - 1}
-                  aria-label={t("trip.compose.moveDown", { name: s.name })}
-                  onClick={() => setStops((st) => moveStop(st, i, i + 1))}
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label={t("trip.compose.removeStop", { name: s.name })}
-                  onClick={() => setStops((st) => removeStop(st, i))}
-                >
-                  ✕
-                </button>
-              </span>
+              <div className="trip-stop-main">
+                <span className="trip-stop-index" aria-hidden>
+                  {i + 1}
+                </span>
+                <span className="flag" aria-hidden>
+                  {placeFlag(s)}
+                </span>
+                <span className="trip-stop-name" title={s.name}>
+                  {s.name}
+                </span>
+                <span className="trip-stop-actions">
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    disabled={i === 0}
+                    aria-label={t("trip.compose.moveUp", { name: s.name })}
+                    onClick={() => applyChain(moveStopTo({ stops, legModes }, i, i - 1, nextFill()))}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    disabled={i === stops.length - 1}
+                    aria-label={t("trip.compose.moveDown", { name: s.name })}
+                    onClick={() => applyChain(moveStopTo({ stops, legModes }, i, i + 1, nextFill()))}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label={t("trip.compose.removeStop", { name: s.name })}
+                    onClick={() => applyChain(removeStopAt({ stops, legModes }, i, nextFill()))}
+                  >
+                    ✕
+                  </button>
+                </span>
+              </div>
+              {/* The transport for the leg from THIS stop to the next — change it
+                  where a segment differs and a run of one mode reads as a sub-trip. */}
+              {i < stops.length - 1 && (
+                <div className="trip-leg">
+                  <span className="trip-leg-line" aria-hidden />
+                  <label className="trip-leg-mode">
+                    <span className="sr-only">
+                      {t("trip.compose.legModeAria", { from: s.name, to: stops[i + 1]!.name })}
+                    </span>
+                    <select
+                      className="select"
+                      value={legModes[i] ?? "flight"}
+                      onChange={(e) =>
+                        applyChain(setLegMode({ stops, legModes }, i, e.target.value as TravelMode))
+                      }
+                    >
+                      {MODE_ORDER.map((m) => (
+                        <option key={m} value={m}>
+                          {MODE_GLYPH[m]} {t(`travel.mode.${m}` as const)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              )}
             </li>
           ))}
         </ol>
@@ -157,9 +205,9 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
       <MyPlacesPicker
         places={pool}
         addedKeys={addedKeys}
-        onPick={(place) => setStops((st) => addStop(st, place))}
+        onPick={(place) => applyChain(appendStop({ stops, legModes }, place, nextFill()))}
         stops={stops}
-        travelMode={mode}
+        travelMode={legModes[0] ?? "flight"}
       />
 
       {/* Optional details — name now, date whenever. */}
@@ -173,17 +221,6 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
           placeholder={t("trip.compose.namePlaceholder")}
           onChange={(e) => setName(e.target.value)}
         />
-      </label>
-
-      <label className="field">
-        <span className="field-label">{t("trip.compose.modeLabel")}</span>
-        <select className="select" value={mode} onChange={(e) => setMode(e.target.value as TravelMode)}>
-          {MODE_ORDER.map((m) => (
-            <option key={m} value={m}>
-              {t(`travel.mode.${m}` as const)}
-            </option>
-          ))}
-        </select>
       </label>
 
       <details className="trip-date-details" open={!!year}>

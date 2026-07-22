@@ -30,7 +30,3 @@ export const CONTINENT_ORDER = [
 // Bucket for borderless moments (worldwide scope, or an anchor whose country we
 // can't resolve). Always pinned LAST, after every real continent.
 export const ACROSS_THE_WORLD = "Across the world";
-
-// Full ordered list used when grouping moments by home: continents first, the
-// borderless bucket last.
-export const MOMENT_GROUP_ORDER: readonly string[] = [...CONTINENT_ORDER, ACROSS_THE_WORLD];

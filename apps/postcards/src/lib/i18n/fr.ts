@@ -232,6 +232,9 @@ export const fr: Messages = {
   "stats.country.chipRegionsToVisit": "Régions à visiter",
   "stats.country.chipMonumentsSeen": "Monuments vus",
   "stats.country.chipMonumentsToSee": "Monuments à voir",
+  "stats.country.mapAria": "{name} : {visited} régions visitées sur {total} — les points sont des villes visitées, les zones ombrées des régions encore à explorer",
+  "stats.country.mapVisited": "Visité",
+  "stats.country.mapMissing": "À explorer",
   "stats.country.showOnMapHint": "Montrer sur la carte :",
 
   // ── Stat strip ───────────────────────────────────────────────────────────
@@ -456,6 +459,7 @@ export const fr: Messages = {
   "trip.compose.nameLabel": "Nom (facultatif)",
   "trip.compose.namePlaceholder": "Nommez ce voyage",
   "trip.compose.modeLabel": "Comment",
+  "trip.compose.legModeAria": "Transport de {from} à {to}",
   "trip.compose.addDate": "Ajouter une date (facultatif)",
   "trip.compose.whenLabel": "Quand (environ)",
   "trip.compose.yearPlaceholder": "Année",

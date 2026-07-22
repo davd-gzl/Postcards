@@ -49,7 +49,10 @@ export const FORMAT = "postcards" as const;
 // injected on parse; the date regex only accepts MORE). `from`/`to` mirror the
 // first/last stop, so an older build reading a v11 multi-stop trip still sees a valid
 // `from → to` leg.
-export const SCHEMA_VERSION = 11;
+// v12 adds Trip.legModes (per-leg transport). It's a new key on a `.strict()`
+// object, so an older (≤v11) app would reject a file that carries it — hence the
+// bump, which makes such files fail the version guard gracefully instead.
+export const SCHEMA_VERSION = 12;
 
 /** Most photos one place's gallery may hold (bounds the inline portable file). */
 export const MAX_PHOTOS_PER_VISIT = 48;

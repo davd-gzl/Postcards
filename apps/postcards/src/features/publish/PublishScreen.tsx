@@ -213,11 +213,11 @@ export function PublishScreen({ onClose }: { onClose: () => void }) {
 
   /** Build the final self-contained HTML (encrypted when a passphrase is set). */
   async function buildHtml(): Promise<string> {
-    // Normalise ONCE and use the SAME value for the encrypt decision and the
+    // Use the SAME normalised value (passNorm) for the encrypt decision and the
     // encryption itself. Before, the decision used passphrase.trim() but the
     // encrypt used the raw value: a spaces-only box silently published PLAINTEXT,
     // and surrounding spaces produced a file that could never be unlocked.
-    const pass = passphrase.normalize("NFC").trim();
+    const pass = passNorm;
     if (pass) {
       if (pass.length < MIN_PASSPHRASE_LENGTH) {
         throw new Error(`Use a passphrase of at least ${MIN_PASSPHRASE_LENGTH} characters.`);

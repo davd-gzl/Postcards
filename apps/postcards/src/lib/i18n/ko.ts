@@ -233,6 +233,9 @@ export const ko: Messages = {
   "stats.country.chipRegionsToVisit": "방문할 지역",
   "stats.country.chipMonumentsSeen": "본 기념물",
   "stats.country.chipMonumentsToSee": "볼 기념물",
+  "stats.country.mapAria": "{name}: {total}개 지역 중 {visited}개 방문 — 점은 방문한 도시, 음영 영역은 아직 탐험할 지역입니다",
+  "stats.country.mapVisited": "방문함",
+  "stats.country.mapMissing": "탐험 예정",
   "stats.country.showOnMapHint": "지도에서 보기:",
 
   // ── Stat strip ───────────────────────────────────────────────────────────
@@ -455,6 +458,7 @@ export const ko: Messages = {
   "trip.compose.nameLabel": "이름 (선택)",
   "trip.compose.namePlaceholder": "이 여행 이름 지정",
   "trip.compose.modeLabel": "수단",
+  "trip.compose.legModeAria": "{from}에서 {to}까지 이동 수단",
   "trip.compose.addDate": "날짜 추가 (선택)",
   "trip.compose.whenLabel": "언제 (대략)",
   "trip.compose.yearPlaceholder": "연도",
