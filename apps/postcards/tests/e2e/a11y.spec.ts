@@ -72,11 +72,11 @@ test("the trip composer passes the axe WCAG 2.1 AA gate", async ({ page }) => {
 
   await assertNoSeriousViolations(page, "trip composer (list)");
 
-  // The map pick mode must also pass the gate.
+  // The map pick mode (the real MapLibre RouteMap) must also pass the gate.
   await page
     .getByRole("group", { name: "How to pick places" })
     .getByRole("button", { name: "Map" })
     .click();
-  await expect(page.locator(".myplaces-map")).toBeVisible();
+  await expect(page.locator(".route-map-canvas canvas.maplibregl-canvas")).toBeVisible();
   await assertNoSeriousViolations(page, "trip composer (map)");
 });

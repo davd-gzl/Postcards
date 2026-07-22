@@ -158,6 +158,8 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
         places={pool}
         addedKeys={addedKeys}
         onPick={(place) => setStops((st) => addStop(st, place))}
+        stops={stops}
+        travelMode={mode}
       />
 
       {/* Optional details — name now, date whenever. */}

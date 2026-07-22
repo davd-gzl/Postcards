@@ -16,6 +16,7 @@ import { GuideButton } from "../guides/GuideButton";
 import { StatStrip } from "../stats/StatStrip";
 import { MapView, hasSavedCamera, type Basemap, type MapFocus, type MapFit } from "./MapView";
 import { tripArcs } from "./visitedLayers";
+import { fitBounds } from "./mapFit";
 import { dateBuckets, mapDateMatches, rangeExactYear, type MapDate } from "../travel/period";
 import { citiesInView, type Bounds } from "./viewport";
 import { bundledMapSource } from "../../lib/map-source/bundledMapSource";
@@ -641,29 +642,9 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
   }, [myPlaceCoords]);
 
   function fitToMyPlaces(instant = false) {
-    if (!myPlaceCoords.length) return;
-    let south = Infinity, north = -Infinity;
-    for (const c of myPlaceCoords) {
-      south = Math.min(south, c.lat);
-      north = Math.max(north, c.lat);
-    }
-    // Longitude needs antimeridian care (Fiji + Samoa must not frame the whole
-    // globe): the tightest frame is the complement of the LARGEST gap between
-    // consecutive sorted longitudes (wrapping counts as a gap too).
-    const lons = myPlaceCoords.map((c) => c.lon).sort((a, b) => a - b);
-    let gapAfter = lons.length - 1;
-    let gapSize = lons[0]! + 360 - lons[lons.length - 1]!;
-    for (let i = 1; i < lons.length; i++) {
-      const g = lons[i]! - lons[i - 1]!;
-      if (g > gapSize) {
-        gapSize = g;
-        gapAfter = i - 1;
-      }
-    }
-    const west = lons[(gapAfter + 1) % lons.length]!;
-    let east = lons[gapAfter]!;
-    if (east < west) east += 360; // the frame crosses the antimeridian
-    setFit((f) => ({ bounds: [[west, south], [east, north]], key: (f?.key ?? 0) + 1, instant }));
+    const bounds = fitBounds(myPlaceCoords);
+    if (!bounds) return;
+    setFit((f) => ({ bounds, key: (f?.key ?? 0) + 1, instant }));
   }
 
   return (

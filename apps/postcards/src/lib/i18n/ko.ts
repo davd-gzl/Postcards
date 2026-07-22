@@ -444,7 +444,8 @@ export const ko: Messages = {
   "trip.compose.searchPrompt": "추가할 공항(예: CDG) 또는 도시를 검색하세요.",
   "trip.compose.noMatch": "결과 없음 — 공항 코드(예: CDG)나 도시 이름을 입력하세요.",
   "trip.compose.pickAria": "{name}을(를) 여행에 추가",
-  "trip.compose.mapAria": "내 장소 지도 — 탭하여 추가",
+  "trip.compose.mapCanvasAria": "내 장소 지도 — 핀을 탭하여 여행에 추가",
+  "trip.compose.addedLive": "{name} 추가됨 — {index}번째 경유지",
   "trip.compose.noPlaces":
     "표시할 장소가 없습니다 — 목록으로 전환해 공항이나 도시를 검색하세요.",
   "trip.compose.removeStop": "{name} 제거",

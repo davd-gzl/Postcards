@@ -1,5 +1,5 @@
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
-import type { Trip, Visit } from "../../lib/schema/models";
+import type { PlaceRef, TravelMode, Trip, Visit } from "../../lib/schema/models";
 import type { ReferenceData } from "../../lib/reference/types";
 import { coordsOf } from "../travel/distance";
 
@@ -214,16 +214,33 @@ export function tripArcs(trips: Trip[], ref: ReferenceData): FeatureCollection<L
   const features: Feature<LineString>[] = [];
   for (const t of trips) {
     const chain = t.stops && t.stops.length >= 2 ? t.stops : [t.from, t.to];
-    for (let i = 0; i < chain.length - 1; i++) {
-      const from = coordsOf(chain[i]!, ref);
-      const to = coordsOf(chain[i + 1]!, ref);
-      if (!from || !to) continue;
-      features.push({
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: greatCircle(from, to) },
-        properties: { mode: t.mode },
-      });
-    }
+    features.push(...stopsArcs(chain, ref, t.mode).features);
+  }
+  return { type: "FeatureCollection", features };
+}
+
+/**
+ * Great-circle arcs for an ORDERED chain of stops (spec 019) — one arc per
+ * consecutive resolvable leg, tagged with the travel `mode`. Powers the live
+ * route drawn while reconstructing a journey (the composer's real map). A leg
+ * touching a coordinate-less stop is skipped — nothing invented (FR-013); fewer
+ * than two stops → an empty collection. Takes raw stops, NOT a Trip.
+ */
+export function stopsArcs(
+  stops: PlaceRef[],
+  ref: ReferenceData,
+  mode: TravelMode,
+): FeatureCollection<LineString> {
+  const features: Feature<LineString>[] = [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const from = coordsOf(stops[i]!, ref);
+    const to = coordsOf(stops[i + 1]!, ref);
+    if (!from || !to) continue;
+    features.push({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: greatCircle(from, to) },
+      properties: { mode },
+    });
   }
   return { type: "FeatureCollection", features };
 }

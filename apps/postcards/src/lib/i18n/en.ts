@@ -450,7 +450,8 @@ export const en = {
   "trip.compose.searchPrompt": "Search for an airport (e.g. CDG) or a city to add it.",
   "trip.compose.noMatch": "No matches — try an airport code (e.g. CDG) or a city name.",
   "trip.compose.pickAria": "Add {name} to the trip",
-  "trip.compose.mapAria": "Map of your places — tap one to add it",
+  "trip.compose.mapCanvasAria": "Map of your places — tap a pin to add it to the trip",
+  "trip.compose.addedLive": "Added {name} — stop {index}",
   "trip.compose.noPlaces":
     "No places to map yet — switch to List and search for an airport or city.",
   "trip.compose.removeStop": "Remove {name}",
