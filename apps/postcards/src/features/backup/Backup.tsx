@@ -9,7 +9,7 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 import { backfillUpdatedAt } from "../../lib/schema/helpers";
 import { replaceAllPortable } from "../../lib/db/visitsDb";
 import { toMarkdown } from "./exportMarkdown";
-import { download } from "../../lib/download";
+import { download, downloadBlob } from "../../lib/download";
 import { DurabilityNote } from "../../ui/DurabilityNote";
 import {
   markBackedUp,
@@ -55,6 +55,31 @@ async function deliver(filename: string, text: string, type: string): Promise<vo
   download(filename, text, type);
 }
 
+/** Same delivery, but for a BINARY file (the .zip archive): native writes the
+ *  bytes as base64 then shares; the web shares/downloads the Blob directly. */
+async function deliverBlob(filename: string, blob: Blob, type: string): Promise<void> {
+  if (Capacitor.isNativePlatform()) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    const { uri } = await Filesystem.writeFile({ path: filename, data: btoa(bin), directory: Directory.Cache });
+    await Share.share({ title: filename, url: uri });
+    return;
+  }
+  if (typeof navigator !== "undefined" && typeof navigator.canShare === "function") {
+    const file = new File([blob], filename, { type });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: filename });
+        return;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      }
+    }
+  }
+  downloadBlob(filename, blob);
+}
+
 export function Backup() {
   const t = useT();
   const ref = useMemo(() => getReferenceData(), []);
@@ -84,6 +109,19 @@ export function Backup() {
       setReminderDue(false);
     } catch {
       setMessage({ kind: "err", text: t("backup.msg.exportJsonErr") });
+    }
+  }
+  async function exportArchive() {
+    try {
+      const { buildArchive, ARCHIVE_FILENAME } = await import("./archiveZip");
+      const bytes = buildArchive(visits, trips, stories);
+      // Copy into a fresh ArrayBuffer so the Blob owns exactly these bytes.
+      await deliverBlob(ARCHIVE_FILENAME, new Blob([bytes.slice()], { type: "application/zip" }), "application/zip");
+      // A full archive (data + photos) is a real backup — reset the reminder clock.
+      markBackedUp(Date.now());
+      setReminderDue(false);
+    } catch {
+      setMessage({ kind: "err", text: t("backup.msg.exportZipErr") });
     }
   }
   async function exportMd() {
@@ -125,7 +163,21 @@ export function Backup() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    const text = await file.text();
+    const buf = new Uint8Array(await file.arrayBuffer());
+    // A .zip "Save everything" archive is a FULL RESTORE — unpack it back into the
+    // standard JSON (re-inlining the photo files) and restore that. Detected by the
+    // ZIP magic bytes, not the extension, so a mislabelled file still works.
+    const { looksLikeZip } = await import("../../lib/backup/zip");
+    if (looksLikeZip(buf)) {
+      try {
+        const { archiveToJson } = await import("./archiveZip");
+        await restoreFromJson(archiveToJson(buf));
+      } catch {
+        setMessage({ kind: "err", text: t("backup.msg.zipUnreadable") });
+      }
+      return;
+    }
+    const text = new TextDecoder().decode(buf);
     // A JSON backup ({…}) is a FULL RESTORE (replaces everything); anything else
     // is treated as a places table (CSV/TSV) and MERGED in. The format is picked
     // from the content, not the extension, so a mislabelled file still works.
@@ -244,7 +296,10 @@ export function Backup() {
       <p className="muted">{t("backup.intro")}</p>
 
       <div className="btn-row">
-        <button className="btn" type="button" onClick={() => void exportJson()}>
+        <button className="btn" type="button" onClick={() => void exportArchive()}>
+          {t("backup.export.all")}
+        </button>
+        <button className="btn-ghost" type="button" onClick={() => void exportJson()}>
           {t("backup.export.data")}
         </button>
         <button className="btn-ghost" type="button" onClick={() => void exportCsv()}>
@@ -259,7 +314,7 @@ export function Backup() {
         <input
           ref={fileInput}
           type="file"
-          accept="application/json,.json,text/csv,.csv,.tsv,text/plain"
+          accept="application/zip,.zip,application/json,.json,text/csv,.csv,.tsv,text/plain"
           onChange={onImport}
           style={{ display: "none" }}
           aria-hidden="true"
@@ -277,8 +332,10 @@ export function Backup() {
         </p>
       )}
       <p className="muted small">
-        Import understands two things. A <strong>.json backup</strong> is a full restore — it{" "}
-        <strong>⚠ replaces everything on this device</strong> (you'll be asked to confirm). A{" "}
+        <strong>Save everything</strong> writes a <strong>.zip</strong> holding your data plus every
+        photo as a real image file — the most complete, portable backup. Import understands three
+        things. A <strong>.zip archive</strong> or a <strong>.json backup</strong> is a full restore —
+        it <strong>⚠ replaces everything on this device</strong> (you'll be asked to confirm). A{" "}
         <strong>.csv places list</strong> (columns like <code>lat, lon, country, city, been</code>,
         where <code>been</code> tags are <code>been</code> / <code>want</code> / <code>fave</code>){" "}
         is merged in — it only adds and updates places, never erasing your trips or stories. Files

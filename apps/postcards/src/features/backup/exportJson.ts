@@ -14,7 +14,7 @@ import { getReferenceData } from "../../lib/reference/referenceData";
 /** Build the canonical portable file object from the current visits + trips + stories.
  *  `tombstones` is written only for device sync; a plain backup passes none, so the
  *  exported file stays free of an empty `tombstones` key. */
-function buildFile(
+export function buildFile(
   visits: Visit[],
   trips: Trip[] = [],
   stories: Story[] = [],
