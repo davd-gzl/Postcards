@@ -27,6 +27,7 @@ import { PassportScreen } from "../passport/PassportScreen";
 import { ExperiencesScreen } from "../experiences/ExperiencesScreen";
 import { PhotoWall } from "./PhotoWall";
 import { ListPager } from "../../ui/ListPager";
+import { MoreButton } from "../../ui/MoreButton";
 import { browseList, type BrowseRow } from "./browseList";
 import {
   useFilters,
@@ -643,11 +644,16 @@ export function PlacesScreen() {
 
   // ── World browse (kind = Cities / Monuments / Airports): the whole gazetteer of
   // the chosen kind, status-overlaid, via the tested pure engine. ────────────────
-  const browseRows = useMemo<BrowseRow[]>(() => {
-    if (kind !== "cities" && kind !== "monuments" && kind !== "airports") return [];
-    return browseList(kind, status, currentFilters(filters), ref, visits, deferredFilter.trim());
+  // Paged: build only the `shown` rows we render, plus a `hasMore` probe — so a
+  // visit toggle or filter change never materialises thousands of rows (that was the
+  // list lag), and "load more" can page uncapped through the whole set.
+  const browse = useMemo(() => {
+    if (kind !== "cities" && kind !== "monuments" && kind !== "airports")
+      return { rows: [] as BrowseRow[], hasMore: false };
+    return browseList(kind, status, currentFilters(filters), ref, visits, deferredFilter.trim(), shown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, status, filters.continent, filters.minPop, filters.category, ref, visits, deferredFilter]);
+  }, [kind, status, filters.continent, filters.minPop, filters.category, ref, visits, deferredFilter, shown]);
+  const browseRows = browse.rows;
 
   // The years your visits span, newest first, for the date filter chips.
   const years = useMemo(() => {
@@ -1029,17 +1035,16 @@ export function PlacesScreen() {
           ) : (
             <>
               <ul className="city-list">
-                {browseRows.slice(0, shown).map((r) => (
+                {browseRows.map((r) => (
                   <BrowseRowItem key={`${r.kind}:${r.id}`} r={r} />
                 ))}
               </ul>
-              {browseRows.length > shown && (
-                <ListPager
-                  shown={shown}
-                  total={browseRows.length}
-                  step={100}
-                  onMore={() => setShown((n) => n + 100)}
-                />
+              {browse.hasMore && (
+                <div className="list-pager">
+                  <MoreButton onMore={() => setShown((n) => n + 100)}>
+                    {t("journal.showMore", { count: 100 })}
+                  </MoreButton>
+                </div>
               )}
             </>
           )}

@@ -44,65 +44,80 @@ const visit = (
   ({ visitId: `v-${id}`, place: { kind, id, name: id, countryId: "FR" }, status, favorite }) as Visit;
 
 const F = DEFAULT_FILTERS;
+const bl = (...args: Parameters<typeof browseList>) => browseList(...args).rows;
 
 beforeEach(() => __resetBrowseCache());
 
 describe("browseList — reference browse + personal status overlay (spec 018 US2)", () => {
   it("lists ALL reference cities, most-populous first, marked not-visited by default", () => {
-    const rows = browseList("cities", "all", F, ref, [], "");
+    const rows = bl("cities", "all", F, ref, [], "");
     expect(rows.map((r) => r.id)).toEqual(["tokyo", "paris", "lyon"]); // population-ranked
     expect(rows.every((r) => r.status === "none")).toBe(true);
   });
 
   it("overlays personal status from visits", () => {
-    const rows = browseList("cities", "all", F, ref, [visit("city", "tokyo", "visited")], "");
+    const rows = bl("cities", "all", F, ref, [visit("city", "tokyo", "visited")], "");
     expect(rows.find((r) => r.id === "tokyo")?.status).toBe("visited");
     expect(rows.find((r) => r.id === "paris")?.status).toBe("none");
   });
 
   it("status = notVisited excludes anything you've logged", () => {
-    const rows = browseList("cities", "notVisited", F, ref, [visit("city", "tokyo", "visited")], "");
+    const rows = bl("cities", "notVisited", F, ref, [visit("city", "tokyo", "visited")], "");
     expect(rows.map((r) => r.id)).not.toContain("tokyo");
     expect(rows.map((r) => r.id)).toEqual(["paris", "lyon"]);
   });
 
   it("status = visited / wishlist / favorites filter the overlay", () => {
     const visits = [visit("city", "tokyo", "visited", true), visit("city", "paris", "wishlist")];
-    expect(browseList("cities", "visited", F, ref, visits, "").map((r) => r.id)).toEqual(["tokyo"]);
-    expect(browseList("cities", "wishlist", F, ref, visits, "").map((r) => r.id)).toEqual(["paris"]);
-    expect(browseList("cities", "favorites", F, ref, visits, "").map((r) => r.id)).toEqual(["tokyo"]);
+    expect(bl("cities", "visited", F, ref, visits, "").map((r) => r.id)).toEqual(["tokyo"]);
+    expect(bl("cities", "wishlist", F, ref, visits, "").map((r) => r.id)).toEqual(["paris"]);
+    expect(bl("cities", "favorites", F, ref, visits, "").map((r) => r.id)).toEqual(["tokyo"]);
   });
 
   it("search narrows within the kind", () => {
-    expect(browseList("cities", "all", F, ref, [], "tok").map((r) => r.id)).toEqual(["tokyo"]);
+    expect(bl("cities", "all", F, ref, [], "tok").map((r) => r.id)).toEqual(["tokyo"]);
   });
 
   it("monuments carry their category; the category filter narrows them", () => {
-    const all = browseList("monuments", "all", F, ref, [], "");
+    const all = bl("monuments", "all", F, ref, [], "");
     expect(all.find((r) => r.id === "h1")?.category).toBe("cultural");
-    const cultural = browseList("monuments", "all", { ...F, category: "cultural" }, ref, [], "");
+    const cultural = bl("monuments", "all", { ...F, category: "cultural" }, ref, [], "");
     expect(cultural.map((r) => r.id)).toEqual(["h1"]);
   });
 
   it("airports browse the world, name includes the IATA code", () => {
-    const rows = browseList("airports", "all", F, ref, [], "");
+    const rows = bl("airports", "all", F, ref, [], "");
     expect(rows.map((r) => r.id).sort()).toEqual(["CDG", "HND"]);
     expect(rows.find((r) => r.id === "CDG")?.name).toContain("(CDG)");
   });
 
   it("monuments & airports are searchable BY COUNTRY (FR-007)", () => {
     // "France" matches no monument NAME, but France's site (h1) surfaces by country.
-    const mon = browseList("monuments", "all", F, ref, [], "France");
+    const mon = bl("monuments", "all", F, ref, [], "France");
     expect(mon.map((r) => r.id)).toContain("h1");
     expect(mon.map((r) => r.id)).not.toContain("h2"); // Japan's site excluded
     // "Japan" surfaces Japanese airports by country (HND), not French ones (CDG).
-    const air = browseList("airports", "all", F, ref, [], "Japan");
+    const air = bl("airports", "all", F, ref, [], "Japan");
     expect(air.map((r) => r.id)).toContain("HND");
     expect(air.map((r) => r.id)).not.toContain("CDG");
   });
 
   it("continent filter narrows every kind", () => {
-    const rows = browseList("cities", "all", { ...F, continent: "Asia" }, ref, [], "");
+    const rows = bl("cities", "all", { ...F, continent: "Asia" }, ref, [], "");
     expect(rows.map((r) => r.id)).toEqual(["tokyo"]);
+  });
+
+  it("pages with a limit and reports hasMore (uncapped load-more, perf)", () => {
+    // 3 cities in the pool; a limit of 2 materialises 2 rows and flags more remain.
+    const page1 = browseList("cities", "all", F, ref, [], "", 2);
+    expect(page1.rows.map((r) => r.id)).toEqual(["tokyo", "paris"]); // population-ranked page
+    expect(page1.hasMore).toBe(true);
+    // Raising the limit reveals the rest with nothing left over.
+    const page2 = browseList("cities", "all", F, ref, [], "", 5);
+    expect(page2.rows.map((r) => r.id)).toEqual(["tokyo", "paris", "lyon"]);
+    expect(page2.hasMore).toBe(false);
+    // Only the requested rows are built — never the whole pool.
+    expect(browseList("airports", "all", F, ref, [], "", 1).rows).toHaveLength(1);
+    expect(browseList("airports", "all", F, ref, [], "", 1).hasMore).toBe(true);
   });
 });

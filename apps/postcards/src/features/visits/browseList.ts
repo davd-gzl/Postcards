@@ -7,9 +7,13 @@ import type { FilterState } from "../../lib/store/useFilters";
 // The unified browse engine (spec 018 US2): given a place KIND and a STATUS/scope,
 // list the reference places (the whole world) with each row's personal status
 // overlaid from the user's records. Pure & offline — reads only the passed-in
-// reference data + visits, invents nothing (Constitution I). The huge city
-// gazetteer is never returned whole: cities are population-ranked and capped
-// (Constitution VII / FR-005).
+// reference data + visits, invents nothing (Constitution I).
+//
+// Paged & UNCAPPED (perf): the ordered base pools are built ONCE (memoised), and a
+// call materialises only up to `limit` rows for the current page — so a visit
+// toggle or a filter change never rebuilds thousands of row objects (that was the
+// list lag). `hasMore` drives an infinite "load more": raise the limit to reveal
+// the next page. Only the visible rows are ever built.
 
 export type BrowseKind = "cities" | "monuments" | "airports";
 /** The single status axis, mapped to a browse predicate. */
@@ -30,15 +34,20 @@ export interface BrowseRow {
   lon?: number;
 }
 
-/** Bounded working set for the ~135k-city gazetteer — never render it all. */
-export const CITY_BROWSE_CAP = 300;
-/** How many most-populous cities to keep as the browsable pool (before filtering). */
+/** A page of browse rows plus whether more remain (drives infinite load-more). */
+export interface BrowseResult {
+  rows: BrowseRow[];
+  hasMore: boolean;
+}
+
+/** How many most-populous cities to keep browsable (the notable-cities pool; smaller
+ *  towns are reached via search). Airports & monuments are browsed in full. */
 const CITY_POOL = 2000;
 
-// The population-ranked city pool is expensive to build (sort over ~135k), so it's
-// memoised at module scope, re-derived only when the gazetteer's size changes (it
-// streams in once from the starter set to the full set). Keyed by source length —
-// a cheap, deterministic generation proxy.
+// The ordered base pools are expensive to build (a sort over the gazetteer), so
+// they're memoised at module scope, re-derived only when a dataset's size changes
+// (it streams in once). Keyed by source length — a cheap generation proxy. Building
+// them "beforehand" (once) is what keeps paging cheap.
 let cityPool: { srcLen: number; cities: City[] } | null = null;
 function populousCities(ref: ReferenceData): City[] {
   const all = ref.allCities();
@@ -48,9 +57,19 @@ function populousCities(ref: ReferenceData): City[] {
   return sorted;
 }
 
-/** Reset the memoised city pool (tests only). */
+let monPool: { srcLen: number; sites: HeritageSite[] } | null = null;
+function sortedMonuments(ref: ReferenceData): HeritageSite[] {
+  const all = ref.allHeritage();
+  if (monPool && monPool.srcLen === all.length) return monPool.sites;
+  const sorted = [...all].sort((a, b) => a.name.localeCompare(b.name));
+  monPool = { srcLen: all.length, sites: sorted };
+  return sorted;
+}
+
+/** Reset the memoised pools (tests only). */
 export function __resetBrowseCache(): void {
   cityPool = null;
+  monPool = null;
 }
 
 export function browseList(
@@ -60,7 +79,8 @@ export function browseList(
   ref: ReferenceData,
   visits: Visit[],
   query: string,
-): BrowseRow[] {
+  limit = Infinity,
+): BrowseResult {
   const idx = visitIndex(visits);
   const q = query.trim();
 
@@ -82,9 +102,19 @@ export function browseList(
   const countryName = (iso2: string) => ref.countryByIso2(iso2)?.name ?? iso2;
 
   const rows: BrowseRow[] = [];
+  let hasMore = false;
+  // Materialise up to `limit` rows; the first passing item beyond it just flips
+  // `hasMore` (never built), so the scan stops early and no extra objects allocate.
+  const take = (row: BrowseRow): boolean => {
+    if (rows.length >= limit) {
+      hasMore = true;
+      return true; // stop
+    }
+    rows.push(row);
+    return false;
+  };
 
   if (kind === "cities") {
-    // Scope-first: a search narrows first; otherwise the most-populous pool.
     const base: City[] = q ? ref.searchCities(q, 500) : populousCities(ref);
     for (const c of base) {
       if (!continentOk(c.countryIso2)) continue;
@@ -92,19 +122,16 @@ export function browseList(
       const place: PlaceRef = { kind: "city", id: c.id, name: c.name, countryId: c.countryIso2 };
       const o = overlay(place);
       if (!passStatus(o.status, o.favorite)) continue;
-      rows.push({
+      if (take({
         kind: "city", id: c.id, name: c.name, sub: countryName(c.countryIso2),
         countryIso2: c.countryIso2, place, status: o.status, favorite: o.favorite, lat: c.lat, lon: c.lon,
-      });
-      if (rows.length >= CITY_BROWSE_CAP) break; // bounded — never all 135k
+      })) break;
     }
-    return rows;
+    return { rows, hasMore };
   }
 
   if (kind === "monuments") {
-    let base: HeritageSite[] = q
-      ? ref.searchHeritage(q, 500)
-      : [...ref.allHeritage()].sort((a, b) => a.name.localeCompare(b.name));
+    let base: HeritageSite[] = q ? ref.searchHeritage(q, 500) : sortedMonuments(ref);
     // Searchable BY COUNTRY (FR-007): a query that names a country surfaces that
     // country's sites, not only ones whose own name matches the query.
     if (q) {
@@ -120,16 +147,16 @@ export function browseList(
       const place: PlaceRef = { kind: "heritage", id: h.id, name: h.name, countryId: h.countryIso2 };
       const o = overlay(place);
       if (!passStatus(o.status, o.favorite)) continue;
-      rows.push({
+      if (take({
         kind: "heritage", id: h.id, name: h.name, sub: countryName(h.countryIso2),
         countryIso2: h.countryIso2, place, status: o.status, favorite: o.favorite,
         category: h.category, lat: h.lat, lon: h.lon,
-      });
+      })) break;
     }
-    return rows;
+    return { rows, hasMore };
   }
 
-  // airports
+  // airports — browsed in full (uncapped), paged by `limit`
   let base = q ? ref.searchAirports(q, 500) : ref.allAirports();
   // Searchable BY COUNTRY (FR-007): a query naming a country surfaces its airports.
   if (q) {
@@ -145,10 +172,10 @@ export function browseList(
     const place: PlaceRef = { kind: "airport", id: a.id, name, countryId: a.countryIso2 };
     const o = overlay(place);
     if (!passStatus(o.status, o.favorite)) continue;
-    rows.push({
+    if (take({
       kind: "airport", id: a.id, name, sub: [a.city, countryName(a.countryIso2)].filter(Boolean).join(" · "),
       countryIso2: a.countryIso2, place, status: o.status, favorite: o.favorite, lat: a.lat, lon: a.lon,
-    });
+    })) break;
   }
-  return rows;
+  return { rows, hasMore };
 }
