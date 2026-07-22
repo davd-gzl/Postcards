@@ -1773,8 +1773,9 @@ h1.brand {
   display: none;
 }
 .cmeter {
-  /* Two per row (so up to four tiers stay legible on a phone), growing to fill. */
-  flex: 1 1 calc(50% - 12px);
+  /* Three per row: the city tiers (cities/big/mega) share the top row and regions
+     wraps to the next — matching the expanded body's layout. */
+  flex: 1 1 calc(33.333% - 8px);
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -1828,6 +1829,40 @@ h1.brand {
 .metric-btn:hover,
 .metric-btn:focus-visible {
   background: var(--bg-sub);
+}
+/* Tier metrics in rows: the three city tiers on one line, regions + sites on the
+   next. Each cell grows to fill its row; a narrow cell stacks its label over its
+   count so it stays readable at a third of the card's width. */
+.tier-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 8px;
+}
+.tier-grid > .metric {
+  flex: 1 1 0;
+  min-width: 0;
+  margin-top: 0;
+}
+.tier-grid .metric-btn {
+  width: 100%;
+  margin: 0;
+  padding: 6px;
+}
+.tier-grid .metric-label {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  min-width: 0;
+}
+.tier-grid .metric-label > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tier-grid .metric-label .muted {
+  font-size: 10.5px;
 }
 /* "What's left to explore" as plain, scannable text — a label + count, then
    names as accent links joined by thin separators. Far lighter than the old
