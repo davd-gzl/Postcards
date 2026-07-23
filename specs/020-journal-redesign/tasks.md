@@ -100,7 +100,7 @@ reopen — all round-trip; removing one drops it; each is optional.
 - [X] T023 [P] [US2] Tags input in `StoryComposer.tsx`: type-and-Enter chips + mood/weather preset chips, keyboard-removable; persisted via `useStories` `tags`.
 - [X] T024 [P] [US2] Trip-link control in `StoryComposer.tsx`: type-ahead over `useTrips`; link/unlink by keyboard; dangling link (deleted trip) resolves to none.
 - [X] T025 [US2] Render tags on feed cards and add **By tag** + **By trip** filter optgroups + include tag text in the search string in `JournalScreen.tsx`; rank the linked trip's name first in `folders.ts` suggestions.
-- [ ] T026 [P] [US2] (DEFERRED follow-up) Surface a trip's linked postcards on the trip page (`apps/postcards/src/features/travel/…`) — read-only list linking back. The link is stored and drives folder suggestions today; showing it back on the trip page is a small additive enhancement.
+- [X] T026 [P] [US2] Surface a trip's linked postcards on the trip page (`apps/postcards/src/features/travel/…`) — read-only list linking back. The link is stored and drives folder suggestions today; showing it back on the trip page is a small additive enhancement.
 - [X] T027 [US2] i18n strings for place/tags/trip/folder controls + By-tag/By-trip filters in `{en,fr,ko}.ts`.
 - [X] T028 [P] [US2] E2e `apps/postcards/tests/e2e/postcard-context.spec.ts`: attach place/tag/trip by keyboard, save, reopen, verify round-trip + removal; unit test folders trip-ranking.
 

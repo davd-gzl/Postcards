@@ -2,10 +2,14 @@ import { useMemo, useState } from "react";
 import { getReferenceData } from "../../lib/reference/referenceData";
 import { useTrips } from "../../lib/store/useTrips";
 import { useVisits } from "../../lib/store/useVisits";
+import { useStories } from "../../lib/store/useStories";
+import { useUi } from "../../lib/store/useUi";
 import { placeKey } from "../../lib/schema/helpers";
+import { formatDate } from "../../lib/format/format";
 import { useT, useLocale } from "../../lib/i18n";
 import type { PlaceRef, TravelMode } from "../../lib/schema/models";
 import { MyPlacesPicker } from "./MyPlacesPicker";
+import { primaryPlace } from "../journal/postcardModel";
 import { myPlaces, placeFlag } from "./myPlaces";
 import { appendStop, moveStopTo, removeStopAt, setLegMode, type StopChain } from "./tripStops";
 import { tripPathKm } from "./distance";
@@ -29,6 +33,12 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
   const existing = useMemo(
     () => (tripId ? trips.find((x) => x.tripId === tripId) : undefined),
     [tripId, trips],
+  );
+  // Postcards a user linked to THIS trip (spec 020) — shown read-only, tap to open.
+  const stories = useStories((s) => s.stories);
+  const linkedPostcards = useMemo(
+    () => (tripId ? stories.filter((s) => s.tripId === tripId) : []),
+    [tripId, stories],
   );
 
   // The pool of places you've been — visited records + places already used in trips.
@@ -237,6 +247,28 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
           </span>
         )}
       </label>
+
+      {linkedPostcards.length > 0 && (
+        <div className="trip-postcards">
+          <h3 className="trip-section-head">{t("trip.compose.postcardsHeading")}</h3>
+          <ul className="myplaces-list">
+            {linkedPostcards.map((s) => (
+              <li key={s.storyId}>
+                <button
+                  type="button"
+                  className="myplaces-pick"
+                  onClick={() => useUi.getState().openStoryComposer(s.storyId)}
+                >
+                  <span className="myplaces-name">
+                    {s.title || primaryPlace(s)?.name || t("journal.untitledEntry")}
+                  </span>
+                  <span className="muted small myplaces-detail">{formatDate(s.date)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="trip-composer-actions">
         <button type="button" className="btn-ghost" onClick={onClose}>

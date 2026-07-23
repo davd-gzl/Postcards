@@ -441,6 +441,7 @@ export const ko: Messages = {
   "trip.compose.tapHint": "지나온 공항과 도시를 순서대로 탭하세요.",
   "trip.compose.emptyStops": "아직 경유지가 없습니다 — 아래에서 장소를 탭해 시작하세요.",
   "trip.compose.pickHeading": "공항 및 도시 추가",
+  "trip.compose.postcardsHeading": "이 여행의 엽서",
   "trip.compose.pickModeAria": "장소 선택 방식",
   "trip.compose.pickList": "목록",
   "trip.compose.pickMap": "지도",

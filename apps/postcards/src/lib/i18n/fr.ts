@@ -442,6 +442,7 @@ export const fr: Messages = {
   "trip.compose.tapHint": "Touchez les aéroports et villes traversés, dans l’ordre.",
   "trip.compose.emptyStops": "Aucune étape — touchez un lieu ci-dessous pour commencer.",
   "trip.compose.pickHeading": "Ajouter aéroports et villes",
+  "trip.compose.postcardsHeading": "Cartes de ce voyage",
   "trip.compose.pickModeAria": "Comment choisir les lieux",
   "trip.compose.pickList": "Liste",
   "trip.compose.pickMap": "Carte",

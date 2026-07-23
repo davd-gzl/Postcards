@@ -447,6 +447,7 @@ export const en = {
   "trip.compose.tapHint": "Tap the airports and cities you passed through, in order.",
   "trip.compose.emptyStops": "No stops yet — tap a place below to start.",
   "trip.compose.pickHeading": "Add airports & cities",
+  "trip.compose.postcardsHeading": "Postcards from this trip",
   "trip.compose.pickModeAria": "How to pick places",
   "trip.compose.pickList": "List",
   "trip.compose.pickMap": "Map",
