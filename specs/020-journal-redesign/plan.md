@@ -82,6 +82,13 @@ trip *link* only references an already-reconstructed retrospective trip; it plan
 
 **Result: PASS — no violations, no Complexity Tracking entries required.**
 
+**Post-design re-check (after Phase 1)**: Still PASS. The design adds no new runtime
+dependency, no network path, and no reference-data authoring: the page layer reuses the
+existing `useUi` history model; the keyboard seam reuses the existing global keydown handler;
+schema changes are additive/relaxing with a version bump and full round-trip; "near you"
+reuses the shipped on-device gazetteer and never stores coordinates; tags are personal
+strings. Principle VII is actively advanced (keyboard-first is the P1).
+
 ## Project Structure
 
 ### Documentation (this feature)
