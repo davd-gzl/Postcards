@@ -4,6 +4,7 @@ import { useVisits, findByPlace } from "../../lib/store/useVisits";
 import { useStories } from "../../lib/store/useStories";
 import { useUi } from "../../lib/store/useUi";
 import { placeKey } from "../../lib/schema/helpers";
+import { placesOf } from "../journal/postcardModel";
 import { countryFlag, formatDate, formatInt, formatKm } from "../../lib/format/format";
 import { haversineKm } from "../travel/distance";
 import { articleUrl, searchUrl } from "../../lib/wikivoyage";
@@ -136,9 +137,10 @@ export function CityScreen({ cityId, onBack }: { cityId: string; onBack: () => v
   const wikipediaHref = isCustom ? wikipediaSearchUrl(name) : wikipediaUrl(wpTitle);
   const wikivoyageHref = isCustom ? searchUrl(name) : articleUrl(wvTitle);
 
-  // This place's journal stories (already newest-first in the store).
+  // This place's journal stories (already newest-first in the store). A postcard can
+  // span several places (spec 020), so match if ANY of its places is this one.
   const placeStories = useMemo(
-    () => (place ? stories.filter((s) => placeKey(s.place) === placeKey(place)) : []),
+    () => (place ? stories.filter((s) => placesOf(s).some((p) => placeKey(p) === placeKey(place))) : []),
     [stories, place],
   );
 

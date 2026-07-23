@@ -3955,6 +3955,31 @@ textarea.select {
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-sm);
 }
+/* The focused postcard composer page (spec 020): date + content up front, the
+   optional bits tucked under an "add details" disclosure. */
+.story-compose-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.story-date-field .select {
+  max-width: 200px;
+}
+.story-details {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.story-details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 2px;
+  list-style-position: inside;
+}
+.story-details > .picker-label {
+  margin-top: 10px;
+}
 .journal-textarea {
   height: auto;
   min-height: 110px;

@@ -1,0 +1,348 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useStories } from "../../lib/store/useStories";
+import { useVisits } from "../../lib/store/useVisits";
+import { useUi } from "../../lib/store/useUi";
+import { placeKey, MAX_PHOTOS_PER_STORY } from "../../lib/schema/helpers";
+import { sanitizeText } from "../../lib/schema/sanitize";
+import type { Photo, PlaceRef } from "../../lib/schema/models";
+import { fileToPostcard } from "../../lib/image/downscale";
+import { countryFlag } from "../../lib/format/format";
+import { distinctFolders } from "./folders";
+import { useT } from "../../lib/i18n";
+
+// The focused, full-screen POSTCARD composer (spec 020) — a page layer peer of the
+// city/country/trip pages, opened via useUi.openStoryComposer. Built for speed: it
+// opens dated today with the cursor already in the content box; a postcard needs
+// only a DATE + CONTENT (text and/or a photo) — place is OPTIONAL. Everything else
+// (place, folder, photos) lives under "add details". Save with Ctrl/Cmd+Enter;
+// "save & start another" (Ctrl/Cmd+Shift+Enter) keeps you on the page for a rapid
+// journalling loop. Escape/Back close it via the app's central page-layer handling.
+
+function todayISO(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+const DRAFT_KEY = "postcards-journal-draft";
+type Draft = { storyId: string | null; place: PlaceRef | null; date: string; title: string; text: string; folder: string };
+
+function readDraft(): Draft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as Draft) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function StoryComposer({ storyId, onClose }: { storyId: string | null; onClose: () => void }) {
+  const t = useT();
+  const stories = useStories((s) => s.stories);
+  const addStory = useStories((s) => s.addStory);
+  const updateStory = useStories((s) => s.updateStory);
+  const visits = useVisits((s) => s.visits);
+
+  const existing = useMemo(
+    () => (storyId ? stories.find((s) => s.storyId === storyId) : undefined),
+    [storyId, stories],
+  );
+
+  // Seed from the story being edited, else from a crash-saved draft for THIS context
+  // (a new postcard, or the same story), else empty/today.
+  const seed = useMemo<Draft>(() => {
+    if (existing) {
+      return {
+        storyId,
+        place: existing.place ?? null,
+        date: existing.date,
+        title: existing.title,
+        text: existing.text,
+        folder: existing.folder ?? "",
+      };
+    }
+    // A place handed in by "write about this place" (from a city page) wins over a
+    // stale draft; otherwise restore an in-progress draft, else start blank/today.
+    const prefill = useUi.getState().storyDraftPlace;
+    const d = readDraft();
+    if (prefill) return { storyId, place: prefill, date: todayISO(), title: "", text: "", folder: "" };
+    if (d && d.storyId === storyId) return d;
+    return { storyId, place: null, date: todayISO(), title: "", text: "", folder: "" };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storyId, existing]);
+
+  const [place, setPlace] = useState<PlaceRef | null>(seed.place);
+  const [date, setDate] = useState(seed.date);
+  const [title, setTitle] = useState(seed.title);
+  const [text, setText] = useState(seed.text);
+  const [folder, setFolder] = useState(seed.folder);
+  const [photos, setPhotos] = useState<Photo[]>(existing?.photos ?? []);
+  const [busy, setBusy] = useState(false);
+  const photoInput = useRef<HTMLInputElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+
+  // The places you can attach — the ones you've been. A place already on the story
+  // that's no longer visited is kept as an option so the select never shows a phantom.
+  const visitedPlaces = useMemo(
+    () =>
+      visits
+        .filter((v) => v.status === "visited")
+        .map((v) => v.place)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [visits],
+  );
+  const placeOptions = useMemo(
+    () =>
+      place && !visitedPlaces.some((p) => placeKey(p) === placeKey(place))
+        ? [place, ...visitedPlaces]
+        : visitedPlaces,
+    [visitedPlaces, place],
+  );
+  const folderSuggs = useMemo(() => distinctFolders(stories), [stories]);
+
+  // Open with the cursor in the content box (fast capture, P1) for a NEW postcard.
+  useEffect(() => {
+    if (!existing) textRef.current?.focus();
+  }, [existing]);
+
+  // A postcard needs SOMETHING to say — a title, some text, or a photo. Place is optional.
+  const hasContent = !!(sanitizeText(title, 200) || sanitizeText(text, 8000) || photos.length);
+  const canSave = !!date && hasContent;
+
+  // Crash-safe draft: mirror the (photo-less) text fields so leaving and returning
+  // never loses typed content. Transient device state only; cleared on save.
+  const dirty =
+    !existing &&
+    (place !== null || title !== "" || text !== "" || folder !== "" || photos.length > 0 || date !== todayISO());
+  useEffect(() => {
+    if (existing) return; // editing reads from the store, not the draft cache
+    try {
+      if (dirty) {
+        const draft: Draft = { storyId, place, date, title, text, folder };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      }
+    } catch {
+      /* private mode: not persisted */
+    }
+  }, [existing, dirty, storyId, place, date, title, text, folder]);
+
+  function clearDraft(): void {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function resetToNew(): void {
+    setPlace(null);
+    setDate(todayISO());
+    setTitle("");
+    setText("");
+    setFolder("");
+    setPhotos([]);
+    clearDraft();
+    textRef.current?.focus();
+  }
+
+  async function onPickPhotos(e: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (!files.length) return;
+    setBusy(true);
+    try {
+      const room = MAX_PHOTOS_PER_STORY - photos.length;
+      const added: Photo[] = [];
+      for (const file of files.slice(0, room)) {
+        added.push({ src: await fileToPostcard(file), caption: null });
+      }
+      setPhotos((prev) => [...prev, ...added]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function save(keepOpen: boolean): Promise<void> {
+    if (!canSave) return;
+    if (storyId && existing) {
+      // `place: undefined` with the key present tells the store to CLEAR a removed place.
+      await updateStory(storyId, { place: place ?? undefined, date, title, text, folder, photos });
+    } else {
+      await addStory({ place, date, title, text, folder, photos });
+    }
+    clearDraft();
+    if (keepOpen && !storyId) resetToNew();
+    else onClose();
+  }
+
+  // Keyboard: Ctrl/Cmd+Enter = save & close; Ctrl/Cmd+Shift+Enter = save & start another.
+  function onKeyDown(e: React.KeyboardEvent): void {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (canSave) void save(e.shiftKey && !storyId);
+    }
+  }
+
+  return (
+    <section
+      className="screen story-composer"
+      aria-label={t(storyId ? "journal.composer.editTitle" : "journal.composer.newTitle")}
+      onKeyDown={onKeyDown}
+    >
+      <div className="trip-composer-head">
+        <button type="button" className="link back-link" onClick={onClose} aria-label={t("journal.composer.back")}>
+          ← {t("journal.composer.back")}
+        </button>
+        <h2>{t(storyId ? "journal.composer.editTitle" : "journal.composer.newTitle")}</h2>
+      </div>
+
+      {/* Date + content — the only things a postcard needs. */}
+      <div className="story-compose-main">
+        <label className="picker-label story-date-field" htmlFor="story-date">
+          {t("journal.date")}
+          <input
+            id="story-date"
+            className="select"
+            type="date"
+            required
+            max="9999-12-31"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </label>
+        <label className="picker-label" htmlFor="story-title">
+          {t("journal.titleField")}
+          <input
+            id="story-title"
+            className="select"
+            type="text"
+            maxLength={200}
+            placeholder={t("journal.titlePlaceholder")}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <label className="picker-label" htmlFor="story-text">
+          <span className="sr-only">{t("journal.story")}</span>
+          <textarea
+            id="story-text"
+            ref={textRef}
+            className="select journal-textarea"
+            rows={8}
+            maxLength={8000}
+            placeholder={t("journal.storyPlaceholder")}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+        </label>
+      </div>
+
+      {/* Everything else is optional — tucked away, present but out of the way. */}
+      <details className="story-details">
+        <summary>{t("journal.composer.addDetails")}</summary>
+        <label className="picker-label" htmlFor="story-place">
+          {t("journal.place")}
+          <select
+            id="story-place"
+            className="select"
+            value={place ? placeKey(place) : ""}
+            onChange={(e) => setPlace(placeOptions.find((p) => placeKey(p) === e.target.value) ?? null)}
+          >
+            <option value="">{t("journal.composer.noPlace")}</option>
+            {placeOptions.map((p) => (
+              <option key={placeKey(p)} value={placeKey(p)}>
+                {countryFlag(p.countryId)} {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="picker-label" htmlFor="story-folder">
+          {t("journal.folder")}
+          <input
+            id="story-folder"
+            className="select"
+            type="text"
+            maxLength={80}
+            list="story-folder-suggestions"
+            placeholder={t("journal.folderPlaceholder")}
+            value={folder}
+            onChange={(e) => setFolder(e.target.value)}
+          />
+        </label>
+        {folderSuggs.length > 0 && (
+          <datalist id="story-folder-suggestions">
+            {folderSuggs.map((f) => (
+              <option key={f} value={f} />
+            ))}
+          </datalist>
+        )}
+
+        <input
+          ref={photoInput}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={onPickPhotos}
+          aria-hidden
+          tabIndex={-1}
+        />
+        {photos.length > 0 && (
+          <ul className="journal-photo-edit-list">
+            {photos.map((p, i) => (
+              <li key={i} className="journal-photo-edit">
+                <img src={p.src} alt="" loading="lazy" decoding="async" />
+                <input
+                  className="caption-input"
+                  type="text"
+                  maxLength={300}
+                  placeholder={t("journal.captionPlaceholder")}
+                  aria-label={t("journal.captionAria", { n: i + 1 })}
+                  value={p.caption ?? ""}
+                  onChange={(e) =>
+                    setPhotos((prev) => prev.map((q, j) => (j === i ? { ...q, caption: e.target.value || null } : q)))
+                  }
+                />
+                <button
+                  className="link-danger"
+                  type="button"
+                  aria-label={t("journal.removePhotoAria", { n: i + 1 })}
+                  onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))}
+                >
+                  {t("common.remove")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div>
+          <button
+            className="mini-btn"
+            type="button"
+            disabled={busy || photos.length >= MAX_PHOTOS_PER_STORY}
+            title={photos.length >= MAX_PHOTOS_PER_STORY ? t("journal.storyFullTitle", { max: MAX_PHOTOS_PER_STORY }) : undefined}
+            onClick={() => photoInput.current?.click()}
+          >
+            {busy ? "…" : `📷 ${t("journal.addPhotos")}`}
+          </button>
+        </div>
+      </details>
+
+      <div className="trip-composer-actions">
+        <button type="button" className="btn-ghost" onClick={onClose}>
+          {t("common.cancel")}
+        </button>
+        {!storyId && (
+          <button type="button" className="btn-ghost" disabled={!canSave} onClick={() => void save(true)}>
+            {t("journal.composer.saveAndNew")}
+          </button>
+        )}
+        <button type="button" className="btn" disabled={!canSave} onClick={() => void save(false)}>
+          {t(storyId ? "journal.saveChanges" : "journal.composer.save")}
+        </button>
+      </div>
+      {!hasContent && <p className="muted small">{t("journal.composer.needsContent")}</p>}
+    </section>
+  );
+}

@@ -18,8 +18,8 @@ and the app ships Vitest + Playwright + axe. All paths are under `apps/postcards
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Confirm the baseline gate is green before changes: run `pnpm typecheck`, `pnpm test`, and the trip/stats/journal e2e in `apps/postcards/` (record the passing baseline).
-- [ ] T002 [P] Create empty module stubs `apps/postcards/src/features/journal/postcardModel.ts` and `apps/postcards/src/features/journal/StoryComposer.tsx` (exports only, to be filled) so later tasks have import targets.
+- [X] T001 Confirm the baseline gate is green before changes: run `pnpm typecheck`, `pnpm test`, and the trip/stats/journal e2e in `apps/postcards/` (record the passing baseline).
+- [X] T002 [P] Create empty module stubs `apps/postcards/src/features/journal/postcardModel.ts` and `apps/postcards/src/features/journal/StoryComposer.tsx` (exports only, to be filled) so later tasks have import targets.
 
 ---
 
@@ -30,31 +30,31 @@ must land before any user story, or making `place` optional breaks the five view
 
 ### Schema & model
 
-- [ ] T003 Relax and extend `StorySchema` in `apps/postcards/src/lib/schema/models.ts`: `place` → `PlaceRefSchema.optional()`; add optional `extraPlaces` (`z.array(PlaceRefSchema).max(MAX_PLACES_PER_STORY-1).optional()`), `endDate` (`regex YYYY-MM-DD .nullable().optional()`), `tags` (`z.array(tagString).max(MAX_TAGS_PER_STORY).optional()`), `tripId` (`idString.optional()`). Keep `.strict()` and the title/text/photo refine unchanged. Add the `tagString` builder.
-- [ ] T004 Bump `SCHEMA_VERSION` 12 → 13 with a version-history note and add `MAX_PLACES_PER_STORY`, `MAX_TAGS_PER_STORY`, `MAX_TAG_LEN` in `apps/postcards/src/lib/schema/helpers.ts`.
-- [ ] T005 Regenerate the JSON Schema artifact: run `pnpm schema` (updates `apps/postcards/src/lib/schema/portable-file.schema.json`); confirm `tests/unit/schemaArtifact.spec.ts` passes.
-- [ ] T006 [P] Unit tests in `apps/postcards/tests/unit/postcardSchema.spec.ts`: a place-less postcard parses + round-trips; multi-place/ranged/tagged/trip-linked round-trip; content rule still enforced (no title/text/photo ⇒ reject) independent of place; a v≤12 file validates and a v14 file is rejected; tag/place-less sanitization (security-focused import).
+- [X] T003 Relax and extend `StorySchema` in `apps/postcards/src/lib/schema/models.ts`: `place` → `PlaceRefSchema.optional()`; add optional `extraPlaces` (`z.array(PlaceRefSchema).max(MAX_PLACES_PER_STORY-1).optional()`), `endDate` (`regex YYYY-MM-DD .nullable().optional()`), `tags` (`z.array(tagString).max(MAX_TAGS_PER_STORY).optional()`), `tripId` (`idString.optional()`). Keep `.strict()` and the title/text/photo refine unchanged. Add the `tagString` builder.
+- [X] T004 Bump `SCHEMA_VERSION` 12 → 13 with a version-history note and add `MAX_PLACES_PER_STORY`, `MAX_TAGS_PER_STORY`, `MAX_TAG_LEN` in `apps/postcards/src/lib/schema/helpers.ts`.
+- [X] T005 Regenerate the JSON Schema artifact: run `pnpm schema` (updates `apps/postcards/src/lib/schema/portable-file.schema.json`); confirm `tests/unit/schemaArtifact.spec.ts` passes.
+- [X] T006 [P] Unit tests in `apps/postcards/tests/unit/postcardSchema.spec.ts`: a place-less postcard parses + round-trips; multi-place/ranged/tagged/trip-linked round-trip; content rule still enforced (no title/text/photo ⇒ reject) independent of place; a v≤12 file validates and a v14 file is rejected; tag/place-less sanitization (security-focused import).
 
 ### Derived helpers
 
-- [ ] T007 [P] Implement pure helpers in `apps/postcards/src/features/journal/postcardModel.ts`: `placesOf`, `primaryPlace`, `dateSpan`, `isUnplaced` (per data-model.md), with unit tests in `apps/postcards/tests/unit/postcardModel.spec.ts`.
+- [X] T007 [P] Implement pure helpers in `apps/postcards/src/features/journal/postcardModel.ts`: `placesOf`, `primaryPlace`, `dateSpan`, `isUnplaced` (per data-model.md), with unit tests in `apps/postcards/tests/unit/postcardModel.spec.ts`.
 
 ### Store
 
-- [ ] T008 Update `apps/postcards/src/lib/store/useStories.ts`: `addStory`/`updateStory` signatures gain `place?` (optional/null) + `extraPlaces?`, `endDate?`, `tags?`, `tripId?`; guard `stampPlaceCoords` when `place` absent and stamp each `extraPlaces`; conditional-carry (omit empty) each new field; keep tombstone + start-date sort. Unit test the null-place and new-field carry in `apps/postcards/tests/unit/useStories.spec.ts` (or extend existing).
+- [X] T008 Update `apps/postcards/src/lib/store/useStories.ts`: `addStory`/`updateStory` signatures gain `place?` (optional/null) + `extraPlaces?`, `endDate?`, `tags?`, `tripId?`; guard `stampPlaceCoords` when `place` absent and stamp each `extraPlaces`; conditional-carry (omit empty) each new field; keep tombstone + start-date sort. Unit test the null-place and new-field carry in `apps/postcards/tests/unit/useStories.spec.ts` (or extend existing).
 
 ### Navigation plumbing (page layer)
 
-- [ ] T009 Add the `storyEditId` page layer to `apps/postcards/src/lib/store/useUi.ts`: `storyEditId` state + `NavState` snapshot field + `openStoryComposer(id)`/`closeStoryComposer()`; set `storyEditId: null` in every page-clearing setter; include it in `pushHistory` dedupe and in `closePages`.
-- [ ] T010 Wire `apps/postcards/src/app/App.tsx`: read `storyEditId`; add the `<StoryComposer>` render branch after the `tripEditId` branch; add `!storyEditId` to `mapVisible`; include `storyEditId` in `forceTop`/`viewKey`; add `|| ui.storyEditId` to the Escape branch and the `popstate` (Back) branch.
+- [X] T009 Add the `storyEditId` page layer to `apps/postcards/src/lib/store/useUi.ts`: `storyEditId` state + `NavState` snapshot field + `openStoryComposer(id)`/`closeStoryComposer()`; set `storyEditId: null` in every page-clearing setter; include it in `pushHistory` dedupe and in `closePages`.
+- [X] T010 Wire `apps/postcards/src/app/App.tsx`: read `storyEditId`; add the `<StoryComposer>` render branch after the `tripEditId` branch; add `!storyEditId` to `mapVisible`; include `storyEditId` in `forceTop`/`viewKey`; add `|| ui.storyEditId` to the Escape branch and the `popstate` (Back) branch.
 
 ### Place-less read-side guards (so nothing crashes once place is optional)
 
-- [ ] T011 Guard every single-`place` deref across the read side to tolerate a place-less postcard using `primaryPlace`/`placesOf`/`isUnplaced`, and add an **"Unplaced"** bucket to place-keyed groupings: feed card place link (`JournalScreen.tsx`), `byPlaceGroups`, timeline year row, `StoryMap.tsx` `coordOf`/pins (skip place-less), `calendar.ts` `storyDayIndex` (neutral continent for place-less), `folders.ts` suggestions, the "Show" filter optgroups + `searched` string, and `exportJournalMd.ts`. Keep single-place, single-day rendering byte-identical for existing postcards.
+- [X] T011 Guard every single-`place` deref across the read side to tolerate a place-less postcard using `primaryPlace`/`placesOf`/`isUnplaced`, and add an **"Unplaced"** bucket to place-keyed groupings: feed card place link (`JournalScreen.tsx`), `byPlaceGroups`, timeline year row, `StoryMap.tsx` `coordOf`/pins (skip place-less), `calendar.ts` `storyDayIndex` (neutral continent for place-less), `folders.ts` suggestions, the "Show" filter optgroups + `searched` string, and `exportJournalMd.ts`. Keep single-place, single-day rendering byte-identical for existing postcards.
 
 ### i18n base
 
-- [ ] T012 [P] Add/adjust base strings in `apps/postcards/src/lib/i18n/{en,fr,ko}.ts`: rename the "story" **values** to "postcard" (keep `journal.*` keys), and add core new keys (`journal.unplaced`/"No place", composer scaffolding, the `W` shortcut help line). Keep en/fr/ko parity (compile + parity test).
+- [X] T012 [P] Add/adjust base strings in `apps/postcards/src/lib/i18n/{en,fr,ko}.ts`: rename the "story" **values** to "postcard" (keep `journal.*` keys), and add core new keys (`journal.unplaced`/"No place", composer scaffolding, the `W` shortcut help line). Keep en/fr/ko parity (compile + parity test).
 
 **Checkpoint**: Model is place-optional and versioned; the composer page layer exists and
 routes; all five views render place-less postcards without crashing.
@@ -72,15 +72,15 @@ the page; a no-content postcard cannot save.
 
 ### Implementation
 
-- [ ] T013 [US1] Build `apps/postcards/src/features/journal/StoryComposer.tsx` as a full-screen page (mirror `TripComposer` section/Back skeleton): date defaults to today, content textarea auto-focused, optional Title (secondary), an "add details" region (placeholder for US2/US3 controls), Save + Save-&-new + Cancel buttons; Story CRUD via `useStories`; content-required guard (title/text/photo) with a clear disabled reason.
-- [ ] T014 [US1] Port the crash-safe draft cache to the composer (reuse the `postcards-journal-draft` localStorage mirror + visibility/pagehide flush from `JournalScreen.tsx`); restore on open for the same context; clear on save/discard. Do NOT add the `.journal-composer-busy` class (let App own Escape).
-- [ ] T015 [US1] Keyboard actions in `StoryComposer.tsx`: Ctrl/Cmd+Enter = save & close; Ctrl/Cmd+Shift+Enter = save & start another (reopen empty, dated today, focus content, stay on page); Enter inserts newline; ensure tab order is content → Save actions → add-details.
-- [ ] T016 [US1] Add the global `W` "write today" shortcut in `apps/postcards/src/app/App.tsx` keydown handler (`openStoryComposer("new")`), inheriting the input/dialog guards; document `W` in `apps/postcards/src/features/.../ShortcutsHelp.tsx`.
-- [ ] T017 [US1] Add the Journal-nav **long-press** (open today's composer) + short-tap (open feed) in the `App.tsx` bottom-nav, reusing the existing long-press handler logic; the `W` shortcut is the keyboard equivalent.
-- [ ] T018 [US1] Retire the inline composer in `apps/postcards/src/features/journal/JournalScreen.tsx`: remove the `composerOpen` form; repoint the visible primary "Write" button, the `journalDraftRequest` prefill path, the "today's story" action, and the in-page long-press to `openStoryComposer`. Keep a clear, discoverable primary "Write" control.
-- [ ] T019 [US1] Add composer i18n strings (content/title/save/save-&-new/cancel/needs-content) to `{en,fr,ko}.ts`.
-- [ ] T020 [P] [US1] E2e `apps/postcards/tests/e2e/postcard-capture.spec.ts`: keyboard-only capture with zero visited places; "save & start another" loop of ≥2; content-required guard; Escape/Back returns to launching screen with draft preserved; long-press vs short-tap on the Journal nav.
-- [ ] T021 [P] [US1] Extend the a11y e2e to run the axe WCAG 2.1 AA gate on the new composer page.
+- [X] T013 [US1] Build `apps/postcards/src/features/journal/StoryComposer.tsx` as a full-screen page (mirror `TripComposer` section/Back skeleton): date defaults to today, content textarea auto-focused, optional Title (secondary), an "add details" region (placeholder for US2/US3 controls), Save + Save-&-new + Cancel buttons; Story CRUD via `useStories`; content-required guard (title/text/photo) with a clear disabled reason.
+- [X] T014 [US1] Port the crash-safe draft cache to the composer (reuse the `postcards-journal-draft` localStorage mirror + visibility/pagehide flush from `JournalScreen.tsx`); restore on open for the same context; clear on save/discard. Do NOT add the `.journal-composer-busy` class (let App own Escape).
+- [X] T015 [US1] Keyboard actions in `StoryComposer.tsx`: Ctrl/Cmd+Enter = save & close; Ctrl/Cmd+Shift+Enter = save & start another (reopen empty, dated today, focus content, stay on page); Enter inserts newline; ensure tab order is content → Save actions → add-details.
+- [X] T016 [US1] Add the global `W` "write today" shortcut in `apps/postcards/src/app/App.tsx` keydown handler (`openStoryComposer("new")`), inheriting the input/dialog guards; document `W` in `apps/postcards/src/features/.../ShortcutsHelp.tsx`.
+- [X] T017 [US1] Add the Journal-nav **long-press** (open today's composer) + short-tap (open feed) in the `App.tsx` bottom-nav, reusing the existing long-press handler logic; the `W` shortcut is the keyboard equivalent.
+- [X] T018 [US1] Retire the inline composer in `apps/postcards/src/features/journal/JournalScreen.tsx`: remove the `composerOpen` form; repoint the visible primary "Write" button, the `journalDraftRequest` prefill path, the "today's story" action, and the in-page long-press to `openStoryComposer`. Keep a clear, discoverable primary "Write" control.
+- [X] T019 [US1] Add composer i18n strings (content/title/save/save-&-new/cancel/needs-content) to `{en,fr,ko}.ts`.
+- [X] T020 [P] [US1] E2e `apps/postcards/tests/e2e/postcard-capture.spec.ts`: keyboard-only capture with zero visited places; "save & start another" loop of ≥2; content-required guard; Escape/Back returns to launching screen with draft preserved; long-press vs short-tap on the Journal nav.
+- [X] T021 [P] [US1] Extend the a11y e2e to run the axe WCAG 2.1 AA gate on the new composer page.
 
 **Checkpoint**: MVP — a fast, keyboard-first, place-optional postcard composer. STOP & VALIDATE.
 
