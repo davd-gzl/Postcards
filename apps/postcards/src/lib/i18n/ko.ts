@@ -516,6 +516,7 @@ export const ko: Messages = {
   "journal.composer.removeTag": "태그 {tag} 제거",
   "journal.composer.trip": "여행의 일부",
   "journal.composer.noTrip": "— 여행 없음 —",
+  "journal.composer.nearYou": "내 주변",
   "journal.composer.morePlaces": "다른 장소",
   "journal.composer.addPlace": "＋ 장소 추가",
   "journal.composer.removePlace": "{name} 제거",

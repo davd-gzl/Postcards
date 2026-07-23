@@ -7,9 +7,28 @@ import { placeKey, MAX_PHOTOS_PER_STORY, MAX_TAGS_PER_STORY } from "../../lib/sc
 import { sanitizeText } from "../../lib/schema/sanitize";
 import type { Photo, PlaceRef } from "../../lib/schema/models";
 import { fileToPostcard } from "../../lib/image/downscale";
-import { countryFlag } from "../../lib/format/format";
+import { countryFlag, formatKm } from "../../lib/format/format";
+import { haversineKm } from "../travel/distance";
+import { getReferenceData } from "../../lib/reference/referenceData";
+import type { City } from "../../lib/reference/types";
 import { distinctFolders } from "./folders";
 import { useT } from "../../lib/i18n";
+
+// Nearest gazetteer cities to a position — a cheap bounding-box prefilter keeps
+// haversine off most of the ~135k entries; the box widens once for sparse areas.
+// Used ONLY on an explicit compose action; the position is never stored.
+const NEARBY_COUNT = 6;
+function nearestCities(here: { lat: number; lon: number }, cities: City[]): { city: City; km: number }[] {
+  let candidates: City[] = [];
+  for (const box of [1.5, 5]) {
+    candidates = cities.filter((c) => Math.abs(c.lat - here.lat) <= box && Math.abs(c.lon - here.lon) <= box);
+    if (candidates.length >= NEARBY_COUNT) break;
+  }
+  return candidates
+    .map((city) => ({ city, km: haversineKm(here, city) }))
+    .sort((a, b) => a.km - b.km)
+    .slice(0, NEARBY_COUNT);
+}
 
 // The focused, full-screen POSTCARD composer (spec 020) — a page layer peer of the
 // city/country/trip pages, opened via useUi.openStoryComposer. Built for speed: it
@@ -92,6 +111,9 @@ export function StoryComposer({ storyId, onClose }: { storyId: string | null; on
   // US3: additional places (a travel day spanning several) + an end date (a range).
   const [extraPlaces, setExtraPlaces] = useState<PlaceRef[]>(existing?.extraPlaces ?? []);
   const [endDate, setEndDate] = useState<string>(existing?.endDate ?? "");
+  // US4: places NEAR YOU, auto-suggested on open (opt-in, permission-gated). The
+  // device position is used only to rank these and is never stored or transmitted.
+  const [nearby, setNearby] = useState<{ city: City; km: number }[] | null>(null);
   const [busy, setBusy] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -119,6 +141,34 @@ export function StoryComposer({ storyId, onClose }: { storyId: string | null; on
   useEffect(() => {
     if (!existing) textRef.current?.focus();
   }, [existing]);
+
+  // Auto-attempt a location fix on open for a NEW postcard with no place yet, and
+  // suggest nearby places (US4). Opt-in and permission-gated: denied / offline /
+  // slow all degrade silently (place stays optional). Coordinates rank places
+  // on-device only — never stored on the postcard, never transmitted. Editing an
+  // existing postcard, or one that already has a place, never triggers this.
+  useEffect(() => {
+    if (existing || place || typeof navigator === "undefined" || !navigator.geolocation) return;
+    let alive = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (!alive) return;
+        const found = nearestCities(
+          { lat: pos.coords.latitude, lon: pos.coords.longitude },
+          getReferenceData().allCities(),
+        );
+        if (found.length) setNearby(found);
+      },
+      () => {
+        /* denied / unavailable: stay silent, place remains optional */
+      },
+      { timeout: 10_000, maximumAge: 60_000 },
+    );
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // A postcard needs SOMETHING to say — a title, some text, or a photo. Place is optional.
   const hasContent = !!(sanitizeText(title, 200) || sanitizeText(text, 8000) || photos.length);
@@ -284,6 +334,27 @@ export function StoryComposer({ storyId, onClose }: { storyId: string | null; on
       {/* Everything else is optional — tucked away, present but out of the way. */}
       <details className="story-details">
         <summary>{t("journal.composer.addDetails")}</summary>
+        {nearby && nearby.length > 0 && !place && (
+          <div className="story-nearby" role="group" aria-label={t("journal.composer.nearYou")}>
+            <span className="muted small">📍 {t("journal.composer.nearYou")}</span>
+            <div className="story-nearby-list">
+              {nearby.map(({ city, km }) => (
+                <button
+                  key={city.id}
+                  type="button"
+                  className="mini-btn"
+                  onClick={() => {
+                    // Only attaches a place — nothing is marked visited, no coords stored.
+                    setPlace({ kind: "city", id: city.id, name: city.name, countryId: city.countryIso2 });
+                    setNearby(null);
+                  }}
+                >
+                  {countryFlag(city.countryIso2)} {city.name} · {formatKm(km)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <label className="picker-label" htmlFor="story-place">
           {t("journal.place")}
           <select

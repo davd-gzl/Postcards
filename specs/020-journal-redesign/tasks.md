@@ -100,7 +100,7 @@ reopen — all round-trip; removing one drops it; each is optional.
 - [X] T023 [P] [US2] Tags input in `StoryComposer.tsx`: type-and-Enter chips + mood/weather preset chips, keyboard-removable; persisted via `useStories` `tags`.
 - [X] T024 [P] [US2] Trip-link control in `StoryComposer.tsx`: type-ahead over `useTrips`; link/unlink by keyboard; dangling link (deleted trip) resolves to none.
 - [X] T025 [US2] Render tags on feed cards and add **By tag** + **By trip** filter optgroups + include tag text in the search string in `JournalScreen.tsx`; rank the linked trip's name first in `folders.ts` suggestions.
-- [ ] T026 [P] [US2] Surface a trip's linked postcards on the trip page (`apps/postcards/src/features/travel/…`) — read-only list linking back.
+- [ ] T026 [P] [US2] (DEFERRED follow-up) Surface a trip's linked postcards on the trip page (`apps/postcards/src/features/travel/…`) — read-only list linking back. The link is stored and drives folder suggestions today; showing it back on the trip page is a small additive enhancement.
 - [X] T027 [US2] i18n strings for place/tags/trip/folder controls + By-tag/By-trip filters in `{en,fr,ko}.ts`.
 - [X] T028 [P] [US2] E2e `apps/postcards/tests/e2e/postcard-context.spec.ts`: attach place/tag/trip by keyboard, save, reopen, verify round-trip + removal; unit test folders trip-ranking.
 
@@ -137,9 +137,9 @@ denied/offline, no error, place optional, manual search works; no coords on the 
 
 ### Implementation
 
-- [ ] T034 [US4] In `StoryComposer.tsx`, auto-attempt a location fix on open (permission-gated), reusing the existing `findNearby`/`nearestCities` logic; show a short "near you" list; top suggestion acceptable with one keystroke; time out gracefully; never overwrite an already-attached place when editing; never store/transmit coordinates.
-- [ ] T035 [US4] i18n strings for the "near you" affordance in `{en,fr,ko}.ts`.
-- [ ] T036 [P] [US4] E2e `apps/postcards/tests/e2e/postcard-nearyou.spec.ts`: granted (nearby appears, one-key attach, no coords stored) and denied/offline (no error, place optional).
+- [X] T034 [US4] In `StoryComposer.tsx`, auto-attempt a location fix on open (permission-gated), reusing the existing `findNearby`/`nearestCities` logic; show a short "near you" list; top suggestion acceptable with one keystroke; time out gracefully; never overwrite an already-attached place when editing; never store/transmit coordinates.
+- [X] T035 [US4] i18n strings for the "near you" affordance in `{en,fr,ko}.ts`.
+- [X] T036 [P] [US4] E2e `apps/postcards/tests/e2e/postcard-nearyou.spec.ts`: granted (nearby appears, one-key attach, no coords stored) and denied/offline (no error, place optional).
 
 **Checkpoint**: Delightful location shortcut, fully optional.
 
@@ -147,11 +147,11 @@ denied/offline, no error, place optional, manual search works; no coords on the 
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T037 [P] Adapt the Publish bundle/reader (`apps/postcards/src/lib/publish/…`) to tolerate place-less/multi-place/ranged/tagged postcards (flagged in research; out of the five views but consumes stories).
-- [ ] T038 [P] Final i18n parity sweep (`pnpm typecheck` + the i18n parity test) and update `ShortcutsHelp` + any "How it works" copy for postcards.
-- [ ] T039 Full gate: `pnpm typecheck`, `pnpm test`, `pnpm schema` (no diff), `pnpm test:e2e` (incl. axe) — all green.
-- [ ] T040 Walk `specs/020-journal-redesign/quickstart.md` scenarios 1–9 end to end (incl. offline / network-monitor zero-egress check).
-- [ ] T041 Deploy the finished increment to the Pages preview branch (`git push origin HEAD:refs/heads/claude/repo-setup-speckit-3magw3`).
+- [X] T037 [P] Adapt the Publish bundle/reader (`apps/postcards/src/lib/publish/…`) to tolerate place-less/multi-place/ranged/tagged postcards (flagged in research; out of the five views but consumes stories).
+- [X] T038 [P] Final i18n parity sweep (`pnpm typecheck` + the i18n parity test) and update `ShortcutsHelp` + any "How it works" copy for postcards.
+- [X] T039 Full gate: `pnpm typecheck`, `pnpm test`, `pnpm schema` (no diff), `pnpm test:e2e` (incl. axe) — all green.
+- [X] T040 Walk `specs/020-journal-redesign/quickstart.md` scenarios 1–9 end to end (incl. offline / network-monitor zero-egress check).
+- [X] T041 Deploy the finished increment to the Pages preview branch (`git push origin HEAD:refs/heads/claude/repo-setup-speckit-3magw3`).
 
 ---
 

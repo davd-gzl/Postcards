@@ -522,6 +522,7 @@ export const en = {
   "journal.composer.removeTag": "Remove tag {tag}",
   "journal.composer.trip": "Part of a trip",
   "journal.composer.noTrip": "— no trip —",
+  "journal.composer.nearYou": "Near you",
   "journal.composer.morePlaces": "More places",
   "journal.composer.addPlace": "＋ add a place",
   "journal.composer.removePlace": "Remove {name}",

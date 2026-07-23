@@ -517,6 +517,7 @@ export const fr: Messages = {
   "journal.composer.removeTag": "Retirer l’étiquette {tag}",
   "journal.composer.trip": "Fait partie d’un voyage",
   "journal.composer.noTrip": "— aucun voyage —",
+  "journal.composer.nearYou": "À proximité",
   "journal.composer.morePlaces": "Autres lieux",
   "journal.composer.addPlace": "＋ ajouter un lieu",
   "journal.composer.removePlace": "Retirer {name}",

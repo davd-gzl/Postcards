@@ -3980,6 +3980,16 @@ textarea.select {
 .story-details > .picker-label {
   margin-top: 10px;
 }
+/* "Near you" auto-suggestions in the composer. */
+.story-nearby {
+  margin-bottom: 10px;
+}
+.story-nearby-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
 /* Tag chips in the composer + the mood/weather preset row. */
 .story-tag-list {
   display: flex;
