@@ -1804,8 +1804,19 @@ h1.brand {
 /* Static per-country coverage map: the country silhouette, soft "still to explore"
    region blobs, and a dot per city you've been. Non-interactive (a glance, not a
    control) — the tappable lists live on the country's full page. */
+/* The whole map is a button now: tapping it opens the country's full page.
+   Reset the native button chrome and let the SVG + legend inside carry the look. */
 .country-cov-map {
+  display: block;
+  width: 100%;
   margin: 12px 0 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
 }
 .country-cov-map svg {
   display: block;
@@ -1814,6 +1825,17 @@ h1.brand {
   background: var(--bg-sub);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  transition: border-color 0.12s ease;
+}
+.country-cov-map:hover svg,
+.country-cov-map:focus-visible svg {
+  border-color: var(--accent);
+}
+.country-cov-map:focus-visible {
+  outline: none;
+}
+.country-cov-map:focus-visible svg {
+  box-shadow: 0 0 0 2px var(--accent);
 }
 .ccov-land {
   fill: var(--surface);
@@ -1853,6 +1875,12 @@ h1.brand {
 .ccov-key-missing {
   background: var(--stat-want);
   opacity: 0.4;
+}
+/* The "open full page ↗" affordance, pushed to the end of the legend row. */
+.ccov-open {
+  margin-left: auto;
+  color: var(--accent);
+  font-weight: 600;
 }
 /* Keep the expanded panel compact — tighter than the standalone continent
    metrics so a country card doesn't grow into a wall when opened. */

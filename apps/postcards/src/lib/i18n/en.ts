@@ -240,6 +240,7 @@ export const en = {
   "stats.country.chipMonumentsSeen": "Monuments seen",
   "stats.country.chipMonumentsToSee": "Monuments to see",
   "stats.country.mapAria": "{name}: {visited} of {total} regions visited — dots mark cities you've been, shaded areas are regions still to explore",
+  "stats.country.mapOpenAria": "Open {name}'s page — {visited} of {total} regions visited; dots mark cities you've been, shaded areas are regions still to explore",
   "stats.country.mapVisited": "Been",
   "stats.country.mapMissing": "To explore",
   "stats.country.showOnMapHint": "Show on the map:",

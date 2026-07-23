@@ -234,6 +234,7 @@ export const ko: Messages = {
   "stats.country.chipMonumentsSeen": "본 기념물",
   "stats.country.chipMonumentsToSee": "볼 기념물",
   "stats.country.mapAria": "{name}: {total}개 지역 중 {visited}개 방문 — 점은 방문한 도시, 음영 영역은 아직 탐험할 지역입니다",
+  "stats.country.mapOpenAria": "{name} 페이지 열기 — {total}개 지역 중 {visited}개 방문; 점은 방문한 도시, 음영 영역은 아직 탐험할 지역입니다",
   "stats.country.mapVisited": "방문함",
   "stats.country.mapMissing": "탐험 예정",
   "stats.country.showOnMapHint": "지도에서 보기:",
