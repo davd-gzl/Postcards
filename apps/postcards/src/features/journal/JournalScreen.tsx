@@ -389,6 +389,11 @@ export function JournalScreen() {
   }, [stories]);
   const storyYears = useMemo(() => distinctYearsDesc(stories), [stories]);
   const storyFolders = useMemo(() => distinctFolders(stories), [stories]);
+  const storyTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of stories) for (const tag of s.tags ?? []) set.add(tag);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [stories]);
 
   // Self-heal a filter that points at something that no longer exists — e.g. you
   // filtered to a folder/country/year, then deleted its last story. Without this
@@ -401,13 +406,14 @@ export function JournalScreen() {
     const stillThere =
       (kind === "c:" && storyCountries.some(([iso2]) => iso2 === val)) ||
       (kind === "p:" && storyPlaces.some((p) => placeKey(p) === val)) ||
-      (kind === "f:" && storyFolders.includes(val));
+      (kind === "f:" && storyFolders.includes(val)) ||
+      (kind === "t:" && storyTags.includes(val));
     if (!stillThere) {
       setFilterSel("all");
       setDaySel(null);
       setFeedShown(FEED_PAGE);
     }
-  }, [filterSel, storyCountries, storyPlaces, storyFolders]);
+  }, [filterSel, storyCountries, storyPlaces, storyFolders, storyTags]);
   useEffect(() => {
     if (yearSel !== "all" && yearSel !== "none" && !storyYears.includes(yearSel)) {
       setYearSel("all");
@@ -424,6 +430,7 @@ export function JournalScreen() {
       if (filterSel.startsWith("c:")) return placesOf(s).some((p) => p.countryId === filterSel.slice(2));
       if (filterSel.startsWith("p:")) return placesOf(s).some((p) => placeKey(p) === filterSel.slice(2));
       if (filterSel.startsWith("f:")) return matchesFolder(s, filterSel.slice(2));
+      if (filterSel.startsWith("t:")) return (s.tags ?? []).includes(filterSel.slice(2));
       return true;
     },
     [filterSel],
@@ -467,7 +474,7 @@ export function JournalScreen() {
   // (the store order `filtered` preserves).
   const byPlaceGroups = useMemo(() => {
     const m = new Map<string, { place: PlaceRef | null; stories: Story[] }>();
-    const UNPLACED = " unplaced";
+    const UNPLACED = "__unplaced__";
     for (const s of filtered) {
       // A multi-place postcard appears under EACH of its places; a place-less one
       // lands in a single "Unplaced" bucket so it's never lost from this view.
@@ -730,6 +737,15 @@ export function JournalScreen() {
                       ))}
                     </optgroup>
                   )}
+                  {storyTags.length > 0 && (
+                    <optgroup label={t("journal.byTag")}>
+                      {storyTags.map((tag) => (
+                        <option key={tag} value={`t:${tag}`}>
+                          {tag}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </label>
               {storyYears.length > 0 && (
@@ -929,6 +945,26 @@ export function JournalScreen() {
                 </header>
                 {s.title && <h3 className="journal-title">{s.title}</h3>}
                 {s.text && <p className="journal-text">{s.text}</p>}
+                {s.tags && s.tags.length > 0 && (
+                  <ul className="journal-card-tags" aria-label={t("journal.composer.tags")}>
+                    {s.tags.map((tag) => (
+                      <li key={tag}>
+                        <button
+                          type="button"
+                          className="journal-tag-chip"
+                          onClick={() => {
+                            setFilterSel(`t:${tag}`);
+                            setDaySel(null);
+                            setView("feed");
+                            setFeedShown(FEED_PAGE);
+                          }}
+                        >
+                          {tag}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <StoryPhotos photos={s.photos ?? []} title={entryLabel(s)} />
                 <footer className="journal-actions">
                   <button

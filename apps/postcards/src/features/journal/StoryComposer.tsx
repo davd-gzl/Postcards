@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStories } from "../../lib/store/useStories";
 import { useVisits } from "../../lib/store/useVisits";
+import { useTrips } from "../../lib/store/useTrips";
 import { useUi } from "../../lib/store/useUi";
-import { placeKey, MAX_PHOTOS_PER_STORY } from "../../lib/schema/helpers";
+import { placeKey, MAX_PHOTOS_PER_STORY, MAX_TAGS_PER_STORY } from "../../lib/schema/helpers";
 import { sanitizeText } from "../../lib/schema/sanitize";
 import type { Photo, PlaceRef } from "../../lib/schema/models";
 import { fileToPostcard } from "../../lib/image/downscale";
@@ -27,6 +28,11 @@ function todayISO(): string {
 
 const DRAFT_KEY = "postcards-journal-draft";
 type Draft = { storyId: string | null; place: PlaceRef | null; date: string; title: string; text: string; folder: string };
+
+// Quick preset tags the composer offers (mood / weather). They're just tag VALUES —
+// the model stores plain strings, so presets and free tags are the same shape.
+const MOOD_TAGS = ["🙂 happy", "😌 calm", "🤩 wowed", "😴 tired", "☹️ sad"];
+const WEATHER_TAGS = ["☀️ sunny", "⛅ cloudy", "🌧️ rainy", "❄️ snowy", "🥵 hot"];
 
 function readDraft(): Draft | null {
   try {
@@ -78,6 +84,14 @@ export function StoryComposer({ storyId, onClose }: { storyId: string | null; on
   const [text, setText] = useState(seed.text);
   const [folder, setFolder] = useState(seed.folder);
   const [photos, setPhotos] = useState<Photo[]>(existing?.photos ?? []);
+  // Optional context (US2): personal tags + a link to one reconstructed trip.
+  const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
+  const [tagInput, setTagInput] = useState("");
+  const [tripId, setTripId] = useState<string>(existing?.tripId ?? "");
+  const trips = useTrips((s) => s.trips);
+  // US3: additional places (a travel day spanning several) + an end date (a range).
+  const [extraPlaces, setExtraPlaces] = useState<PlaceRef[]>(existing?.extraPlaces ?? []);
+  const [endDate, setEndDate] = useState<string>(existing?.endDate ?? "");
   const [busy, setBusy] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -142,6 +156,11 @@ export function StoryComposer({ storyId, onClose }: { storyId: string | null; on
     setText("");
     setFolder("");
     setPhotos([]);
+    setTags([]);
+    setTagInput("");
+    setTripId("");
+    setExtraPlaces([]);
+    setEndDate("");
     clearDraft();
     textRef.current?.focus();
   }
@@ -163,13 +182,37 @@ export function StoryComposer({ storyId, onClose }: { storyId: string | null; on
     }
   }
 
+  function addTag(raw: string): void {
+    const tag = raw.trim();
+    if (!tag) return;
+    setTags((prev) => (prev.includes(tag) || prev.length >= MAX_TAGS_PER_STORY ? prev : [...prev, tag]));
+    setTagInput("");
+  }
+  function removeTag(tag: string): void {
+    setTags((prev) => prev.filter((x) => x !== tag));
+  }
+
   async function save(keepOpen: boolean): Promise<void> {
     if (!canSave) return;
+    const tripLink = tripId || undefined;
+    const end = endDate && endDate > date ? endDate : undefined;
+    const extras = extraPlaces.length ? extraPlaces : undefined;
     if (storyId && existing) {
       // `place: undefined` with the key present tells the store to CLEAR a removed place.
-      await updateStory(storyId, { place: place ?? undefined, date, title, text, folder, photos });
+      await updateStory(storyId, {
+        place: place ?? undefined,
+        extraPlaces: extras ?? [],
+        date,
+        endDate: end,
+        title,
+        text,
+        folder,
+        photos,
+        tags,
+        tripId: tripLink,
+      });
     } else {
-      await addStory({ place, date, title, text, folder, photos });
+      await addStory({ place, extraPlaces: extras, date, endDate: end, title, text, folder, photos, tags, tripId: tripLink });
     }
     clearDraft();
     if (keepOpen && !storyId) resetToNew();
@@ -257,6 +300,65 @@ export function StoryComposer({ storyId, onClose }: { storyId: string | null; on
             ))}
           </select>
         </label>
+
+        {/* US3: more places (a travel day spanning several) + an optional end date. */}
+        {extraPlaces.length > 0 && (
+          <ul className="story-tag-list" aria-label={t("journal.composer.morePlaces")}>
+            {extraPlaces.map((p) => (
+              <li key={placeKey(p)} className="story-tag">
+                {countryFlag(p.countryId)} {p.name}
+                <button
+                  type="button"
+                  className="story-tag-x"
+                  aria-label={t("journal.composer.removePlace", { name: p.name })}
+                  onClick={() => setExtraPlaces((prev) => prev.filter((q) => placeKey(q) !== placeKey(p)))}
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {placeOptions.length > 0 && (
+          <label className="picker-label" htmlFor="story-extra-place">
+            {t("journal.composer.morePlaces")}
+            <select
+              id="story-extra-place"
+              className="select"
+              value=""
+              onChange={(e) => {
+                const p = placeOptions.find((x) => placeKey(x) === e.target.value);
+                if (p) setExtraPlaces((prev) => (prev.some((q) => placeKey(q) === placeKey(p)) ? prev : [...prev, p]));
+              }}
+            >
+              <option value="">{t("journal.composer.addPlace")}</option>
+              {placeOptions
+                .filter(
+                  (p) =>
+                    (!place || placeKey(p) !== placeKey(place)) &&
+                    !extraPlaces.some((q) => placeKey(q) === placeKey(p)),
+                )
+                .map((p) => (
+                  <option key={placeKey(p)} value={placeKey(p)}>
+                    {countryFlag(p.countryId)} {p.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
+        <label className="picker-label story-date-field" htmlFor="story-enddate">
+          {t("journal.composer.endDate")}
+          <input
+            id="story-enddate"
+            className="select"
+            type="date"
+            min={date}
+            max="9999-12-31"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </label>
+
         <label className="picker-label" htmlFor="story-folder">
           {t("journal.folder")}
           <input
@@ -276,6 +378,70 @@ export function StoryComposer({ storyId, onClose }: { storyId: string | null; on
               <option key={f} value={f} />
             ))}
           </datalist>
+        )}
+
+        {/* Tags: type-and-Enter chips, plus mood/weather quick presets. */}
+        <div className="picker-label">
+          {t("journal.composer.tags")}
+          {tags.length > 0 && (
+            <ul className="story-tag-list" aria-label={t("journal.composer.tags")}>
+              {tags.map((tag) => (
+                <li key={tag} className="story-tag">
+                  {tag}
+                  <button
+                    type="button"
+                    className="story-tag-x"
+                    aria-label={t("journal.composer.removeTag", { tag })}
+                    onClick={() => removeTag(tag)}
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <input
+            className="select"
+            type="text"
+            maxLength={40}
+            list="story-tag-suggestions"
+            placeholder={t("journal.composer.tagPlaceholder")}
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addTag(tagInput);
+              }
+            }}
+          />
+          <datalist id="story-tag-suggestions">
+            {[...MOOD_TAGS, ...WEATHER_TAGS].map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+          <div className="story-tag-presets">
+            {[...MOOD_TAGS, ...WEATHER_TAGS].map((m) => (
+              <button key={m} type="button" className="mini-btn" onClick={() => addTag(m)}>
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Link this postcard to one reconstructed trip. */}
+        {trips.length > 0 && (
+          <label className="picker-label" htmlFor="story-trip">
+            {t("journal.composer.trip")}
+            <select id="story-trip" className="select" value={tripId} onChange={(e) => setTripId(e.target.value)}>
+              <option value="">{t("journal.composer.noTrip")}</option>
+              {trips.map((tr) => (
+                <option key={tr.tripId} value={tr.tripId}>
+                  {tr.name || `${tr.from.name} → ${tr.to.name}`}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
 
         <input

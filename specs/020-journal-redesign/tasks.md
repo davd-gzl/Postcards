@@ -96,13 +96,13 @@ reopen — all round-trip; removing one drops it; each is optional.
 
 ### Implementation
 
-- [ ] T022 [US2] Place attach in `StoryComposer.tsx`: type-ahead over places the user has been (reuse the visited-places source), keyboard-confirm to attach, clearable; blank mints nothing.
-- [ ] T023 [P] [US2] Tags input in `StoryComposer.tsx`: type-and-Enter chips + mood/weather preset chips, keyboard-removable; persisted via `useStories` `tags`.
-- [ ] T024 [P] [US2] Trip-link control in `StoryComposer.tsx`: type-ahead over `useTrips`; link/unlink by keyboard; dangling link (deleted trip) resolves to none.
-- [ ] T025 [US2] Render tags on feed cards and add **By tag** + **By trip** filter optgroups + include tag text in the search string in `JournalScreen.tsx`; rank the linked trip's name first in `folders.ts` suggestions.
+- [X] T022 [US2] Place attach in `StoryComposer.tsx`: type-ahead over places the user has been (reuse the visited-places source), keyboard-confirm to attach, clearable; blank mints nothing.
+- [X] T023 [P] [US2] Tags input in `StoryComposer.tsx`: type-and-Enter chips + mood/weather preset chips, keyboard-removable; persisted via `useStories` `tags`.
+- [X] T024 [P] [US2] Trip-link control in `StoryComposer.tsx`: type-ahead over `useTrips`; link/unlink by keyboard; dangling link (deleted trip) resolves to none.
+- [X] T025 [US2] Render tags on feed cards and add **By tag** + **By trip** filter optgroups + include tag text in the search string in `JournalScreen.tsx`; rank the linked trip's name first in `folders.ts` suggestions.
 - [ ] T026 [P] [US2] Surface a trip's linked postcards on the trip page (`apps/postcards/src/features/travel/…`) — read-only list linking back.
-- [ ] T027 [US2] i18n strings for place/tags/trip/folder controls + By-tag/By-trip filters in `{en,fr,ko}.ts`.
-- [ ] T028 [P] [US2] E2e `apps/postcards/tests/e2e/postcard-context.spec.ts`: attach place/tag/trip by keyboard, save, reopen, verify round-trip + removal; unit test folders trip-ranking.
+- [X] T027 [US2] i18n strings for place/tags/trip/folder controls + By-tag/By-trip filters in `{en,fr,ko}.ts`.
+- [X] T028 [P] [US2] E2e `apps/postcards/tests/e2e/postcard-context.spec.ts`: attach place/tag/trip by keyboard, save, reopen, verify round-trip + removal; unit test folders trip-ranking.
 
 **Checkpoint**: Rich postcards without slowing capture.
 
@@ -117,11 +117,11 @@ place, Map) and shows its span (feed/timeline/calendar); single-day single-place
 
 ### Implementation
 
-- [ ] T029 [US3] Extra-places control in `StoryComposer.tsx`: add/reorder/remove additional places (same picker); end-date field alongside the start date.
-- [ ] T030 [US3] Multi-place membership across read views using `placesOf`: `byPlaceGroups`, `StoryMap` pins, By-country/destination filters, `folders.ts`, and Markdown export list every place.
-- [ ] T031 [US3] Range rendering using `dateSpan`: feed card `start–end`, timeline bucketing, `calendar.ts` tint every day in range, Markdown export end date.
-- [ ] T032 [US3] i18n strings for extra-places/end-date/range display in `{en,fr,ko}.ts`.
-- [ ] T033 [P] [US3] Tests: unit for `placesOf`/`dateSpan` across the view helpers; e2e `apps/postcards/tests/e2e/postcard-multi.spec.ts` — multi-place appears under each place and range displays.
+- [X] T029 [US3] Extra-places control in `StoryComposer.tsx`: add/reorder/remove additional places (same picker); end-date field alongside the start date.
+- [X] T030 [US3] Multi-place membership across read views using `placesOf`: `byPlaceGroups`, `StoryMap` pins, By-country/destination filters, `folders.ts`, and Markdown export list every place.
+- [X] T031 [US3] Range rendering using `dateSpan`: feed card `start–end`, timeline bucketing, `calendar.ts` tint every day in range, Markdown export end date.
+- [X] T032 [US3] i18n strings for extra-places/end-date/range display in `{en,fr,ko}.ts`.
+- [X] T033 [P] [US3] Tests: unit for `placesOf`/`dateSpan` across the view helpers; e2e `apps/postcards/tests/e2e/postcard-multi.spec.ts` — multi-place appears under each place and range displays.
 
 **Checkpoint**: Expressive postcards; base capture unaffected.
 
