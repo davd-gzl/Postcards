@@ -2854,14 +2854,13 @@ h1.brand {
   font-size: 13px;
   font-weight: 600;
 }
-.trip-when {
-  flex-direction: row;
-  align-items: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
+/* One plain optional date — a native picker, always visible, no disclosure. */
+.trip-date-field .search-input {
+  max-width: 200px;
 }
-.trip-when .trip-year {
-  max-width: 120px;
+.trip-date-legacy {
+  align-self: flex-start;
+  margin-top: 6px;
 }
 .trip-composer-actions {
   display: flex;
@@ -2877,13 +2876,6 @@ h1.brand {
   justify-content: space-between;
   gap: 8px;
 }
-.trip-date-details > summary {
-  cursor: pointer;
-  padding: 6px 2px;
-  font-size: 13px;
-  font-weight: 600;
-  list-style-position: inside;
-}
 
 /* Pick trip stops from the places you've been (list or map). */
 .myplaces-picker {
@@ -2898,6 +2890,10 @@ h1.brand {
   flex-direction: column;
   gap: 8px;
 }
+/* The city/airport pin filter sits directly above the canvas. */
+.route-map-filter {
+  align-self: flex-start;
+}
 .route-map-canvas {
   position: relative;
   width: 100%;
@@ -2906,6 +2902,36 @@ h1.brand {
   overflow: hidden;
   border: 1px solid var(--border);
   background: #d9e6f1;
+}
+/* The "little box above the point": tap a pin → confirm before adding. */
+.route-popup-wrap .maplibregl-popup-content {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+.route-popup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.route-popup-name {
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.route-popup-add {
+  flex: none;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.route-popup-add:hover {
+  filter: brightness(1.08);
 }
 .route-map-canvas .maplibregl-canvas {
   border-radius: var(--radius);

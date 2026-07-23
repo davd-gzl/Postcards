@@ -10,9 +10,7 @@ import { myPlaces, placeFlag } from "./myPlaces";
 import { appendStop, moveStopTo, removeStopAt, setLegMode, type StopChain } from "./tripStops";
 import { tripPathKm } from "./distance";
 import { MODE_ORDER, MODE_GLYPH } from "./modes";
-import { parseTripDate } from "./tripDate";
-
-const MONTHS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+import { formatTripDate } from "./tripDate";
 
 /**
  * Full-page composer for a MULTI-STOP journey (spec 019). Built to be fast: tap the
@@ -60,39 +58,31 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
   // one mode until you change it — that's what makes a sub-trip).
   const nextFill = (): TravelMode => legModes[legModes.length - 1] ?? existing?.mode ?? "flight";
   const [name, setName] = useState(existing?.name ?? "");
-  const seededDate = parseTripDate(existing?.date ?? null);
-  const [year, setYear] = useState(seededDate ? String(seededDate.year) : "");
-  const [month, setMonth] = useState(
-    seededDate?.month != null ? String(seededDate.month).padStart(2, "0") : "",
-  );
+  // One plain optional date. A native picker handles full days (YYYY-MM-DD); a
+  // coarse legacy date (year or year-month, which a picker can't render) is kept
+  // as-is and shown as a small clearable chip so nothing is silently lost.
+  const [date, setDate] = useState(existing?.date ?? "");
+  const isFullDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
+  const coarseLegacyDate = date && !isFullDate ? date : "";
 
   const addedKeys = useMemo(() => new Set(stops.map((s) => placeKey(s))), [stops]);
   const { km, unresolvedLegs } = useMemo(() => tripPathKm(stops, ref), [stops, ref]);
   const canSave = stops.length >= 2;
 
-  const monthName = (mm: string) =>
-    new Intl.DateTimeFormat(locale, { month: "long" }).format(new Date(Date.UTC(2000, Number(mm) - 1, 1)));
-
-  function composeDate(): string | null {
-    const y = year.trim();
-    if (!/^\d{4}$/.test(y)) return null;
-    return month ? `${y}-${month}` : y;
-  }
-
   async function save() {
     if (!canSave) return;
     const from = stops[0]!;
     const to = stops[stops.length - 1]!;
-    const date = composeDate();
+    const dateToSave = date.trim() || null;
     // The primary mode is the first leg's; per-leg modes are saved only when a leg
     // actually differs (a uniform trip stays a plain single-mode trip).
     const mode = legModes[0] ?? existing?.mode ?? "flight";
     const mixed = legModes.some((m) => m !== mode);
     const legModesToSave = mixed ? legModes : undefined;
     if (tripId && existing) {
-      await updateTrip(tripId, { from, to, stops, mode, legModes: legModesToSave, date, name: name.trim() });
+      await updateTrip(tripId, { from, to, stops, mode, legModes: legModesToSave, date: dateToSave, name: name.trim() });
     } else {
-      await addTrip({ from, to, stops, mode, legModes: legModesToSave, date, name: name.trim() || null });
+      await addTrip({ from, to, stops, mode, legModes: legModesToSave, date: dateToSave, name: name.trim() || null });
     }
     onClose();
   }
@@ -223,37 +213,30 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
         />
       </label>
 
-      <details className="trip-date-details" open={!!year}>
-        <summary>{t("trip.compose.addDate")}</summary>
-        <fieldset className="field trip-when">
-          <legend className="field-label">{t("trip.compose.whenLabel")}</legend>
-          <input
-            className="search-input trip-year"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={9999}
-            value={year}
-            placeholder={t("trip.compose.yearPlaceholder")}
-            aria-label={t("trip.compose.yearPlaceholder")}
-            onChange={(e) => setYear(e.target.value)}
-          />
-          <select
-            className="select"
-            value={month}
-            aria-label={t("trip.compose.monthLabel")}
-            disabled={!/^\d{4}$/.test(year.trim())}
-            onChange={(e) => setMonth(e.target.value)}
-          >
-            <option value="">{t("trip.compose.monthAny")}</option>
-            {MONTHS.map((mm) => (
-              <option key={mm} value={mm}>
-                {monthName(mm)}
-              </option>
-            ))}
-          </select>
-        </fieldset>
-      </details>
+      <label className="field trip-date-field">
+        <span className="field-label">{t("trip.compose.dateLabel")}</span>
+        <input
+          className="search-input"
+          type="date"
+          max="9999-12-31"
+          value={isFullDate ? date : ""}
+          aria-label={t("trip.compose.dateLabel")}
+          onChange={(e) => setDate(e.target.value)}
+        />
+        {coarseLegacyDate && (
+          <span className="filter-chip trip-date-legacy">
+            <span className="filter-chip-label">{formatTripDate(coarseLegacyDate, locale)}</span>
+            <button
+              type="button"
+              className="filter-chip-x"
+              aria-label={t("trip.compose.clearDate")}
+              onClick={() => setDate("")}
+            >
+              ✕
+            </button>
+          </span>
+        )}
+      </label>
 
       <div className="trip-composer-actions">
         <button type="button" className="btn-ghost" onClick={onClose}>

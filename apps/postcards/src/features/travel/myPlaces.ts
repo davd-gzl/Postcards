@@ -20,6 +20,9 @@ export interface MyPlace {
   countryId: string;
   lon: number;
   lat: number;
+  /** City population (0 for non-cities). Lets the map snap a tap to the MOST
+   *  populous place in a dense cluster instead of a near-random neighbour. */
+  population: number;
 }
 
 /** Coordinates for a place: reference data for city/airport/heritage, the point
@@ -55,7 +58,8 @@ export function myPlaces(visits: Visit[], trips: Trip[], ref: ReferenceData): My
     if (out.has(k)) return;
     const c = coordOf(ref, p);
     if (!c) return;
-    out.set(k, { key: k, place: p, name: p.name, countryId: p.countryId, lon: c.lon, lat: c.lat });
+    const population = p.kind === "city" ? (ref.cityById(p.id)?.population ?? 0) : 0;
+    out.set(k, { key: k, place: p, name: p.name, countryId: p.countryId, lon: c.lon, lat: c.lat, population });
   };
   for (const v of visits) if (v.status !== "wishlist") add(v.place);
   for (const t of trips) {
