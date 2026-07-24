@@ -1,6 +1,6 @@
 {
   "$id": "https://github.com/davd-gzl/Postcards/blob/main/apps/postcards/src/lib/schema/portable-file.schema.json",
-  "title": "Postcards portable data file (schemaVersion 13)",
+  "title": "Postcards portable data file (schemaVersion 14)",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
@@ -39,7 +39,8 @@
                   "city",
                   "airport",
                   "heritage",
-                  "custom"
+                  "custom",
+                  "station"
                 ]
               },
               "id": {
@@ -201,7 +202,8 @@
                   "city",
                   "airport",
                   "heritage",
-                  "custom"
+                  "custom",
+                  "station"
                 ]
               },
               "id": {
@@ -252,7 +254,8 @@
                   "city",
                   "airport",
                   "heritage",
-                  "custom"
+                  "custom",
+                  "station"
                 ]
               },
               "id": {
@@ -307,7 +310,8 @@
                     "city",
                     "airport",
                     "heritage",
-                    "custom"
+                    "custom",
+                    "station"
                   ]
                 },
                 "id": {
@@ -450,7 +454,8 @@
                   "city",
                   "airport",
                   "heritage",
-                  "custom"
+                  "custom",
+                  "station"
                 ]
               },
               "id": {
@@ -504,7 +509,8 @@
                     "city",
                     "airport",
                     "heritage",
-                    "custom"
+                    "custom",
+                    "station"
                   ]
                 },
                 "id": {

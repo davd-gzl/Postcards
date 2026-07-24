@@ -333,6 +333,7 @@ export const en = {
   "places.rowMenu.notePlaceholder": "A short note",
   "places.row.removedToast": "Removed {name}",
   "places.meta.airport": "Airport",
+  "places.meta.station": "Station",
   "places.meta.monument": "Monument",
   "places.meta.yourPlace": "Your place",
   "places.meta.country": "Country",

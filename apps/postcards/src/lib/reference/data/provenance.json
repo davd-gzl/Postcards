@@ -30,6 +30,12 @@
     "url": "https://openflights.org/data.html"
   },
   {
+    "dataset": "Railway stations — Wikidata (instance of Q55488, mainline; metro/tram excluded)",
+    "license": "CC0-1.0",
+    "version": "scripts/build-railways.mjs (SPARQL); dev fixture until produced",
+    "url": "https://query.wikidata.org/"
+  },
+  {
     "dataset": "world-countries (continent/region; UN-member vs territory, Holy See = non-member per UN)",
     "license": "ODbL-1.0",
     "version": "5.1.0",

@@ -1,0 +1,24 @@
+{
+  "_source": {
+    "dataset": "Wikidata railway stations (instance of Q55488)",
+    "url": "https://query.wikidata.org/",
+    "license": "CC0-1.0",
+    "retrieved": "2026-07-24",
+    "note": "DEVELOPMENT FIXTURE — a small placeholder set of well-known mainline stations (approximate public coordinates, non-authoritative ids). Replace with the authoritative Wikidata CC0 dataset by running `pnpm railways` where query.wikidata.org is reachable."
+  },
+  "stations": [
+    { "id": "fx-paris-gare-de-lyon", "name": "Paris Gare de Lyon", "countryIso2": "FR", "subdivisionId": null, "lat": 48.8443, "lon": 2.3735 },
+    { "id": "fx-paris-gare-du-nord", "name": "Paris Gare du Nord", "countryIso2": "FR", "subdivisionId": null, "lat": 48.8809, "lon": 2.3553 },
+    { "id": "fx-lyon-part-dieu", "name": "Lyon Part-Dieu", "countryIso2": "FR", "subdivisionId": null, "lat": 45.7605, "lon": 4.8592 },
+    { "id": "fx-marseille-saint-charles", "name": "Marseille Saint-Charles", "countryIso2": "FR", "subdivisionId": null, "lat": 43.3026, "lon": 5.3804 },
+    { "id": "fx-london-st-pancras", "name": "London St Pancras International", "countryIso2": "GB", "subdivisionId": null, "lat": 51.5313, "lon": -0.1263 },
+    { "id": "fx-london-kings-cross", "name": "London King's Cross", "countryIso2": "GB", "subdivisionId": null, "lat": 51.5312, "lon": -0.1236 },
+    { "id": "fx-berlin-hauptbahnhof", "name": "Berlin Hauptbahnhof", "countryIso2": "DE", "subdivisionId": null, "lat": 52.5250, "lon": 13.3694 },
+    { "id": "fx-munchen-hauptbahnhof", "name": "München Hauptbahnhof", "countryIso2": "DE", "subdivisionId": null, "lat": 48.1402, "lon": 11.5586 },
+    { "id": "fx-roma-termini", "name": "Roma Termini", "countryIso2": "IT", "subdivisionId": null, "lat": 41.9010, "lon": 12.5020 },
+    { "id": "fx-madrid-atocha", "name": "Madrid Puerta de Atocha", "countryIso2": "ES", "subdivisionId": null, "lat": 40.4065, "lon": -3.6895 },
+    { "id": "fx-tokyo-station", "name": "Tokyo Station", "countryIso2": "JP", "subdivisionId": null, "lat": 35.6812, "lon": 139.7671 },
+    { "id": "fx-kyoto-station", "name": "Kyoto Station", "countryIso2": "JP", "subdivisionId": null, "lat": 34.9858, "lon": 135.7588 },
+    { "id": "fx-newyork-penn", "name": "New York Penn Station", "countryIso2": "US", "subdivisionId": null, "lat": 40.7506, "lon": -73.9935 }
+  ]
+}

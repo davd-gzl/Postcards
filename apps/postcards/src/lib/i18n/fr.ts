@@ -327,6 +327,7 @@ export const fr: Messages = {
   "places.rowMenu.notePlaceholder": "Une courte note",
   "places.row.removedToast": "{name} retiré",
   "places.meta.airport": "Aéroport",
+  "places.meta.station": "Gare",
   "places.meta.monument": "Monument",
   "places.meta.yourPlace": "Votre lieu",
   "places.meta.country": "Pays",

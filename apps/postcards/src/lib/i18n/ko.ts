@@ -327,6 +327,7 @@ export const ko: Messages = {
   "places.rowMenu.notePlaceholder": "짧은 메모",
   "places.row.removedToast": "{name} 삭제됨",
   "places.meta.airport": "공항",
+  "places.meta.station": "역",
   "places.meta.monument": "기념물",
   "places.meta.yourPlace": "내 장소",
   "places.meta.country": "국가",

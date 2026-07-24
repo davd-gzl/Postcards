@@ -38,7 +38,7 @@ export const PlaceRefSchema = z
   .object({
     // Additive: older files only ever used "country"/"city", so they still validate.
     // A file with a newer kind opened in an older app build fails closed (unknown kind), by design.
-    kind: z.enum(["country", "city", "airport", "heritage", "custom"]),
+    kind: z.enum(["country", "city", "airport", "heritage", "custom", "station"]),
     id: z.string().min(1).max(64),
     name: z
       .string()

@@ -36,6 +36,10 @@ function coordOf(ref: ReferenceData, p: PlaceRef): { lon: number; lat: number } 
     const a = ref.airportById(p.id);
     return a ? { lon: a.lon, lat: a.lat } : null;
   }
+  if (p.kind === "station") {
+    const s = ref.stationById(p.id);
+    return s ? { lon: s.lon, lat: s.lat } : null;
+  }
   if (p.kind === "custom") {
     return p.lat != null && p.lon != null ? { lon: p.lon, lat: p.lat } : null;
   }

@@ -134,6 +134,10 @@ function placeMeta(
     const a = ref.airportById(v.place.id);
     return { coord: a ? { lon: a.lon, lat: a.lat } : null, sub: `${t("places.meta.airport")} · ${country}` };
   }
+  if (v.place.kind === "station") {
+    const s = ref.stationById(v.place.id);
+    return { coord: s ? { lon: s.lon, lat: s.lat } : null, sub: `${t("places.meta.station")} · ${country}` };
+  }
   if (v.place.kind === "heritage") {
     const h = ref.heritageById(v.place.id);
     const coord = h && (h.lat !== 0 || h.lon !== 0) ? { lon: h.lon, lat: h.lat } : null;
@@ -299,7 +303,9 @@ const VisitRow = memo(function VisitRow({ v, wishlist }: { v: Visit; wishlist?: 
       ? heritageGlyph(ref.heritageById(v.place.id)?.category)
       : v.place.kind === "airport"
         ? "✈️"
-        : countryFlag(v.place.countryId);
+        : v.place.kind === "station"
+          ? "🚉"
+          : countryFlag(v.place.countryId);
 
   return (
     <li className={"city-row compact" + (menuOpen ? " menu-open" : "")}>
@@ -391,7 +397,9 @@ const BrowseRowItem = memo(function BrowseRowItem({ r }: { r: BrowseRow }) {
       ? countryFlag(r.countryIso2)
       : r.kind === "airport"
         ? "✈️"
-        : heritageGlyph(r.category);
+        : r.kind === "station"
+          ? "🚉"
+          : heritageGlyph(r.category);
   // Only a real dataset category becomes a tag — never an invented one (FR-008).
   const cat =
     r.kind === "heritage" &&

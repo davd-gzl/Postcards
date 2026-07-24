@@ -6,7 +6,7 @@ import { countryFlag } from "../../lib/format/format";
 /** The emoji that stands in for a place in the trip UI — a plane for airports,
  *  else the country flag. One definition shared by every trip picker/row. */
 export const placeFlag = (p: PlaceRef): string =>
-  p.kind === "airport" ? "✈️" : countryFlag(p.countryId);
+  p.kind === "airport" ? "✈️" : p.kind === "station" ? "🚉" : countryFlag(p.countryId);
 
 // The pool the trip composer picks stops from (spec 019, fast-reconstruction): ONLY
 // places you've already been — your visited records plus every place already used in
@@ -35,6 +35,10 @@ function coordOf(ref: ReferenceData, p: PlaceRef): { lon: number; lat: number } 
   if (p.kind === "airport") {
     const a = ref.airportById(p.id);
     return a ? { lon: a.lon, lat: a.lat } : null;
+  }
+  if (p.kind === "station") {
+    const s = ref.stationById(p.id);
+    return s ? { lon: s.lon, lat: s.lat } : null;
   }
   if (p.kind === "heritage") {
     const h = ref.heritageById(p.id);
