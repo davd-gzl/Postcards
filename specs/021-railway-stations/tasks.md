@@ -7,12 +7,24 @@ description: "Task list for Railway stations as a place type"
 **Input**: Design docs from `specs/021-railway-stations/` · **Tests**: included (constitution).
 All paths under `apps/postcards/`. Built against a dev fixture until `pnpm railways` runs.
 
-> **Status: implemented.** All tasks landed against the dev fixture. The per-story
-> e2e tasks (T008/T011/T014/T016) are consolidated into three tests in
-> `tests/e2e/stations.spec.ts` (offline search+mark with zero egress; strip + map
-> mode + Places browse; station as a train trip stop), with per-country stations
-> coverage and the "transit ≠ visiting" rule covered in `tests/unit/stats.spec.ts`.
-> Full gate green: `pnpm typecheck`, 489 unit tests, `pnpm schema`, 68 e2e.
+> **Status: implemented + real data.** All tasks landed. The dev fixture was
+> replaced with the real **Trainline EU open stations database** (ODbL, ~44k
+> European stations) — the only worldwide-open station set reachable from the build
+> sandbox (Wikidata/OSM/GeoNames are all egress-blocked here). `scripts/build-railways.mjs`
+> builds it (`--source=trainline`, default) and also keeps the worldwide
+> `--source=wikidata` path for an open-network run.
+>
+> Per the maintainer's steer ("people choose what they display, with a recommended
+> one"), stations are now a **user-selectable data source** in Settings → Places
+> (`src/lib/reference/stationSources.ts`, data-driven so a worldwide file added later
+> appears automatically; default = Trainline, recommended; "None" unloads them live
+> via `setStationData`).
+>
+> The per-story e2e tasks are consolidated into `tests/e2e/stations.spec.ts` (offline
+> search+mark with zero egress; strip + map mode + Places browse; station as a train
+> trip stop; Settings source switch), with per-country coverage and "transit ≠
+> visiting" in `tests/unit/stats.spec.ts`. Full gate green: `pnpm typecheck`, 491 unit
+> tests, `pnpm schema`, 70 e2e.
 
 ## Format: `[ID] [P?] [Story] Description`
 

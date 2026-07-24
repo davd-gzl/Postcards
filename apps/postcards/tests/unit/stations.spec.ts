@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { initReferenceDataSync } from "../../src/lib/reference/referenceData";
+import { initReferenceDataSync, setStationData } from "../../src/lib/reference/referenceData";
 import type { Station } from "../../src/lib/reference/types";
+import {
+  STATION_SOURCES,
+  DEFAULT_STATION_SOURCE,
+  isStationSource,
+  stationSourceById,
+} from "../../src/lib/reference/stationSources";
 import { PlaceRefSchema } from "../../src/lib/schema/models";
 
 const stations: Station[] = [
@@ -51,5 +57,34 @@ describe("schema: a station PlaceRef (v14)", () => {
     const parsed = PlaceRefSchema.parse({ kind: "station", id: "Q-gdl", name: "Paris Gare de Lyon", countryId: "FR" });
     expect(parsed.kind).toBe("station");
     expect(parsed.name).toBe("Paris Gare de Lyon");
+  });
+});
+
+describe("station data sources (Settings choice)", () => {
+  it("offers a recommended, bundled default and a 'none' escape hatch", () => {
+    expect(isStationSource(DEFAULT_STATION_SOURCE)).toBe(true);
+    expect(stationSourceById(DEFAULT_STATION_SOURCE).recommended).toBe(true);
+    expect(stationSourceById(DEFAULT_STATION_SOURCE).url).toBeTruthy();
+    const none = STATION_SOURCES.find((s) => s.id === "none");
+    expect(none?.url).toBeNull();
+    // Exactly one source is badged recommended.
+    expect(STATION_SOURCES.filter((s) => s.recommended)).toHaveLength(1);
+  });
+
+  it("rejects unknown source ids", () => {
+    expect(isStationSource("osm")).toBe(false);
+    expect(isStationSource(null)).toBe(false);
+  });
+
+  it("setStationData swaps the live station set (Settings source switch)", () => {
+    const ref = initReferenceDataSync([], [], [], [], {}, {}, stations);
+    expect(ref.allStations()).toHaveLength(3);
+    // Switch to a different set — e.g. a worldwide source, or clear for "None".
+    setStationData([{ id: "Q-ny", name: "New York Penn", countryIso2: "US", subdivisionId: null, lat: 40.75, lon: -73.99 }]);
+    expect(ref.allStations()).toHaveLength(1);
+    expect(ref.stationById("Q-ny")?.name).toBe("New York Penn");
+    expect(ref.stationsOf("FR")).toEqual([]); // old set gone
+    setStationData([]); // "None"
+    expect(ref.allStations()).toEqual([]);
   });
 });

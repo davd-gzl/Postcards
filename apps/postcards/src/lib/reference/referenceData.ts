@@ -17,6 +17,7 @@ import continentsData from "./data/continents.json";
 import sovereigntyData from "./data/sovereignty.json";
 import countryNamesData from "./data/country-names.json";
 import { inScope, type CountryScope, type Sovereignty } from "./scope";
+import { loadStationSource, stationSourceById } from "./stationSources";
 
 countries.registerLocale(enLocale as Parameters<typeof countries.registerLocale>[0]);
 
@@ -50,7 +51,6 @@ export function fullCitiesEnabled(): boolean {
 }
 const SUBDIVISIONS_URL = `${import.meta.env.BASE_URL}reference/subdivisions.json`;
 const AIRPORTS_URL = `${import.meta.env.BASE_URL}reference/airports.json`;
-const STATIONS_URL = `${import.meta.env.BASE_URL}reference/railways.json`;
 const HERITAGE_URL = `${import.meta.env.BASE_URL}reference/heritage.json`;
 // Famous landmarks (Eiffel Tower, …) share the HeritageSite shape and merge into
 // the same sites/monuments machinery — one more named dataset, not new code.
@@ -302,6 +302,20 @@ class ReferenceDataImpl implements ReferenceData {
     }
     return [...starts, ...contains].slice(0, limit);
   }
+  /** Swap in a different railway-station set (Settings data-source change).
+   *  Rebuilds the id + per-country indexes from scratch. Impl-only, like
+   *  replaceCities — the module-level setStationData() calls this and notifies. */
+  replaceStations(stations: Station[]): void {
+    this.stations = stations.map((s) => ({ ...s, search: normalize(s.name) }));
+    this.stationIndex.clear();
+    this.stationsByCountry.clear();
+    for (const s of this.stations) {
+      this.stationIndex.set(s.id, s);
+      const arr = this.stationsByCountry.get(s.countryIso2);
+      if (arr) arr.push(s);
+      else this.stationsByCountry.set(s.countryIso2, [s]);
+    }
+  }
   languagesOf(iso2: string): Language[] {
     return this.languages[iso2.toUpperCase()] ?? [];
   }
@@ -417,8 +431,15 @@ export async function initReferenceData(): Promise<ReferenceData> {
         fetch(LANDMARKS_URL).then((r) => (r.ok ? r.json() : [])),
         fetch(LANGUAGES_URL).then((r) => (r.ok ? r.json() : {})),
         fetch(ARTICLE_NAMES_URL).then((r) => (r.ok ? r.json() : {})),
-        // Railway stations: a { _source, stations:[…] } wrapper. Absent file → [].
-        fetch(STATIONS_URL).then((r) => (r.ok ? r.json() : { stations: [] })),
+        // Railway stations: whichever dataset the user chose in Settings (default
+        // Trainline; "None" loads nothing). A { _source, stations:[…] } wrapper;
+        // absent file → []. Switching source later re-fetches via setStationData.
+        (() => {
+          const src = stationSourceById(loadStationSource());
+          return src.url
+            ? fetch(src.url).then((r) => (r.ok ? r.json() : { stations: [] }))
+            : Promise.resolve({ stations: [] });
+        })(),
       ]);
     const ref = initReferenceDataSync(
       cities as City[],
@@ -514,6 +535,17 @@ export function setPackPlaces(places: City[]): void {
     generation++;
     window.dispatchEvent(new Event(GAZETTEER_UPGRADED_EVENT));
   }
+}
+
+/** Replace the loaded railway stations and refresh every live consumer (map,
+ *  search, stats), mirroring setPackPlaces. Called when the Settings station
+ *  data-source changes — an empty array clears them ("None"). */
+export function setStationData(stations: Station[]): void {
+  const impl = instance as ReferenceDataImpl | null;
+  if (!impl) return;
+  impl.replaceStations(stations);
+  generation++;
+  window.dispatchEvent(new Event(GAZETTEER_UPGRADED_EVENT));
 }
 
 /** Fetch + swap in the full gazetteer (shared by the opted-in auto-load and the

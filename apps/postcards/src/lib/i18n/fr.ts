@@ -75,6 +75,13 @@ export const fr: Messages = {
   "settings.scope.title": "Ce qui compte comme un pays",
   "settings.scope.desc":
     "Utilisé partout où un pays est compté : totaux, passeport, progression par continent.",
+  "settings.stations.title": "Gares ferroviaires",
+  "settings.stations.recommended": "recommandé",
+  "settings.stations.source.trainline": "Europe — Trainline",
+  "settings.stations.source.none": "Aucune",
+  "settings.stations.desc.trainline":
+    "~44 000 gares européennes issues de la base ouverte de Trainline (ODbL). Le seul jeu ouvert disponible sur cette version ; un jeu mondial (Wikidata/OSM) pourra être ajouté plus tard.",
+  "settings.stations.desc.none": "Aucune gare n'est chargée — elles n'apparaîtront ni dans la recherche, ni sur la carte, ni dans les stats.",
   "settings.map.advanced": "Plus d'options de carte et cartes hors ligne",
   "settings.optimize.title": "Optimisation",
   "settings.optimize.intro": "Gardez la carte rapide et lisible même avec beaucoup de lieux marqués.",
