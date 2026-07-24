@@ -45,11 +45,11 @@ import { useT, type TFunction } from "../../lib/i18n";
 // STATUS/scope (which of them) — plus a separate COLLECTIONS cluster (Moments /
 // Photos / Passport) for the cross-cutting views that are not a place kind. No
 // concept lives in two controls: each place kind appears only on the kind axis.
-type Kind = "all" | "cities" | "monuments" | "airports" | "countries";
+type Kind = "all" | "cities" | "monuments" | "airports" | "stations" | "countries";
 type Status = "all" | "visited" | "wishlist" | "favorites" | "notVisited";
 type Collection = "moments" | "photos" | "passport";
 
-const KINDS: readonly Kind[] = ["all", "cities", "monuments", "airports", "countries"];
+const KINDS: readonly Kind[] = ["all", "cities", "monuments", "airports", "stations", "countries"];
 const STATUSES: readonly Status[] = ["all", "visited", "wishlist", "favorites", "notVisited"];
 
 // The three axis/collection selections persist, so returning to Places lands where
@@ -112,6 +112,9 @@ function mapRequest(view: PlacesView): { kind?: Kind; status?: Status; collectio
       // The airports you've actually been through (the count these tiles show),
       // not the whole world of airports.
       return { kind: "airports", status: "visited", collection: null };
+    case "stations":
+      // The stations you've actually passed through, not the whole world of them.
+      return { kind: "stations", status: "visited", collection: null };
     case "moments":
       return { collection: "moments" };
     case "passport":
@@ -479,7 +482,7 @@ export function PlacesScreen() {
   // map has no country mode), so it leaves the mode untouched.
   useEffect(() => {
     if (kind === "countries") return;
-    const target: FilterMode = kind; // "all" | "cities" | "monuments" | "airports"
+    const target: FilterMode = kind; // "all" | "cities" | "monuments" | "airports" | "stations"
     if (useFilters.getState().mode !== target) useFilters.getState().set({ mode: target });
   }, [kind]);
 
@@ -657,13 +660,13 @@ export function PlacesScreen() {
     return arr;
   }, [groupBy, personalShown, ref, t]);
 
-  // ── World browse (kind = Cities / Monuments / Airports): the whole gazetteer of
-  // the chosen kind, status-overlaid, via the tested pure engine. ────────────────
+  // ── World browse (kind = Cities / Monuments / Airports / Stations): the whole
+  // gazetteer of the chosen kind, status-overlaid, via the tested pure engine. ────
   // Paged: build only the `shown` rows we render, plus a `hasMore` probe — so a
   // visit toggle or filter change never materialises thousands of rows (that was the
   // list lag), and "load more" can page uncapped through the whole set.
   const browse = useMemo(() => {
-    if (kind !== "cities" && kind !== "monuments" && kind !== "airports")
+    if (kind !== "cities" && kind !== "monuments" && kind !== "airports" && kind !== "stations")
       return { rows: [] as BrowseRow[], hasMore: false };
     return browseList(kind, status, currentFilters(filters), ref, visits, deferredFilter.trim(), shown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -776,7 +779,8 @@ export function PlacesScreen() {
           ? t("places.collection.photos")
           : t("places.title");
 
-  const isBrowseKind = kind === "cities" || kind === "monuments" || kind === "airports";
+  const isBrowseKind =
+    kind === "cities" || kind === "monuments" || kind === "airports" || kind === "stations";
   // The search box (and its filter row) belong to the browse; countries has its
   // own inline search, collections have none, and an empty personal list / the
   // "pick a kind" hint have nothing to filter.

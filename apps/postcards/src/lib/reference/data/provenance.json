@@ -32,7 +32,7 @@
   {
     "dataset": "Railway stations — Wikidata (instance of Q55488, mainline; metro/tram excluded)",
     "license": "CC0-1.0",
-    "version": "scripts/build-railways.mjs (SPARQL); dev fixture until produced",
+    "version": "dev fixture (full set via pnpm railways)",
     "url": "https://query.wikidata.org/"
   },
   {

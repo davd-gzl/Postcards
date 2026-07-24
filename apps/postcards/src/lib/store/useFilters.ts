@@ -18,7 +18,7 @@ export function statusShows(statuses: readonly FilterStatus[], kind: FilterStatu
   return statuses.length === 0 || statuses.length === 3 || statuses.includes(kind);
 }
 export type SortOrder = "pop" | "az";
-export type FilterMode = "all" | "cities" | "monuments" | "airports";
+export type FilterMode = "all" | "cities" | "monuments" | "airports" | "stations";
 export type FilterDate =
   | { mode: "all" }
   | { mode: "undated" }
@@ -115,7 +115,7 @@ function loadSort(): SortOrder {
 }
 function loadMode(): FilterMode {
   const v = readLocal(MODE_KEY);
-  return v === "cities" || v === "monuments" || v === "airports" ? v : "all";
+  return v === "cities" || v === "monuments" || v === "airports" || v === "stations" ? v : "all";
 }
 
 /** The remaining value dimensions (date/folder/category/country/continent/growth),

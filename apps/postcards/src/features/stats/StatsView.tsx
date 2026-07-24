@@ -67,7 +67,7 @@ function CountryRow({ c }: { c: CountryCoverage }) {
 
   // Tapping a metric drills into Places, scoped to THIS country + the tier — and the
   // filter is the shared store, so it survives leaving and returning to the list.
-  const drill = (view: "cities" | "monuments", minPop: number) => () => {
+  const drill = (view: "cities" | "monuments" | "stations", minPop: number) => () => {
     useFilters.getState().set({ country: c.iso2, minPop, listOnly: false });
     useUi.getState().openPlaces(view);
   };
@@ -221,6 +221,17 @@ function CountryRow({ c }: { c: CountryCoverage }) {
               c.heritagePct,
               "var(--stat-want)",
               drill("monuments", 0),
+            )}
+          {c.stationsTotal > 0 &&
+            metric(
+              "stats.country.metricStations",
+              "stats.country.metricStationsDetail",
+              "stats.country.stationBarAria",
+              c.stationsVisited,
+              c.stationsTotal,
+              c.stationPct,
+              "var(--stat-air)",
+              drill("stations", 0),
             )}
         </div>
 
@@ -458,6 +469,17 @@ export function StatsView() {
             >
               <span className="kpi-num kpi-air">{formatInt(coverage.airportsVisited)}</span>
               <span className="kpi-label">{t("stats.kpi.airports")}</span>
+            </button>
+          )}
+          {coverage.stationsVisited > 0 && (
+            <button
+              type="button"
+              className="kpi"
+              title={t("stats.kpi.visitedTitle")}
+              onClick={() => openWorld("stations")}
+            >
+              <span className="kpi-num kpi-sta">{formatInt(coverage.stationsVisited)}</span>
+              <span className="kpi-label">{t("stats.kpi.stations")}</span>
             </button>
           )}
           {coverage.monumentsVisited > 0 && (

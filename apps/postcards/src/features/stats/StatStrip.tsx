@@ -94,6 +94,9 @@ export function StatStrip() {
       {stats.cov.airportsVisited > 0 && (
         <Counter num={stats.cov.airportsVisited} label={t("statStrip.airports")} cls="ss-air" view="airports" />
       )}
+      {stats.cov.stationsVisited > 0 && (
+        <Counter num={stats.cov.stationsVisited} label={t("statStrip.stations")} cls="ss-sta" view="stations" />
+      )}
       <Counter num={stats.want} label={t("statStrip.want")} cls="ss-want" view="wishlist" />
       <Counter num={stats.fav} label={t("statStrip.fav")} cls="ss-fav" view="favorites" />
     </div>

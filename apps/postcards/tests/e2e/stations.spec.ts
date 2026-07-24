@@ -42,3 +42,39 @@ test("offline: search a station, mark it visited, zero external requests", async
   await page.waitForTimeout(500);
   expect(external, `station flow external requests: ${external.join(", ")}`).toEqual([]);
 });
+
+// Spec 021, US2/US3 — a logged station flows through to the totals strip (its own
+// counter), the map's Stations mode, and the Places browse kind.
+test("a visited station surfaces in the strip, map mode, and Places browse", async ({
+  page,
+}: {
+  page: Page;
+}) => {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem("postcards-offline-mode", "1");
+      localStorage.setItem("postcards-intro-seen", "1");
+    } catch {
+      /* private mode */
+    }
+  });
+
+  await page.goto("/");
+  await expect(page.getByText("Cities in view")).toBeVisible();
+
+  await page.getByLabel("Search a city or country").fill("Hauptbahnhof");
+  await page.getByRole("button", { name: "Mark Berlin Hauptbahnhof visited" }).first().click();
+  await page.keyboard.press("Escape");
+
+  // Totals strip gains a stations counter.
+  await expect(page.locator(".stat-strip")).toContainText("stations");
+
+  // The map's Stations mode heads its in-view list accordingly.
+  await page.locator(".map-mode").getByRole("button", { name: "Stations" }).click();
+  await expect(page.getByText("Stations in view")).toBeVisible();
+
+  // Places browses the world of stations by kind, with the visited one listed.
+  await gotoTab(page, "Places");
+  await page.getByRole("group", { name: /kind/i }).getByRole("button", { name: "Stations" }).click();
+  await expect(page.getByText("Berlin Hauptbahnhof").first()).toBeVisible();
+});
