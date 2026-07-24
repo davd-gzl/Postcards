@@ -78,3 +78,32 @@ test("a visited station surfaces in the strip, map mode, and Places browse", asy
   await page.getByRole("group", { name: /kind/i }).getByRole("button", { name: "Stations" }).click();
   await expect(page.getByText("Berlin Hauptbahnhof").first()).toBeVisible();
 });
+
+// Spec 021, US4 — a station is a reachable trip stop (you travel between stations),
+// found by search in the journey composer, with the leg distance measured.
+test("stations are reachable as train trip stops", async ({ page }: { page: Page }) => {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem("postcards-offline-mode", "1");
+      localStorage.setItem("postcards-intro-seen", "1");
+    } catch {
+      /* private mode */
+    }
+  });
+
+  await page.goto("/");
+  await expect(page.getByText("Cities in view")).toBeVisible();
+
+  await gotoTab(page, "Trips");
+  await page.getByRole("button", { name: "Reconstruct a journey" }).click();
+  await expect(page.getByRole("heading", { name: "New trip" })).toBeVisible();
+
+  const search = page.getByRole("searchbox");
+  await search.fill("Gare de Lyon");
+  await page.getByRole("button", { name: /Add .*Gare de Lyon.* to the trip/ }).first().click();
+  await search.fill("Part-Dieu");
+  await page.getByRole("button", { name: /Add .*Part-Dieu.* to the trip/ }).first().click();
+
+  await expect(page.locator(".trip-stops li")).toHaveCount(2);
+  await expect(page.locator(".trip-distance-km")).toContainText("km");
+});
