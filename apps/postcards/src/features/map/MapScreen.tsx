@@ -737,7 +737,7 @@ export function MapScreen({ active = true }: { active?: boolean } = {}) {
             the Filter menu. */}
         <div className="map-ctl map-ctl-top">
           <div className="segmented map-mode" role="group" aria-label={t("filter.mode.title")}>
-            {(["all", "cities", "monuments", "airports", "stations"] as FilterMode[]).map((m) => {
+            {(["all", "cities", "monuments", "stations", "airports"] as FilterMode[]).map((m) => {
               const label = t(`filter.mode.${m}` as const);
               const icon =
                 m === "cities"

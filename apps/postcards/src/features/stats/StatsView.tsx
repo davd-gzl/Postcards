@@ -460,17 +460,6 @@ export function StatsView() {
               <span className="kpi-label">{t("stats.kpi.megaCities")}</span>
             </button>
           )}
-          {coverage.airportsVisited > 0 && (
-            <button
-              type="button"
-              className="kpi"
-              title={t("stats.kpi.visitedTitle")}
-              onClick={() => openWorld("airports")}
-            >
-              <span className="kpi-num kpi-air">{formatInt(coverage.airportsVisited)}</span>
-              <span className="kpi-label">{t("stats.kpi.airports")}</span>
-            </button>
-          )}
           {coverage.stationsVisited > 0 && (
             <button
               type="button"
@@ -480,6 +469,17 @@ export function StatsView() {
             >
               <span className="kpi-num kpi-sta">{formatInt(coverage.stationsVisited)}</span>
               <span className="kpi-label">{t("stats.kpi.stations")}</span>
+            </button>
+          )}
+          {coverage.airportsVisited > 0 && (
+            <button
+              type="button"
+              className="kpi"
+              title={t("stats.kpi.visitedTitle")}
+              onClick={() => openWorld("airports")}
+            >
+              <span className="kpi-num kpi-air">{formatInt(coverage.airportsVisited)}</span>
+              <span className="kpi-label">{t("stats.kpi.airports")}</span>
             </button>
           )}
           {coverage.monumentsVisited > 0 && (

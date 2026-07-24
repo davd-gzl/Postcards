@@ -49,7 +49,7 @@ type Kind = "all" | "cities" | "monuments" | "airports" | "stations" | "countrie
 type Status = "all" | "visited" | "wishlist" | "favorites" | "notVisited";
 type Collection = "moments" | "photos" | "passport";
 
-const KINDS: readonly Kind[] = ["all", "cities", "monuments", "airports", "stations", "countries"];
+const KINDS: readonly Kind[] = ["all", "cities", "monuments", "stations", "airports", "countries"];
 const STATUSES: readonly Status[] = ["all", "visited", "wishlist", "favorites", "notVisited"];
 
 // The three axis/collection selections persist, so returning to Places lands where

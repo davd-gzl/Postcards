@@ -91,11 +91,11 @@ export function StatStrip() {
       />
       <span className="ss-sep" aria-hidden />
       <Counter num={stats.cov.citiesVisited} label={t("statStrip.been")} cls="ss-been" view="visited" />
-      {stats.cov.airportsVisited > 0 && (
-        <Counter num={stats.cov.airportsVisited} label={t("statStrip.airports")} cls="ss-air" view="airports" />
-      )}
       {stats.cov.stationsVisited > 0 && (
         <Counter num={stats.cov.stationsVisited} label={t("statStrip.stations")} cls="ss-sta" view="stations" />
+      )}
+      {stats.cov.airportsVisited > 0 && (
+        <Counter num={stats.cov.airportsVisited} label={t("statStrip.airports")} cls="ss-air" view="airports" />
       )}
       <Counter num={stats.want} label={t("statStrip.want")} cls="ss-want" view="wishlist" />
       <Counter num={stats.fav} label={t("statStrip.fav")} cls="ss-fav" view="favorites" />
