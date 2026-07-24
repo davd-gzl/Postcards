@@ -487,6 +487,8 @@ export const en = {
   "trip.compose.legModeAria": "Transport from {from} to {to}",
   "trip.compose.dateLabel": "Date (optional)",
   "trip.compose.clearDate": "Clear date",
+  "trip.compose.stopDateLabel": "Date",
+  "trip.compose.stopDateAria": "Date at {name}",
   "trip.compose.distanceLabel": "Distance",
   "trip.compose.km": "{km} km",
   "trip.compose.unmeasured": "Some legs have no coordinates and aren't measured.",

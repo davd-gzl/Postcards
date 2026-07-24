@@ -212,6 +212,24 @@ export const TripSchema = z
      * a trip with a single `mode` (and every v1–v11 file) round-trips byte-identically.
      */
     legModes: z.array(TravelModeSchema).max(200).optional(),
+    /**
+     * Optional per-STOP date (spec 021): the day you were at each waypoint, aligned
+     * to `stops` (so `stopDates[i]` dates `stops[i]`). Each entry is a vague date
+     * (`YYYY` / `YYYY-MM` / `YYYY-MM-DD`) or null for "no date". The first and last
+     * non-null give the journey's start and end. Additive & optional with no
+     * default, so the key is NEVER injected on parse — a trip without per-stop dates
+     * (every v1–v14 file) validates and round-trips byte-identically. The trip's own
+     * `date` continues to hold the representative (start) date for the log & filters.
+     */
+    stopDates: z
+      .array(
+        z
+          .string()
+          .regex(/^\d{4}(-\d{2}(-\d{2})?)?$/)
+          .nullable(),
+      )
+      .max(200)
+      .optional(),
     // Approximate/"vague" date (spec 019): a full day `YYYY-MM-DD`, a month
     // `YYYY-MM`, or a year `YYYY` — all optional/nullable (an undated trip is fine).
     // The wider regex is a RELAXATION, so every previously-valid full-day value

@@ -2763,6 +2763,27 @@ h1.brand {
   border-radius: var(--radius-sm);
   background: var(--surface);
 }
+/* The per-stop date (spec 021): a compact day-picker indented under the stop's
+   number, so each waypoint can carry the day you were there. */
+.trip-stop-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 4px 14px;
+  margin-left: 9px;
+  border-left: 2px dashed var(--border-strong);
+}
+.trip-stop-date-label {
+  min-width: 34px;
+}
+.trip-stop-date .search-input {
+  height: 30px;
+  min-height: 0;
+  padding: 0 8px;
+  font-size: 12.5px;
+  width: auto;
+  max-width: 190px;
+}
 /* The leg connector between two stops: a short line + a compact transport picker,
    left-aligned under the stop's number so the route reads top-to-bottom and a run
    of one transport looks like a sub-trip. */

@@ -482,6 +482,8 @@ export const fr: Messages = {
   "trip.compose.legModeAria": "Transport de {from} à {to}",
   "trip.compose.dateLabel": "Date (facultatif)",
   "trip.compose.clearDate": "Effacer la date",
+  "trip.compose.stopDateLabel": "Date",
+  "trip.compose.stopDateAria": "Date à {name}",
   "trip.compose.distanceLabel": "Distance",
   "trip.compose.km": "{km} km",
   "trip.compose.unmeasured": "Certains trajets n’ont pas de coordonnées et ne sont pas mesurés.",

@@ -58,11 +58,15 @@ export const FORMAT = "postcards" as const;
 // `tags` (personal mood/weather/free labels), and `tripId` (a link to a
 // reconstructed trip). The relaxation keeps v1–v12 files valid; the new `.strict()`
 // keys are why the version bumps (an older app rejects a v13 file gracefully).
+// v15 adds an optional per-STOP date array on a Trip (`stopDates`, spec 021),
+// aligned to `stops`. Additive & optional with no default, so it's never injected:
+// v1–v14 trips (no per-stop dates) validate and round-trip byte-identically; a v15
+// file carrying stopDates is rejected by an older app via the version guard.
 // v14 adds a "station" (railway station) place kind — an additive enum value on the
 // `.strict()` PlaceRef, sourced from a named openly-licensed dataset (Wikidata CC0),
 // exactly like v4 added "custom". v1–v13 files (no station refs) validate unchanged;
 // a v14 file carrying a station is rejected by an older app via the version guard.
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 /** Most photos one place's gallery may hold (bounds the inline portable file). */
 export const MAX_PHOTOS_PER_VISIT = 48;

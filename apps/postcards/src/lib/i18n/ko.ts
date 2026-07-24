@@ -481,6 +481,8 @@ export const ko: Messages = {
   "trip.compose.legModeAria": "{from}에서 {to}까지 이동 수단",
   "trip.compose.dateLabel": "날짜 (선택)",
   "trip.compose.clearDate": "날짜 지우기",
+  "trip.compose.stopDateLabel": "날짜",
+  "trip.compose.stopDateAria": "{name} 방문 날짜",
   "trip.compose.distanceLabel": "거리",
   "trip.compose.km": "{km} km",
   "trip.compose.unmeasured": "일부 구간은 좌표가 없어 측정되지 않습니다.",

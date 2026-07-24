@@ -11,7 +11,7 @@ import type { PlaceRef, TravelMode } from "../../lib/schema/models";
 import { MyPlacesPicker } from "./MyPlacesPicker";
 import { primaryPlace } from "../journal/postcardModel";
 import { myPlaces, placeFlag } from "./myPlaces";
-import { appendStop, moveStopTo, removeStopAt, setLegMode, type StopChain } from "./tripStops";
+import { appendStop, moveStopTo, removeStopAt, setLegMode, setStopDate, type StopChain } from "./tripStops";
 import { tripPathKm } from "./distance";
 import { MODE_ORDER, MODE_GLYPH } from "./modes";
 import { formatTripDate } from "./tripDate";
@@ -60,20 +60,36 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
     while (base.length < need) base.push(existing?.mode ?? "flight");
     return base;
   });
+  // Per-STOP dates (spec 021), aligned to `stops` — the day you were at each
+  // waypoint. Seeded from the trip's saved per-stop dates, or (for an older trip
+  // that only had one overall date) onto its first stop, so editing keeps it.
+  const isFullDay = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const [stopDates, setStopDates] = useState<(string | null)[]>(() => {
+    const s0 = initialStops();
+    if (existing?.stopDates && existing.stopDates.length) {
+      const out = existing.stopDates.slice(0, s0.length);
+      while (out.length < s0.length) out.push(null);
+      return out;
+    }
+    const seed = existing?.date && isFullDay(existing.date) ? existing.date : null;
+    return s0.map((_, i) => (i === 0 ? seed : null));
+  });
   const applyChain = (c: StopChain) => {
     setStops(c.stops);
     setLegModes(c.legModes);
+    setStopDates(c.stopDates ?? []);
   };
+  // The live chain the row handlers mutate (stops + per-leg modes + per-stop dates).
+  const chain: StopChain = { stops, legModes, stopDates };
   // New legs continue the last leg's transport (so tapping stops in a row keeps
   // one mode until you change it — that's what makes a sub-trip).
   const nextFill = (): TravelMode => legModes[legModes.length - 1] ?? existing?.mode ?? "flight";
   const [name, setName] = useState(existing?.name ?? "");
-  // One plain optional date. A native picker handles full days (YYYY-MM-DD); a
-  // coarse legacy date (year or year-month, which a picker can't render) is kept
-  // as-is and shown as a small clearable chip so nothing is silently lost.
-  const [date, setDate] = useState(existing?.date ?? "");
-  const isFullDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
-  const coarseLegacyDate = date && !isFullDate ? date : "";
+  // A coarse legacy date (year or year-month, which a native day-picker can't
+  // render) is preserved at trip level as a small clearable chip so nothing is lost.
+  const [legacyDate, setLegacyDate] = useState(
+    existing?.date && !isFullDay(existing.date) ? existing.date : "",
+  );
 
   const addedKeys = useMemo(() => new Set(stops.map((s) => placeKey(s))), [stops]);
   const { km, unresolvedLegs } = useMemo(() => tripPathKm(stops, ref), [stops, ref]);
@@ -83,16 +99,20 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
     if (!canSave) return;
     const from = stops[0]!;
     const to = stops[stops.length - 1]!;
-    const dateToSave = date.trim() || null;
+    // Per-stop dates are saved only when at least one is set; the trip's own `date`
+    // is the START (first dated stop) so the log/year-filter keep working, falling
+    // back to a preserved coarse legacy date so an old trip's date isn't lost.
+    const stopDatesToSave = stopDates.some((d) => d) ? stopDates : undefined;
+    const dateToSave = (stopDates.find((d) => d) ?? null) || (legacyDate.trim() || null);
     // The primary mode is the first leg's; per-leg modes are saved only when a leg
     // actually differs (a uniform trip stays a plain single-mode trip).
     const mode = legModes[0] ?? existing?.mode ?? "flight";
     const mixed = legModes.some((m) => m !== mode);
     const legModesToSave = mixed ? legModes : undefined;
     if (tripId && existing) {
-      await updateTrip(tripId, { from, to, stops, mode, legModes: legModesToSave, date: dateToSave, name: name.trim() });
+      await updateTrip(tripId, { from, to, stops, mode, legModes: legModesToSave, stopDates: stopDatesToSave, date: dateToSave, name: name.trim() });
     } else {
-      await addTrip({ from, to, stops, mode, legModes: legModesToSave, date: dateToSave, name: name.trim() || null });
+      await addTrip({ from, to, stops, mode, legModes: legModesToSave, stopDates: stopDatesToSave, date: dateToSave, name: name.trim() || null });
     }
     onClose();
   }
@@ -145,7 +165,7 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
                     className="icon-btn"
                     disabled={i === 0}
                     aria-label={t("trip.compose.moveUp", { name: s.name })}
-                    onClick={() => applyChain(moveStopTo({ stops, legModes }, i, i - 1, nextFill()))}
+                    onClick={() => applyChain(moveStopTo(chain, i, i - 1, nextFill()))}
                   >
                     ↑
                   </button>
@@ -154,7 +174,7 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
                     className="icon-btn"
                     disabled={i === stops.length - 1}
                     aria-label={t("trip.compose.moveDown", { name: s.name })}
-                    onClick={() => applyChain(moveStopTo({ stops, legModes }, i, i + 1, nextFill()))}
+                    onClick={() => applyChain(moveStopTo(chain, i, i + 1, nextFill()))}
                   >
                     ↓
                   </button>
@@ -162,12 +182,27 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
                     type="button"
                     className="icon-btn"
                     aria-label={t("trip.compose.removeStop", { name: s.name })}
-                    onClick={() => applyChain(removeStopAt({ stops, legModes }, i, nextFill()))}
+                    onClick={() => applyChain(removeStopAt(chain, i, nextFill()))}
                   >
                     ✕
                   </button>
                 </span>
               </div>
+              {/* Optional date you were at THIS stop (spec 021). The first/last
+                  dated stops are the journey's start and end. */}
+              <label className="trip-stop-date">
+                <span className="trip-stop-date-label muted small">
+                  {t("trip.compose.stopDateLabel")}
+                </span>
+                <input
+                  className="search-input"
+                  type="date"
+                  max="9999-12-31"
+                  value={isFullDay(stopDates[i] ?? "") ? (stopDates[i] as string) : ""}
+                  aria-label={t("trip.compose.stopDateAria", { name: s.name })}
+                  onChange={(e) => applyChain(setStopDate(chain, i, e.target.value || null))}
+                />
+              </label>
               {/* The transport for the leg from THIS stop to the next — change it
                   where a segment differs and a run of one mode reads as a sub-trip. */}
               {i < stops.length - 1 && (
@@ -181,7 +216,7 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
                       className="select"
                       value={legModes[i] ?? "flight"}
                       onChange={(e) =>
-                        applyChain(setLegMode({ stops, legModes }, i, e.target.value as TravelMode))
+                        applyChain(setLegMode(chain, i, e.target.value as TravelMode))
                       }
                     >
                       {MODE_ORDER.map((m) => (
@@ -205,7 +240,7 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
       <MyPlacesPicker
         places={pool}
         addedKeys={addedKeys}
-        onPick={(place) => applyChain(appendStop({ stops, legModes }, place, nextFill()))}
+        onPick={(place) => applyChain(appendStop(chain, place, nextFill()))}
         stops={stops}
         travelMode={legModes[0] ?? "flight"}
       />
@@ -223,30 +258,25 @@ export function TripComposer({ tripId, onClose }: { tripId: string | null; onClo
         />
       </label>
 
-      <label className="field trip-date-field">
-        <span className="field-label">{t("trip.compose.dateLabel")}</span>
-        <input
-          className="search-input"
-          type="date"
-          max="9999-12-31"
-          value={isFullDate ? date : ""}
-          aria-label={t("trip.compose.dateLabel")}
-          onChange={(e) => setDate(e.target.value)}
-        />
-        {coarseLegacyDate && (
+      {/* Per-stop dates live on each stop above; the trip's overall date is their
+          start. A coarse legacy date (a whole year/month a day-picker can't show)
+          from an older trip is preserved here as a clearable chip. */}
+      {legacyDate && (
+        <div className="field trip-date-field">
+          <span className="field-label">{t("trip.compose.dateLabel")}</span>
           <span className="filter-chip trip-date-legacy">
-            <span className="filter-chip-label">{formatTripDate(coarseLegacyDate, locale)}</span>
+            <span className="filter-chip-label">{formatTripDate(legacyDate, locale)}</span>
             <button
               type="button"
               className="filter-chip-x"
               aria-label={t("trip.compose.clearDate")}
-              onClick={() => setDate("")}
+              onClick={() => setLegacyDate("")}
             >
               ✕
             </button>
           </span>
-        )}
-      </label>
+        </div>
+      )}
 
       {linkedPostcards.length > 0 && (
         <div className="trip-postcards">
